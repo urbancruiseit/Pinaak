@@ -6,8 +6,11 @@ import {
   updateDriverController,
   deleteDriverController,
 } from "./driver.controller.js";
+import { verifyJWT } from "../../middlewares/auth.middleware.js";
 
 const router = express.Router();
+
+router.use(verifyJWT);
 
 router.post("/", createDriverController);
 

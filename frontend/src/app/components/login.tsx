@@ -205,7 +205,7 @@ export function Login() {
                 </div>
               )}
 
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+              <form method="post" onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                 {/* USERNAME FIELD */}
                 <div className="space-y-2">
                   <label className="text-md font-semibold text-black ml-1">

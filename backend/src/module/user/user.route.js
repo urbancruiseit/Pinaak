@@ -1,4 +1,5 @@
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
 import {
   getCurrentUSer,
   loginUser,
@@ -9,8 +10,16 @@ import {
 import { verifyJWT } from "../../middlewares/auth.middleware.js";
 const router = Router();
 
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many login attempts, please try again later." },
+});
+
 router.route("/").post(registerUser);
-router.route("/login").post(loginUser);
+router.route("/login").post(loginLimiter, loginUser);
 router.use(verifyJWT);
 router.route("/current-user").get(getCurrentUSer);
 router.route("/sales").get(getSalesUsersController);

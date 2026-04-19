@@ -106,7 +106,6 @@ export const createVendorAPI = async (
 ): Promise<VendorResponse> => {
   try {
     const payload = buildJsonPayload(formData);
-    console.log("Payload:", payload);
 
     const response = await axiosInstance.post("/vendor", payload);
 
@@ -127,7 +126,6 @@ export const updateVendorAPI = async (
 ): Promise<VendorResponse> => {
   try {
     const payload = buildJsonPayload(formData);
-    console.log("Update Payload:", payload);
 
     const response = await axiosInstance.put(`/vendor/${id}`, payload);
 

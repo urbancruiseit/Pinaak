@@ -49,8 +49,6 @@ const UnwantedModal: React.FC<UnwantedModalProps> = ({
       unwanted_status,
     };
 
-    console.log("🚀 Modal Payload:", payload);
-
     setIsSubmitting(true);
     setErrorMsg(null);
 

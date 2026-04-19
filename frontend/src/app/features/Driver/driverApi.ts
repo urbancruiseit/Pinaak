@@ -74,7 +74,6 @@ export const createDriverAPI = async (
 ): Promise<DriverResponse> => {
   try {
     const payload = buildJsonPayload(formData);
-    console.log("Driver Payload:", payload);
 
     const response = await axiosInstance.post("/driver", payload);
 

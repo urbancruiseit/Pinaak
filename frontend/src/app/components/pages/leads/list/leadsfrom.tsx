@@ -568,8 +568,6 @@ const LeadsForm: React.FC = () => {
         followUp: data.followUp || "",
       };
 
-      console.log("📦 Full payload:", JSON.stringify(payload, null, 2));
-
       const result = await dispatch(createLead(payload)).unwrap();
       console.log("✅ Lead created:", result);
 

@@ -11,7 +11,7 @@ const router = Router();
 
 router.route("/").post(verifyJWT, createLeads);
 router.route("/").get(verifyJWT, listLeads);
-router.route("/unwanted/:id").patch(updateLeadUnwantedStatusController);
-router.route("/unwanted/all").get(getAllUnwantedLeadsController);
-router.route("/:id").put(updateLeadByIdController);
+router.route("/unwanted/:id").patch(verifyJWT, updateLeadUnwantedStatusController);
+router.route("/unwanted/all").get(verifyJWT, getAllUnwantedLeadsController);
+router.route("/:id").put(verifyJWT, updateLeadByIdController);
 export default router;

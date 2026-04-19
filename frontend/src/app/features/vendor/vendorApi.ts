@@ -23,7 +23,7 @@ export interface VendorFormData {
   vendorProof: string;
   vehicleDoc: string;
 
-  code: string;
+  code?: string;
   managerName2: string;
   managerName1: string;
   ownerName: string;

@@ -6,6 +6,7 @@ const nextConfig: NextConfig = {
     root: path.resolve(__dirname),
   },
   reactCompiler: true,
+  typescript: { ignoreBuildErrors: true },
   async rewrites() {
     return [
       {

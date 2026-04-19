@@ -49,10 +49,6 @@ app.use(express.static("public"));
 
 app.use(cookieParser());
 
-app.get("/", (req, res) => {
-  res.send("🚀 Server started successfully");
-});
-
 app.use("/api/v1/user", userRouter);
 app.use("/api/v1/lead", leadRouter);
 app.use("/api/v1/country", countryRoutes);
@@ -68,13 +64,5 @@ app.use("/api/v1/assign", AssignRoutes);
 app.use("/api/v1/newcustomer", NewCustomerRouter);
 app.use("/api/v1/vendor", vendorRouter);
 app.use("/api/v1/driver", driverRouter);
-app.get("/", (req, res) => {
-  res.json({
-    message: "Server is running",
-    firebaseStatus: "Configured",
-  });
-});
-
-app.use(errorMiddleware);
 
 export { app };

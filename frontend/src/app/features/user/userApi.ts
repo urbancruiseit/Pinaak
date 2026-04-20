@@ -1,4 +1,4 @@
-import axiosInstance, { axiosInstance_hrms } from "@/uitils/axioInstance";
+import axiosInstance from "@/uitils/axioInstance";
 import type { User } from "@/types/types";
 
 interface LoginData {
@@ -9,7 +9,7 @@ interface LoginData {
 // ✅ LOGIN USER
 export const loginUser = async (data: LoginData): Promise<User> => {
   try {
-    const response = await axiosInstance_hrms.post<User>("/user/login", data);
+    const response = await axiosInstance.post<User>("/user/login", data);
 
     return response.data;
   } catch (error: any) {
@@ -21,7 +21,7 @@ export const loginUser = async (data: LoginData): Promise<User> => {
 // ✅ CURRENT USER
 export const currentUser = async (): Promise<User> => {
   try {
-    const response = await axiosInstance_hrms.get<User>("/user/current-user");
+    const response = await axiosInstance.get<User>("/user/current-user");
 
 
 

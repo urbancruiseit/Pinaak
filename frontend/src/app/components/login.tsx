@@ -205,7 +205,12 @@ export function Login() {
                 </div>
               )}
 
-              <form method="post" onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+              <form
+                method="post"
+                action="javascript:void(0);"
+                onSubmit={handleSubmit(onSubmit)}
+                className="space-y-6"
+              >
                 {/* USERNAME FIELD */}
                 <div className="space-y-2">
                   <label className="text-md font-semibold text-black ml-1">

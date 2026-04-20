@@ -4,6 +4,45 @@ import { generateUUID } from "../../utils/uuid.js";
 
 export const USER_TABLE = "users";
 
+// Look up a user from the HRMS DB by username (used for login)
+export const findUserByUserName = async (userName) => {
+  try {
+    const [rows] = await hrmsPool.execute(
+      `SELECT * FROM ${USER_TABLE} WHERE username = ?`,
+      [userName],
+    );
+    return rows[0] || null;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Look up a user by id from the HRMS DB (used after login for profile)
+export const findHrmsUserById = async (id) => {
+  try {
+    const [rows] = await hrmsPool.execute(
+      `SELECT * FROM ${USER_TABLE} WHERE id = ?`,
+      [id],
+    );
+    return rows[0] || null;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Save refresh token to HRMS DB user row
+export const saveHrmsRefreshToken = async (userId, refreshToken) => {
+  try {
+    await hrmsPool.execute(
+      `UPDATE ${USER_TABLE} SET refreshToken = ? WHERE id = ?`,
+      [refreshToken, userId],
+    );
+  } catch (error) {
+    console.error("saveHrmsRefreshToken error:", error);
+    throw error;
+  }
+};
+
 export const USER_COLUMNS = {
   ID: "id",
   UUID: "uuid",

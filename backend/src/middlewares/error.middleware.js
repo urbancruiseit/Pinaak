@@ -4,8 +4,8 @@ const errorMiddleware = (err, req, res, next) => {
   let statusCode = err.statusCode || 500;
   let message = err.message || "Internal Server Error";
 
-
   if (!(err instanceof ApiError)) {
+    console.error("🔥 Unhandled error:", err);
     statusCode = 500;
     message = "Something went wrong";
   }

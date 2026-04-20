@@ -13,8 +13,12 @@ const frontendDir = path.resolve(__dirname, "../../frontend");
 const nextBuildDir = path.join(frontendDir, ".next");
 
 const PORT = process.env.PORT || 4000;
+const isProd = process.env.NODE_ENV === "production";
 const serveFrontend =
-  process.env.SERVE_FRONTEND === "true" || fs.existsSync(nextBuildDir);
+  process.env.SERVE_FRONTEND === "false"
+    ? false
+    : process.env.SERVE_FRONTEND === "true" ||
+      (isProd && fs.existsSync(nextBuildDir));
 
 const start = async () => {
   connectMySQL();

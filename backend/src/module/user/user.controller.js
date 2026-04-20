@@ -4,8 +4,11 @@ import { asyncHandler } from "../../utils/asyncHandler.js";
 import {
   findUserById,
   findUserByEmail,
+  findUserByUserName,
+  findHrmsUserById,
   insertUser,
   saveRefreshToken,
+  saveHrmsRefreshToken,
   getSalesUsers,
   updateUserById,
 } from "./user.model.js";
@@ -52,7 +55,7 @@ const loginUser = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Username and password are required");
   }
 
-  const user = await findUserByEmail(username);
+  const user = await findUserByUserName(username);
   if (!user) {
     throw new ApiError(404, "User does not exist");
   }
@@ -64,7 +67,7 @@ const loginUser = asyncHandler(async (req, res) => {
 
   const { accessToken, refreshToken } = generateTokens(user.id);
 
-  await saveRefreshToken(user.id, refreshToken);
+  await saveHrmsRefreshToken(user.id, refreshToken);
 
   const cookieOptions = {
     httpOnly: true,
@@ -73,7 +76,7 @@ const loginUser = asyncHandler(async (req, res) => {
     maxAge: 7 * 24 * 60 * 60 * 1000,
   };
 
-  const loginUser = await findUserById(user.id);
+  const loginUser = await findHrmsUserById(user.id);
 
   res
     .status(200)

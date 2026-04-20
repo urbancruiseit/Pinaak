@@ -260,7 +260,7 @@ export function Login() {
                   <label className="text-md font-semibold text-black ml-1">
                     Password
                   </label>
-                  <div className="relative group">
+                  <div className="relative group" suppressHydrationWarning>
                     <div
                       className={cn(
                         "absolute inset-0 bg-gradient-to-r from-green-600/20 to-emerald-500/20 rounded-xl blur-xl transition-all duration-500",

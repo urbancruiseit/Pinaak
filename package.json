@@ -4,9 +4,9 @@
   "description": "Pinaak monorepo - backend + frontend",
   "private": true,
   "scripts": {
-    "install:all": "npm install --prefix backend && npm install --include=dev --production=false --prefix frontend",
+    "install:all": "node scripts/postinstall.mjs",
     "setup": "node scripts/setup.mjs",
-    "postinstall": "npm install --prefix backend && npm install --include=dev --production=false --prefix frontend && node scripts/setup.mjs",
+    "postinstall": "node scripts/postinstall.mjs",
     "dev:backend": "npm run dev --prefix backend",
     "dev:frontend": "npm run dev --prefix frontend",
     "dev": "concurrently -n backend,frontend -c blue,green \"npm run dev:backend\" \"npm run dev:frontend\"",

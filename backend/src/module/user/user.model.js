@@ -277,20 +277,21 @@ export const saveRefreshToken = async (userId, refreshToken) => {
   );
 };
 
-// GET USERS BY ROLE
+// GET USERS BY ROLE — reads from HRMS DB (users + roles tables)
 export const getUsersByRole = async (role) => {
   try {
-    const [rows] = await pool.execute(
-      `SELECT 
-        ${USER_COLUMNS.UUID},
-        ${USER_COLUMNS.NAME},
-        ${USER_COLUMNS.EMAIL},
-        ${USER_COLUMNS.SUB_DEPARTMENT}
-       FROM ${USER_TABLE} 
-       WHERE ${USER_COLUMNS.ROLE} = ?`,
+    const [rows] = await hrmsPool.execute(
+      `SELECT
+        u.uuid,
+        TRIM(CONCAT_WS(' ', u.firstName, u.middleName, u.lastName)) AS name,
+        COALESCE(u.personalEmail, u.officeEmail) AS email,
+        u.subDepartment_id AS subDepartment_name,
+        r.role_name
+       FROM users u
+       LEFT JOIN roles r ON u.role_id = r.id
+       WHERE LOWER(r.role_name) = LOWER(?)`,
       [role],
     );
-
     return rows;
   } catch (error) {
     console.error("getUsersByRole error:", error);

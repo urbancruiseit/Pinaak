@@ -10,7 +10,7 @@ interface LoginData {
 export const loginUser = async (data: LoginData): Promise<User> => {
   try {
     const response = await axiosInstance_hrms.post<User>("/user/login", data);
-    console.log(response.data.data);
+
     return response.data.data;
   } catch (error: any) {
     console.error(
@@ -36,3 +36,13 @@ export const currentUser = async (): Promise<User> => {
 };
 
 // ✅ CREATE USER
+export const createUser = async (formData: Partial<User>): Promise<User> => {
+  try {
+    const response = await axiosInstance.post<User>("/user", formData);
+
+    return response.data;
+  } catch (error: any) {
+    console.error("Create User Error:", error.response?.data || error.message);
+    throw new Error(error.response?.data?.message || "User creation failed");
+  }
+};

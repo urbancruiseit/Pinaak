@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import type { User } from "@/types/types";
-import { currentUser, loginUser } from "./userApi";
+import { createUser, currentUser, loginUser } from "./userApi";
 
 interface UserState {
   currentUser: User | null;
@@ -38,6 +38,19 @@ export const currentUserThunk = createAsyncThunk<
     return user;
   } catch (error: any) {
     return rejectWithValue(error.message || "Unauthorized");
+  }
+});
+
+export const createUserThunk = createAsyncThunk<
+  User,
+  Partial<User>,
+  { rejectValue: string }
+>("user/create", async (formData, { rejectWithValue }) => {
+  try {
+    const user = await createUser(formData);
+    return user;
+  } catch (error: any) {
+    return rejectWithValue(error.message || "User creation failed");
   }
 });
 
@@ -85,6 +98,23 @@ const userSlice = createSlice({
         state.loading = false;
         state.currentUser = null;
         state.error = action.payload || null;
+      })
+
+      // Create user
+      .addCase(createUserThunk.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(
+        createUserThunk.fulfilled,
+        (state, action: PayloadAction<User>) => {
+          state.loading = false;
+          state.createdUser = action.payload;
+        },
+      )
+      .addCase(createUserThunk.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
       });
   },
 });

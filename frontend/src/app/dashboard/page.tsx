@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { ComponentType } from "react";
 import Navbar from "../components/ui/navbar";
 import Sidebar from "../components/ui/sidebar";
-
+import { Admin } from "../components/admin";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../redux/store";
 import { currentUserThunk } from "../features/user/userSlice";
@@ -607,6 +607,13 @@ export default function DashboardPage() {
       return (
         <div className="space-y-6">
           <LeadsOverviewModule />
+        </div>
+      );
+    }
+    if (activeSection === "admin") {
+      return (
+        <div className="space-y-6">
+          <Admin />
         </div>
       );
     }

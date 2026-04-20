@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { ComponentType } from "react";
 import Navbar from "../components/ui/navbar";
 import Sidebar from "../components/ui/sidebar";
-import { Admin } from "../components/admin";
+
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../redux/store";
 import { currentUserThunk } from "../features/user/userSlice";
@@ -231,7 +231,7 @@ const masterTabs: MasterTab[] = [
       loading: LoadingPanel,
     }),
   },
- 
+
   {
     key: "corporate-form",
     label: "Corporate Form",
@@ -300,8 +300,6 @@ const masterTabs: MasterTab[] = [
       loading: LoadingPanel,
     }),
   },
-
-
 ];
 
 export default function DashboardPage() {
@@ -613,13 +611,6 @@ export default function DashboardPage() {
       );
     }
 
-    if (activeSection === "admin") {
-      return (
-        <div className="space-y-6">
-          <Admin />
-        </div>
-      );
-    }
     if (activeSection === "dashboard") {
       if (activeDashboardView === "presales-dashboard") {
         return (
@@ -658,8 +649,6 @@ export default function DashboardPage() {
         </div>
       );
     }
-
-  
 
     if (activeSection === "rate-quotation") {
       return (

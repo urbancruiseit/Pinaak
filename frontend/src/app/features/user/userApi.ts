@@ -11,10 +11,15 @@ export const loginUser = async (data: LoginData): Promise<User> => {
   try {
     const response = await axiosInstance.post<User>("/user/login", data);
 
-    return response.data;
+    return response.data.data;
   } catch (error: any) {
-    console.error("Login Error:", error.response?.data || error.message || error);
-    throw new Error(error.response?.data?.message || error.message || "Login failed");
+    console.error(
+      "Login Error:",
+      error.response?.data || error.message || error,
+    );
+    throw new Error(
+      error.response?.data?.message || error.message || "Login failed",
+    );
   }
 };
 
@@ -22,8 +27,6 @@ export const loginUser = async (data: LoginData): Promise<User> => {
 export const currentUser = async (): Promise<User> => {
   try {
     const response = await axiosInstance.get<User>("/user/current-user");
-
-
 
     return response.data.data;
   } catch (error: any) {
@@ -35,8 +38,6 @@ export const currentUser = async (): Promise<User> => {
 // ✅ CREATE USER
 export const createUser = async (formData: Partial<User>): Promise<User> => {
   try {
-
-
     const response = await axiosInstance.post<User>("/user", formData);
 
     return response.data;

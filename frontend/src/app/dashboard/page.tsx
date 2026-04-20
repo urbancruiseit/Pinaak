@@ -231,7 +231,7 @@ const masterTabs: MasterTab[] = [
       loading: LoadingPanel,
     }),
   },
- 
+
   {
     key: "corporate-form",
     label: "Corporate Form",
@@ -300,8 +300,6 @@ const masterTabs: MasterTab[] = [
       loading: LoadingPanel,
     }),
   },
-
-
 ];
 
 export default function DashboardPage() {
@@ -612,7 +610,6 @@ export default function DashboardPage() {
         </div>
       );
     }
-
     if (activeSection === "admin") {
       return (
         <div className="space-y-6">
@@ -620,6 +617,7 @@ export default function DashboardPage() {
         </div>
       );
     }
+
     if (activeSection === "dashboard") {
       if (activeDashboardView === "presales-dashboard") {
         return (
@@ -658,8 +656,6 @@ export default function DashboardPage() {
         </div>
       );
     }
-
-  
 
     if (activeSection === "rate-quotation") {
       return (

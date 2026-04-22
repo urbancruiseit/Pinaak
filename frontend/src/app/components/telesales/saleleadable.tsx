@@ -163,7 +163,6 @@ export default function LeadsTable() {
     (state: RootState) => state.travelAdvisor.assignedLeads,
   );
 
-
   useEffect(() => {
     const interval = setInterval(() => {
       dispatch(fetchMyAssignedLeads(currentPage));
@@ -1055,18 +1054,18 @@ export default function LeadsTable() {
                 <div className="text-md text-black">{newPercentage}%</div>
               </div>
 
-              <div className="flex flex-col items-center justify-center bg-blue-300 px-2 py-2 mr-6 rounded-lg shadow-md border border-blue-800 min-w-[80px] h-20">
-                <div className="font-extrabold text-xl text-blue-950">RFQ</div>
-                <div className="font-extrabold text-blue-900">{rfqLeads}</div>
-                <div className="text-md text-blue-700">{rfqPercentage}%</div>
-              </div>
-
               <div className="flex flex-col items-center justify-center bg-orange-200 px-2 py-2 ml-6 rounded-lg shadow-md border border-orange-800 min-w-[80px] h-20">
                 <div className="font-extrabold text-xl text-orange-950">
                   KYC
                 </div>
                 <div className="font-extrabold text-orange-900">{kycLeads}</div>
                 <div className="text-md text-orange-700">{kycPercentage}%</div>
+              </div>
+
+              <div className="flex flex-col items-center justify-center bg-blue-300 px-2 py-2 mr-6 rounded-lg shadow-md border border-blue-800 min-w-[80px] h-20">
+                <div className="font-extrabold text-xl text-blue-950">RFQ</div>
+                <div className="font-extrabold text-blue-900">{rfqLeads}</div>
+                <div className="text-md text-blue-700">{rfqPercentage}%</div>
               </div>
 
               <div className="flex flex-col items-center justify-center bg-purple-200 px-2 py-2 mr-6 rounded-lg shadow-md border border-purple-800 min-w-[80px] h-20">

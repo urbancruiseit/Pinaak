@@ -191,7 +191,7 @@ const LeadDetailsModel = ({ lead, isOpen, onClose }: LeadDetailsModelProps) => {
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5">
                 <DetailRow
                   label="Full Name"
-                  value={lead.customerName}
+                  value={lead.fullName}
                   icon={<User size={12} />}
                 />
                 <DetailRow

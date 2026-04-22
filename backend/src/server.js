@@ -40,7 +40,13 @@ const start = async () => {
     console.log("✅ Next.js prepared");
     app.all(/.*/, (req, res) => nextHandler(req, res));
   } else {
-    console.log("ℹ️  Next.js frontend not served (no .next build found)");
+    const reason =
+      process.env.SERVE_FRONTEND === "false"
+        ? "SERVE_FRONTEND=false"
+        : !isProd
+          ? "NODE_ENV is not 'production' — run `next dev` separately for the frontend"
+          : "no .next build found — run `npm run build` first";
+    console.log(`ℹ️  Next.js frontend not served (${reason})`);
   }
 
   app.use(errorMiddleware);

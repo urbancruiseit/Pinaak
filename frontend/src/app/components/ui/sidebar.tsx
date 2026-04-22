@@ -197,19 +197,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           />
         )}
 
-        {/* Access Level - Hide for Sales and Presales */}
-        {userRole?.toLowerCase() !== "sales" &&
-          userRole?.toLowerCase() !== "presale" && (
-            <MenuItem
-              icon={<Shield size={isExpanded ? 26 : iconSize} />}
-              label="Access"
-              description="Access Level"
-              isExpanded={isExpanded}
-              isActive={activeItem === "access"}
-              onClick={onAccessClick}
-              color="yellow"
-            />
-          )}
+       
       </div>
 
       {/* Collapse indicator - small chevron */}

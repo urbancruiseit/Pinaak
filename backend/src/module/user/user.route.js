@@ -6,6 +6,7 @@ import {
   registerUser,
   getSalesUsersController,
   updateUserController,
+  userLogout,
 } from "./user.controller.js";
 import { verifyJWT } from "../../middlewares/auth.middleware.js";
 const router = Router();
@@ -24,5 +25,5 @@ router.use(verifyJWT);
 router.route("/current-user").get(getCurrentUSer);
 router.route("/sales").get(getSalesUsersController);
 router.route("/update/:id").put(updateUserController);
-
+router.route("/logout").post(userLogout);
 export default router;

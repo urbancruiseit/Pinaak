@@ -241,8 +241,6 @@ export default function LeadsTable() {
       }),
     );
 
-    // Optional: Show success message
-    console.log("Lead swapped:", lead);
 
     // Close modal
     setSwapModalOpen(false);

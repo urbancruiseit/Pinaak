@@ -2,12 +2,10 @@ import { pool } from "../../config/mySqlDB.js";
 
 export const getMonthlyEnquiry = async (year) => {
   try {
-    console.log("📊 Model - Fetching for year:", year);
 
     // Check if table exists
     const [tables] = await pool.query("SHOW TABLES LIKE 'leads'");
     if (tables.length === 0) {
-      console.log("⚠️ Leads table does not exist");
       return [];
     }
 
@@ -24,7 +22,6 @@ export const getMonthlyEnquiry = async (year) => {
     `;
 
     const [rows] = await pool.execute(query, [year]);
-    console.log(`✅ Model - Found ${rows.length} records`);
 
     // Log first few records for debugging
     if (rows.length > 0) {

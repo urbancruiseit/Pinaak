@@ -24,7 +24,12 @@ import userAvatar from "../../assets/user-pic.png";
 import pinaak from "../../assets/pinnak.png";
 import { AppDispatch, RootState } from "@/app/redux/store";
 
-import { currentUserThunk } from "@/app/features/user/userSlice";
+import {
+  currentUserThunk,
+  logoutEmployeeThunk,
+} from "@/app/features/user/userSlice";
+import { useRouter } from "next/navigation";
+import { toast } from "react-toastify";
 
 type MenuItem = {
   label: string;
@@ -281,6 +286,7 @@ export function Navbar({
   // ✅ Redux se currentUser lo
   const dispatch = useDispatch<AppDispatch>();
   const { currentUser } = useSelector((state: RootState) => state.user);
+  const router = useRouter();
 
   useEffect(() => {
     if (!currentUser) {
@@ -407,6 +413,19 @@ export function Navbar({
     setMobileOpen(false);
   };
 
+  const handleLogout = async () => {
+    try {
+      await dispatch(logoutEmployeeThunk()).unwrap();
+      toast.success("Logout successfully");
+
+      setTimeout(() => {
+        router.push("/"); // ✅ Next.js navigation
+      }, 500);
+    } catch (err) {
+      toast.error("Logout failed");
+    }
+  };
+
   return (
     <nav
       ref={navbarRef}
@@ -456,6 +475,7 @@ export function Navbar({
                 src={pinaak}
                 alt="logo"
                 width={150}
+                priority
                 className="rounded-xl hidden sm:block flex-shrink-0"
               />
             </div>
@@ -930,7 +950,7 @@ export function Navbar({
                   {onLogout && (
                     <button
                       onClick={() => {
-                        onLogout();
+                        handleLogout();
                         setOpenMenu(null);
                       }}
                       className="w-full px-4 py-2.5 md:py-2 text-sm text-left text-gray-700 hover:bg-orange-50 hover:text-orange-700 transition-all hover:pl-6 flex items-center gap-2"

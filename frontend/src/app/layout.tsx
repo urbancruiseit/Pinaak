@@ -4,6 +4,7 @@ import "./globals.css";
 import ReduxProvider from "./redux/redux-provider";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css"; // Toastify CSS
+import GlobalLeadPopup from "@/app/components/GlobalLeadPopup";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -16,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Urbanatour Console",
+  title: "PINNAK",
   description: "Black dashboard experience for Urbanatour",
 };
 
@@ -31,10 +32,11 @@ export default function RootLayout({
         suppressHydrationWarning
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-       
         <ReduxProvider>
           {children}
-           <ToastContainer
+          <GlobalLeadPopup />
+
+          <ToastContainer
             position="top-right"
             autoClose={3000}
             hideProgressBar={false}

@@ -69,7 +69,7 @@ const EditLeadForm: React.FC<{
   const { cities, statesForCity, citiesLoading, statesLoading } = useSelector(
     (state: RootState) => state.stateCity,
   );
-
+  const { currentUser } = useSelector((state: RootState) => state.user);
   // ── React Hook Form ──────────────────────────────────────────────────────
   const {
     register,
@@ -79,9 +79,9 @@ const EditLeadForm: React.FC<{
     watch,
     trigger,
   } = useForm<LeadFormData>({
-    resolver: zodResolver(leadSchema),
+    resolver: zodResolver(leadSchema) as any,
     mode: "onChange",
-    defaultValues: DEFAULT_VALUES,
+    defaultValues: DEFAULT_VALUES as any,
   });
 
   // ── Local state ──────────────────────────────────────────────────────────
@@ -178,8 +178,18 @@ const EditLeadForm: React.FC<{
     } else {
       dispatch(resetStatesForCity());
     }
-    setValue("customerState", "");
+    setValue("state", "");
   }, [customerCity, dispatch, setValue]);
+
+  useEffect(() => {
+    if (
+      initialData?.city_id &&
+      Array.isArray(currentUser?.city_ids) &&
+      currentUser.city_ids.length > 0
+    ) {
+      setValue("city_id", initialData.city_id);
+    }
+  }, [initialData, currentUser, setValue]);
 
   // ── Initialize form with initialData (auto-fetch / edit mode) ────────────
   useEffect(() => {
@@ -208,10 +218,10 @@ const EditLeadForm: React.FC<{
     if (country) setValue("countryName" as any, country);
     if ((initialData as any).customerCity)
       setValue("customerCity", (initialData as any).customerCity);
-    if ((initialData as any).customerState)
-      setValue("customerState", (initialData as any).customerState);
-    if ((initialData as any).customerAddress)
-      setValue("customerAddress", (initialData as any).customerAddress);
+    if ((initialData as any).state)
+      setValue("state", (initialData as any).state);
+    if ((initialData as any).address)
+      setValue("address", (initialData as any).address);
 
     setTimeout(() => trigger(), 150);
   }, [initialData, setValue, trigger]);
@@ -227,7 +237,7 @@ const EditLeadForm: React.FC<{
   const handleCountryChange = (country: string) => {
     setSelectedCountry(country);
     setValue("customerCity", "");
-    setValue("customerState", "");
+    setValue("state", "");
     setValue("countryName" as any, country);
     setValue("customerCountry" as any, country);
   };
@@ -255,7 +265,13 @@ const EditLeadForm: React.FC<{
     setValue("itinerary", newList);
   };
 
-  const showToastMessage = (message: string) => {
+  const [toastType, setToastType] = useState<"success" | "error">("success");
+
+  const showToastMessage = (
+    message: string,
+    type: "success" | "error" = "success",
+  ) => {
+    setToastType(type);
     setSuccessMessage(message);
     setShowSuccessToast(true);
     setTimeout(() => {
@@ -263,29 +279,38 @@ const EditLeadForm: React.FC<{
       setTimeout(() => setSuccessMessage(""), 300);
     }, 3000);
   };
-
   const onSubmit: SubmitHandler<LeadFormData> = async (data) => {
     if (!initialData.id) {
-      showToastMessage("Lead ID not found");
+      showToastMessage("Lead ID not found", "error"); // 🔴
       return;
     }
+
     setIsSubmitting(true);
+
     const payload = prepareLeadPayload(
       data,
       formData,
       itineraryList,
       alternateCountryCode,
+      initialData,
     );
+
     try {
       await dispatch(
-        updateLead({ id: initialData.id, data: payload }),
+        updateLead({
+          id: initialData.id,
+          data: payload as Partial<LeadRecord>,
+        }),
       ).unwrap();
-      showToastMessage("Lead updated successfully!");
+
+      showToastMessage("Lead updated successfully!", "success"); // 🟢
+
       await dispatch(fetchLeads(1));
-      if (onSuccess) onSuccess();
+      onSuccess?.();
     } catch (error: any) {
       showToastMessage(
         error?.message || "Failed to update lead. Please try again.",
+        "error", // 🔴
       );
     } finally {
       setIsSubmitting(false);
@@ -315,17 +340,37 @@ const EditLeadForm: React.FC<{
   // ────────────────────────────────────────────────────────────────────────
   return (
     <div>
-      {/* ── Success Toast ─────────────────────────────────────────────────── */}
+      {/* ── Success/Error Toast ─────────────────────────────────────────────────── */}
       {showSuccessToast && (
         <div className="fixed right-4 top-4 z-50 animate-slide-in-right">
-          <div className="bg-green-50 border-l-4 border-green-500 rounded-lg shadow-lg p-4 flex items-start gap-3 min-w-[320px]">
-            <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+          <div
+            className={`${
+              toastType === "error"
+                ? "bg-red-50 border-red-500"
+                : "bg-green-50 border-green-500"
+            } border-l-4 rounded-lg shadow-lg p-4 flex items-start gap-3 min-w-[320px]`}
+          >
+            <CheckCircle
+              className={`${
+                toastType === "error" ? "text-red-500" : "text-green-500"
+              } w-5 h-5 flex-shrink-0 mt-0.5`}
+            />
             <div className="flex-1">
-              <p className="text-green-800 font-medium">{successMessage}</p>
+              <p
+                className={`${
+                  toastType === "error" ? "text-red-800" : "text-green-800"
+                } font-medium`}
+              >
+                {successMessage}
+              </p>
             </div>
             <button
               onClick={() => setShowSuccessToast(false)}
-              className="text-green-600 hover:text-green-800"
+              className={`${
+                toastType === "error"
+                  ? "text-red-600 hover:text-red-800"
+                  : "text-green-600 hover:text-green-800"
+              }`}
             >
               <X size={18} />
             </button>
@@ -354,7 +399,7 @@ const EditLeadForm: React.FC<{
 
       {/* ── Form ────────────────────────────────────────────────────────────── */}
       <div className="p-6 mx-auto bg-white shadow-xl rounded-lg">
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+        <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-8">
           {/* ════════════════════════════════════════════════════════════════
               SECTION 1 — Enquiry Information
           ════════════════════════════════════════════════════════════════ */}
@@ -447,23 +492,48 @@ const EditLeadForm: React.FC<{
                 <label className="block text-md font-extrabold text-gray-700 mb-1">
                   City
                 </label>
-                <div className="relative">
+
+                <div className="relative group">
+                  <Info
+                    size={15}
+                    className="absolute -top-4 right-0 text-blue-500 cursor-help"
+                  />
+
                   <select
-                    {...register("city")}
-                    className="w-full py-2 border bg-white px-12 border-gray-300 rounded-md"
+                    {...register("city_id", {
+                      valueAsNumber: true,
+                      required: "City is required",
+                    })}
+                    className="w-full py-2 border bg-white px-12 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Select City</option>
-                    {CITY_OPTIONS.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
-                      </option>
-                    ))}
+
+                    {Array.isArray(currentUser?.city_ids) &&
+                    currentUser.city_ids.length > 0 ? (
+                      currentUser.city_ids.map((id: number, index: number) => (
+                        <option key={id} value={id}>
+                          {Array.isArray(currentUser?.city_names) &&
+                          currentUser.city_names[index]
+                            ? currentUser.city_names[index]
+                            : `City ${id}`}
+                        </option>
+                      ))
+                    ) : (
+                      <option disabled>No cities available</option>
+                    )}
                   </select>
+
                   <FileText
                     className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-600"
                     size={20}
                   />
                 </div>
+
+                {errors.city_id && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.city_id.message}
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -798,7 +868,7 @@ const EditLeadForm: React.FC<{
                       className="absolute -top-4 right-0 text-blue-500 cursor-help z-10"
                     />
                     <select
-                      {...register("customerState")}
+                      {...register("state")}
                       disabled={!customerCity}
                       className="w-full py-2 border bg-white pl-10 pr-3 border-gray-300 rounded-md disabled:bg-gray-100"
                     >
@@ -823,7 +893,7 @@ const EditLeadForm: React.FC<{
                   Customer Address
                 </label>
                 <textarea
-                  {...register("customerAddress")}
+                  {...register("address")}
                   className="w-full py-2 px-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Enter complete customer address"
                   rows={2}

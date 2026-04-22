@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import type { RootState, AppDispatch } from "@/app/redux/store";
+import { toast } from "react-toastify";
+
 import {
   fetchTravelAdvisors,
   assignTravelAdvisor,
@@ -14,7 +16,6 @@ const AssignSalesModal = ({ isOpen, onClose, leadId, cityId }: any) => {
   const { advisors, loading, assignLoading } = useSelector(
     (state: RootState) => state.travelAdvisor,
   );
-  console.log("advisors ", advisors);
   const [selectedAdvisorId, setSelectedAdvisorId] = useState<number | null>(
     null,
   );
@@ -29,27 +30,25 @@ const AssignSalesModal = ({ isOpen, onClose, leadId, cityId }: any) => {
   // 🔥 Assign Handler
   const handleAssign = async () => {
     if (!selectedAdvisorId) {
-      alert("Select advisor first");
+      toast.warning("Please select advisor first ⚠️");
       return;
     }
 
     try {
-      // ✅ Correct
       await dispatch(
         assignTravelAdvisor({
           leadId,
-          travelAdvisorId: selectedAdvisorId, // advisor_id → travelAdvisorId
+          travelAdvisorId: selectedAdvisorId,
         }),
       ).unwrap();
 
-      alert("Assigned Successfully ✅");
+      toast.success("Assigned Successfully ✅");
       onClose();
     } catch (err) {
       console.error(err);
-      alert("Assignment failed ❌");
+      toast.error("Assignment failed ❌");
     }
   };
-
   if (!isOpen) return null;
 
   return (

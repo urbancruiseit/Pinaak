@@ -25,7 +25,6 @@ export const createTravelCity = asyncHandler(async (req, res) => {
 });
 
 export const travelCityList = asyncHandler(async (req, res) => {
-  console.log("travelCityList", travelCityList);
   const travelCities = await getTravelCities();
 
   return res

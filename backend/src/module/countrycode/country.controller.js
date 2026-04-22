@@ -9,7 +9,6 @@ import {
 
 const addCountryCode = asyncHandler(async (req, res) => {
   const { country_name, country_code, phone_code } = req.body;
-  console.log(req.body);
   if (!country_name || !country_code || !phone_code) {
     throw new ApiError(400, "All fields are required");
   }

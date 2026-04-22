@@ -20,14 +20,12 @@ const CustomerTable: React.FC = () => {
   }, [dispatch]);
 
   const handleEditClick = (customer: any) => {
-    console.log("Edit clicked:", customer);
     localStorage.setItem("editCustomerData", JSON.stringify(customer));
     window.location.href = "/dashboard?tab=customer-personal&mode=edit";
   };
 
   // ✅ FIXED ROUTE + typo fixed
   const handleViewClick = (customer: any) => {
-    console.log("View clicked:", customer);
     localStorage.setItem("viewCustomerData", JSON.stringify(customer));
     window.location.href = "/dashboard?tab=customer-personal&mode=view";
   };

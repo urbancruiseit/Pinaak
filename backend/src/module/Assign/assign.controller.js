@@ -9,7 +9,6 @@ import {
 
 const getTravelAdvisorsByCityId = asyncHandler(async (req, res) => {
   const { cityId } = req.params;
-  console.log("advisor city Idd", cityId);
   if (!cityId) {
     throw new ApiError(400, "cityId is required");
   }
@@ -28,8 +27,7 @@ const getTravelAdvisorsByCityId = asyncHandler(async (req, res) => {
 const assignTravelAdvisor = asyncHandler(async (req, res) => {
   const { leadId } = req.params;
   const { travelAdvisorId } = req.body;
-  console.log(" leadId ", leadId);
-  console.log(" travelAdvisorId ", travelAdvisorId);
+
   if (!travelAdvisorId) {
     throw new ApiError(400, "travelAdvisorId is required");
   }
@@ -50,7 +48,6 @@ const getMyAssignedLeads = asyncHandler(async (req, res) => {
   const limit = 13;
   const offset = (page - 1) * limit;
   const userId = req.user.id;
-  console.log(" page ", page);
   const { leads, totalCount } = await getLeadsByAdvisorId(
     userId,
     limit,

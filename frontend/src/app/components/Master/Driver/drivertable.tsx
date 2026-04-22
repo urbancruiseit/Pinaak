@@ -35,13 +35,11 @@ const DriverTable: React.FC = () => {
   }, [successMessage, dispatch]);
 
   const handleEditClick = (driver: any) => {
-    console.log("Edit clicked:", driver);
     localStorage.setItem("editDriverData", JSON.stringify(driver));
     window.location.href = "/dashboard?tab=driver&mode=edit";
   };
 
   const handleViewClick = (driver: any) => {
-    console.log("View clicked:", driver);
     localStorage.setItem("viewDriverData", JSON.stringify(driver));
     window.location.href = "/dashboard?tab=driver&mode=view";
   };

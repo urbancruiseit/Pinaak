@@ -39,7 +39,7 @@ export const leadSchema = z.object({
     ])
     .optional(),
   tripType: z.string().optional(),
-   
+
   occasion: z.string().optional(),
   pickupDateTime: z.string().min(1, "Pickup date is required"),
   dropDateTime: z.string().optional(),

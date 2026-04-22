@@ -140,22 +140,7 @@ export const findUserByUUID = async (uuid) => {
   }
 };
 
-// FIND USER BY ID
-// export const findUserById = async (id) => {
-//   if (id == null) throw new Error("User ID is required");
 
-//   try {
-//     const [rows] = await pool.execute(
-//       `SELECT * FROM ${USER_TABLE} WHERE ${USER_COLUMNS.ID} = ?`,
-//       [id],
-//     );
-
-//     return rows[0] || null;
-//   } catch (error) {
-//     console.error("findUserById error:", error);
-//     throw error;
-//   }
-// };
 
 export const findUserById = async (id) => {
   if (!id) throw new Error("User ID is required");
@@ -346,6 +331,24 @@ export const updateUserById = async (
     return await findUserById(id);
   } catch (error) {
     console.error("updateUserById error:", error);
+    throw error;
+  }
+};
+
+export const updateUserRefreshToken = async (userId, refreshToken) => {
+  if (!userId) throw new Error("User ID is required");
+
+  try {
+    await hrmsPool.execute(
+      `
+      UPDATE users 
+      SET refreshToken = ?
+      WHERE id = ?
+      `,
+      [refreshToken, userId],
+    );
+  } catch (error) {
+    console.error("updateUserRefreshToken error:", error);
     throw error;
   }
 };

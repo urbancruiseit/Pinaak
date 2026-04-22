@@ -46,3 +46,11 @@ export const createUser = async (formData: Partial<User>): Promise<User> => {
     throw new Error(error.response?.data?.message || "User creation failed");
   }
 };
+
+export const logoutUser = async (): Promise<void> => {
+  try {
+    await axiosInstance.post(`/user/logout`);
+  } catch (error: any) {
+    console.error("Logout Error:", error.response?.data || error.message);
+  }
+};

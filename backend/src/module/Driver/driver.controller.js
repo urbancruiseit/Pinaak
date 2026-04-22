@@ -12,7 +12,6 @@ import {
 // ================= CREATE DRIVER =================
 export const createDriverController = asyncHandler(async (req, res) => {
   const data = req.body;
-  console.log("Received Driver Data:", data);
 
   const result = await createDriverModel(data);
 
@@ -125,7 +124,6 @@ export const getDriverByIdController = asyncHandler(async (req, res) => {
 export const updateDriverController = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const data = req.body;
-  console.log("Update Driver Data:", data);
 
   if (!id) {
     throw new ApiError(400, "Driver ID is required");

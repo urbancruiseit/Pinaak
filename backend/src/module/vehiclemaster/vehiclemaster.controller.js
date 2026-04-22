@@ -4,7 +4,6 @@ import { asyncHandler } from "../../utils/asyncHandler.js";
 import { getVehicles } from "./vehiclemaster.model.js";
 
 const getVehicleCodeList = asyncHandler(async (req, res) => {
-  console.log("vehicale");
   const vehicleList = await getVehicles();
 
   if (!vehicleList || vehicleList.length === 0) {

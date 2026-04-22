@@ -388,67 +388,6 @@ export const getLeads = async (page, limit, cityIds) => {
 
 
 
-export const updateLeadById = async (leadId, data) => {
-  try {
-    const fieldsToExclude = ["created_at", "id", "uuid"];
-    fieldsToExclude.forEach((field) => {
-      delete data[field];
-    });
-
-    const dateFields = ["enquiryTime", "pickupDateTime", "dropDateTime"];
-    dateFields.forEach((field) => {
-      if (data[field]) {
-        // Preserve the full datetime, don't strip time
-        let formattedDate = data[field];
-
-        // Convert from ISO format (with T) to MySQL format (with space) if needed
-        if (formattedDate.includes("T")) {
-          formattedDate = formattedDate.replace("T", " ");
-        }
-
-        // Ensure time has seconds (HH:MM:SS format)
-        const parts = formattedDate.split(" ");
-        if (parts.length === 2) {
-          const timePart = parts[1];
-          if (timePart && timePart.includes(":")) {
-            const timeComponents = timePart.split(":");
-            if (timeComponents.length === 2) {
-              // Add seconds if only hours and minutes
-              formattedDate = `${parts[0]} ${timePart}:00`;
-            }
-            // If already has 3 parts (HH:MM:SS), keep as is
-          }
-        } else if (parts.length === 1) {
-          // If only date is provided, add default time 00:00:00
-          formattedDate = `${parts[0]} 00:00:00`;
-        }
-
-        data[field] = formattedDate;
-      }
-    });
-
-    if (Object.keys(data).length === 0) {
-      return { affectedRows: 0 };
-    }
-
-    const setFields = Object.keys(data)
-      .map((key) => `${key} = ?`)
-      .join(", ");
-
-    const values = Object.values(data);
-
-    const [result] = await pool.execute(
-      `UPDATE leads SET ${setFields}, updated_at = NOW() WHERE id = ?`,
-      [...values, leadId],
-    );
-
-    return result;
-  } catch (error) {
-    console.error("updateUserById error:", error);
-    throw error;
-  }
-};
-
 export const updateLeadUnwantedStatus = async (leadId, status) => {
   try {
     // validation
@@ -502,7 +441,6 @@ export const getAllUnwantedLeadsModel = async () => {
       ORDER BY l.updated_at DESC
     `);
 
-    console.log(`Found ${rows.length} unwanted leads`);
     return rows;
   } catch (error) {
     console.error("getAllUnwantedLeadsModel error:", error);
@@ -510,53 +448,74 @@ export const getAllUnwantedLeadsModel = async () => {
   }
 };
 
-export const updateCustomerById = async (
-  customerId,
-  data,
-  connection = pool, // transaction support
-) => {
-  if (!customerId) {
-    throw new Error("Customer ID is required");
+
+export const updateLeadById = async (leadId, data) => {
+  if (!leadId) throw new Error("Lead ID is required");
+
+  const fields = Object.keys(data);
+  if (fields.length === 0) return null;
+
+  // ✅ Array/Object values ko JSON string mein convert karo
+  const sanitizedData = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (Array.isArray(value) || (typeof value === "object" && value !== null)) {
+      sanitizedData[key] = JSON.stringify(value); // Array → '["jhv","hgg"]'
+    } else {
+      sanitizedData[key] = value;
+    }
   }
 
-  // ✅ Clean data (undefined, null, "" remove)
-  const fields = Object.entries(data).filter(
-    ([_, v]) => v !== undefined && v !== null && v !== "",
+  const sanitizedFields = Object.keys(sanitizedData);
+  const setClause = sanitizedFields.map((key) => `\`${key}\` = ?`).join(", ");
+  const values = [...Object.values(sanitizedData), leadId];
+
+  const [result] = await pool.query(
+    `UPDATE leads SET ${setClause} WHERE id = ?`,
+    values,
   );
 
-  if (fields.length === 0) {
-    return {
-      success: false,
-      message: "No valid fields to update",
-    };
-  }
+  if (result.affectedRows === 0) return null;
 
-  // ✅ Dynamic query build
-  const setClause = fields.map(([key]) => `${key} = ?`).join(", ");
-  const values = fields.map(([_, value]) => value);
+  const [rows] = await pool.query(`SELECT * FROM leads WHERE id = ?`, [leadId]);
+  return rows[0];
+};
 
-  try {
-    const [result] = await connection.query(
-      `UPDATE customers SET ${setClause} WHERE id = ?`,
-      [...values, customerId],
-    );
+// Customer ko id se update karo
+export const updateCustomerById = async (customerId, data) => {
+  if (!customerId) throw new Error("Customer ID is required");
 
-    // ❌ Customer not found
-    if (result.affectedRows === 0) {
-      throw new Error("Customer not found");
+  const fields = Object.keys(data);
+  if (fields.length === 0) return null;
+
+  // ✅ Same sanitization
+  const sanitizedData = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (Array.isArray(value) || (typeof value === "object" && value !== null)) {
+      sanitizedData[key] = JSON.stringify(value);
+    } else {
+      sanitizedData[key] = value;
     }
-
-    return {
-      success: true,
-      affectedRows: result.affectedRows,
-      changedRows: result.changedRows,
-      message:
-        result.changedRows === 0
-          ? "No changes made (same data)"
-          : "Customer updated successfully",
-    };
-  } catch (error) {
-    console.error("Update Customer Error:", error);
-    throw error;
   }
+
+  const sanitizedFields = Object.keys(sanitizedData);
+  const setClause = sanitizedFields.map((key) => `\`${key}\` = ?`).join(", ");
+  const values = [...Object.values(sanitizedData), customerId];
+
+  const [result] = await pool.query(
+    `UPDATE customers SET ${setClause} WHERE id = ?`,
+    values,
+  );
+
+  if (result.affectedRows === 0) return null;
+
+  const [rows] = await pool.query(`SELECT * FROM customers WHERE id = ?`, [
+    customerId,
+  ]);
+  return rows[0];
+};
+
+// Lead ko id se fetch karo
+export const getLeadById = async (leadId) => {
+  const [rows] = await pool.query(`SELECT * FROM leads WHERE id = ?`, [leadId]);
+  return rows[0];
 };

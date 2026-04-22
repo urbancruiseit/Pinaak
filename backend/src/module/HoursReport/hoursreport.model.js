@@ -3,7 +3,6 @@ import { pool } from "../../config/mySqlDB.js"; // or import pool from ... depen
 
 export const getMonthlyEnquiry = async (year) => {
   try {
-    console.log("📊 Model - Fetching for year:", year);
 
     // Check if pool is defined
     if (!pool) {
@@ -29,7 +28,6 @@ export const getMonthlyEnquiry = async (year) => {
     `;
 
     const [rows] = await pool.execute(query, [year]);
-    console.log(`✅ Model - Found ${rows.length} records`);
     return rows;
   } catch (error) {
     console.error("❌ Model Error:", error.message);

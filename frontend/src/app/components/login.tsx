@@ -8,7 +8,7 @@ import { useDispatch } from "react-redux";
 import { AppDispatch } from "../redux/store";
 import Image from "next/image";
 
-import pinaakLogo from "@/app/assets/pinnak.png";
+import pinaakLogo from "@/app/assets/Pinaak final.png";
 import urbanlogo from "@/app/assets/urbanlogo.png";
 
 import {
@@ -109,6 +109,7 @@ export function Login() {
                     <Image
                       src={pinaakLogo}
                       alt="Pinaak Logo"
+                      priority
                       className="w-full h-full object-contain p-6 drop-shadow-2xl"
                     />
                   </div>

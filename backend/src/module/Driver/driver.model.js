@@ -7,9 +7,7 @@ export const createDriverModel = async (data) => {
     const [columns] = await pool.execute("SHOW COLUMNS FROM drivers");
     const columnNames = columns.map((c) => c.Field);
 
-    console.log("Available columns:", columnNames);
-    console.log("Incoming data:", data);
-
+    
     // helper to support both flat + nested
     const getValue = (path1, path2) => {
       return path1 ?? path2 ?? null;
@@ -106,8 +104,7 @@ export const createDriverModel = async (data) => {
       VALUES (${placeholders.join(", ")})
     `;
 
-    console.log("✅ Query:", query);
-    console.log("✅ Values:", values);
+
 
     const [result] = await pool.execute(query, values);
     return result;
@@ -207,7 +204,6 @@ export const updateDriverModel = async (id, data) => {
 
     values.push(id);
     const query = `UPDATE drivers SET ${updates.join(", ")} WHERE id = ?`;
-    console.log("Update Query:", query);
 
     const [result] = await pool.execute(query, values);
     return result;

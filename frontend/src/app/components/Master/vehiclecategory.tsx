@@ -24,7 +24,6 @@ export default function VehicleCategoryForm() {
       }
 
       const data = await response.json();
-      console.log('Category saved:', data);
       alert('Category saved successfully!');
       setCategoryName('');
     } catch (error) {

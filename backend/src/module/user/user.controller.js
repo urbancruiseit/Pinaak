@@ -11,12 +11,12 @@ import {
   saveHrmsRefreshToken,
   getSalesUsers,
   updateUserById,
+  updateUserRefreshToken,
 } from "./user.model.js";
 import { generateTokens, isPasswordCorrect } from "./user.service.js";
 
 const registerUser = asyncHandler(async (req, res) => {
   const { name, email, password, city, role, subDepartment_name } = req.body;
-  console.log("Register User Request Body:", req.body);
   if (!name || !email || !password || !city || !role || !subDepartment_name) {
     throw new ApiError(400, "All fields are required");
   }
@@ -167,4 +167,18 @@ export const updateUserController = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, updatedUser, "User updated successfully"));
 });
 
+export const userLogout = asyncHandler(async (req, res) => {
+  await updateUserRefreshToken(req.user.id, null);
+  console.log(req.user.id);
+  const options = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+  };
 
+  return res
+    .status(200)
+    .clearCookie("accessToken", options)
+    .clearCookie("refreshToken", options)
+    .json(new ApiResponse(200, [], "User Logged Out Successfully"));
+});

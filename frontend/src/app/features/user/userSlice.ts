@@ -1,12 +1,14 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import type { User } from "@/types/types";
-import { createUser, currentUser, loginUser } from "./userApi";
+import { createUser, currentUser, loginUser, logoutUser } from "./userApi";
 
 interface UserState {
   currentUser: User | null;
   loading: boolean;
   error: string | null;
   createdUser?: User | null;
+  isAuthenticated: boolean; // ✅ New
+  initialized: boolean;
 }
 
 const initialState: UserState = {
@@ -14,6 +16,8 @@ const initialState: UserState = {
   loading: false,
   error: null,
   createdUser: null,
+  isAuthenticated: false, // ✅
+  initialized: false,
 };
 
 export const loginUserThunk = createAsyncThunk<
@@ -53,6 +57,18 @@ export const createUserThunk = createAsyncThunk<
     return rejectWithValue(error.message || "User creation failed");
   }
 });
+
+export const logoutEmployeeThunk = createAsyncThunk(
+  "Employee/logout",
+  async (_, { rejectWithValue }) => {
+    try {
+      await logoutUser();
+      return null;
+    } catch (error: any) {
+      return rejectWithValue(error.message || "Logout failed");
+    }
+  },
+);
 
 const userSlice = createSlice({
   name: "user",
@@ -115,6 +131,24 @@ const userSlice = createSlice({
       .addCase(createUserThunk.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
+      })
+
+      .addCase(logoutEmployeeThunk.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(logoutEmployeeThunk.fulfilled, (state) => {
+        state.currentUser = null;
+        state.isAuthenticated = false;
+
+        state.loading = false;
+        state.initialized = true;
+      })
+      .addCase(logoutEmployeeThunk.rejected, (state) => {
+        state.loading = false;
+        state.currentUser = null;
+        state.isAuthenticated = false;
+
+        state.initialized = true;
       });
   },
 });

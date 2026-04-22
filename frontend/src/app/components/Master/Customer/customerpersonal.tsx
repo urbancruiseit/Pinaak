@@ -175,7 +175,6 @@ const CustomerForm = () => {
       clearTimeout(notificationTimeoutRef.current);
       notificationTimeoutRef.current = null;
     }
-    console.log("✅ Notifications stopped");
   };
 
   // ✅ Function to start recurring notifications for 10 minutes
@@ -191,9 +190,7 @@ const CustomerForm = () => {
 
     let notificationCount = 0;
 
-    console.log(
-      `🚀 Starting notifications for ${customerName} for next 10 minutes`,
-    );
+   
 
     // Show first notification immediately
     showDesktopNotification(

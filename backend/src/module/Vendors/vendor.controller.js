@@ -10,7 +10,6 @@ import {
 
 export const createVendorController = asyncHandler(async (req, res) => {
   const data = req.body;
-  console.log("Received Vendor Data:", data);
 
   // ✅ Basic Validation
   if (!data.name) {
@@ -45,7 +44,6 @@ export const createVendorController = asyncHandler(async (req, res) => {
 export const updateVendorController = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const data = req.body;
-  console.log("Update Vendor Data:", data);
 
   if (!id) {
     throw new ApiError(400, "Vendor ID is required");

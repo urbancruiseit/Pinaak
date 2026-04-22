@@ -2,7 +2,6 @@ import { pool } from "../../config/mySqlDB.js";
 
 export const getAnnualReportData = async (year) => {
   try {
-    console.log("📊 Annual Report Model - Fetching for year:", year);
 
     const months = [4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3];
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useDispatch, useSelector } from "react-redux";
@@ -17,7 +17,6 @@ import {
   Luggage,
   Globe,
   CheckCircle,
-  AlertCircle,
 } from "lucide-react";
 import type { LeadRecord } from "../../../types/types";
 import { updateLead, fetchLeads } from "@/app/features/lead/leadSlice";
@@ -25,8 +24,12 @@ import { AppDispatch, RootState } from "@/app/redux/store";
 import { getCountriesThunk } from "@/app/features/countrycode/countrycodeSlice";
 import { fetchVehicles } from "@/app/features/vehicle/vehicleSlice";
 import { getAllCitiesThunk } from "@/app/features/travelcity/travelcitySlice";
+import {
+  fetchAllCities,
+  fetchStatesByCity,
+  resetStatesForCity,
+} from "@/app/features/State/stateSlice";
 
-// Import from our 4 files
 import {
   SOURCE_OPTIONS,
   STATUS_OPTIONS,
@@ -43,32 +46,32 @@ import {
   LeadFormData,
 } from "../../../types/Editleads/editleadschema";
 import {
-  parsePhone,
   calculateDays,
   calculateTotalBaggage,
   prepareLeadPayload,
   mapInitialDataToForm,
-  formatDateTimeForInput,
-  formatDateTimeForSubmit,
   calculateTotalVehicles,
 } from "../../../types/Editleads/editleadcalculations";
 
-// Toast notification types
-type ToastType = "success" | "error";
+const DISABLED_INPUT =
+  "w-full py-2 border bg-gray-100 px-12 border-gray-300 rounded-md cursor-not-allowed text-gray-500";
+const DISABLED_SELECT =
+  "w-full py-2 border bg-gray-100 px-12 border-gray-300 rounded-md cursor-not-allowed text-gray-500";
 
-
-
-
-const SalesEditLeadForm: React.FC<{
+const EditLeadForm: React.FC<{
   initialData: LeadRecord;
-  isEditMode?: boolean;
   onSuccess?: () => void;
   onCancel?: () => void;
-}> = ({ initialData, isEditMode, onSuccess, onCancel }) => {
+}> = ({ initialData, onSuccess, onCancel }) => {
   const dispatch = useDispatch<AppDispatch>();
+
   const { countries } = useSelector((state: RootState) => state.country);
   const { vehicleCodes } = useSelector((state: RootState) => state.vehicle);
   const { travelcity } = useSelector((state: RootState) => state.travelcity);
+  const { cities, statesForCity, citiesLoading, statesLoading } = useSelector(
+    (state: RootState) => state.stateCity,
+  );
+  const { currentUser } = useSelector((state: RootState) => state.user);
 
   const {
     register,
@@ -78,31 +81,30 @@ const SalesEditLeadForm: React.FC<{
     watch,
     trigger,
   } = useForm<LeadFormData>({
-    resolver: zodResolver(leadSchema),
+    resolver: zodResolver(leadSchema) as any,
     mode: "onChange",
-    defaultValues: DEFAULT_VALUES,
+    defaultValues: DEFAULT_VALUES as any,
   });
 
   const [formData, setFormData] = useState({
-    name: "",
+    firstName: "",
+    middleName: "",
+    lastName: "",
     phone: "",
     alternatePhone: "",
     email: "",
     companyName: "",
   });
-  const [toastMessage, setToastMessage] = useState("");
-  const [toastType, setToastType] = useState<ToastType>("success");
-  const [showToast, setShowToast] = useState(false);
+
+  const [successMessage, setSuccessMessage] = useState("");
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentItinerary, setCurrentItinerary] = useState("");
   const [itineraryList, setItineraryList] = useState<string[]>([]);
   const [customerCategoryTypeValue, setCustomerCategoryTypeValue] =
     useState("");
   const [alternateCountryCode, setAlternateCountryCode] = useState("+91");
-
-  // Refs for toast timer
-  const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [selectedCountry, setSelectedCountry] = useState<string>("");
 
   const pickupDateTime = watch("pickupDateTime");
   const dropDateTime = watch("dropDateTime");
@@ -112,8 +114,7 @@ const SalesEditLeadForm: React.FC<{
   const airportbaggage = watch("airportbaggage");
   const customerType = watch("customerType");
   const serviceType = watch("serviceType");
-
-  // Watch vehicle fields
+  const customerCity = watch("customerCity");
   const vehicles = watch("vehicles");
   const vehicle1Quantity = watch("vehicle1Quantity");
   const vehicle2 = watch("vehicle2");
@@ -121,39 +122,29 @@ const SalesEditLeadForm: React.FC<{
   const vehicle3 = watch("vehicle3");
   const vehicle3Quantity = watch("vehicle3Quantity");
 
-  // Cleanup timers on unmount
-  useEffect(() => {
-    return () => {
-      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
-    };
-  }, []);
+  const isIndia = selectedCountry === "India";
 
-  // Fetch data
   useEffect(() => {
     dispatch(getCountriesThunk());
-    dispatch(getAllCitiesThunk());
+    dispatch(fetchAllCities());
     dispatch(fetchVehicles());
+    dispatch(getAllCitiesThunk()); // ✅ YE ADD KARO
   }, [dispatch]);
-
-  // Calculate total baggage
   useEffect(() => {
     const total = calculateTotalBaggage(
-      Number(smallbaggage),
-      Number(mediumbaggage),
-      Number(largebaggage),
-      Number(airportbaggage),
+      Number(smallbaggage) || 0,
+      Number(mediumbaggage) || 0,
+      Number(largebaggage) || 0,
+      Number(airportbaggage) || 0,
     );
     setValue("totalbaggage", total);
   }, [smallbaggage, mediumbaggage, largebaggage, airportbaggage, setValue]);
 
-  // Calculate days
   useEffect(() => {
     const days = calculateDays(serviceType, pickupDateTime, dropDateTime);
     setValue("days", days);
   }, [serviceType, pickupDateTime, dropDateTime, setValue]);
 
-  // Calculate total vehicle requirement
   useEffect(() => {
     const totalVehicles = calculateTotalVehicles(
       vehicles || "",
@@ -174,25 +165,69 @@ const SalesEditLeadForm: React.FC<{
     setValue,
   ]);
 
-  // Initialize form with data
   useEffect(() => {
-    if (initialData) {
-      const mapped = mapInitialDataToForm(initialData);
-      setAlternateCountryCode(mapped.alternateCountryCode);
-      setFormData(mapped.formData);
-      setCustomerCategoryTypeValue(mapped.customerCategoryTypeValue);
-      setItineraryList(mapped.itineraryList);
-
-      Object.entries(mapped.setValues).forEach(([key, value]) => {
-        setValue(key as any, value);
-      });
-      setTimeout(() => trigger(), 100);
+    if (customerCity) {
+      dispatch(fetchStatesByCity(customerCity));
+    } else {
+      dispatch(resetStatesForCity());
     }
+    setValue("state", "");
+  }, [customerCity, dispatch, setValue]);
+
+  useEffect(() => {
+    if (
+      initialData?.city_id &&
+      Array.isArray(currentUser?.city_ids) &&
+      currentUser.city_ids.length > 0
+    ) {
+      setValue("city_id", initialData.city_id);
+    }
+  }, [initialData, currentUser, setValue]);
+
+  useEffect(() => {
+    if (!initialData) return;
+
+    const mapped = mapInitialDataToForm(initialData);
+
+    setFormData(mapped.formData);
+    setAlternateCountryCode(mapped.alternateCountryCode ?? "+91");
+    setCustomerCategoryTypeValue(mapped.customerCategoryTypeValue ?? "");
+    setItineraryList(mapped.itineraryList ?? []);
+
+    const country =
+      (initialData as any).countryName ??
+      (initialData as any).customerCountry ??
+      "";
+    setSelectedCountry(country);
+
+    Object.entries(mapped.setValues).forEach(([key, value]) => {
+      setValue(key as keyof LeadFormData, value as any);
+    });
+
+    if (country) setValue("countryName" as any, country);
+    if ((initialData as any).customerCity)
+      setValue("customerCity", (initialData as any).customerCity);
+    if ((initialData as any).state)
+      setValue("state", (initialData as any).state);
+    if ((initialData as any).address)
+      setValue("address", (initialData as any).address);
+
+    setTimeout(() => trigger(), 150);
   }, [initialData, setValue, trigger]);
 
-  const handleFieldChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFieldChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleCountryChange = (country: string) => {
+    setSelectedCountry(country);
+    setValue("customerCity", "");
+    setValue("state", "");
+    setValue("countryName" as any, country);
+    setValue("customerCountry" as any, country);
   };
 
   const addItinerary = () => {
@@ -218,37 +253,20 @@ const SalesEditLeadForm: React.FC<{
     setValue("itinerary", newList);
   };
 
-  // Updated toast function with proper timing
-  const showToastMessage = useCallback(
-    (message: string, type: ToastType = "success") => {
-      // Clear any existing timers
-      if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+  const [toastType, setToastType] = useState<"success" | "error">("success");
 
-      // Set toast message and show it
-      setToastMessage(message);
-      setToastType(type);
-      setShowToast(true);
-
-      // Set timer to hide toast after exactly 3 seconds
-      toastTimerRef.current = setTimeout(() => {
-        setShowToast(false);
-        // Clear message after animation completes
-        toastTimeoutRef.current = setTimeout(() => {
-          setToastMessage("");
-        }, 300); // 300ms for fade out animation
-      }, 3000);
-    },
-    [],
-  );
-
-  // Manual close handler
-  const handleCloseToast = useCallback(() => {
-    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
-    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
-    setShowToast(false);
-    setTimeout(() => setToastMessage(""), 300);
-  }, []);
+  const showToastMessage = (
+    message: string,
+    type: "success" | "error" = "success",
+  ) => {
+    setToastType(type);
+    setSuccessMessage(message);
+    setShowSuccessToast(true);
+    setTimeout(() => {
+      setShowSuccessToast(false);
+      setTimeout(() => setSuccessMessage(""), 300);
+    }, 3000);
+  };
 
   const onSubmit: SubmitHandler<LeadFormData> = async (data) => {
     if (!initialData.id) {
@@ -257,20 +275,27 @@ const SalesEditLeadForm: React.FC<{
     }
 
     setIsSubmitting(true);
+
     const payload = prepareLeadPayload(
       data,
       formData,
       itineraryList,
       alternateCountryCode,
+      initialData,
     );
 
     try {
       await dispatch(
-        updateLead({ id: initialData.id, data: payload }),
+        updateLead({
+          id: initialData.id,
+          data: payload as Partial<LeadRecord>,
+        }),
       ).unwrap();
+
       showToastMessage("Lead updated successfully!", "success");
+
       await dispatch(fetchLeads(1));
-      if (onSuccess) onSuccess();
+      onSuccess?.();
     } catch (error: any) {
       showToastMessage(
         error?.message || "Failed to update lead. Please try again.",
@@ -291,51 +316,46 @@ const SalesEditLeadForm: React.FC<{
     .slice(0, 16);
   const minDate = today.toISOString().slice(0, 16);
 
-  // Sort vehicle codes function
-  const sortVehicleCodes = (codes: any[]) => {
-    return [...codes].sort((a, b) => {
-      const numA = parseInt(a.code.match(/\d+/)?.[0] || "0");
-      const numB = parseInt(b.code.match(/\d+/)?.[0] || "0");
-      if (numA !== numB) {
-        return numA - numB;
-      }
-      return a.code.localeCompare(b.code);
+  const sortVehicleCodes = (codes: any[]) =>
+    [...codes].sort((a, b) => {
+      const numA = parseInt(a.code.match(/\d+/)?.[0] ?? "0");
+      const numB = parseInt(b.code.match(/\d+/)?.[0] ?? "0");
+      return numA !== numB ? numA - numB : a.code.localeCompare(b.code);
     });
-  };
 
   return (
     <div>
-      {/* Toast Notification - Updated with better styling and animation */}
-      {showToast && (
+      {/* ── Toast ── */}
+      {showSuccessToast && (
         <div className="fixed right-4 top-4 z-50 animate-slide-in-right">
           <div
-            className={`rounded-lg shadow-lg p-4 flex items-start gap-3 min-w-[320px] transition-all duration-300 ${
-              toastType === "success"
-                ? "bg-green-50 border-l-4 border-green-500"
-                : "bg-red-50 border-l-4 border-red-500"
-            }`}
+            className={`${
+              toastType === "error"
+                ? "bg-red-50 border-red-500"
+                : "bg-green-50 border-green-500"
+            } border-l-4 rounded-lg shadow-lg p-4 flex items-start gap-3 min-w-[320px]`}
           >
-            {toastType === "success" ? (
-              <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
-            ) : (
-              <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-            )}
+            <CheckCircle
+              className={`${
+                toastType === "error" ? "text-red-500" : "text-green-500"
+              } w-5 h-5 flex-shrink-0 mt-0.5`}
+            />
             <div className="flex-1">
               <p
-                className={`font-medium ${
-                  toastType === "success" ? "text-green-800" : "text-red-800"
-                }`}
+                className={`${
+                  toastType === "error" ? "text-red-800" : "text-green-800"
+                } font-medium`}
               >
-                {toastMessage}
+                {successMessage}
               </p>
             </div>
             <button
-              onClick={handleCloseToast}
+              onClick={() => setShowSuccessToast(false)}
               className={`${
-                toastType === "success"
-                  ? "text-green-600 hover:text-green-800"
-                  : "text-red-600 hover:text-red-800"
-              } transition-colors`}
+                toastType === "error"
+                  ? "text-red-600 hover:text-red-800"
+                  : "text-green-600 hover:text-green-800"
+              }`}
             >
               <X size={18} />
             </button>
@@ -343,12 +363,12 @@ const SalesEditLeadForm: React.FC<{
         </div>
       )}
 
-      {/* Header */}
+      {/* ── Header ── */}
       <div className="sticky top-0 z-10 bg-orange-100 p-3 rounded-md">
         <div className="flex justify-between items-center">
           <div className="pl-4 border-l-8 border-orange-500 bg-white px-3 rounded-md shadow-md">
             <h2 className="text-4xl font-bold text-left py-4 text-orange-600">
-              Sales Edit Lead
+              Telesales Edit Lead
             </h2>
           </div>
           {onCancel && (
@@ -362,24 +382,22 @@ const SalesEditLeadForm: React.FC<{
         </div>
       </div>
 
-      {/* Form */}
       <div className="p-6 mx-auto bg-white shadow-xl rounded-lg">
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-          {/* Section 1: Enquiry Information */}
+        <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-8">
           <div className="border rounded-xl p-6 bg-blue-50">
-            <h3 className="text-xl font-semibold text-blue-800 mb-6 pb-3 border-b relative">
+            <h3 className="text-xl font-semibold text-blue-800 mb-6 pb-3 border-b">
               <span className="bg-blue-600 text-white px-3 py-1 rounded-md mr-2">
                 1
               </span>
               Enquiry Information
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Lead Date - DISABLED */}
+              {/* Lead Date — DISABLED */}
               <div>
                 <label className="block text-md font-extrabold text-gray-700 mb-1">
-                  Lead Date & Time
+                  Lead Date &amp; Time
                 </label>
-                <div className="relative group">
+                <div className="relative">
                   <Info
                     size={15}
                     className="absolute -top-4 right-0 text-blue-500 cursor-help"
@@ -389,10 +407,10 @@ const SalesEditLeadForm: React.FC<{
                     {...register("date")}
                     max={minDate}
                     disabled
-                    className="w-full py-2 border bg-gray-100 cursor-not-allowed px-12 border-gray-300 rounded-md opacity-70"
+                    className={DISABLED_INPUT}
                   />
                   <Calendar
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-800"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-800 opacity-50"
                     size={20}
                   />
                 </div>
@@ -403,16 +421,16 @@ const SalesEditLeadForm: React.FC<{
                 )}
               </div>
 
-              {/* Source - DISABLED */}
+              {/* Source — DISABLED */}
               <div>
                 <label className="block text-md font-extrabold text-gray-700 mb-1">
                   Source
                 </label>
-                <div className="relative group">
+                <div className="relative">
                   <select
                     {...register("source")}
                     disabled
-                    className="w-full py-2 border bg-gray-100 cursor-not-allowed px-12 border-gray-300 rounded-md opacity-70"
+                    className={DISABLED_SELECT}
                   >
                     <option value="">Select Source Type</option>
                     {SOURCE_OPTIONS.map((src) => (
@@ -422,26 +440,26 @@ const SalesEditLeadForm: React.FC<{
                     ))}
                   </select>
                   <FileText
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-600"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-600 opacity-50"
                     size={20}
                   />
                 </div>
               </div>
 
-              {/* Status - ENABLED (not disabled) */}
+              {/* Status — EDITABLE (disabled nahi) */}
               <div>
                 <label className="block text-md font-extrabold text-gray-700 mb-1">
                   Status
                 </label>
-                <div className="relative group">
+                <div className="relative">
                   <select
                     {...register("status")}
                     className="w-full py-2 border bg-white px-10 border-gray-300 rounded-md"
                   >
                     <option value="">Select Status</option>
-                    {STATUS_OPTIONS.map((status) => (
-                      <option key={status} value={status}>
-                        {status}
+                    {STATUS_OPTIONS.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
                       </option>
                     ))}
                   </select>
@@ -452,101 +470,160 @@ const SalesEditLeadForm: React.FC<{
                 </div>
               </div>
 
-              {/* City - DISABLED */}
+              {/* City — DISABLED */}
               <div>
                 <label className="block text-md font-extrabold text-gray-700 mb-1">
                   City
                 </label>
                 <div className="relative group">
+                  <Info
+                    size={15}
+                    className="absolute -top-4 right-0 text-blue-500 cursor-help"
+                  />
                   <select
-                    {...register("city")}
+                    {...register("city_id", {
+                      valueAsNumber: true,
+                      required: "City is required",
+                    })}
                     disabled
-                    className="w-full py-2 border bg-gray-100 cursor-not-allowed px-12 border-gray-300 rounded-md opacity-70"
+                    className={DISABLED_SELECT}
                   >
                     <option value="">Select City</option>
-                    {CITY_OPTIONS.map((city) => (
-                      <option key={city} value={city}>
-                        {city}
-                      </option>
-                    ))}
+                    {Array.isArray(currentUser?.city_ids) &&
+                    currentUser.city_ids.length > 0 ? (
+                      currentUser.city_ids.map((id: number, index: number) => (
+                        <option key={id} value={id}>
+                          {Array.isArray(currentUser?.city_names) &&
+                          currentUser.city_names[index]
+                            ? currentUser.city_names[index]
+                            : `City ${id}`}
+                        </option>
+                      ))
+                    ) : (
+                      <option disabled>No cities available</option>
+                    )}
                   </select>
                   <FileText
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-600"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-600 opacity-50"
                     size={20}
                   />
                 </div>
+                {errors.city_id && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.city_id.message}
+                  </p>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Section 2: Customer Information */}
           <div className="border rounded-xl p-6 bg-green-50">
-            <h3 className="text-xl font-semibold text-green-800 mb-6 pb-3 border-b relative">
+            <h3 className="text-xl font-semibold text-green-800 mb-6 pb-3 border-b">
               <span className="bg-green-600 text-white px-3 py-1 rounded-md mr-2">
                 2
               </span>
               Customer Information
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Name - DISABLED */}
+              {/* First Name — DISABLED */}
               <div>
                 <label className="block text-md font-extrabold text-gray-700 mb-1">
-                  Name <span className="text-red-500">*</span>
+                  First Name <span className="text-red-500">*</span>
                 </label>
-                <div className="relative group">
+                <div className="relative">
                   <input
-                    name="name"
-                    value={formData.name}
+                    name="firstName"
+                    value={formData.firstName}
                     onChange={handleFieldChange}
                     disabled
-                    className="w-full py-2 border bg-gray-100 cursor-not-allowed px-12 border-gray-300 rounded-md opacity-70"
-                    placeholder="Enter Customer name"
-                    required
+                    className={DISABLED_INPUT}
+                    placeholder="Enter first name"
                   />
                   <User
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600 opacity-50"
                     size={20}
                   />
                 </div>
               </div>
 
-              {/* Phone India - DISABLED */}
+              {/* Middle Name — DISABLED */}
+              <div>
+                <label className="block text-md font-extrabold text-gray-700 mb-1">
+                  Middle Name
+                </label>
+                <div className="relative">
+                  <input
+                    name="middleName"
+                    value={formData.middleName}
+                    onChange={handleFieldChange}
+                    disabled
+                    className={DISABLED_INPUT}
+                    placeholder="Enter middle name"
+                  />
+                  <User
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600 opacity-50"
+                    size={20}
+                  />
+                </div>
+              </div>
+
+              {/* Last Name — DISABLED */}
+              <div>
+                <label className="block text-md font-extrabold text-gray-700 mb-1">
+                  Last Name <span className="text-red-500">*</span>
+                </label>
+                <div className="relative">
+                  <input
+                    name="lastName"
+                    value={formData.lastName}
+                    onChange={handleFieldChange}
+                    disabled
+                    className={DISABLED_INPUT}
+                    placeholder="Enter last name"
+                  />
+                  <User
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600 opacity-50"
+                    size={20}
+                  />
+                </div>
+              </div>
+
+              {/* Phone India — DISABLED */}
               <div>
                 <label className="block text-md font-extrabold text-gray-700 mb-1">
                   Phone No. (India) <span className="text-red-500">*</span>
                 </label>
-                <div className="relative flex items-center border border-gray-300 rounded-md overflow-hidden">
-                  <div className="bg-gray-100 px-2 py-2 text-sm font-medium min-w-[100px]">
+                <div className="relative flex items-center border border-gray-300 rounded-md overflow-hidden bg-gray-100">
+                  <div className="bg-gray-200 px-2 py-2 text-sm font-medium min-w-[100px] text-gray-500">
                     +91 IND
                   </div>
                   <input
                     name="phone"
                     value={formData.phone}
                     onChange={handleFieldChange}
-                    disabled
                     placeholder="Enter phone number"
-                    className="w-full py-2 px-3 outline-none bg-gray-100 cursor-not-allowed opacity-70"
+                    disabled
+                    className="w-full py-2 px-3 outline-none bg-gray-100 cursor-not-allowed text-gray-500"
                     maxLength={10}
-                    required
                   />
                   <Phone
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-green-600"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-green-600 opacity-50"
                     size={20}
                   />
                 </div>
               </div>
 
-              {/* Phone Other - ENABLED */}
+              {/* Phone Other — DISABLED */}
               <div>
                 <label className="block text-md font-extrabold text-gray-700 mb-1">
                   Phone No. (Other)
                 </label>
-                <div className="relative flex items-center border border-gray-300 rounded-md overflow-hidden">
+                <div className="relative flex items-center border border-gray-300 rounded-md overflow-hidden bg-gray-100">
                   <select
                     value={alternateCountryCode}
-                    disabled
                     onChange={(e) => setAlternateCountryCode(e.target.value)}
-                    className="bg-gray-100 px-2 py-2 outline-none text-sm cursor-pointer min-w-[100px]"
+                    disabled
+                    className="bg-gray-200 px-2 py-2 outline-none text-sm cursor-not-allowed min-w-[100px] text-gray-500"
                   >
                     <option value="">Select</option>
                     {countries.map((code) => (
@@ -560,53 +637,71 @@ const SalesEditLeadForm: React.FC<{
                     value={formData.alternatePhone}
                     onChange={handleFieldChange}
                     placeholder="Enter phone number"
-                    className="w-full py-2 px-3 outline-none"
+                    disabled
+                    className="w-full py-2 px-3 outline-none bg-gray-100 cursor-not-allowed text-gray-500"
                   />
                   <Phone
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-green-600"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-green-600 opacity-50"
                     size={20}
                   />
                 </div>
               </div>
 
-              {/* Email - ENABLED */}
+              {/* Email — DISABLED */}
               <div>
                 <label className="block text-md font-extrabold text-gray-700 mb-1">
                   Email
                 </label>
-                <div className="relative group">
+                <div className="relative">
                   <input
                     name="email"
                     type="email"
                     value={formData.email}
                     onChange={handleFieldChange}
                     placeholder="Enter email address"
-                    className="w-full py-2 border bg-white px-12 border-gray-300 rounded-md"
+                    disabled
+                    className={DISABLED_INPUT}
                   />
                   <Mail
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600 opacity-50"
                     size={20}
                   />
                 </div>
               </div>
 
-              {/* Customer Category - DISABLED */}
+              {/* Company Name — DISABLED */}
+              <div>
+                <label className="block text-md font-extrabold text-gray-700 mb-1">
+                  Company Name
+                </label>
+                <div className="relative">
+                  <input
+                    name="companyName"
+                    value={
+                      formData.companyName === "C" ? "" : formData.companyName
+                    }
+                    onChange={handleFieldChange}
+                    placeholder="Enter company name"
+                    disabled
+                    className={DISABLED_INPUT}
+                  />
+                  <FileText
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600 opacity-50"
+                    size={20}
+                  />
+                </div>
+              </div>
+
+              {/* Customer Category — DISABLED */}
               <div>
                 <label className="block text-md font-extrabold text-gray-700 mb-1">
                   Customer Category <span className="text-red-500">*</span>
                 </label>
-                <div className="relative group">
+                <div className="relative">
                   <select
                     {...register("customerType")}
                     disabled
-                    onChange={(e) => {
-                      register("customerType").onChange(e);
-                      if (e.target.value === "Personal")
-                        setFormData((prev) => ({ ...prev, companyName: "C" }));
-                      else if (formData.companyName === "C")
-                        setFormData((prev) => ({ ...prev, companyName: "" }));
-                    }}
-                    className="w-full py-2 border bg-gray-100 cursor-not-allowed px-12 border-gray-300 rounded-md opacity-70"
+                    className={DISABLED_SELECT}
                   >
                     <option value="">Select Customer Category</option>
                     <option value="Personal">Personal</option>
@@ -614,7 +709,7 @@ const SalesEditLeadForm: React.FC<{
                     <option value="Travel Agent">Agent</option>
                   </select>
                   <FileText
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600 opacity-50"
                     size={20}
                   />
                 </div>
@@ -625,60 +720,38 @@ const SalesEditLeadForm: React.FC<{
                 )}
               </div>
 
-              {/* Customer Type - DISABLED */}
+              {/* Customer Type (sub-type) — DISABLED */}
               <div>
                 <label className="block text-md font-extrabold text-gray-700 mb-1">
                   Customer Type
                 </label>
-                <div className="relative group">
+                <div className="relative">
                   <select
                     {...register("customerCategoryType")}
                     value={customerCategoryTypeValue}
-                    disabled
                     onChange={(e) => {
                       register("customerCategoryType").onChange(e);
                       setCustomerCategoryTypeValue(e.target.value);
                     }}
-                    className="w-full py-2 border bg-gray-100 cursor-not-allowed px-12 border-gray-300 rounded-md opacity-70"
+                    disabled
+                    className={DISABLED_SELECT}
                   >
                     <option value="">Select Customer Type</option>
                     {customerType &&
-                      CATEGORY_OPTIONS[customerType]?.map((item, index) => (
-                        <option key={index} value={item}>
+                      CATEGORY_OPTIONS[customerType]?.map((item, idx) => (
+                        <option key={idx} value={item}>
                           {item}
                         </option>
                       ))}
                   </select>
                   <FileText
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600 opacity-50"
                     size={20}
                   />
                 </div>
               </div>
 
-              {/* Company Name (conditional) - ENABLED */}
-              {customerType !== "Personal" && (
-                <div>
-                  <label className="block text-md font-extrabold text-gray-700 mb-1">
-                    Company Name
-                  </label>
-                  <div className="relative group">
-                    <input
-                      name="companyName"
-                      value={formData.companyName}
-                      onChange={handleFieldChange}
-                      className="w-full px-12 py-2 border bg-white border-gray-300 rounded-md"
-                      placeholder="Enter company name"
-                    />
-                    <User
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600"
-                      size={20}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* Country Name - ENABLED */}
+              {/* Country Name — DISABLED */}
               <div>
                 <label className="block text-md font-extrabold text-gray-700 mb-1">
                   Country Name
@@ -686,7 +759,10 @@ const SalesEditLeadForm: React.FC<{
                 <div className="relative group">
                   <select
                     {...register("countryName")}
-                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md bg-white"
+                    value={selectedCountry}
+                    onChange={(e) => handleCountryChange(e.target.value)}
+                    disabled
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed text-gray-500"
                   >
                     <option value="">Select Country</option>
                     {countries
@@ -703,7 +779,7 @@ const SalesEditLeadForm: React.FC<{
                       ))}
                   </select>
                   <Globe
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-600"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-600 opacity-50"
                     size={20}
                   />
                 </div>
@@ -713,10 +789,95 @@ const SalesEditLeadForm: React.FC<{
                   </p>
                 )}
               </div>
+
+              {/* Customer City — DISABLED (only when India) */}
+              {isIndia && (
+                <div>
+                  <label className="block text-md font-extrabold text-gray-700 mb-1">
+                    Customer City
+                  </label>
+                  <div className="relative">
+                    <Info
+                      size={15}
+                      className="absolute -top-4 right-0 text-blue-500 cursor-help z-10"
+                    />
+                    <select
+                      {...register("customerCity")}
+                      disabled
+                      className="w-full py-2 border bg-gray-100 pl-10 pr-3 border-gray-300 rounded-md cursor-not-allowed text-gray-500"
+                    >
+                      <option value="">
+                        {citiesLoading
+                          ? "Loading cities..."
+                          : "Select Customer City"}
+                      </option>
+                      {cities?.map((city) => (
+                        <option
+                          key={city.id || city.uuid}
+                          value={city.cityName}
+                        >
+                          {city.cityName}
+                        </option>
+                      ))}
+                    </select>
+                    <Globe
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-600 opacity-50"
+                      size={20}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Customer State — DISABLED (only when India) */}
+              {isIndia && (
+                <div>
+                  <label className="block text-md font-extrabold text-gray-700 mb-1">
+                    Customer State
+                  </label>
+                  <div className="relative">
+                    <Info
+                      size={15}
+                      className="absolute -top-4 right-0 text-blue-500 cursor-help z-10"
+                    />
+                    <select
+                      {...register("state")}
+                      disabled
+                      className="w-full py-2 border bg-gray-100 pl-10 pr-3 border-gray-300 rounded-md cursor-not-allowed text-gray-500"
+                    >
+                      <option value="">Select State</option>
+                      {statesForCity?.map((state) => (
+                        <option key={state.id} value={state.stateName}>
+                          {state.stateName}
+                        </option>
+                      ))}
+                    </select>
+                    <Globe
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-600 opacity-50"
+                      size={20}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Customer Address — DISABLED */}
+              <div className="w-full md:col-span-2">
+                <label className="block text-md font-extrabold text-gray-700 mb-1">
+                  Customer Address
+                </label>
+                <textarea
+                  {...register("address")}
+                  disabled
+                  className="w-full py-2 px-3 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed text-gray-500 focus:outline-none"
+                  placeholder="Enter complete customer address"
+                  rows={2}
+                />
+              </div>
             </div>
           </div>
 
-          {/* Section 3: Travel Requirements */}
+          {/* ════════════════════════════════════════════════════════════════
+              SECTION 3 — Travel Requirements (SAARE EDITABLE)
+          ════════════════════════════════════════════════════════════════ */}
           <div className="p-6 border rounded-xl bg-purple-50">
             <h3 className="relative pb-3 mb-6 text-xl font-semibold text-purple-800 border-b">
               <span className="px-3 py-1 mr-2 text-white bg-purple-600 rounded-md">
@@ -733,12 +894,13 @@ const SalesEditLeadForm: React.FC<{
               <div className="grid grid-cols-1 gap-4 mt-4 md:grid-cols-2">
                 <div className="md:col-span-2">
                   <div className="flex flex-col md:flex-row gap-4 mb-4">
+                    {/* Pickup DateTime */}
                     <div className="w-full md:w-[20%]">
                       <label className="block mb-1 font-extrabold text-gray-700 text-md">
                         Pickup Date & Time{" "}
                         <span className="text-red-500">*</span>
                       </label>
-                      <div className="relative group">
+                      <div className="relative">
                         <input
                           type="datetime-local"
                           {...register("pickupDateTime")}
@@ -758,6 +920,7 @@ const SalesEditLeadForm: React.FC<{
                       )}
                     </div>
 
+                    {/* Pickup City */}
                     <div className="w-full md:w-[20%]">
                       <label className="block mb-1 font-extrabold text-gray-700 text-md">
                         Pickup City <span className="text-red-500">*</span>
@@ -765,12 +928,12 @@ const SalesEditLeadForm: React.FC<{
                       <div className="relative">
                         <select
                           {...register("pickupcity")}
-                          className="w-full py-2 pl-10 pr-8 border border-gray-300 rounded-md appearance-none bg-white"
+                          className="w-full py-2 pl-10 pr-8 border border-gray-300 rounded-md bg-white"
                         >
                           <option value="">Select Pickup City</option>
                           {travelcity?.map((city) => (
                             <option
-                              key={city.id || city.uuid}
+                              key={city.id ?? city.uuid}
                               value={city.cityName}
                             >
                               {city.cityName}
@@ -789,11 +952,12 @@ const SalesEditLeadForm: React.FC<{
                       )}
                     </div>
 
+                    {/* Pickup Address */}
                     <div className="w-full md:w-[50%]">
                       <label className="block mb-1 font-extrabold text-gray-700 text-md">
                         Pickup Address <span className="text-red-500">*</span>
                       </label>
-                      <div className="relative group">
+                      <div className="relative">
                         <input
                           {...register("pickupAddress")}
                           className="w-full py-2 pl-10 pr-3 border border-gray-300 rounded-md"
@@ -811,19 +975,24 @@ const SalesEditLeadForm: React.FC<{
                       )}
                     </div>
 
+                    {/* No. of Days */}
                     <div className="w-full md:w-[10%]">
                       <label className="block mb-1 font-extrabold text-gray-700 text-md">
                         No. of Days <span className="text-red-500">*</span>
                       </label>
-                      <div className="relative group">
+                      <div className="relative">
                         <input
                           type="number"
                           {...register("days", { valueAsNumber: true })}
                           readOnly={serviceType === "Pick & Drop"}
-                          className={`w-full ${serviceType === "Pick & Drop" ? "bg-purple-400" : "bg-purple-600"} text-white font-extrabold text-2xl py-2 text-center border border-gray-300 rounded-md`}
-                          placeholder="Total Days"
+                          className={`w-full ${
+                            serviceType === "Pick & Drop"
+                              ? "bg-purple-400"
+                              : "bg-purple-600"
+                          } text-white font-extrabold text-2xl py-2 text-center border border-gray-300 rounded-md`}
+                          placeholder="Days"
                         />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-white font-bold">
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-white font-bold text-xs">
                           days
                         </span>
                       </div>
@@ -836,11 +1005,12 @@ const SalesEditLeadForm: React.FC<{
                   </div>
 
                   <div className="flex flex-wrap md:flex-nowrap gap-4">
+                    {/* Drop DateTime */}
                     <div className="w-full md:w-[20%]">
                       <label className="block mb-1 font-extrabold text-gray-700 text-md">
-                        Drop Date & Time
+                        Drop Date &amp; Time
                       </label>
-                      <div className="relative group">
+                      <div className="relative">
                         <input
                           type="datetime-local"
                           {...register("dropDateTime")}
@@ -855,6 +1025,7 @@ const SalesEditLeadForm: React.FC<{
                       </div>
                     </div>
 
+                    {/* Drop City */}
                     <div className="w-full md:w-[15%]">
                       <label className="block mb-1 font-extrabold text-gray-700 text-md">
                         Drop City <span className="text-red-500">*</span>
@@ -862,12 +1033,12 @@ const SalesEditLeadForm: React.FC<{
                       <div className="relative">
                         <select
                           {...register("dropcity")}
-                          className="w-full py-2 pl-10 pr-8 border border-gray-300 rounded-md appearance-none bg-white"
+                          className="w-full py-2 pl-10 pr-8 border border-gray-300 rounded-md bg-white"
                         >
                           <option value="">Select Drop City</option>
                           {travelcity?.map((city) => (
                             <option
-                              key={city.id || city.uuid}
+                              key={city.id ?? city.uuid}
                               value={city.cityName}
                             >
                               {city.cityName}
@@ -886,17 +1057,19 @@ const SalesEditLeadForm: React.FC<{
                       )}
                     </div>
 
+                    {/* Drop Address */}
                     <div className="w-full md:w-[30%]">
                       <label className="block mb-1 font-extrabold text-gray-700 text-md">
                         Drop Address
                       </label>
                       <input
                         {...register("dropAddress")}
-                        className="w-full py-2 pl-3 pr-3 border border-gray-300 rounded-md"
+                        className="w-full py-2 px-3 border border-gray-300 rounded-md"
                         placeholder="Address"
                       />
                     </div>
 
+                    {/* Service Type */}
                     <div className="w-full md:w-[15%]">
                       <label className="block text-md font-extrabold text-gray-700 mb-1">
                         Service
@@ -919,6 +1092,7 @@ const SalesEditLeadForm: React.FC<{
                       </select>
                     </div>
 
+                    {/* Trip Type */}
                     {serviceType === "Round Trip" && (
                       <div className="w-full md:w-[20%]">
                         <label className="block text-md font-extrabold text-gray-700 mb-1">
@@ -959,7 +1133,7 @@ const SalesEditLeadForm: React.FC<{
                   <label className="block mb-1 mt-6 font-extrabold text-gray-700 text-md">
                     Add Itinerary
                   </label>
-                  <div className="relative group">
+                  <div className="relative">
                     <input
                       value={currentItinerary}
                       onChange={(e) => setCurrentItinerary(e.target.value)}
@@ -968,13 +1142,20 @@ const SalesEditLeadForm: React.FC<{
                         (e.preventDefault(), addItinerary())
                       }
                       className="w-full px-3 py-2 pl-10 bg-white border border-gray-300 rounded-md"
-                      placeholder="Enter itinerary item"
+                      placeholder="Enter itinerary item and press Enter"
                     />
                     <FileText
                       className="absolute text-purple-600 -translate-y-1/2 left-3 top-1/2"
                       size={20}
                     />
                   </div>
+                  <button
+                    type="button"
+                    onClick={addItinerary}
+                    className="mt-2 px-4 py-1 bg-purple-600 text-white text-sm rounded-md hover:bg-purple-700"
+                  >
+                    Add
+                  </button>
                 </div>
                 <div>
                   <label className="block mb-1 font-extrabold text-gray-700 text-md">
@@ -994,13 +1175,14 @@ const SalesEditLeadForm: React.FC<{
                           const draggedIdx = parseInt(
                             e.dataTransfer.getData("text/plain"),
                           );
-                          if (draggedIdx !== idx)
+                          if (!isNaN(draggedIdx) && draggedIdx !== idx)
                             reorderItinerary(draggedIdx, idx);
                         }}
                       >
                         <GripVertical size={14} className="text-purple-600" />
                         <span>{item}</span>
                         <button
+                          type="button"
                           onClick={() => removeItinerary(idx)}
                           className="text-red-500 hover:text-red-700"
                         >
@@ -1013,6 +1195,7 @@ const SalesEditLeadForm: React.FC<{
               </div>
 
               <div className="grid grid-cols-1 gap-4 mt-4 md:grid-cols-4">
+                {/* Actual KM */}
                 <div>
                   <label className="block mb-1 font-extrabold text-gray-700 text-md">
                     Actual KM <span className="text-red-500">*</span>
@@ -1022,9 +1205,9 @@ const SalesEditLeadForm: React.FC<{
                       type="number"
                       {...register("km")}
                       className="w-full bg-purple-600 text-white font-extrabold text-2xl py-2 pl-6 text-center pr-10 border border-gray-300 rounded-md"
-                      placeholder="Total KM"
+                      placeholder="KM"
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-white font-bold">
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-white font-bold text-xs">
                       KM
                     </span>
                   </div>
@@ -1035,11 +1218,12 @@ const SalesEditLeadForm: React.FC<{
                   )}
                 </div>
 
+                {/* Occasion */}
                 <div>
                   <label className="block text-md font-extrabold text-gray-700 mb-1">
                     Occasion Type
                   </label>
-                  <div className="relative group">
+                  <div className="relative">
                     <select
                       {...register("occasion")}
                       className="w-full py-2 border bg-white px-12 border-gray-300 rounded-md"
@@ -1075,9 +1259,9 @@ const SalesEditLeadForm: React.FC<{
                       type="number"
                       {...register("passengerTotal", { valueAsNumber: true })}
                       className="w-full bg-purple-600 text-white font-extrabold text-2xl py-2 text-center border border-gray-300 rounded-md"
-                      placeholder="Total Pax"
+                      placeholder="Pax"
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-white font-bold">
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-white font-bold text-xs">
                       Pax
                     </span>
                   </div>
@@ -1095,11 +1279,11 @@ const SalesEditLeadForm: React.FC<{
                     <input
                       type="number"
                       {...register("petsNumber", { valueAsNumber: true })}
-                      className="w-full bg-red-600 text-white font-extrabold text-2xl py-2 text-center border border-gray-300 rounded-md"
-                      placeholder="No. of pets"
                       min="0"
+                      className="w-full bg-red-600 text-white font-extrabold text-2xl py-2 text-center border border-gray-300 rounded-md"
+                      placeholder="Pets"
                     />
-                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-white font-bold">
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-white font-bold text-xs">
                       pets
                     </span>
                   </div>
@@ -1108,7 +1292,7 @@ const SalesEditLeadForm: React.FC<{
                   <label className="block mb-1 font-extrabold text-gray-700 text-md">
                     Pet Names
                   </label>
-                  <div className="relative group">
+                  <div className="relative">
                     <input
                       {...register("petsNames")}
                       className="w-full py-2 pl-10 pr-3 border border-gray-300 rounded-md"
@@ -1129,23 +1313,25 @@ const SalesEditLeadForm: React.FC<{
                 Baggage Details
               </span>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-5 mt-4">
-                {[
-                  "smallbaggage",
-                  "mediumbaggage",
-                  "largebaggage",
-                  "airportbaggage",
-                ].map((baggage, idx) => (
-                  <div key={idx}>
-                    <label className="block mb-1 font-extrabold text-gray-700 text-md">
-                      {baggage.charAt(0).toUpperCase() +
-                        baggage.slice(1).replace("baggage", " Baggage")}
+                {(
+                  [
+                    "smallbaggage",
+                    "mediumbaggage",
+                    "largebaggage",
+                    "airportbaggage",
+                  ] as const
+                ).map((baggage) => (
+                  <div key={baggage}>
+                    <label className="block mb-1 font-extrabold text-gray-700 text-md capitalize">
+                      {baggage.replace("baggage", " Baggage")}
                     </label>
-                    <div className="relative group">
+                    <div className="relative">
                       <input
                         type="number"
-                        {...register(baggage as any, { valueAsNumber: true })}
+                        {...register(baggage, { valueAsNumber: true })}
                         className="w-full py-2 bg-white pl-10 pr-3 border border-gray-300 rounded-md"
-                        placeholder={`${baggage.replace("baggage", "Baggage")}`}
+                        placeholder="0"
+                        min="0"
                       />
                       <Luggage
                         className="absolute text-purple-800 -translate-y-1/2 left-3 top-1/2"
@@ -1158,13 +1344,12 @@ const SalesEditLeadForm: React.FC<{
                   <label className="block mb-1 font-extrabold text-gray-700 text-md">
                     Total Baggage
                   </label>
-                  <div className="relative group">
+                  <div className="relative">
                     <input
                       type="number"
                       {...register("totalbaggage", { valueAsNumber: true })}
                       readOnly
                       className="w-full bg-purple-600 text-white font-extrabold text-2xl py-2 pl-8 text-center pr-10 border border-gray-300 rounded-md"
-                      placeholder="Total"
                     />
                     <Luggage
                       className="absolute text-white -translate-y-1/2 left-3 top-1/2"
@@ -1175,31 +1360,28 @@ const SalesEditLeadForm: React.FC<{
               </div>
             </div>
 
-            {/* Vehicle Details with Quantities */}
+            {/* Vehicle Details */}
             <div className="p-6 bg-white border rounded-xl mt-4">
               <span className="mb-3 font-extrabold text-purple-900 text-md">
                 Vehicle Details (Optional)
               </span>
               <div className="flex flex-wrap gap-4 mt-4">
-                {/* Vehicle Type 1 */}
+                {/* Vehicle 1 */}
                 <div className="w-full md:w-[20%]">
                   <label className="block text-md font-extrabold text-gray-700 mb-1">
                     Vehicle Type 1
                   </label>
                   <div className="flex gap-2">
-                    <div className="relative group flex-1">
+                    <div className="relative flex-1">
                       <select
                         {...register("vehicles")}
-                        className="py-2 border bg-white px-12 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+                        className="w-full py-2 border bg-white px-12 border-gray-300 rounded-md"
                       >
-                        <option value="">Select Vehicle Type</option>
+                        <option value="">Select</option>
                         {sortVehicleCodes(vehicleCodes).map(
-                          (vehicle: { code: string; name: string }, index) => (
-                            <option
-                              key={`${vehicle.code}-${index}`}
-                              value={vehicle.code}
-                            >
-                              {vehicle.code}
+                          (v: any, i: number) => (
+                            <option key={`${v.code}-${i}`} value={v.code}>
+                              {v.code}
                             </option>
                           ),
                         )}
@@ -1212,32 +1394,29 @@ const SalesEditLeadForm: React.FC<{
                     <input
                       type="number"
                       placeholder="Qty"
-                      className="w-20 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-center"
-                      min="1"
+                      min="0"
+                      className="w-20 py-2 border border-gray-300 rounded-md text-center"
                       {...register("vehicle1Quantity", { valueAsNumber: true })}
                     />
                   </div>
                 </div>
 
-                {/* Vehicle Type 2 */}
+                {/* Vehicle 2 */}
                 <div className="w-full md:w-[20%]">
                   <label className="block text-md font-extrabold text-gray-700 mb-1">
                     Vehicle Type 2
                   </label>
                   <div className="flex gap-2">
-                    <div className="relative group flex-1">
+                    <div className="relative flex-1">
                       <select
                         {...register("vehicle2")}
-                        className="w-full py-2 border bg-white px-12 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full py-2 border bg-white px-12 border-gray-300 rounded-md"
                       >
-                        <option value="">Select Vehicle Type 2</option>
+                        <option value="">Select</option>
                         {sortVehicleCodes(vehicleCodes).map(
-                          (vehicle: { code: string; name: string }, index) => (
-                            <option
-                              key={`${vehicle.code}-type2-${index}`}
-                              value={vehicle.code}
-                            >
-                              {vehicle.code}
+                          (v: any, i: number) => (
+                            <option key={`${v.code}-type2-${i}`} value={v.code}>
+                              {v.code}
                             </option>
                           ),
                         )}
@@ -1250,32 +1429,29 @@ const SalesEditLeadForm: React.FC<{
                     <input
                       type="number"
                       placeholder="Qty"
-                      className="w-20 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-center"
-                      min="1"
+                      min="0"
+                      className="w-20 py-2 border border-gray-300 rounded-md text-center"
                       {...register("vehicle2Quantity", { valueAsNumber: true })}
                     />
                   </div>
                 </div>
 
-                {/* Vehicle Type 3 */}
+                {/* Vehicle 3 */}
                 <div className="w-full md:w-[20%]">
                   <label className="block text-md font-extrabold text-gray-700 mb-1">
                     Vehicle Type 3
                   </label>
                   <div className="flex gap-2">
-                    <div className="relative group flex-1">
+                    <div className="relative flex-1">
                       <select
                         {...register("vehicle3")}
-                        className="w-full py-2 border bg-white px-12 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full py-2 border bg-white px-12 border-gray-300 rounded-md"
                       >
-                        <option value="">Select Vehicle Type 3</option>
+                        <option value="">Select</option>
                         {sortVehicleCodes(vehicleCodes).map(
-                          (vehicle: { code: string; name: string }, index) => (
-                            <option
-                              key={`${vehicle.code}-type3-${index}`}
-                              value={vehicle.code}
-                            >
-                              {vehicle.code}
+                          (v: any, i: number) => (
+                            <option key={`${v.code}-type3-${i}`} value={v.code}>
+                              {v.code}
                             </option>
                           ),
                         )}
@@ -1288,8 +1464,8 @@ const SalesEditLeadForm: React.FC<{
                     <input
                       type="number"
                       placeholder="Qty"
-                      className="w-20 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-center"
-                      min="1"
+                      min="0"
+                      className="w-20 py-2 border border-gray-300 rounded-md text-center"
                       {...register("vehicle3Quantity", { valueAsNumber: true })}
                     />
                   </div>
@@ -1300,12 +1476,12 @@ const SalesEditLeadForm: React.FC<{
                   <label className="block mb-1 font-extrabold text-gray-700 text-md">
                     Total Vehicle Requirement
                   </label>
-                  <div className="relative group">
+                  <div className="relative">
                     <input
                       {...register("requirementVehicle")}
-                      className="w-full py-2 pl-10 pr-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-gray-50"
-                      placeholder="Auto-filled when vehicles selected"
                       readOnly
+                      className="w-full py-2 pl-10 pr-3 border border-gray-300 rounded-md bg-gray-50"
+                      placeholder="Auto-filled when vehicles selected"
                     />
                     <FileText
                       className="absolute text-purple-800 -translate-y-1/2 left-3 top-1/2"
@@ -1317,12 +1493,12 @@ const SalesEditLeadForm: React.FC<{
             </div>
 
             {/* Remarks */}
-            <div className="grid grid-cols-1 gap-4 mt-4 md:grid-cols-1">
+            <div className="grid grid-cols-1 gap-4 mt-4">
               <div>
                 <label className="block text-md font-extrabold text-gray-700 mb-1">
                   Remark
                 </label>
-                <div className="relative group">
+                <div className="relative">
                   <textarea
                     {...register("remarks")}
                     rows={4}
@@ -1337,21 +1513,21 @@ const SalesEditLeadForm: React.FC<{
               </div>
             </div>
 
-            {/* Lost Reason Section */}
+            {/* Lost Reason */}
             <div className="grid grid-cols-1 gap-4 mt-4 md:grid-cols-3">
               <div>
                 <label className="block text-md font-extrabold text-gray-700 mb-1">
                   LOST REASON
                 </label>
-                <div className="relative group">
+                <div className="relative">
                   <select
                     {...register("lost_reason")}
                     className="w-full py-2 border bg-white px-12 border-gray-300 rounded-md"
                   >
                     <option value="">Select Lost Reason</option>
-                    {LOST_REASON_OPTIONS.map((reason) => (
-                      <option key={reason} value={reason}>
-                        {reason}
+                    {LOST_REASON_OPTIONS.map((r) => (
+                      <option key={r} value={r}>
+                        {r}
                       </option>
                     ))}
                   </select>
@@ -1361,12 +1537,11 @@ const SalesEditLeadForm: React.FC<{
                   />
                 </div>
               </div>
-
               <div>
                 <label className="block text-md font-extrabold text-gray-700 mb-1">
                   Lost Reason Details
                 </label>
-                <div className="relative group">
+                <div className="relative">
                   <textarea
                     {...register("lostReasonDetails")}
                     rows={4}
@@ -1379,12 +1554,11 @@ const SalesEditLeadForm: React.FC<{
                   />
                 </div>
               </div>
-
               <div>
                 <label className="block text-md font-extrabold text-gray-700 mb-1">
                   Follow Up
                 </label>
-                <div className="relative group">
+                <div className="relative">
                   <textarea
                     {...register("followUp")}
                     rows={4}
@@ -1400,7 +1574,7 @@ const SalesEditLeadForm: React.FC<{
             </div>
           </div>
 
-          {/* Submit Button */}
+          {/* ── Submit ── */}
           <div className="pt-6">
             {!isValid && Object.keys(errors).length > 0 && (
               <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-md">
@@ -1411,7 +1585,10 @@ const SalesEditLeadForm: React.FC<{
                   {Object.entries(errors)
                     .slice(0, 5)
                     .map(([key, error]: any) => (
-                      <li key={key}>{error?.message || `${key} is invalid`}</li>
+                      <li key={key}>
+                        <span className="font-semibold">{key}</span>:{" "}
+                        {error?.message || "is invalid"}
+                      </li>
                     ))}
                 </ul>
               </div>
@@ -1434,4 +1611,4 @@ const SalesEditLeadForm: React.FC<{
   );
 };
 
-export default SalesEditLeadForm;
+export default EditLeadForm;

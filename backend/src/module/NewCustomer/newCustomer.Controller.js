@@ -14,7 +14,6 @@ export const getAllCustomersController = asyncHandler(async (req, res) => {
 
 export const searchCustomerController = asyncHandler(async (req, res) => {
   const { search = "" } = req.query;
-  console.log(search);
   const result = await searchCustomers({ search: search.trim() });
 
   return res

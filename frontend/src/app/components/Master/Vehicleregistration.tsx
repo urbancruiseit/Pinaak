@@ -250,7 +250,6 @@ const VehicleForm: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Vehicle Form Submitted:', formData);
     // Handle form submission
   };
 

@@ -83,10 +83,10 @@ export const updateLeadApi = async (
   leadData: Partial<LeadRecord>,
 ): Promise<LeadRecord> => {
   try {
-    console.log("API update leadData:", id, leadData);
+    console.log("API update leadDatasss:", id, leadData);
 
     const response = await axiosInstance.put<ApiResponse<LeadRecord>>(
-      `/lead/${id}`,
+      `/lead/updatelead/${id}`,
       leadData,
     );
 

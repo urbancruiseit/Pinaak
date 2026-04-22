@@ -52,7 +52,6 @@ export function Admin() {
       toast.success("✅ User created successfully!");
 
       reset();
-      console.log("Created User:", result);
     } catch (error: any) {
       toast.error(error || "❌ Failed to create user");
     }

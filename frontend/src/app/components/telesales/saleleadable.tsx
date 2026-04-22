@@ -146,6 +146,7 @@ export default function LeadsTable() {
   const paxBtnRef = useRef<HTMLButtonElement>(null);
   const daysBtnRef = useRef<HTMLButtonElement>(null);
   const [daysOpen, setDaysOpen] = useState(false);
+  const prevLeadsRef = useRef<LeadRecord[]>([]);
   const [paxDropdownStyle, setPaxDropdownStyle] = useState<React.CSSProperties>(
     {},
   );
@@ -162,13 +163,14 @@ export default function LeadsTable() {
     (state: RootState) => state.travelAdvisor.assignedLeads,
   );
 
-  console.log(
-    "LeadsTable rendered with leads:",
-    leads,
-    "currentPage:",
-    currentPage,
-  );
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      dispatch(fetchMyAssignedLeads(currentPage));
+    }, 10000); // every 10 sec
+
+    return () => clearInterval(interval);
+  }, [dispatch, currentPage]);
   useEffect(() => {
     dispatch(fetchMyAssignedLeads(currentPage));
   }, [dispatch, currentPage]);
@@ -357,7 +359,7 @@ export default function LeadsTable() {
             <div className="relative group cursor-pointer">
               <span
                 className={`text-slate-800 hover:text-blue-600 transition-colors px-2 py-1 rounded 
-          ${isNightTime ? "bg-red-900 text-white font-semibold" : ""}
+             ${isNightTime ? "bg-red-900 text-white font-semibold" : ""}
         `}
               >
                 {dateTimeStr}
@@ -1026,7 +1028,7 @@ export default function LeadsTable() {
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <div className=" border-l-8 border-orange-500 bg-white px-3">
               <h2 className="text-2xl md:text-4xl font-bold text-left text-orange-600">
-                Sales Lead Manager
+                Lead Manager TS
               </h2>
               <p className="mt-1 text-sm text-left text-orange-700">
                 Leads Details & Status.

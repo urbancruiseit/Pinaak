@@ -97,7 +97,7 @@ export interface LeadRecord {
     | "Corporate"
     | "Local";
   occasionType?: string;
-  tripType: "pickup" | "drop" | "both" | "Sightseeing" | "Point to Point";
+  tripType: string;
   pickupDateTime: string;
   dropDateTime?: string;
   pickupAddress?: string;
@@ -126,6 +126,8 @@ export interface LeadRecord {
   followUp?: string;
   customerCity?: string;
   customerAddress?: string;
+  address?:string;
+
   customerState?: string;
   vehicle3Quantity?: number;
   vehicle2Quantity?: number;
@@ -139,6 +141,8 @@ export interface LeadRecord {
   lastName?: string;
   fullName?: string;
   customerCountry?: string;
+  createdAt?: string;
+  presales_id?: string | number;
 }
 export type UserRole =
   | "user"

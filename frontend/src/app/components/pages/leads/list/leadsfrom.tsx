@@ -10,12 +10,12 @@ import {
   fetchAllCities,
   fetchStatesByCity,
   resetStatesForCity,
-} from "../../../../features/State/stateSlice";
+} from "@/app/features/State/stateSlice";
 import { useRouter } from "next/navigation";
 import {
   searchCustomersThunk,
   clearSearchResults,
-} from "../../../../features/NewCustomer/NewCustomerSlice";
+} from "@/app/features/NewCustomer/NewCustomerSlice";
 import {
   User,
   Mail,
@@ -114,7 +114,6 @@ const LeadsForm: React.FC = () => {
   );
 
   const { currentUser } = useSelector((state: RootState) => state.user);
-  console.log("Current User from Redux:", currentUser);
 
   // ✅ FIX 2: Use a ref to always have latest currentUser in onSubmit
   const currentUserRef = React.useRef(currentUser);
@@ -468,15 +467,11 @@ const LeadsForm: React.FC = () => {
   const onSubmit: SubmitHandler<FormData> = async (data) => {
     setIsSubmitting(true);
 
-    // ✅ FIX 5: THE MAIN FIX — Always derive presales_id from currentUser ref
-    // This is 100% reliable regardless of RHF form state / timing issues
     const latestUser = currentUserRef.current;
-    console.log("🔍 Current User Object:", JSON.stringify(latestUser, null, 2));
 
     // Check for id, _id, uuid, userId, or any other identifier field
     const userId =
       latestUser?.id || latestUser?._id || latestUser?.uuid || latestUser?.id;
-    console.log("🔍 User ID found:", userId);
 
     const finalPresalesId = userId
       ? Number(userId)
@@ -484,7 +479,6 @@ const LeadsForm: React.FC = () => {
         ? Number(data.presales_id)
         : null;
 
-    // ✅ FIX 6: Hard guard — do not submit if presales_id is missing
     if (!finalPresalesId || isNaN(finalPresalesId)) {
       console.error(
         "presales_id is missing. currentUser:",
@@ -499,7 +493,6 @@ const LeadsForm: React.FC = () => {
       return;
     }
 
-    console.log("✅ Final presales_id being sent:", finalPresalesId);
 
     try {
       const payload: any = {
@@ -568,8 +561,8 @@ const LeadsForm: React.FC = () => {
         followUp: data.followUp || "",
       };
 
+
       const result = await dispatch(createLead(payload)).unwrap();
-      console.log("✅ Lead created:", result);
 
       showToastMessage("Lead created successfully!");
       resetFormFields();

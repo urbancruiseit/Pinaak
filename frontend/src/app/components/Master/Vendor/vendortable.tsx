@@ -19,15 +19,12 @@ const VendorTable: React.FC = () => {
   );
 
   useEffect(() => {
-    console.log("Fetching vendors...");
     dispatch(getVendorsThunk());
   }, [dispatch]);
 
   // Debug: Log vendors when they change
   useEffect(() => {
-    console.log("Vendors data received:", vendors);
     if (vendors && vendors.length > 0) {
-      console.log("First vendor structure:", vendors[0]);
     }
   }, [vendors]);
 
@@ -44,13 +41,11 @@ const VendorTable: React.FC = () => {
   }, [successMessage, dispatch]);
 
   const handleEditClick = (vendor: any) => {
-    console.log("Edit clicked:", vendor);
     localStorage.setItem("editVendorData", JSON.stringify(vendor));
     window.location.href = "/dashboard?tab=vendor&mode=edit";
   };
 
   const handleViewClick = (vendor: any) => {
-    console.log("View clicked:", vendor);
     localStorage.setItem("viewVendorData", JSON.stringify(vendor));
     window.location.href = "/dashboard?tab=vendor&mode=view";
   };

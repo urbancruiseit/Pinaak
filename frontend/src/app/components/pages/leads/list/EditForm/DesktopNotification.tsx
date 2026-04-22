@@ -26,7 +26,6 @@ export const showDesktopNotification = (
   onClick?: () => void,
 ): void => {
   if (!("Notification" in window)) {
-    console.log("Desktop notifications not supported");
     return;
   }
 
@@ -70,7 +69,6 @@ export const startRecurringNotifications = (
   totalNotificationsSent = 0;
   startTimeReference = Date.now();
 
-  console.log("🚀 Starting notifications every 5 seconds for 10 minutes");
 
   const sendNotifications = (title: string, body: string) => {
     // 1. Desktop notification
@@ -101,9 +99,7 @@ export const startRecurringNotifications = (
       const minutesSinceCreation = (currentTime - createdAtTime) / 1000 / 60;
 
       if (minutesSinceCreation > 10) {
-        console.log(
-          `⏹️ 10 minutes completed. Total: ${totalNotificationsSent}`,
-        );
+       
         stopRecurringNotifications();
         return;
       }
@@ -117,7 +113,6 @@ export const startRecurringNotifications = (
       );
       notificationCount++;
       totalNotificationsSent++;
-      console.log(`📢 Notification #${notificationCount} sent`);
     } else {
       stopRecurringNotifications();
     }
@@ -129,9 +124,7 @@ export const stopRecurringNotifications = () => {
     clearInterval(pollingInterval);
     pollingInterval = null;
   }
-  console.log(
-    `✅ Notifications stopped. Total sent: ${totalNotificationsSent}`,
-  );
+ 
   notificationCount = 0;
   totalNotificationsSent = 0;
   startTimeReference = null;

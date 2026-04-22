@@ -1,7 +1,7 @@
 import type { LeadRecord } from "../types";
 import { LeadFormData } from "./editleadschema";
 
-// Parse phone number
+// ── Parse phone number ────────────────────────────────────────────────────────
 export const parsePhone = (phone: string) => {
   if (!phone) return { code: "+91", number: "" };
   const match = phone.match(/^\+(\d{1,3})\s*(.*)$/);
@@ -11,7 +11,26 @@ export const parsePhone = (phone: string) => {
   return { code: "+91", number: phone.trim() };
 };
 
-// Format date for input field
+// ── Parse itinerary (handles string / array / null / JSON string) ─────────────
+export const parseItinerary = (itinerary: any): string[] => {
+  if (!itinerary) return [];
+  if (Array.isArray(itinerary)) return itinerary.filter(Boolean);
+  if (typeof itinerary === "string") {
+    try {
+      const parsed = JSON.parse(itinerary);
+      if (Array.isArray(parsed)) return parsed.filter(Boolean);
+    } catch {
+      // comma-separated string fallback
+      return itinerary
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+    }
+  }
+  return [];
+};
+
+// ── Format date for input field ───────────────────────────────────────────────
 export const formatDateTimeForInput = (dateStr?: string): string => {
   if (!dateStr) return "";
   let formatted = dateStr.replace(" ", "T");
@@ -27,7 +46,7 @@ export const formatDateTimeForInput = (dateStr?: string): string => {
   return formatted;
 };
 
-// Format date for API submission
+// ── Format date for API submission ────────────────────────────────────────────
 export const formatDateTimeForSubmit = (
   dateStr?: string,
 ): string | undefined => {
@@ -47,7 +66,7 @@ export const formatDateTimeForSubmit = (
   return formatted;
 };
 
-// Calculate days
+// ── Calculate days ────────────────────────────────────────────────────────────
 export const calculateDays = (
   serviceType: string | undefined,
   pickupDateTime: string,
@@ -68,7 +87,7 @@ export const calculateDays = (
   return 1;
 };
 
-// Total baggage
+// ── Calculate total baggage ───────────────────────────────────────────────────
 export const calculateTotalBaggage = (
   small = 0,
   medium = 0,
@@ -76,7 +95,7 @@ export const calculateTotalBaggage = (
   airport = 0,
 ): number => small + medium + large + airport;
 
-// Total vehicles
+// ── Calculate total vehicles ──────────────────────────────────────────────────
 export const calculateTotalVehicles = (
   vehicle1: string,
   vehicle1Qty = 0,
@@ -97,16 +116,20 @@ export const calculateTotalVehicles = (
   return vehicles.join(", ");
 };
 
-// Prepare payload
+// ── Prepare API payload ───────────────────────────────────────────────────────
 export const prepareLeadPayload = (
   data: LeadFormData,
   formData: any,
   itineraryList: string[],
   alternateCountryCode: string,
+  initialDataRecord?: any,
 ) => {
   return {
     // Customer
-    customer_id: (data as any).customer_id,
+    customer_id:
+      (data as any).customer_id ||
+      initialDataRecord?.customer_id ||
+      (initialDataRecord as any)?.id,
     firstName: formData.firstName,
     middleName: formData.middleName,
     lastName: formData.lastName,
@@ -120,14 +143,14 @@ export const prepareLeadPayload = (
     customerCategoryType: data.customerCategoryType || "",
     countryName: data.countryName,
     customerCity: data.customerCity || "",
-    customerState: data.customerState || "",
-    customerAddress: data.customerAddress || "",
+    state: data.state || "",
+    address: data.address || "",
 
     // Lead
     enquiryTime: data.date ? `${data.date}:00` : new Date().toISOString(),
     source: data.source,
     status: data.status,
-    telecaller: data.telesales || "Default",
+
     city: data.city || "",
     serviceType: data.serviceType,
     occasion: data.occasion || "",
@@ -140,7 +163,7 @@ export const prepareLeadPayload = (
     dropcity: data.dropcity,
     days: Number(data.days),
     km: parseInt(data.km) || 0,
-    itinerary: itineraryList,
+    itinerary: Array.isArray(itineraryList) ? itineraryList : [],
     passengerTotal: Number(data.passengerTotal),
     petsNumber: Number(data.petsNumber) || 0,
     petsNames: data.petsNames || "",
@@ -164,17 +187,17 @@ export const prepareLeadPayload = (
   };
 };
 
-// Map initial data
+// ── Map initial data to form ──────────────────────────────────────────────────
 export const mapInitialDataToForm = (initialData: LeadRecord) => {
   const mainPhone = parsePhone(initialData.customerPhone || "");
   const altPhone = parsePhone(initialData.alternatePhone || "");
 
-  // ✅ Direct fields (BEST)
+  // ✅ Direct fields
   let firstName = initialData.firstName || "";
   let middleName = initialData.middleName || "";
   let lastName = initialData.lastName || "";
 
-  // 🔥 Fallback (agar backend se nahi aaya)
+  // 🔥 Fallback agar backend se split nahi aaya
   if (!firstName && initialData.fullName) {
     const parts = initialData.fullName.trim().split(" ");
     firstName = parts[0] || "";
@@ -198,7 +221,10 @@ export const mapInitialDataToForm = (initialData: LeadRecord) => {
     },
     alternateCountryCode: altPhone.code,
     customerCategoryTypeValue: initialData.customerCategoryType || "",
-    itineraryList: initialData.itinerary || [],
+
+    // ✅ FIXED: always returns string[]
+    itineraryList: parseItinerary(initialData.itinerary),
+
     setValues: {
       customer_id:
         (initialData as any).customer_id ??

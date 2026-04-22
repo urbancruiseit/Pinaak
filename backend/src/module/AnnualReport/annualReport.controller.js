@@ -5,8 +5,6 @@ export const getAnnualReport = async (req, res) => {
   try {
     const year = req.query.year ? parseInt(req.query.year) : new Date().getFullYear();
     
-    console.log("📥 Annual Report Controller - Year:", year);
-
     if (isNaN(year) || year < 2000 || year > 2100) {
       return res.status(400).json({
         success: false,
@@ -16,7 +14,6 @@ export const getAnnualReport = async (req, res) => {
 
     const data = await getAnnualReportData(year);
     
-    console.log("📊 Annual Report Controller - Data received");
 
     res.json({
       success: true,

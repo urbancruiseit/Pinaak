@@ -8,7 +8,6 @@ export const createVendorModel = async (data) => {
     // First, let's see what columns we have
     const [columns] = await pool.execute("SHOW COLUMNS FROM vendors");
     const columnNames = columns.map((c) => c.Field);
-    console.log("Available columns:", columnNames);
 
     // Build dynamic query based on existing columns
     const fields = [];
@@ -70,9 +69,7 @@ export const createVendorModel = async (data) => {
     }
 
     const query = `INSERT INTO vendors (${fields.join(", ")}) VALUES (${placeholders.join(", ")})`;
-    console.log("Generated Query:", query);
-    console.log("Values:", values);
-
+  
     const [result] = await pool.execute(query, values);
     return result;
   } catch (error) {
@@ -142,7 +139,6 @@ export const updateVendorModel = async (id, data) => {
 
     values.push(id);
     const query = `UPDATE vendors SET ${updates.join(", ")} WHERE id = ?`;
-    console.log("Update Query:", query);
 
     const [result] = await pool.execute(query, values);
     return result;
@@ -172,7 +168,6 @@ export const getAllVendorsModel = async () => {
       FROM vendors 
       ORDER BY id DESC
     `);
-    console.log(`Found ${rows.length} vendors`);
     return rows;
   } catch (error) {
     console.error("Error in getAllVendorsModel:", error);

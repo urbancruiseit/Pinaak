@@ -86,7 +86,7 @@ export default function GlobalLeadPopup() {
 
     // Current status check karo
     const s = (status ?? "").trim().toLowerCase();
-    return s !== "" && s !== "new";
+    return s !== "-" && s !== "new";
   }, []);
 
   // ─── Cleanup on unmount ───────────────────────────────────────────────────

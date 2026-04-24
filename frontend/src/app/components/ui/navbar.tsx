@@ -941,9 +941,9 @@ export function Navbar({
                     </div>
 
                     <div className="flex justify-between">
-                      <span className="text-gray-500">City</span>
+                      <span className="text-gray-500">City : </span>
                       <span className="text-gray-800 font-medium">
-                        {userCityNames?.length ? userCityNames.join(", ") : "-"}
+                         {userCityNames?.length ? userCityNames.join(", ") : "-"}
                       </span>
                     </div>
                   </div>

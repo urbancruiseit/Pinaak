@@ -50,7 +50,6 @@ const formatDate = (isoDate: string) => {
   return `${day}/${month}/${year}`;
 };
 
-// Format time in 24-hour format
 const formatTime24Hour = (isoDateTime?: string) => {
   if (!isoDateTime) return "—";
   const date = new Date(isoDateTime);
@@ -68,7 +67,6 @@ const formatDateTime = (isoDateTime?: string) => {
   if (Number.isNaN(date.getTime())) {
     return isoDateTime;
   }
-  // Format as dd/mm/yy, HH:mm pm
   const day = date.getDate().toString().padStart(2, "0");
   const month = (date.getMonth() + 1).toString().padStart(2, "0");
   const year = date.getFullYear().toString().slice(-2);
@@ -91,7 +89,6 @@ const formatTime = (isoDateTime?: string) => {
   });
 };
 
-// Format time in 12-hour format with AM/PM
 const formatTime12Hour = (isoDateTime?: string) => {
   if (!isoDateTime) return "—";
   const date = new Date(isoDateTime);
@@ -103,6 +100,7 @@ const formatTime12Hour = (isoDateTime?: string) => {
   const displayHoursStr = displayHours.toString().padStart(2, "0");
   return `${displayHoursStr}:${minutes} ${ampm}`;
 };
+
 const formatTripType = (tripType: LeadRecord["tripType"]) =>
   ({
     pickup: "Pickup",
@@ -159,17 +157,16 @@ export default function LeadsTable() {
   const rowsPerPage = 14;
 
   const dispatch = useDispatch<AppDispatch>();
-  const { leads, loading, error, page } = useSelector(
-    (state: RootState) => state.travelAdvisor.assignedLeads,
-  );
-
+ const { leads, loading, error, page, monthlyStats } = useSelector(
+  (state: RootState) => state.travelAdvisor.assignedLeads,
+);
   useEffect(() => {
     const interval = setInterval(() => {
       dispatch(fetchMyAssignedLeads(currentPage));
-    }, 10000); // every 10 sec
-
+    }, 10000);
     return () => clearInterval(interval);
   }, [dispatch, currentPage]);
+
   useEffect(() => {
     dispatch(fetchMyAssignedLeads(currentPage));
   }, [dispatch, currentPage]);
@@ -215,7 +212,6 @@ export default function LeadsTable() {
     setDaysOpen((prev) => !prev);
   };
 
-  // Track if click was inside dropdown
   const daysDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -233,17 +229,14 @@ export default function LeadsTable() {
         setDaysOpen(false);
       }
     };
-
     if (daysOpen) {
       document.addEventListener("mousedown", handleClickOutside);
     }
-
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [daysOpen]);
 
-  // Track if click was inside dropdown
   const paxDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -252,7 +245,7 @@ export default function LeadsTable() {
         paxDropdownRef.current &&
         paxDropdownRef.current.contains(event.target as Node)
       ) {
-        return; // Click inside dropdown, don't close
+        return;
       }
       if (
         paxBtnRef.current &&
@@ -261,11 +254,9 @@ export default function LeadsTable() {
         setPaxOpen(false);
       }
     };
-
     if (paxOpen) {
       document.addEventListener("mousedown", handleClickOutside);
     }
-
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
@@ -278,11 +269,9 @@ export default function LeadsTable() {
       render: (lead: LeadRecord) => {
         const val = lead[col.key as keyof LeadRecord];
 
-        // Actions Column
         if (col.key === "actions") {
           return (
             <div className="flex gap-1 justify-evenly">
-              {/* Add Rate Quotation */}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -298,7 +287,6 @@ export default function LeadsTable() {
                 💰
               </button>
 
-              {/* View */}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -311,7 +299,6 @@ export default function LeadsTable() {
                 <Eye size={14} />
               </button>
 
-              {/* Edit */}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -326,6 +313,7 @@ export default function LeadsTable() {
             </div>
           );
         }
+
         if (col.key === "date") {
           const dateStr = formatDate(String(val));
           const timeStr = lead.enquiryTime
@@ -334,7 +322,6 @@ export default function LeadsTable() {
           return `${dateStr} ${timeStr}`.trim();
         }
 
-        // Status Column
         if (col.key === "status") {
           return (
             <span
@@ -346,24 +333,21 @@ export default function LeadsTable() {
         }
 
         if (col.key === "Time") return formatTime(lead.enquiryTime);
+
         if (col.key === "pickupDateTime") {
           const dateTimeStr = formatDateTime(String(val));
           const time12Hour = formatTime12Hour(lead.pickupDateTime);
-
           const hour = new Date(lead.pickupDateTime).getHours();
-
           const isNightTime = hour >= 17 || hour < 5;
 
           return (
             <div className="relative group cursor-pointer">
               <span
                 className={`text-slate-800 hover:text-blue-600 transition-colors px-2 py-1 rounded 
-             ${isNightTime ? "bg-red-900 text-white font-semibold" : ""}
-        `}
+                ${isNightTime ? "bg-red-900 text-white font-semibold" : ""}`}
               >
                 {dateTimeStr}
               </span>
-
               <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-50 w-auto bg-slate-800 text-white rounded-lg shadow-xl px-3 py-2 whitespace-nowrap">
                 <div className="text-xs font-semibold text-slate-300 mb-1">
                   Pickup Time
@@ -373,6 +357,7 @@ export default function LeadsTable() {
             </div>
           );
         }
+
         if (col.key === "dropDateTime") {
           const dateTimeStr = formatDateTime(String(val));
           const time12Hour = formatTime12Hour(lead.dropDateTime);
@@ -393,6 +378,7 @@ export default function LeadsTable() {
 
         if (col.key === "tripType")
           return formatTripType(val as any) || String(val);
+
         if (col.key === "aged") {
           const leadDate = new Date(lead.date);
           const currentDate = new Date();
@@ -401,7 +387,6 @@ export default function LeadsTable() {
           const age = diffDays >= 0 ? diffDays : 0;
 
           let bgClass = "";
-
           if (age >= 0 && age <= 5) {
             bgClass = "bg-green-500 text-white px-2 py-1 rounded";
           } else if (age >= 6 && age <= 10) {
@@ -438,11 +423,9 @@ export default function LeadsTable() {
 
         if (col.key === "days") {
           if (lead.days === null || lead.days === undefined) return "—";
-
           const days = Number(lead.days);
 
           let bgClass = "";
-
           if (days >= 0 && days <= 1) {
             bgClass = "bg-red-500 text-white";
           } else if (days > 1 && days <= 7) {
@@ -461,11 +444,9 @@ export default function LeadsTable() {
         if (col.key === "passengerTotal") {
           if (lead.passengerTotal === null || lead.passengerTotal === undefined)
             return "—";
-
           const pax = Number(lead.passengerTotal);
 
           let bgClass = "";
-
           if (pax >= 0 && pax <= 4) {
             bgClass = "bg-red-500 text-white";
           } else if (pax > 5 && pax <= 50) {
@@ -482,11 +463,13 @@ export default function LeadsTable() {
             </span>
           );
         }
+
         if (col.key === "vehicles" && Array.isArray(val)) {
           return val
             .map((v: any) => `${v.quantity}x ${v.category} (${v.type})`)
             .join(", ");
         }
+
         if (col.key === "itinerary" && Array.isArray(val)) {
           return val.length > 0 ? val.join(", ") : "—";
         }
@@ -497,21 +480,20 @@ export default function LeadsTable() {
               <span className="font-semibold text-slate-800 hover:text-blue-600 transition-colors">
                 {String(val)}
               </span>
-              {/* Hover Tooltip */}
-              <div className="absolute left-0 top-full mt-1 hidden group-hover:block z-50 w-auto bg-slate-800 text-white  rounded-lg shadow-xl p-3">
+              <div className="absolute left-0 top-full mt-1 hidden group-hover:block z-50 w-auto bg-slate-800 text-white rounded-lg shadow-xl p-3">
                 <div className="font-semibold mb-1 border-b border-slate-600 pb-1">
                   {String(val)}
                 </div>
                 <div className="space-y-1">
-                  <div className="flex items-center gap-2 font-extrabold text-xl ">
+                  <div className="flex items-center gap-2 font-extrabold text-xl">
                     <span className="text-slate-400">📞</span>
                     <span>{lead.customerPhone || "-"}</span>
                   </div>
-                  <div className="flex items-center gap-2 font-extrabold text-xl ">
+                  <div className="flex items-center gap-2 font-extrabold text-xl">
                     <span className="text-slate-400">📞</span>
                     <span>{lead.alternatePhone || "-"}</span>
                   </div>
-                  <div className="flex items-center gap-2 font-semibold ">
+                  <div className="flex items-center gap-2 font-semibold">
                     <span className="text-slate-400">🌐</span>
                     <span>{lead.countryName || "-"}</span>
                   </div>
@@ -533,13 +515,12 @@ export default function LeadsTable() {
               <span className="font-semibold text-slate-800 hover:text-blue-600 transition-colors">
                 {String(val)}
               </span>
-              {/* Hover Tooltip */}
-              <div className="absolute left-0 top-full mt-1 hidden group-hover:block z-50 w-48 bg-slate-800 text-white  rounded-lg shadow-xl p-3">
+              <div className="absolute left-0 top-full mt-1 hidden group-hover:block z-50 w-48 bg-slate-800 text-white rounded-lg shadow-xl p-3">
                 <div className="font-semibold mb-1 border-b border-slate-600 pb-1">
                   {String(val)}
                 </div>
                 <div className="space-y-1">
-                  <div className="flex items-center gap-2 font-sm  ">
+                  <div className="flex items-center gap-2 font-sm">
                     <span className="text-slate-400">Pets Names -</span>
                     <span>{lead.petsNames || "-"}</span>
                   </div>
@@ -555,13 +536,12 @@ export default function LeadsTable() {
               <span className="font-semibold text-slate-800 hover:text-blue-600 transition-colors">
                 {String(val)}
               </span>
-              {/* Hover Tooltip */}
-              <div className="absolute left-0 top-full mt-1 hidden group-hover:block z-50 w-48 bg-slate-800 text-white  rounded-lg shadow-xl p-3">
+              <div className="absolute left-0 top-full mt-1 hidden group-hover:block z-50 w-48 bg-slate-800 text-white rounded-lg shadow-xl p-3">
                 <div className="font-semibold mb-1 border-b border-slate-600 pb-1">
                   {String(val)}
                 </div>
                 <div className="space-y-1">
-                  <div className="flex items-center gap-2 font-sm  ">
+                  <div className="flex items-center gap-2 font-sm">
                     <span className="text-slate-400">Small Baggage -</span>
                     <span>{lead.smallBaggage || "-"}</span>
                   </div>
@@ -604,7 +584,6 @@ export default function LeadsTable() {
   const bannerColumnsMeta = useMemo(() => {
     const meta = columns
       .map((column, index) => {
-        // width removed
         const bannerCol = TABLE_BANNER_COLUMNS.find(
           (c) => c.key === column.key,
         );
@@ -660,28 +639,36 @@ export default function LeadsTable() {
     const endDate = endMonth ? new Date(`${endMonth}T23:59:59`) : null;
 
     return leads.filter((lead) => {
+      // Status filter
       if (statusFilter !== "All" && lead.status !== statusFilter) {
         return false;
       }
 
+      // City filter
       if (cityFilter !== "All" && lead.city !== cityFilter) {
         return false;
       }
 
+      // Year filter — pickupDateTime se
       if (yearFilter !== "All") {
-        const leadYear = new Date(lead.date).getFullYear().toString();
+        if (!lead.pickupDateTime) return false;
+        const leadYear = new Date(lead.pickupDateTime).getFullYear().toString();
         if (leadYear !== yearFilter) {
           return false;
         }
       }
 
+      // Month filter — pickupDateTime se
       if (selectedMonth) {
-        const leadMonth = new Date(lead.date).getMonth() + 1;
+        if (!lead.pickupDateTime) return false;
+        const leadMonth = new Date(lead.pickupDateTime).getMonth() + 1;
         const selectedMonthNum = parseInt(selectedMonth);
         if (leadMonth !== selectedMonthNum) {
           return false;
         }
       }
+
+      // Search filter
       if (term) {
         const haystack = [
           lead.customerName,
@@ -724,16 +711,19 @@ export default function LeadsTable() {
         }
       }
 
+      // Date range filter — pickupDateTime se
       if (startDate || endDate) {
-        const leadDate = new Date(`${lead.date}T00:00`);
-        if (startDate && leadDate < startDate) {
+        if (!lead.pickupDateTime) return false;
+        const pickupDate = new Date(lead.pickupDateTime);
+        if (startDate && pickupDate < startDate) {
           return false;
         }
-        if (endDate && leadDate > endDate) {
+        if (endDate && pickupDate > endDate) {
           return false;
         }
       }
 
+      // Pax filter
       if (
         selectedPax.length > 0 &&
         !selectedPax.includes(Number(lead.passengerTotal))
@@ -741,6 +731,7 @@ export default function LeadsTable() {
         return false;
       }
 
+      // Days filter
       if (
         selectedDays.length > 0 &&
         !selectedDays.includes(Number(lead.days))
@@ -830,7 +821,7 @@ export default function LeadsTable() {
       <table className="min-w-full text-xs border border-collapse border-white sm:text-sm">
         <thead>
           <tr>
-            {banners.map((group, index) => {
+            {banners.map((group) => {
               const groupBgClass = group.label
                 ? (BANNER_GROUP_BG_CLASS[group.label] ?? "bg-slate-900")
                 : "bg-white border-b-0";
@@ -851,7 +842,7 @@ export default function LeadsTable() {
             })}
           </tr>
           <tr>
-            {cols.map((column, index) => {
+            {cols.map((column) => {
               const bannerCol = TABLE_BANNER_COLUMNS.find(
                 (c) => c.key === column.key,
               );
@@ -861,7 +852,7 @@ export default function LeadsTable() {
                 : "bg-slate-900";
               const headerTextClass = "text-white";
 
-              const headerClassName = `sticky top-[30px] border border-white ${headerBgClass} px-1  text-left text-[11px] font-bold uppercase tracking-wide ${headerTextClass} sm:text-xs z-20 shadow-[0_2px_4px_-2px_rgba(0,0,0,0.1)]`;
+              const headerClassName = `sticky top-[30px] border border-white ${headerBgClass} px-1 text-left text-[11px] font-bold uppercase tracking-wide ${headerTextClass} sm:text-xs z-20 shadow-[0_2px_4px_-2px_rgba(0,0,0,0.1)]`;
 
               return (
                 <th
@@ -869,7 +860,7 @@ export default function LeadsTable() {
                   scope="col"
                   className={headerClassName.trim()}
                 >
-                  <div className="relative flex items-center justify-between  w-full">
+                  <div className="relative flex items-center justify-between w-full">
                     <span className="text-center w-full">{column.label}</span>
                   </div>
                 </th>
@@ -881,7 +872,7 @@ export default function LeadsTable() {
           {loading ? (
             <tr>
               <td
-                className=" text-sm font-semibold text-center border border-white text-slate-500"
+                className="text-sm font-semibold text-center border border-white text-slate-500"
                 colSpan={cols.length}
               >
                 Loading...
@@ -919,13 +910,13 @@ export default function LeadsTable() {
                     column.key === "itinerary";
 
                   const cellClassName = `
-        whitespace-nowrap
-        border border-white
-        text-slate-800
-        md:px-2 md:py-1
-        ${isAddress ? "text-[12px] !font-normal" : "text-sm font-extrabold"}
-        ${bgClass}
-    `;
+                    whitespace-nowrap
+                    border border-white
+                    text-slate-800
+                    md:px-2 md:py-1
+                    ${isAddress ? "text-[12px] !font-normal" : "text-sm font-extrabold"}
+                    ${bgClass}
+                  `;
 
                   return (
                     <td key={column.key} className={cellClassName.trim()}>
@@ -994,23 +985,17 @@ export default function LeadsTable() {
       : "0.0";
 
   if (detailLead && isEditMode) {
-    console.log(
-      "detailLead is set, rendering SalesEditLeadForm",
-      detailLead.id,
-    );
     return (
       <div className="w-full">
         <SalesEditLeadForm
           initialData={detailLead}
           isEditMode={isEditMode}
           onSuccess={() => {
-            console.log("SalesEditLeadForm success callback");
             setDetailLead(null);
             setIsEditMode(false);
             dispatch(fetchMyAssignedLeads(1));
           }}
           onCancel={() => {
-            console.log("SalesEditLeadForm cancel callback");
             setDetailLead(null);
             setIsEditMode(false);
           }}
@@ -1025,7 +1010,7 @@ export default function LeadsTable() {
         {/* Stats Header */}
         <div className="p-3 bg-orange-100 rounded-md">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className=" border-l-8 border-orange-500 bg-white px-3">
+            <div className="border-l-8 border-orange-500 bg-white px-3">
               <h2 className="text-2xl md:text-4xl font-bold text-left text-orange-600">
                 Lead Manager TS
               </h2>
@@ -1034,8 +1019,7 @@ export default function LeadsTable() {
               </p>
             </div>
 
-            <div className="grid grid-cols-4 md:grid-cols-8 gap-2 w-full md:w-auto  items-center mr-28">
-              {/** Each box uses same class for uniform size */}
+            <div className="grid grid-cols-4 md:grid-cols-8 gap-2 w-full md:w-auto items-center mr-28">
               <div className="flex flex-col items-center justify-center bg-black px-2 py-2 mr-6 rounded-lg shadow-md border border-white min-w-[80px] h-20">
                 <div className="font-extrabold text-sm text-white">
                   Total Leads
@@ -1091,18 +1075,18 @@ export default function LeadsTable() {
               </div>
 
               <div className="flex flex-col items-center justify-center bg-green-800 px-2 py-2 rounded-lg shadow-md border border-green-800 min-w-[80px] h-20">
-                <div className="font-extrabold text-xl text-white"> BOOK</div>
+                <div className="font-extrabold text-xl text-white">BOOK</div>
                 <div className="text-lg font-extrabold text-white">
                   {bookLeads}
                 </div>
-                <div className="text-md text-white">({totalPercentage}%)</div>
+                <div className="text-md text-white">({bookPercentage}%)</div>
               </div>
             </div>
           </div>
         </div>
 
         {/* Sticky Filter Section */}
-        <div className="sticky md:top-28 z-3 bg-white shadow-sm rounded-2xl ">
+        <div className="sticky md:top-28 z-3 bg-white shadow-sm rounded-2xl">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
             <div className="flex flex-col gap-1">
               <input
@@ -1112,6 +1096,7 @@ export default function LeadsTable() {
                 className="w-full px-3 py-2 text-sm font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
               />
             </div>
+
             <div className="flex flex-col gap-1">
               <select
                 value={statusFilter}
@@ -1266,14 +1251,22 @@ export default function LeadsTable() {
                 ))}
               </select>
             </div>
+
             {/* Month Selection and Date Range Section */}
             <div className="flex flex-col md:flex-row items-start md:items-center gap-4 lg:col-span-6 mt-2">
               <div className="flex gap-1 overflow-x-auto pb-2">
                 {MONTH_OPTIONS.map((month) => {
-                  const currentMonth = new Date().getMonth() + 1;
-
-                  const isCurrentMonth = Number(month.value) === currentMonth;
                   const isActive = selectedMonth === month.value;
+
+                  // Us month ke leads count — pickupDateTime se
+                 const monthLeadCount = monthlyStats
+  .filter((stat) => {
+    const statMonth = stat.month.split("-")[1]; // "2025-04" → "04"
+    const statYear = stat.month.split("-")[0];  // "2025-04" → "2025"
+    const yearMatch = yearFilter === "All" ? true : statYear === yearFilter;
+    return statMonth === month.value && yearMatch;
+  })
+  .reduce((sum, stat) => sum + Number(stat.leadCount), 0);
 
                   return (
                     <button
@@ -1282,15 +1275,22 @@ export default function LeadsTable() {
                       onClick={() =>
                         setSelectedMonth(isActive ? null : month.value)
                       }
-                      className={`text-md font-extrabold rounded-lg transition-all shadow-sm min-w-[50px] h-9 ${
-                        isCurrentMonth
-                          ? "bg-blue-600 text-white ring-2 ring-blue-400"
-                          : isActive
-                            ? "bg-green-600 text-white"
-                            : "bg-slate-100 text-slate-700 border border-slate-300 hover:bg-slate-200"
+                      className={`text-md font-extrabold rounded-lg transition-all shadow-sm min-w-[50px] h-9 px-2 ${
+                        isActive
+                          ? "bg-green-600 text-white"
+                          : "bg-slate-100 text-slate-700 border border-slate-300 hover:bg-slate-200"
                       }`}
                     >
                       {month.label}
+                      <span
+                        className={`ml-1 text-xs font-bold rounded-full px-1.5 py-0.5 ${
+                          isActive
+                            ? "bg-white text-green-700"
+                            : "bg-red-700 text-white"
+                        }`}
+                      >
+                        {monthLeadCount}
+                      </span>
                     </button>
                   );
                 })}
@@ -1381,7 +1381,6 @@ export default function LeadsTable() {
             </div>
           </div>
 
-          {/* Use the Pagination component */}
           <Pagination
             currentPage={currentPage}
             totalPages={page || 1}

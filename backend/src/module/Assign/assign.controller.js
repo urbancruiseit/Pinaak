@@ -48,7 +48,7 @@ const getMyAssignedLeads = asyncHandler(async (req, res) => {
   const limit = 13;
   const offset = (page - 1) * limit;
   const userId = req.user.id;
-  const { leads, totalCount } = await getLeadsByAdvisorId(
+  const { leads, totalCount,monthlyStats } = await getLeadsByAdvisorId(
     userId,
     limit,
     offset,
@@ -64,6 +64,7 @@ const getMyAssignedLeads = asyncHandler(async (req, res) => {
         totalPages: Math.ceil(totalCount / limit),
         hasNextPage: page * limit < totalCount,
         leads,
+        monthlyStats,
       },
       leads.length
         ? "Assigned leads fetched successfully"

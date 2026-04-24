@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-  useCallback,
-} from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import type { RootState, AppDispatch } from "@/app/redux/store";
 import { fetchMyAssignedLeads } from "@/app/features/access/accessSlice";
@@ -19,165 +13,118 @@ import {
 import type { LeadRecord } from "@/types/types";
 import { X, Bell, CalendarRange, Clock, User, Phone, Mail } from "lucide-react";
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
 const formatDate = (date?: string) => {
   if (!date) return "-";
   const d = new Date(date);
   if (isNaN(d.getTime())) return "-";
-  return d.toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
+  return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 };
 
 const formatDateTime = (date?: string) => {
   if (!date) return "-";
   const d = new Date(date);
   if (isNaN(d.getTime())) return "-";
-  return d.toLocaleString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return d.toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
 };
 
-// ─── Component ──────────────────────────────────────────────────────────────
+const isNewStatus = (status?: string) => {
+  const s = (status ?? "").trim();
+  return  s === "-" || s === "NEW";
+};
 
 export default function GlobalLeadPopup() {
   const dispatch = useDispatch<AppDispatch>();
-
-  const [isLoginPage, setIsLoginPage] = useState(false);
-
-  useLayoutEffect(() => {
-    const path = window.location.pathname;
-    if (path === "/" || path === "/login" || path === "/page") {
-      setIsLoginPage(true);
-    }
-  }, []);
-
-  const { leads } = useSelector(
-    (state: RootState) => state.travelAdvisor.assignedLeads,
-  );
+  const { currentUser } = useSelector((state: RootState) => state.user);
+  const { leads } = useSelector((state: RootState) => state.travelAdvisor.assignedLeads);
 
   const [lead, setLead] = useState<LeadRecord | null>(null);
   const [isAnimatingOut, setIsAnimatingOut] = useState(false);
 
-  const pendingLeadIdsRef = useRef<Set<string>>(new Set());
-  const leadsMapRef = useRef<Map<string, LeadRecord>>(new Map());
-  const seenLeadIdsRef = useRef<Set<string> | null>(null);
+  // Active leads jinhe dikhana hai (status new/empty) — id → LeadRecord
+  const activeLeadsMapRef = useRef<Map<string, LeadRecord>>(new Map());
+  // Jinhe initial load pe already dekh liya — pehli baar popup mat dikhaao
+  const initialSeenRef = useRef<Set<string> | null>(null);
+  // Currently screen pe kaun sa lead dikha raha hai
   const currentLeadIdRef = useRef<string | null>(null);
-  const snoozeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const snoozedIdsRef = useRef<Set<string>>(new Set());
+  // Re-show timers — id → timer
+  const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
-  // Koi bhi non-new status ek baar aane ke baad permanently block
-  const permanentlyBlockedIdsRef = useRef<Set<string>>(new Set());
-
-  // ─── Helper: Status check ─────────────────────────────────────────────────
-  // Sirf "new" ya empty/null/undefined status wale leads allow karo
-  // Baaki koi bhi status (KYC, contacted, closed, in-progress, etc.) block hai
-
-  const isBlocked = useCallback((id: string, status?: string): boolean => {
-    // Permanently blocked hai (pehle se non-new status aa chuka hai)
-    if (permanentlyBlockedIdsRef.current.has(id)) return true;
-
-    // Current status check karo
-    const s = (status ?? "").trim().toLowerCase();
-    return s !== "-" && s !== "new";
-  }, []);
-
-  // ─── Cleanup on unmount ───────────────────────────────────────────────────
-
+  // ─── Cleanup ──────────────────────────────────────────────────────────────
   useEffect(() => {
     return () => {
-      if (snoozeTimerRef.current) clearTimeout(snoozeTimerRef.current);
+      timersRef.current.forEach((t) => clearTimeout(t));
     };
   }, []);
 
-  // ─── Close helper ─────────────────────────────────────────────────────────
-
-  const handleClose = useCallback(() => {
+  // ─── Close with animation (internal) ─────────────────────────────────────
+  const closePopup = useCallback((cb?: () => void) => {
     setIsAnimatingOut(true);
     setTimeout(() => {
       setLead(null);
       currentLeadIdRef.current = null;
       setIsAnimatingOut(false);
+      cb?.();
     }, 300);
   }, []);
 
-  // ─── Show next pending lead ───────────────────────────────────────────────
-
-  const showNextPending = useCallback(() => {
+  // ─── Show a specific lead ─────────────────────────────────────────────────
+  const showLead = useCallback((l: LeadRecord) => {
+    // Agar status ab bhi new hai tabhi dikhaao
+    if (!isNewStatus(l.status)) return;
+    // Agar pehle se koi aur dikha raha hai toh wait — timer baad mein retry karega
     if (currentLeadIdRef.current !== null) return;
-    if (pendingLeadIdsRef.current.size === 0) return;
 
-    const nextId = pendingLeadIdsRef.current.values().next().value as
-      | string
-      | undefined;
-    if (!nextId) return;
-
-    // Snoozed lead skip karo
-    if (snoozedIdsRef.current.has(nextId)) {
-      pendingLeadIdsRef.current.delete(nextId);
-      return;
-    }
-
-    const nextLead = leadsMapRef.current.get(nextId);
-
-    // Blocked ya lead nahi mila → skip
-    if (!nextLead || isBlocked(nextId, nextLead.status)) {
-      pendingLeadIdsRef.current.delete(nextId);
-      return;
-    }
-
-    currentLeadIdRef.current = nextId;
-    setLead(nextLead);
+    currentLeadIdRef.current = String(l.id);
+    setLead(l);
     setIsAnimatingOut(false);
-  }, [isBlocked]);
+  }, []);
 
-  // ─── Snooze handler ──────────────────────────────────────────────────────
+  // ─── Schedule re-show after delay ────────────────────────────────────────
+  const scheduleReshow = useCallback(
+    (leadId: string, delayMs: number) => {
+      // Purana timer clear karo agar tha
+      const existing = timersRef.current.get(leadId);
+      if (existing) clearTimeout(existing);
 
+      const timer = setTimeout(() => {
+        timersRef.current.delete(leadId);
+        const latestLead = activeLeadsMapRef.current.get(leadId);
+        if (latestLead && isNewStatus(latestLead.status)) {
+          showLead(latestLead);
+        }
+      }, delayMs);
+
+      timersRef.current.set(leadId, timer);
+    },
+    [showLead]
+  );
+
+  // ─── Close button — 10 sec baad wapas ────────────────────────────────────
+  const handleClose = useCallback(() => {
+    const closedId = currentLeadIdRef.current;
+    closePopup(() => {
+      if (closedId && activeLeadsMapRef.current.has(closedId)) {
+        scheduleReshow(closedId, 10 * 1000); // 10 seconds
+      }
+    });
+  }, [closePopup, scheduleReshow]);
+
+  // ─── Snooze button — 5 min baad wapas ────────────────────────────────────
   const handleSnooze = useCallback(() => {
     const snoozedId = currentLeadIdRef.current;
-    if (!snoozedId) return;
+    closePopup(() => {
+      if (snoozedId && activeLeadsMapRef.current.has(snoozedId)) {
+        scheduleReshow(snoozedId, 5 * 60 * 1000); // 5 minutes
+      }
+    });
+  }, [closePopup, scheduleReshow]);
 
-    if (snoozeTimerRef.current) clearTimeout(snoozeTimerRef.current);
-
-    snoozedIdsRef.current.add(snoozedId);
-    pendingLeadIdsRef.current.delete(snoozedId);
-
-    setIsAnimatingOut(true);
-    setTimeout(() => {
-      setLead(null);
-      currentLeadIdRef.current = null;
-      setIsAnimatingOut(false);
-
-      snoozeTimerRef.current = setTimeout(
-        () => {
-          snoozedIdsRef.current.delete(snoozedId);
-          const updatedLead = leadsMapRef.current.get(snoozedId);
-
-          // Snooze khatam hone pe bhi check karo — status change hua tha?
-          if (updatedLead && !isBlocked(snoozedId, updatedLead.status)) {
-            pendingLeadIdsRef.current.add(snoozedId);
-            showNextPending();
-          }
-        },
-        5 * 60 * 1000,
-      );
-    }, 300);
-  }, [showNextPending, isBlocked]);
-
-  // ─── Socket.io setup ──────────────────────────────────────────────────────
-
+  // ─── Socket + initial fetch ───────────────────────────────────────────────
   useEffect(() => {
+    if (!currentUser) return;
+
     dispatch(fetchMyAssignedLeads(1));
-
     connectSocket();
-
     listenToLeadUpdates(() => {
       dispatch(fetchMyAssignedLeads(1));
     });
@@ -186,93 +133,86 @@ export default function GlobalLeadPopup() {
       removeLeadListeners();
       disconnectSocket();
     };
-  }, []);
+  }, [currentUser]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ─── Process incoming leads ───────────────────────────────────────────────
-
+  // ─── Process leads from Redux ─────────────────────────────────────────────
   useEffect(() => {
-    if (!leads || leads.length === 0) return;
+    if (!currentUser || !leads || leads.length === 0) return;
 
-    // Latest data map update karo
-    const newMap = new Map<string, LeadRecord>();
-    leads.forEach((l) => newMap.set(String(l.id), l));
-    leadsMapRef.current = newMap;
-
-    // ── FIRST FETCH ──────────────────────────────────────────────────────────
-    if (seenLeadIdsRef.current === null) {
+    // ── Pehli baar leads aaye — baseline set karo, popup mat dikhaao ──
+    if (initialSeenRef.current === null) {
       const baseline = new Set<string>();
-
       leads.forEach((l) => {
         const id = String(l.id);
         baseline.add(id);
-
-        // Non-new status hai → permanently block, pending mein mat daalo
-        if (isBlocked(id, l.status)) {
-          permanentlyBlockedIdsRef.current.add(id);
-          return;
+        if (isNewStatus(l.status)) {
+          // Active map mein daalo lekin popup nahi — ye purane leads hain
+          activeLeadsMapRef.current.set(id, l);
         }
-
-        pendingLeadIdsRef.current.add(id);
       });
-
-      seenLeadIdsRef.current = baseline;
-      showNextPending();
-      return;
+      initialSeenRef.current = baseline;
+      return; // ← Pehli baar popup bilkul nahi
     }
 
-    // ── SUBSEQUENT FETCHES ───────────────────────────────────────────────────
-
+    // ── Subsequent updates ──
     leads.forEach((l) => {
       const id = String(l.id);
+      const isNew = isNewStatus(l.status);
 
-      // Status "new" ya empty nahi hai → permanently block karo
-      const s = (l.status ?? "").trim().toLowerCase();
-      if (s !== "" && s !== "new") {
-        permanentlyBlockedIdsRef.current.add(id);
-      }
+      if (!isNew) {
+        // Status update ho gaya — hamesha ke liye hataao
+        activeLeadsMapRef.current.delete(id);
 
-      // Naya lead hai
-      if (!seenLeadIdsRef.current!.has(id)) {
-        seenLeadIdsRef.current!.add(id);
-
-        // Blocked nahi hai toh hi queue mein daalo
-        if (!isBlocked(id, l.status)) {
-          pendingLeadIdsRef.current.add(id);
-        }
-      }
-    });
-
-    // Pending queue mein jo blocked ho gaye unhe hataao
-    pendingLeadIdsRef.current.forEach((id) => {
-      if (permanentlyBlockedIdsRef.current.has(id)) {
-        pendingLeadIdsRef.current.delete(id);
-        snoozedIdsRef.current.delete(id);
-
-        // Agar abhi yahi popup mein chal raha tha toh band karo
+        // Agar ye abhi screen pe dikha raha hai toh close karo (bina reschedule)
         if (currentLeadIdRef.current === id) {
-          handleClose();
+          closePopup();
         }
-      }
-    });
 
-    showNextPending();
-  }, [leads, handleClose, showNextPending, isBlocked]);
+        // Pending timer bhi cancel karo
+        const t = timersRef.current.get(id);
+        if (t) {
+          clearTimeout(t);
+          timersRef.current.delete(id);
+        }
+        return;
+      }
+
+      // Status new hai
+      const isReallyNew = !initialSeenRef.current!.has(id);
+      activeLeadsMapRef.current.set(id, l); // Latest data update karo
+      initialSeenRef.current!.add(id);
+
+      if (isReallyNew) {
+        // Bilkul naya lead — turant dikhaao
+        showLead(l);
+      }
+      // Purana lead jo already active map mein hai — timer handle karega
+    });
+  }, [leads, currentUser]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ─── Logout reset ─────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!currentUser) {
+      setLead(null);
+      currentLeadIdRef.current = null;
+      activeLeadsMapRef.current.clear();
+      initialSeenRef.current = null;
+      timersRef.current.forEach((t) => clearTimeout(t));
+      timersRef.current.clear();
+    }
+  }, [currentUser]);
 
   // ─── Render ───────────────────────────────────────────────────────────────
-
-  if (!lead || isLoginPage) return null;
+  if (!lead || !currentUser) return null;
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
-      {/* Overlay */}
       <div
         className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-all duration-300 ${
           isAnimatingOut ? "opacity-0" : "opacity-100"
         }`}
         onClick={handleClose}
       />
-
-      {/* Card */}
       <div
         style={{
           animation: isAnimatingOut
@@ -282,7 +222,6 @@ export default function GlobalLeadPopup() {
         className="relative w-full max-w-2xl mx-4"
       >
         <div className="relative bg-gradient-to-br from-white via-indigo-50/90 to-purple-50/90 backdrop-blur-sm border border-white/30 rounded-3xl shadow-2xl shadow-indigo-500/30 overflow-hidden">
-          {/* Animated border glow */}
           <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-orange-400 via-pink-400 to-purple-400 opacity-75 blur-xl animate-pulse" />
           <div className="absolute inset-[1px] rounded-3xl bg-gradient-to-br from-white via-indigo-50/90 to-purple-50/90" />
 
@@ -299,7 +238,6 @@ export default function GlobalLeadPopup() {
                   🚀 New Lead Arrived!
                 </h2>
               </div>
-
               <button
                 onClick={handleClose}
                 className="w-8 h-8 bg-white/80 hover:bg-red-100 text-gray-500 hover:text-red-600 rounded-full flex items-center justify-center transition-all duration-200 shadow-sm hover:shadow-md"
@@ -311,33 +249,24 @@ export default function GlobalLeadPopup() {
             {/* Body */}
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 shadow-inner border border-white/50">
               <div className="space-y-4">
-                {/* Arrival time */}
                 <div className="flex items-start gap-3 text-gray-700 pb-2 border-b border-gray-100">
                   <Clock className="w-5 h-5 mt-0.5 text-indigo-500" />
                   <div className="flex-1">
-                    <span className="font-semibold text-gray-800">
-                      Arrival Time:
-                    </span>
+                    <span className="font-semibold text-gray-800">Arrival Time:</span>
                     <span className="ml-2 text-sm font-medium text-indigo-600">
                       {formatDateTime(lead.createdAt || lead.date)}
                     </span>
                   </div>
                 </div>
 
-                {/* Customer name */}
                 <div className="flex items-start gap-3 text-gray-700 pb-2 border-b border-gray-100">
                   <User className="w-5 h-5 mt-0.5 text-indigo-500" />
                   <div className="flex-1">
-                    <span className="font-semibold text-gray-800">
-                      Customer Name:
-                    </span>
-                    <span className="ml-2 text-base font-bold text-indigo-700">
-                      {lead.fullName}
-                    </span>
+                    <span className="font-semibold text-gray-800">Customer Name:</span>
+                    <span className="ml-2 text-base font-bold text-indigo-700">{lead.fullName}</span>
                   </div>
                 </div>
 
-                {/* Contact info */}
                 {(lead.customerEmail || lead.customerPhone) && (
                   <div className="flex items-start gap-3 text-gray-700 pb-2 border-b border-gray-100">
                     <div className="flex gap-2 flex-wrap">
@@ -357,25 +286,18 @@ export default function GlobalLeadPopup() {
                   </div>
                 )}
 
-                {/* Travel details */}
                 <div className="flex items-start gap-3 text-gray-700">
                   <CalendarRange className="w-5 h-5 mt-0.5 text-indigo-500" />
                   <div className="flex-1">
-                    <span className="font-semibold text-gray-800 block mb-2">
-                      Travel Details:
-                    </span>
+                    <span className="font-semibold text-gray-800 block mb-2">Travel Details:</span>
                     <div className="grid grid-cols-2 gap-3 text-sm">
                       <div className="bg-indigo-50 rounded-lg p-2">
                         <div className="text-xs text-gray-500">Start Date</div>
-                        <div className="font-semibold text-indigo-700">
-                          {formatDate(lead.pickupDateTime)}
-                        </div>
+                        <div className="font-semibold text-indigo-700">{formatDate(lead.pickupDateTime)}</div>
                       </div>
                       <div className="bg-indigo-50 rounded-lg p-2">
                         <div className="text-xs text-gray-500">End Date</div>
-                        <div className="font-semibold text-indigo-700">
-                          {formatDate(lead.dropDateTime)}
-                        </div>
+                        <div className="font-semibold text-indigo-700">{formatDate(lead.dropDateTime)}</div>
                       </div>
                     </div>
                     {lead.days && (
@@ -394,9 +316,8 @@ export default function GlobalLeadPopup() {
                 onClick={handleClose}
                 className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-3 rounded-xl font-semibold transition-all duration-200"
               >
-                Close
+                Close (10s mein wapas)
               </button>
-
               <button
                 onClick={handleSnooze}
                 className="flex-1 bg-amber-100 hover:bg-amber-200 text-amber-700 py-3 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2"
@@ -409,16 +330,9 @@ export default function GlobalLeadPopup() {
         </div>
       </div>
 
-      {/* Animations */}
       <style>{`
-        @keyframes zoomIn {
-          0%   { opacity: 0; transform: scale(0.7); }
-          100% { opacity: 1; transform: scale(1);   }
-        }
-        @keyframes zoomOut {
-          0%   { opacity: 1; transform: scale(1);   }
-          100% { opacity: 0; transform: scale(0.7); }
-        }
+        @keyframes zoomIn { 0% { opacity: 0; transform: scale(0.7); } 100% { opacity: 1; transform: scale(1); } }
+        @keyframes zoomOut { 0% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(0.7); } }
       `}</style>
     </div>
   );

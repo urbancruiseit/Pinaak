@@ -84,35 +84,32 @@ export const assignTravelAdvisorApi = async (
   }
 };
 
+
 export interface AssignedLeadsResponse {
-  page: number;
-  limit: number;
+  leads: LeadRecord[];
   totalCount: number;
   totalPages: number;
+  page: number;
+  limit: number;
   hasNextPage: boolean;
-  leads: LeadRecord[];
+  monthlyStats: {
+    month: string;
+    monthName: string;
+    year: number;
+    leadCount: number;
+  }[];
 }
 
-export const getMyAssignedLeadsApi = async (
-  page: number = 1,
-): Promise<AssignedLeadsResponse> => {
+
+export const getMyAssignedLeadsApi = async (page: number = 1) => {
   try {
-    const response = await axiosInstance.get<
-      ApiResponse<AssignedLeadsResponse>
-    >(`/assign/myleads?page=${page}`);
-
-    const data = response?.data?.data;
-
+    const response = await axiosInstance.get(`/assign/myleads?page=${page}`);
+    
+    const data = response?.data?.data; 
     if (!data) throw new Error("Invalid response from server");
-
-    return data;
+    
+    return data; // ← poora response nahi, sirf data
   } catch (error: any) {
-    const errorMessage =
-      error?.response?.data?.message ||
-      error?.response?.data?.error ||
-      error.message ||
-      "Failed to fetch assigned leads";
-
-    throw new Error(errorMessage);
+    throw new Error(error?.response?.data?.message || error.message);
   }
 };

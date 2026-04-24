@@ -651,7 +651,7 @@ const LeadsForm: React.FC = () => {
                   <input
                     type="datetime-local"
                     {...register("date")}
-                    max={new Date().toISOString().slice(0, 10) + "T23:59"}
+                   
                     className="w-full py-2 border bg-white px-12 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <Calendar

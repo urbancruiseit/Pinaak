@@ -1,4 +1,7 @@
-import { getMonthlyEnquiry } from "./report.model.js";
+import { getLeadCountByDateForYear, getMonthlyEnquiry } from "./report.model.js";
+import { ApiError } from "../../utils/ApiError.js";
+import { ApiResponse } from "../../utils/ApiResponse.js";
+import { asyncHandler } from "../../utils/asyncHandler.js";
 
 export const monthlyEnquiryReport = async (req, res) => {
   try {
@@ -30,3 +33,20 @@ export const monthlyEnquiryReport = async (req, res) => {
     });
   }
 };
+
+
+
+
+
+
+export const getLeadCountByDateForYearController = asyncHandler(async (req, res) => {
+  const { year } = req.query;
+
+  const result = await getLeadCountByDateForYear(
+    year ? parseInt(year) : undefined
+  );
+
+  res
+    .status(200)
+    .json(new ApiResponse(200, result, "Lead count fetched successfully"));
+});

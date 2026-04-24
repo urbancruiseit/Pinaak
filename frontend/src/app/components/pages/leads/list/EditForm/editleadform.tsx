@@ -414,7 +414,7 @@ const EditLeadForm: React.FC<{
               {/* Lead Date */}
               <div>
                 <label className="block text-md font-extrabold text-gray-700 mb-1">
-                  Lead Date &amp; Time
+                  Lead Date & Time
                 </label>
                 <div className="relative">
                   <Info
@@ -424,7 +424,7 @@ const EditLeadForm: React.FC<{
                   <input
                     type="datetime-local"
                     {...register("date")}
-                    max={minDate}
+                    
                     className="w-full py-2 border bg-white px-12 border-gray-300 rounded-md"
                   />
                   <Calendar

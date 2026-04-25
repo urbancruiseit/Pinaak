@@ -14,9 +14,55 @@ import {
   SERVICE_TYPE_COLOR_MAP,
 } from "./leadstabledata";
 
+// ============ TIMEZONE HELPER ============
+
+const IST_TIMEZONE = "Asia/Kolkata";
+
+const getISTDateParts = (isoDateTime: string) => {
+  const date = new Date(isoDateTime);
+  if (Number.isNaN(date.getTime())) return null;
+
+  const formatter = new Intl.DateTimeFormat("en-IN", {
+    timeZone: IST_TIMEZONE,
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+
+  const parts = formatter.formatToParts(date);
+  const get = (type: string) =>
+    parts.find((p) => p.type === type)?.value ?? "00";
+
+  const rawHour = get("hour");
+
+  return {
+    day: get("day"),
+    month: get("month"),
+    year: get("year"),
+    hours: rawHour === "24" ? "00" : rawHour,
+    minutes: get("minute"),
+    date,
+  };
+};
+
+const getISTHour = (isoDateTime: string): number => {
+  const date = new Date(isoDateTime);
+  if (Number.isNaN(date.getTime())) return 0;
+  const formatter = new Intl.DateTimeFormat("en-IN", {
+    timeZone: IST_TIMEZONE,
+    hour: "numeric",
+    hour12: false,
+  });
+  const parts = formatter.formatToParts(date);
+  const hourStr = parts.find((p) => p.type === "hour")?.value ?? "0";
+  return parseInt(hourStr === "24" ? "0" : hourStr, 10);
+};
+
 // ============ EXPORT ALL HELPER FUNCTIONS ============
 
-// Address highlighting using imported keywords
 export const highlightAddressIfKeyword = (text: string): React.ReactNode => {
   if (!text || text === "—") return "—";
   const pattern = new RegExp(`\\b(${ADDRESS_KEYWORDS.join("|")})\\b`, "gi");
@@ -40,7 +86,6 @@ export const highlightAddressIfKeyword = (text: string): React.ReactNode => {
   );
 };
 
-// Itinerary highlighting using imported keywords
 export const highlightItineraryIfKeyword = (text: string): React.ReactNode => {
   if (!text || text === "—") return "—";
 
@@ -64,68 +109,54 @@ export const highlightItineraryIfKeyword = (text: string): React.ReactNode => {
   );
 };
 
-// Occasion rendering
 export const renderOccasion = (occasion: string): React.ReactNode => {
   if (!occasion) return "—";
   const colorClass = OCCASION_COLOR_MAP[occasion] || "text-gray-800";
   return <span className={colorClass}>{occasion}</span>;
 };
 
-// Service type rendering
 export const renderServiceType = (serviceType: string): React.ReactNode => {
   if (!serviceType) return "—";
   const colorClass = SERVICE_TYPE_COLOR_MAP[serviceType] || "text-gray-800";
   return <span className={colorClass}>{serviceType}</span>;
 };
 
-// Date formatting
 export const formatDate = (isoDate: string): string => {
   if (!isoDate) return "—";
-  const date = new Date(isoDate);
-  if (Number.isNaN(date.getTime())) return isoDate;
-  const day = date.getDate().toString().padStart(2, "0");
-  const month = (date.getMonth() + 1).toString().padStart(2, "0");
-  const year = date.getFullYear().toString().slice(-2);
-  return `${day}/${month}/${year}`;
+  const parts = getISTDateParts(isoDate);
+  if (!parts) return isoDate;
+  return `${parts.day}/${parts.month}/${parts.year}`;
 };
 
-// Time formatting (24 hour)
 export const formatTime24Hour = (isoDateTime?: string): string => {
   if (!isoDateTime) return "—";
-  const date = new Date(isoDateTime);
-  if (Number.isNaN(date.getTime())) return "—";
-  const hours = date.getHours().toString().padStart(2, "0");
-  const minutes = date.getMinutes().toString().padStart(2, "0");
-  return `${hours}:${minutes}`;
+  const parts = getISTDateParts(isoDateTime);
+  if (!parts) return "—";
+  return `${parts.hours}:${parts.minutes}`;
 };
 
-// Date time formatting
 export const formatDateTime = (isoDateTime?: string): string => {
   if (!isoDateTime) return "-";
-  const date = new Date(isoDateTime);
-  if (Number.isNaN(date.getTime())) return isoDateTime;
-  const day = date.getDate().toString().padStart(2, "0");
-  const month = (date.getMonth() + 1).toString().padStart(2, "0");
-  const year = date.getFullYear().toString().slice(-2);
-  const hours = date.getHours().toString().padStart(2, "0");
-  const minutes = date.getMinutes().toString().padStart(2, "0");
-  return `${day}/${month}/${year}, ${hours}:${minutes}`;
+  const parts = getISTDateParts(isoDateTime);
+  if (!parts) return isoDateTime;
+  return `${parts.day}/${parts.month}/${parts.year}, ${parts.hours}:${parts.minutes}`;
 };
 
-// Time formatting (12 hour with AM/PM)
 export const formatTime12Hour = (isoDateTime?: string): string => {
   if (!isoDateTime) return "—";
   const date = new Date(isoDateTime);
   if (Number.isNaN(date.getTime())) return "—";
-  const hours = date.getHours();
-  const minutes = date.getMinutes().toString().padStart(2, "0");
-  const ampm = hours >= 12 ? "PM" : "AM";
-  const displayHours = hours % 12 || 12;
-  const displayHoursStr = displayHours.toString().padStart(2, "0");
-  return `${displayHoursStr}:${minutes} ${ampm}`;
+
+  return date
+    .toLocaleTimeString("en-IN", {
+      timeZone: IST_TIMEZONE,
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: true,
+    })
+    .toUpperCase();
 };
 
-// Trip type formatting
 export const formatTripType = (tripType: any): string => {
   if (!tripType) return "—";
   const tripTypeMap: Record<string, string> = {
@@ -152,7 +183,7 @@ interface UseLeadColumnsProps {
   handleUnwantedClick: (lead: LeadRecord, e: React.MouseEvent) => void;
   handleViewLead: (lead: LeadRecord) => void;
   setEditLead: (lead: LeadRecord | null) => void;
-  handleRateQuotation?: (lead: LeadRecord, e: React.MouseEvent) => void; // Add this optional prop
+  handleRateQuotation?: (lead: LeadRecord, e: React.MouseEvent) => void;
 }
 
 // ============ MAIN HOOK ============
@@ -161,20 +192,19 @@ export const useLeadColumns = ({
   handleUnwantedClick,
   handleViewLead,
   setEditLead,
-  handleRateQuotation, // Add this to the destructured props
+  handleRateQuotation,
 }: UseLeadColumnsProps) => {
   return useMemo<LeadColumn[]>(() => {
     return TABLE_BANNER_COLUMNS.map((col) => ({
       key: col.key,
       label: col.label,
-      render: (lead: LeadRecord) => {
+      render: (lead: LeadRecord, rowIndex?: number) => {
         const val = lead[col.key as keyof LeadRecord];
 
         // Actions Column
         if (col.key === "actions") {
           return (
             <div className="flex gap-1 justify-evenly">
-              {/* Rate Quotation Button - Only show if handler is provided */}
               {handleRateQuotation && (
                 <button
                   onClick={(e) => handleRateQuotation(lead, e)}
@@ -264,22 +294,22 @@ export const useLeadColumns = ({
         if (col.key === "pickupDateTime") {
           const dateTimeStr = formatDateTime(String(val));
           const time12Hour = formatTime12Hour(lead.pickupDateTime);
-          const hour = new Date(lead.pickupDateTime).getHours();
+
+          const hour = getISTHour(lead.pickupDateTime);
           const isNightTime = hour >= 17 || hour < 5;
 
           const pickupDate = new Date(lead.pickupDateTime);
           const currentDate = new Date();
 
-          const today = new Date(
-            currentDate.getFullYear(),
-            currentDate.getMonth(),
-            currentDate.getDate(),
-          );
-          const pickupDateOnly = new Date(
-            pickupDate.getFullYear(),
-            pickupDate.getMonth(),
-            pickupDate.getDate(),
-          );
+          const toISTMidnight = (date: Date) => {
+            const istStr = date.toLocaleDateString("en-CA", {
+              timeZone: IST_TIMEZONE,
+            });
+            return new Date(istStr + "T00:00:00+05:30");
+          };
+
+          const today = toISTMidnight(currentDate);
+          const pickupDateOnly = toISTMidnight(pickupDate);
 
           const diffTime = pickupDateOnly.getTime() - today.getTime();
           const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -295,9 +325,10 @@ export const useLeadColumns = ({
               >
                 {dateTimeStr}
               </span>
-              <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-50 w-auto bg-slate-800 text-white rounded-lg shadow-xl px-3 py-2 whitespace-nowrap">
+              {/* ✅ Upar dikhega — bottom-full */}
+              <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-[9999] w-auto bg-slate-800 text-white rounded-lg shadow-xl px-3 py-2 whitespace-nowrap">
                 <div className="text-xs font-semibold text-slate-300 mb-1">
-                  Pickup Time
+                  Pickup Time (IST)
                 </div>
                 <div className="text-lg font-bold text-white">{time12Hour}</div>
               </div>
@@ -314,9 +345,10 @@ export const useLeadColumns = ({
               <span className="text-slate-800 hover:text-blue-600 transition-colors">
                 {dateTimeStr}
               </span>
-              <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-50 w-auto bg-slate-800 text-white rounded-lg shadow-xl px-3 py-2 whitespace-nowrap">
+              {/* ✅ Upar dikhega — bottom-full */}
+              <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-[9999] w-auto bg-slate-800 text-white rounded-lg shadow-xl px-3 py-2 whitespace-nowrap">
                 <div className="text-xs font-semibold text-slate-300 mb-1">
-                  Drop Time
+                  Drop Time (IST)
                 </div>
                 <div className="text-lg font-bold text-white">{time12Hour}</div>
               </div>
@@ -402,6 +434,7 @@ export const useLeadColumns = ({
             </span>
           );
         }
+
         // Vehicles Column
         if (col.key === "vehicles" && Array.isArray(val)) {
           return val
@@ -415,14 +448,17 @@ export const useLeadColumns = ({
           return highlightItineraryIfKeyword(itineraryText);
         }
 
-        // Customer Name Column
+        // ✅ Customer Name Column — rowIndex se direction decide hoga
         if (col.key === "fullName") {
+          // Pehli 3 rows → card niche (top-full), baaki → upar (bottom-full)
+          const showBelow = (rowIndex ?? 0) < 3;
+          const positionClass = showBelow ? "top-full mt-1" : "bottom-full mb-1";
           return (
             <div className="relative group cursor-pointer">
               <span className="font-semibold text-slate-800 hover:text-blue-600 transition-colors">
                 {String(val)}
               </span>
-              <div className="absolute left-0 top-full mt-1 hidden group-hover:block z-50 w-auto bg-slate-800 text-white rounded-lg shadow-xl p-3">
+              <div className={`absolute left-0 ${positionClass} hidden group-hover:block z-[9999] w-auto bg-slate-800 text-white rounded-lg shadow-xl p-3 whitespace-nowrap`}>
                 <div className="font-semibold mb-1 border-b border-slate-600 pb-1">
                   {String(val)}
                 </div>
@@ -441,9 +477,7 @@ export const useLeadColumns = ({
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-slate-400">✉️</span>
-                    <span className="truncate">
-                      {lead.customerEmail || "-"}
-                    </span>
+                    <span>{lead.customerEmail || "-"}</span>
                   </div>
                 </div>
               </div>
@@ -510,7 +544,8 @@ export const useLeadColumns = ({
               <span className="font-semibold text-slate-800 hover:text-blue-600 transition-colors">
                 {String(val)}
               </span>
-              <div className="absolute left-0 top-full mt-1 hidden group-hover:block z-50 w-48 bg-slate-800 text-white rounded-lg shadow-xl p-3">
+              {/* ✅ Upar dikhega */}
+              <div className="absolute left-0 bottom-full mb-1 hidden group-hover:block z-[9999] w-48 bg-slate-800 text-white rounded-lg shadow-xl p-3">
                 <div className="font-semibold mb-1 border-b border-slate-600 pb-1">
                   {String(val)}
                 </div>
@@ -524,13 +559,15 @@ export const useLeadColumns = ({
             </div>
           );
         }
+
         if (col.key === "totalBaggage") {
           return (
             <div className="relative group cursor-pointer">
               <span className="font-semibold text-slate-800 hover:text-blue-600 transition-colors">
                 {String(val)}
               </span>
-              <div className="absolute left-0 top-full mt-1 hidden group-hover:block z-50 w-48 bg-slate-800 text-white rounded-lg shadow-xl p-3">
+              {/* ✅ Upar dikhega */}
+              <div className="absolute left-0 bottom-full mb-1 hidden group-hover:block z-[9999] w-48 bg-slate-800 text-white rounded-lg shadow-xl p-3">
                 <div className="font-semibold mb-1 border-b border-slate-600 pb-1">
                   {String(val)}
                 </div>
@@ -585,5 +622,5 @@ export const useLeadColumns = ({
       },
       sticky: false,
     }));
-  }, [handleUnwantedClick, handleViewLead, setEditLead, handleRateQuotation]); // Add handleRateQuotation to dependency array
+  }, [handleUnwantedClick, handleViewLead, setEditLead, handleRateQuotation]);
 };

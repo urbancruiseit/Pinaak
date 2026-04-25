@@ -41,18 +41,17 @@ export const calculateLeadStatusCounts = (
     blankLeads: leads.filter((lead) => lead.status === "Blank").length,
   };
 };
-
 export const calculateLeadStatusPercentages = (
   counts: LeadStatusCounts,
 ): LeadStatusPercentages => {
   const total = counts.totalLeadsCount;
 
   const calculatePercentage = (value: number): string => {
-    return total > 0 ? ((value / total) * 100).toFixed(1) : "0.0";
+    return total > 0 ? Math.round((value / total) * 100).toString() : "0";
   };
 
   return {
-    totalPercentage: total > 0 ? "100.0" : "0.0",
+    totalPercentage: total > 0 ? "100" : "0",
     newPercentage: calculatePercentage(counts.newLeads),
     rfqPercentage: calculatePercentage(counts.rfqLeads),
     kycPercentage: calculatePercentage(counts.kycLeads),
@@ -64,59 +63,54 @@ export const calculateLeadStatusPercentages = (
   };
 };
 
+const BASE_CONTAINER =
+  "flex items-center justify-between px-3 sm:px-4 py-1 shadow-md border rounded-md w-fit max-w-full h-10 whitespace-nowrap flex-shrink-0 gap-3";
+
 export const STATUS_BADGE_STYLES = {
   total: {
-    container:
-      "flex items-center bg-black px-4 shadow-md border border-white rounded-md min-w-[140px] h-10 gap-3",
+    container: `${BASE_CONTAINER} bg-black border-white`,
     label: "font-bold text-sm text-white",
     value: "font-extrabold text-md text-white",
     percentage: "text-md font-bold text-white",
   },
   new: {
-    container:
-      "flex items-center justify-between bg-blue-200 px-4 py-1 shadow-md border rounded-md border-sky-800 min-w-[140px] h-10",
+    container: `${BASE_CONTAINER} bg-blue-200 border-sky-800`,
     label: "font-bold text-sm text-black",
     value: "font-extrabold text-md text-black",
     percentage: "text-md font-bold text-black",
   },
-  rfq: {
-    container:
-      "flex items-center justify-between bg-blue-300 px-4 py-1 shadow-md border rounded-md border-blue-800 min-w-[140px] h-10",
-    label: "font-extrabold text-md text-blue-950",
-    value: "font-extrabold text-md text-blue-900",
-    percentage: "text-md font-bold text-blue-700",
-  },
   kyc: {
-    container:
-      "flex items-center justify-between bg-orange-200 px-4 py-1 shadow-md border rounded-md border-orange-800 min-w-[140px] h-10",
+    container: `${BASE_CONTAINER} bg-orange-200 border-orange-800`,
     label: "font-extrabold text-md text-orange-950",
     value: "font-extrabold text-md text-orange-900",
     percentage: "text-md font-bold text-orange-700",
   },
+  rfq: {
+    container: `${BASE_CONTAINER} bg-blue-300 border-blue-800`,
+    label: "font-extrabold text-md text-blue-950",
+    value: "font-extrabold text-md text-blue-900",
+    percentage: "text-md font-bold text-blue-700",
+  },
   hot: {
-    container:
-      "flex items-center justify-between bg-purple-200 px-4 py-1 shadow-md border rounded-md border-purple-800 min-w-[140px] h-10",
+    container: `${BASE_CONTAINER} bg-purple-200 border-purple-800`,
     label: "font-extrabold text-md text-purple-950",
     value: "font-extrabold text-md text-purple-900",
     percentage: "text-md font-bold text-purple-700",
   },
   vehn: {
-    container:
-      "flex items-center justify-between bg-pink-200 px-4 py-1 shadow-md border rounded-md border-pink-900 min-w-[140px] h-10",
+    container: `${BASE_CONTAINER} bg-pink-200 border-pink-900`,
     label: "font-extrabold text-md text-pink-950",
     value: "font-extrabold text-md text-pink-900",
     percentage: "text-md font-bold text-pink-700",
   },
   lost: {
-    container:
-      "flex items-center justify-between bg-red-500 px-4 py-1 shadow-md border rounded-md border-red-600 min-w-[140px] h-10",
+    container: `${BASE_CONTAINER} bg-red-500 border-red-600`,
     label: "font-bold text-md text-white",
     value: "font-extrabold text-white",
     percentage: "text-md font-bold text-white",
   },
   book: {
-    container:
-      "flex items-center justify-between bg-green-800 px-4 py-1 shadow-md border rounded-md border-green-800 min-w-[140px] h-10",
+    container: `${BASE_CONTAINER} bg-green-800 border-green-800`,
     label: "font-extrabold text-md text-white",
     value: "font-extrabold text-md text-white",
     percentage: "text-md font-bold text-white",

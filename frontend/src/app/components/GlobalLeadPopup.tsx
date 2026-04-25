@@ -4,33 +4,43 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import type { RootState, AppDispatch } from "@/app/redux/store";
 import { fetchMyAssignedLeads } from "@/app/features/access/accessSlice";
-import {
-  connectSocket,
-  disconnectSocket,
-  listenToLeadUpdates,
-  removeLeadListeners,
-} from "@/app/socket/leadsocket";
 import type { LeadRecord } from "@/types/types";
 import { X, Bell, CalendarRange, Clock, User, Phone, Mail } from "lucide-react";
+
+const IST_TIMEZONE = "Asia/Kolkata";
 
 const formatDate = (date?: string) => {
   if (!date) return "-";
   const d = new Date(date);
   if (isNaN(d.getTime())) return "-";
-  return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+  return d.toLocaleDateString("en-IN", {
+    timeZone: IST_TIMEZONE,
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 };
 
 const formatDateTime = (date?: string) => {
   if (!date) return "-";
   const d = new Date(date);
   if (isNaN(d.getTime())) return "-";
-  return d.toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleString("en-IN", {
+    timeZone: IST_TIMEZONE,
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 };
 
 const isNewStatus = (status?: string) => {
   const s = (status ?? "").trim();
-  return  s === "-" || s === "NEW";
+  return s === "-" || s === "NEW";
 };
+
+const POLL_INTERVAL_MS = 15 * 1000; // 15 seconds
 
 export default function GlobalLeadPopup() {
   const dispatch = useDispatch<AppDispatch>();
@@ -40,23 +50,21 @@ export default function GlobalLeadPopup() {
   const [lead, setLead] = useState<LeadRecord | null>(null);
   const [isAnimatingOut, setIsAnimatingOut] = useState(false);
 
-  // Active leads jinhe dikhana hai (status new/empty) — id → LeadRecord
   const activeLeadsMapRef = useRef<Map<string, LeadRecord>>(new Map());
-  // Jinhe initial load pe already dekh liya — pehli baar popup mat dikhaao
   const initialSeenRef = useRef<Set<string> | null>(null);
-  // Currently screen pe kaun sa lead dikha raha hai
   const currentLeadIdRef = useRef<string | null>(null);
-  // Re-show timers — id → timer
   const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // ─── Cleanup ──────────────────────────────────────────────────────────────
+  // ─── Cleanup on unmount ───────────────────────────────────────────────────
   useEffect(() => {
     return () => {
       timersRef.current.forEach((t) => clearTimeout(t));
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
     };
   }, []);
 
-  // ─── Close with animation (internal) ─────────────────────────────────────
+  // ─── Close with animation ─────────────────────────────────────────────────
   const closePopup = useCallback((cb?: () => void) => {
     setIsAnimatingOut(true);
     setTimeout(() => {
@@ -67,22 +75,18 @@ export default function GlobalLeadPopup() {
     }, 300);
   }, []);
 
-  // ─── Show a specific lead ─────────────────────────────────────────────────
+  // ─── Show a lead ──────────────────────────────────────────────────────────
   const showLead = useCallback((l: LeadRecord) => {
-    // Agar status ab bhi new hai tabhi dikhaao
     if (!isNewStatus(l.status)) return;
-    // Agar pehle se koi aur dikha raha hai toh wait — timer baad mein retry karega
     if (currentLeadIdRef.current !== null) return;
-
     currentLeadIdRef.current = String(l.id);
     setLead(l);
     setIsAnimatingOut(false);
   }, []);
 
-  // ─── Schedule re-show after delay ────────────────────────────────────────
+  // ─── Schedule re-show ─────────────────────────────────────────────────────
   const scheduleReshow = useCallback(
     (leadId: string, delayMs: number) => {
-      // Purana timer clear karo agar tha
       const existing = timersRef.current.get(leadId);
       if (existing) clearTimeout(existing);
 
@@ -104,7 +108,7 @@ export default function GlobalLeadPopup() {
     const closedId = currentLeadIdRef.current;
     closePopup(() => {
       if (closedId && activeLeadsMapRef.current.has(closedId)) {
-        scheduleReshow(closedId, 10 * 1000); // 10 seconds
+        scheduleReshow(closedId, 10 * 1000);
       }
     });
   }, [closePopup, scheduleReshow]);
@@ -114,61 +118,60 @@ export default function GlobalLeadPopup() {
     const snoozedId = currentLeadIdRef.current;
     closePopup(() => {
       if (snoozedId && activeLeadsMapRef.current.has(snoozedId)) {
-        scheduleReshow(snoozedId, 5 * 60 * 1000); // 5 minutes
+        scheduleReshow(snoozedId, 5 * 60 * 1000);
       }
     });
   }, [closePopup, scheduleReshow]);
 
-  // ─── Socket + initial fetch ───────────────────────────────────────────────
+  // ─── Polling — socket ki jagah har 15 sec mein fetch ─────────────────────
   useEffect(() => {
     if (!currentUser) return;
 
+    // Pehli baar turant fetch karo
     dispatch(fetchMyAssignedLeads(1));
-    connectSocket();
-    listenToLeadUpdates(() => {
+
+    // Phir har 15 sec pe
+    pollIntervalRef.current = setInterval(() => {
       dispatch(fetchMyAssignedLeads(1));
-    });
+    }, POLL_INTERVAL_MS);
 
     return () => {
-      removeLeadListeners();
-      disconnectSocket();
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
     };
-  }, [currentUser]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [currentUser, dispatch]);
 
   // ─── Process leads from Redux ─────────────────────────────────────────────
   useEffect(() => {
     if (!currentUser || !leads || leads.length === 0) return;
 
-    // ── Pehli baar leads aaye — baseline set karo, popup mat dikhaao ──
+    // Pehli baar — baseline set karo, popup mat dikhaao
     if (initialSeenRef.current === null) {
       const baseline = new Set<string>();
       leads.forEach((l) => {
         const id = String(l.id);
         baseline.add(id);
         if (isNewStatus(l.status)) {
-          // Active map mein daalo lekin popup nahi — ye purane leads hain
           activeLeadsMapRef.current.set(id, l);
         }
       });
       initialSeenRef.current = baseline;
-      return; // ← Pehli baar popup bilkul nahi
+      return;
     }
 
-    // ── Subsequent updates ──
+    // Subsequent polls
     leads.forEach((l) => {
       const id = String(l.id);
       const isNew = isNewStatus(l.status);
 
       if (!isNew) {
-        // Status update ho gaya — hamesha ke liye hataao
+        // Status change ho gaya — remove karo
         activeLeadsMapRef.current.delete(id);
-
-        // Agar ye abhi screen pe dikha raha hai toh close karo (bina reschedule)
         if (currentLeadIdRef.current === id) {
           closePopup();
         }
-
-        // Pending timer bhi cancel karo
         const t = timersRef.current.get(id);
         if (t) {
           clearTimeout(t);
@@ -177,16 +180,13 @@ export default function GlobalLeadPopup() {
         return;
       }
 
-      // Status new hai
       const isReallyNew = !initialSeenRef.current!.has(id);
-      activeLeadsMapRef.current.set(id, l); // Latest data update karo
+      activeLeadsMapRef.current.set(id, l);
       initialSeenRef.current!.add(id);
 
       if (isReallyNew) {
-        // Bilkul naya lead — turant dikhaao
         showLead(l);
       }
-      // Purana lead jo already active map mein hai — timer handle karega
     });
   }, [leads, currentUser]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -199,6 +199,10 @@ export default function GlobalLeadPopup() {
       initialSeenRef.current = null;
       timersRef.current.forEach((t) => clearTimeout(t));
       timersRef.current.clear();
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
     }
   }, [currentUser]);
 

@@ -125,8 +125,17 @@ export const TABLE_BANNER_COLUMNS: BannerColumn[] = [
     minWidthPx: 120,
   },
   {
-    key: "presales_id",
+    key: "presalesFullName",
     label: "PRESALES",
+    groupLabel: "ENQUIRY",
+    groupClass: "text-white",
+    labelClass: "text-white font-semibold",
+    minWidthClass: "min-w-[120px]",
+    minWidthPx: 120,
+  },
+  {
+    key: "advisorFullName",
+    label: "TELE SALES",
     groupLabel: "ENQUIRY",
     groupClass: "text-white",
     labelClass: "text-white font-semibold",

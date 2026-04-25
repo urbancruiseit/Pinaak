@@ -143,7 +143,7 @@ export default function LeadsTable() {
   const { leads, loading, error, totalPages, total } = useSelector(
     (state: RootState) => state.lead,
   );
-
+console.log("leads", leads)
   useEffect(() => {
     dispatch(fetchLeads(currentPage));
   }, [dispatch, currentPage]);
@@ -599,10 +599,10 @@ export default function LeadsTable() {
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="border-l-8 border rounded-lg border-orange-500 bg-white px-3">
               <h2 className="text-2xl md:text-4xl font-bold text-left text-orange-600 whitespace-nowrap">
-                Lead Manager TS
+                Lead Manager
               </h2>
-              <p className="mt-1 text-sm text-left text-orange-700">
-                Leads Details & Status.
+              <p className="text-2xl md:text-2xl mt-1 text-md text-center text-orange-700">
+                (Pre-Sales)
               </p>
             </div>
 

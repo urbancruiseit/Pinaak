@@ -1,4 +1,4 @@
-import { pool } from "../../config/mySqlDB.js";
+import {hrmsPool, pool } from "../../config/mySqlDB.js";
 import { generateUUID } from "../../utils/uuid.js";
 
 export const LEAD_TABLE = "leads";
@@ -318,6 +318,74 @@ export const findLeadByUUID = async (uuid) => {
   }
 };
 
+// export const getLeads = async (page, limit, cityIds) => {
+//   const pageNumber = parseInt(page, 10);
+//   const limitNumber = parseInt(limit, 10);
+//   const offset = (pageNumber - 1) * limitNumber;
+
+//   // City filter clause
+//   let whereClause = `WHERE (l.unwanted_status IS NULL OR l.unwanted_status != 'unwanted')`;
+//   let cityValues = [];
+
+//   if (cityIds && cityIds.length > 0) {
+//     const placeholders = cityIds.map(() => "?").join(",");
+//     whereClause += ` AND l.city_id IN (${placeholders})`;
+//     cityValues = [...cityIds];
+//   }
+
+//   // Main query with customer JOIN
+//   const query = `
+//     SELECT 
+//       l.*,
+
+//       c.uuid AS customer_uuid,
+//       CONCAT_WS(' ', c.firstName, c.middleName, c.lastName) AS fullName,
+//       c.firstName,
+//       c.middleName,
+//       c.lastName,
+//       c.customerPhone,
+//       c.customerEmail,
+//       c.companyName,
+//       c.customerType,
+//       c.customerCategoryType,
+//       c.alternatePhone,
+//       c.countryName,
+//       c.customerCity,
+//       c.address,
+//       c.date_of_birth,
+//       c.anniversary,
+//       c.gender,
+//       c.state,
+//       c.pincode
+
+//     FROM leads l
+//     LEFT JOIN customers c ON l.customer_id = c.id
+//     ${whereClause}
+//     ORDER BY l.created_at DESC
+//     LIMIT ? OFFSET ?
+//   `;
+
+//   const queryValues = [...cityValues, limitNumber, offset];
+//   const [leads] = await pool.query(query, queryValues);
+
+//   // Count query
+//   const countQuery = `
+//     SELECT COUNT(*) as total 
+//     FROM leads l
+//     LEFT JOIN customers c ON l.customer_id = c.id
+//     ${whereClause}
+//   `;
+
+//   const [countResult] = await pool.query(countQuery, cityValues);
+
+//   return {
+//     leads,
+//     total: countResult[0].total,
+//     page: pageNumber,
+//     totalPages: Math.ceil(countResult[0].total / limitNumber),
+//   };
+// };
+
 export const getLeads = async (page, limit, cityIds) => {
   const pageNumber = parseInt(page, 10);
   const limitNumber = parseInt(limit, 10);
@@ -333,7 +401,7 @@ export const getLeads = async (page, limit, cityIds) => {
     cityValues = [...cityIds];
   }
 
-  // Main query with customer JOIN
+  // Main query
   const query = `
     SELECT 
       l.*,
@@ -375,18 +443,54 @@ export const getLeads = async (page, limit, cityIds) => {
     LEFT JOIN customers c ON l.customer_id = c.id
     ${whereClause}
   `;
-
   const [countResult] = await pool.query(countQuery, cityValues);
 
+  // ── Advisor + Presales names from hrmsPool (ek hi query mein dono) ─────
+  const advisorIds = leads
+    .map((l) => l.advisor_id)
+    .filter((id) => id !== null && id !== undefined);
+
+  const presalesIds = leads
+    .map((l) => l.presales_id)
+    .filter((id) => id !== null && id !== undefined);
+
+  // Dono ki unique IDs ek set mein
+  const allUserIds = [...new Set([...advisorIds, ...presalesIds])];
+
+  let userMap = {}; // { [user_id]: fullName }
+
+  if (allUserIds.length > 0) {
+    try {
+      const placeholders = allUserIds.map(() => "?").join(",");
+      const [users] = await hrmsPool.query(
+        `SELECT id, CONCAT_WS(' ', firstName, middleName, lastName) AS fullName
+         FROM users
+         WHERE id IN (${placeholders})`,
+        allUserIds,
+      );
+
+      users.forEach((u) => {
+        userMap[u.id] = u.fullName;
+      });
+    } catch (err) {
+      console.error("hrmsPool user fetch failed:", err.message);
+    }
+  }
+
+  // Har lead mein advisorFullName + presalesFullName attach karo
+  const leadsWithNames = leads.map((lead) => ({
+    ...lead,
+    advisorFullName: userMap[lead.advisor_id] || null,
+    presalesFullName: userMap[lead.presales_id] || null,
+  }));
+
   return {
-    leads,
+    leads: leadsWithNames,
     total: countResult[0].total,
     page: pageNumber,
     totalPages: Math.ceil(countResult[0].total / limitNumber),
   };
 };
-
-
 
 export const updateLeadUnwantedStatus = async (leadId, status) => {
   try {

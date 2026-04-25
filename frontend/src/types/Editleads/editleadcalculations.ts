@@ -1,6 +1,9 @@
 import type { LeadRecord } from "../types";
 import { LeadFormData } from "./editleadschema";
 
+// ── IST Timezone constant ─────────────────────────────────────────────────────
+const IST_TIMEZONE = "Asia/Kolkata";
+
 // ── Parse phone number ────────────────────────────────────────────────────────
 export const parsePhone = (phone: string) => {
   if (!phone) return { code: "+91", number: "" };
@@ -30,58 +33,83 @@ export const parseItinerary = (itinerary: any): string[] => {
   return [];
 };
 
-// ── Format date for input field ───────────────────────────────────────────────
+// ── Convert UTC ISO string → IST datetime-local string (YYYY-MM-DDTHH:mm) ────
+// Backend se aata hai UTC mein (e.g. "2026-04-28T02:20:00.000Z")
+// Input field ko chahiye IST mein (e.g. "2026-04-28T07:50")
 export const formatDateTimeForInput = (dateStr?: string): string => {
   if (!dateStr) return "";
-  let formatted = dateStr.replace(" ", "T");
 
-  const tIndex = formatted.indexOf("T");
-  if (tIndex !== -1) {
-    const datePart = formatted.substring(0, tIndex);
-    const timePart = formatted.substring(tIndex + 1);
-    const [hh = "00", mm = "00"] = timePart.split(":");
-    formatted = `${datePart}T${hh}:${mm}`;
-  }
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return "";
 
-  return formatted;
+  // Intl se IST parts nikalo
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: IST_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+
+  const parts = formatter.formatToParts(date);
+  const get = (type: string) =>
+    parts.find((p) => p.type === type)?.value ?? "00";
+
+  const year = get("year");
+  const month = get("month");
+  const day = get("day");
+  const hour = get("hour") === "24" ? "00" : get("hour");
+  const minute = get("minute");
+
+  return `${year}-${month}-${day}T${hour}:${minute}`;
 };
 
-// ── Format date for API submission ────────────────────────────────────────────
+// ── Convert form IST value → API submission format ────────────────────────────
+// Form value: "2026-04-28T07:50" (IST, no timezone info)
+// Backend expect karta hai: "2026-04-28 07:50:00" (IST mein hi store karta hai)
+// NOTE: seconds append karo, T → space replace karo. Timezone convert mat karo.
 export const formatDateTimeForSubmit = (
   dateStr?: string,
 ): string | undefined => {
   if (!dateStr) return undefined;
 
-  let formatted = dateStr.replace("T", " ");
-  const parts = formatted.split(" ");
+  // "2026-04-28T07:50" → "2026-04-28 07:50:00"
+  const withSpace = dateStr.replace("T", " ");
+  const parts = withSpace.split(" ");
 
   if (parts.length >= 2) {
     const timePart = parts[1];
     if (timePart && timePart.split(":").length === 2) {
       parts[1] = timePart + ":00";
-      formatted = parts.join(" ");
     }
   }
 
-  return formatted;
+  return parts.join(" ");
 };
 
-// ── Calculate days ────────────────────────────────────────────────────────────
+// ── Calculate days (date-only, no time involved) ──────────────────────────────
+// pickupDateTime & dropDateTime are form values: "YYYY-MM-DDTHH:mm" in IST
+// We only use the date part, so timezone doesn't matter here
 export const calculateDays = (
   serviceType: string | undefined,
   pickupDateTime: string,
   dropDateTime?: string,
 ): number => {
   if (serviceType === "Pick & Drop") return 2;
+  if (serviceType === "One Way") return 1;
 
   if (pickupDateTime && dropDateTime) {
+    // Split on T to get only date part — safe because form value is IST
     const pickup = new Date(pickupDateTime.split("T")[0]);
     const drop = new Date(dropDateTime.split("T")[0]);
 
     const diffDays =
       (drop.getTime() - pickup.getTime()) / (1000 * 60 * 60 * 24);
 
-    return diffDays + 1 > 0 ? diffDays + 1 : 1;
+    const totalDays = diffDays + 1;
+    return totalDays > 0 ? totalDays : 1;
   }
 
   return 1;
@@ -155,8 +183,11 @@ export const prepareLeadPayload = (
     serviceType: data.serviceType,
     occasion: data.occasion || "",
     tripType: data.tripType || undefined,
+
+    // ✅ IST-safe: form value already IST, just format for backend
     pickupDateTime: formatDateTimeForSubmit(data.pickupDateTime),
     dropDateTime: formatDateTimeForSubmit(data.dropDateTime),
+
     pickupAddress: data.pickupAddress,
     dropAddress: data.dropAddress,
     pickupcity: data.pickupcity,
@@ -231,7 +262,9 @@ export const mapInitialDataToForm = (initialData: LeadRecord) => {
         (initialData as any).customerId ??
         undefined,
 
-      date: initialData.enquiryTime?.slice(0, 16) || "",
+      date: initialData.enquiryTime
+        ? formatDateTimeForInput(initialData.enquiryTime) // ✅ IST convert
+        : "",
       source: initialData.source,
       telesales: initialData.telecaller,
       status: initialData.status,
@@ -247,8 +280,11 @@ export const mapInitialDataToForm = (initialData: LeadRecord) => {
       serviceType: initialData.serviceType,
       tripType: initialData.tripType || "",
       occasion: initialData.occasion || "",
+
+      // ✅ KEY FIX: UTC → IST convert for input fields
       pickupDateTime: formatDateTimeForInput(initialData.pickupDateTime),
       dropDateTime: formatDateTimeForInput(initialData.dropDateTime),
+
       pickupAddress: initialData.pickupAddress || "",
       dropAddress: initialData.dropAddress || "",
       pickupcity: (initialData as any).pickupcity || "",

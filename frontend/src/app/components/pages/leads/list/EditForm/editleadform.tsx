@@ -131,6 +131,7 @@ const EditLeadForm: React.FC<{
     dispatch(getCountriesThunk());
     dispatch(fetchAllCities());
     dispatch(fetchVehicles());
+    dispatch(getAllCitiesThunk());
   }, [dispatch]);
 
   // ── Auto-calculate total baggage ─────────────────────────────────────────

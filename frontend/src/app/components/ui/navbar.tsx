@@ -226,6 +226,9 @@ interface NavbarProps {
   roleLabel?: string;
   userRole?: string;
   onLogout?: () => void;
+  onMonthlyEnquiry?: () => void;
+  onMonthlyDistribution?: () => void;
+
   // ℹ️ Region/Zone/City ab Redux se directly lete hain — props ki zarurat nahi
 }
 
@@ -282,6 +285,8 @@ export function Navbar({
   roleLabel,
   userRole,
   onLogout,
+  onMonthlyEnquiry,
+  onMonthlyDistribution,
 }: NavbarProps) {
   // ✅ Redux se currentUser lo
   const dispatch = useDispatch<AppDispatch>();
@@ -314,6 +319,13 @@ export function Navbar({
     userData?.personalEmail ??
     rawUser?.user_email ??
     "";
+  const userAliasName =
+    rawUser?.aliasName ??
+    userData?.aliasName ??
+    rawUser?.alias_name ??
+    userData?.alias_name ??
+    "";
+
   const userDepartment =
     rawUser?.department ??
     userData?.department ??
@@ -412,6 +424,16 @@ export function Navbar({
     setOpenMenu(null);
     setMobileOpen(false);
   };
+  const handleMonthlyEnquiry = () => {
+    onMonthlyEnquiry?.();
+    setOpenMenu(null);
+    setMobileOpen(false);
+  };
+  const handleMonthlyDistribution = () => {
+    onMonthlyDistribution?.();
+    setOpenMenu(null);
+    setMobileOpen(false);
+  };
 
   const handleLogout = async () => {
     try {
@@ -454,7 +476,7 @@ export function Navbar({
             />
             <div className="text-left">
               <p className="text-sm font-semibold text-gray-800">
-                {userName ?? "Guest"}
+                {userAliasName ?? "Guest"}
               </p>
               <p className="text-[11px] uppercase text-gray-500">{roleLabel}</p>
             </div>
@@ -546,6 +568,78 @@ export function Navbar({
                     </div>
                   );
                 })}
+              </>
+            )}
+            {showLeadsMenu && (
+              <>
+                <div className="relative w-full md:w-auto">
+                  {(() => {
+                    const isOpen = openMenu === "lead-track-menu";
+                    return (
+                      <>
+                        <button
+                          type="button"
+                          className={`w-full md:w-auto flex items-center justify-between gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200
+                ${
+                  isOpen
+                    ? "bg-green-600 text-white shadow-lg md:scale-105"
+                    : "bg-white text-green-700 border-2 border-green-300 hover:border-green-500 hover:shadow-md hover:scale-[1.02] hover:bg-green-50"
+                } md:min-w-[100px] md:h-9 md:py-2`}
+                          onClick={() => {
+                            setOpenMenu((prev) =>
+                              prev === "lead-track-menu"
+                                ? null
+                                : "lead-track-menu",
+                            );
+                          }}
+                          aria-expanded={openMenu === "lead-track-menu"}
+                        >
+                          <span className="flex z-50 items-center truncate">
+                            <MapPin
+                              size={16}
+                              className="mr-1.5 flex-shrink-0"
+                            />
+                            Tracking
+                          </span>
+                          <ChevronDown
+                            size={14}
+                            className={`transition-transform duration-200 flex-shrink-0 ${isOpen ? "rotate-180" : ""}`}
+                          />
+                        </button>
+
+                        {/* ✅ SIRF EK <ul> — dono items iske andar */}
+                        {openMenu === "lead-track-menu" && (
+                          <ul className="w-full md:absolute md:left-0 z-50 py-1 mt-1 bg-white border-2 border-green-300 rounded-lg shadow-xl md:top-full md:w-56 max-h-80 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
+                            <li
+                              onClick={() => {
+                                onMonthlyEnquiry?.();
+                                setOpenMenu(null);
+                                setMobileOpen(false);
+                              }}
+                              className="px-3 py-2.5 md:py-2 text-sm transition-all hover:bg-green-50 hover:text-green-700 hover:pl-4 cursor-pointer text-gray-700 flex items-center gap-2"
+                            >
+                              <span className="w-1 h-1 rounded-full bg-green-300"></span>
+                              Monthly Enquiry
+                            </li>
+
+                            {/* ✅ NAYA ITEM — Monthly Distribution */}
+                            <li
+                              onClick={() => {
+                                onMonthlyDistribution?.();
+                                setOpenMenu(null);
+                                setMobileOpen(false);
+                              }}
+                              className="px-3 py-2.5 md:py-2 text-sm transition-all hover:bg-green-50 hover:text-green-700 hover:pl-4 cursor-pointer text-gray-700 flex items-center gap-2"
+                            >
+                              <span className="w-1 h-1 rounded-full bg-green-300"></span>
+                              Monthly Distribution
+                            </li>
+                          </ul>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
               </>
             )}
 
@@ -861,7 +955,7 @@ export function Navbar({
                 />
                 <div className="text-left hidden lg:block">
                   <p className="text-sm font-semibold text-gray-800">
-                    {userName ?? "Guest"}
+                    {userAliasName || userName || "Guest"}
                   </p>
                   <p className="text-[11px] uppercase text-gray-500">
                     {roleLabel}
@@ -878,7 +972,7 @@ export function Navbar({
                   <div className="p-4 border-b border-gray-100">
                     <div className="flex flex-col gap-2">
                       <p className="text-sm font-semibold text-gray-900">
-                        {userName ?? "Guest"}
+                        {userAliasName ?? "Guest"}
                       </p>
                       <p className="text-xs text-gray-500 truncate">
                         {userEmail || "guest@email.com"}
@@ -943,7 +1037,7 @@ export function Navbar({
                     <div className="flex justify-between">
                       <span className="text-gray-500">City : </span>
                       <span className="text-gray-800 font-medium">
-                         {userCityNames?.length ? userCityNames.join(", ") : "-"}
+                        {userCityNames?.length ? userCityNames.join(", ") : "-"}
                       </span>
                     </div>
                   </div>

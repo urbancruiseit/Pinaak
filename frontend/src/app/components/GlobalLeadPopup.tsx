@@ -40,12 +40,14 @@ const isNewStatus = (status?: string) => {
   return s === "-" || s === "NEW";
 };
 
-const POLL_INTERVAL_MS = 15 * 1000; // 15 seconds
+const POLL_INTERVAL_MS = 15 * 60 * 1000; // 15 seconds
 
 export default function GlobalLeadPopup() {
   const dispatch = useDispatch<AppDispatch>();
   const { currentUser } = useSelector((state: RootState) => state.user);
-  const { leads } = useSelector((state: RootState) => state.travelAdvisor.assignedLeads);
+  const { leads } = useSelector(
+    (state: RootState) => state.travelAdvisor.assignedLeads,
+  );
 
   const [lead, setLead] = useState<LeadRecord | null>(null);
   const [isAnimatingOut, setIsAnimatingOut] = useState(false);
@@ -53,7 +55,9 @@ export default function GlobalLeadPopup() {
   const activeLeadsMapRef = useRef<Map<string, LeadRecord>>(new Map());
   const initialSeenRef = useRef<Set<string> | null>(null);
   const currentLeadIdRef = useRef<string | null>(null);
-  const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(
+    new Map(),
+  );
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ─── Cleanup on unmount ───────────────────────────────────────────────────
@@ -75,7 +79,6 @@ export default function GlobalLeadPopup() {
     }, 300);
   }, []);
 
-  // ─── Show a lead ──────────────────────────────────────────────────────────
   const showLead = useCallback((l: LeadRecord) => {
     if (!isNewStatus(l.status)) return;
     if (currentLeadIdRef.current !== null) return;
@@ -84,7 +87,6 @@ export default function GlobalLeadPopup() {
     setIsAnimatingOut(false);
   }, []);
 
-  // ─── Schedule re-show ─────────────────────────────────────────────────────
   const scheduleReshow = useCallback(
     (leadId: string, delayMs: number) => {
       const existing = timersRef.current.get(leadId);
@@ -100,7 +102,7 @@ export default function GlobalLeadPopup() {
 
       timersRef.current.set(leadId, timer);
     },
-    [showLead]
+    [showLead],
   );
 
   // ─── Close button — 10 sec baad wapas ────────────────────────────────────
@@ -108,7 +110,7 @@ export default function GlobalLeadPopup() {
     const closedId = currentLeadIdRef.current;
     closePopup(() => {
       if (closedId && activeLeadsMapRef.current.has(closedId)) {
-        scheduleReshow(closedId, 10 * 1000);
+        scheduleReshow(closedId, 15 * 60 * 1000); // 15 minutes
       }
     });
   }, [closePopup, scheduleReshow]);
@@ -118,7 +120,7 @@ export default function GlobalLeadPopup() {
     const snoozedId = currentLeadIdRef.current;
     closePopup(() => {
       if (snoozedId && activeLeadsMapRef.current.has(snoozedId)) {
-        scheduleReshow(snoozedId, 5 * 60 * 1000);
+        scheduleReshow(snoozedId, 60 * 60 * 1000);
       }
     });
   }, [closePopup, scheduleReshow]);
@@ -256,7 +258,9 @@ export default function GlobalLeadPopup() {
                 <div className="flex items-start gap-3 text-gray-700 pb-2 border-b border-gray-100">
                   <Clock className="w-5 h-5 mt-0.5 text-indigo-500" />
                   <div className="flex-1">
-                    <span className="font-semibold text-gray-800">Arrival Time:</span>
+                    <span className="font-semibold text-gray-800">
+                      Arrival Time:
+                    </span>
                     <span className="ml-2 text-sm font-medium text-indigo-600">
                       {formatDateTime(lead.createdAt || lead.date)}
                     </span>
@@ -266,8 +270,12 @@ export default function GlobalLeadPopup() {
                 <div className="flex items-start gap-3 text-gray-700 pb-2 border-b border-gray-100">
                   <User className="w-5 h-5 mt-0.5 text-indigo-500" />
                   <div className="flex-1">
-                    <span className="font-semibold text-gray-800">Customer Name:</span>
-                    <span className="ml-2 text-base font-bold text-indigo-700">{lead.fullName}</span>
+                    <span className="font-semibold text-gray-800">
+                      Customer Name:
+                    </span>
+                    <span className="ml-2 text-base font-bold text-indigo-700">
+                      {lead.fullName}
+                    </span>
                   </div>
                 </div>
 
@@ -293,15 +301,21 @@ export default function GlobalLeadPopup() {
                 <div className="flex items-start gap-3 text-gray-700">
                   <CalendarRange className="w-5 h-5 mt-0.5 text-indigo-500" />
                   <div className="flex-1">
-                    <span className="font-semibold text-gray-800 block mb-2">Travel Details:</span>
+                    <span className="font-semibold text-gray-800 block mb-2">
+                      Travel Details:
+                    </span>
                     <div className="grid grid-cols-2 gap-3 text-sm">
                       <div className="bg-indigo-50 rounded-lg p-2">
                         <div className="text-xs text-gray-500">Start Date</div>
-                        <div className="font-semibold text-indigo-700">{formatDate(lead.pickupDateTime)}</div>
+                        <div className="font-semibold text-indigo-700">
+                          {formatDate(lead.pickupDateTime)}
+                        </div>
                       </div>
                       <div className="bg-indigo-50 rounded-lg p-2">
                         <div className="text-xs text-gray-500">End Date</div>
-                        <div className="font-semibold text-indigo-700">{formatDate(lead.dropDateTime)}</div>
+                        <div className="font-semibold text-indigo-700">
+                          {formatDate(lead.dropDateTime)}
+                        </div>
                       </div>
                     </div>
                     {lead.days && (
@@ -320,14 +334,14 @@ export default function GlobalLeadPopup() {
                 onClick={handleClose}
                 className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-3 rounded-xl font-semibold transition-all duration-200"
               >
-                Close (10s mein wapas)
+                CLOSE (15 min )
               </button>
               <button
                 onClick={handleSnooze}
                 className="flex-1 bg-amber-100 hover:bg-amber-200 text-amber-700 py-3 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2"
               >
                 <Clock className="w-4 h-4" />
-                <span>Remind in 5 min</span>
+                <span>Remind in 60 min</span>
               </button>
             </div>
           </div>

@@ -16,6 +16,7 @@ const createLeads = asyncHandler(async (req, res) => {
   const data = req.body;
   const city = data.city || "Unknown";
 
+  console.log("request body", req.body);
   // Basic validation
   if (!data.firstName || !data.customerPhone) {
     throw new ApiError(400, "Name, Phone are required");

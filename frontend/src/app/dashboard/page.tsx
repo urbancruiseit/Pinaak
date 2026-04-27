@@ -74,83 +74,64 @@ const LoadingPanel = () => (
 
 const LeadsOverviewModule = dynamic(
   () => import("../components/pages/leads/dashboard"),
-  {
-    ssr: false,
-    loading: LoadingPanel,
-  },
+  { ssr: false, loading: LoadingPanel },
 );
 
 const LeadFormModule = dynamic(
   () => import("../components/pages/leads/list/leadsfrom"),
-  {
-    ssr: false,
-    loading: LoadingPanel,
-  },
+  { ssr: false, loading: LoadingPanel },
 );
 
 const LeadTableModule = dynamic(
   () => import("../components/pages/leads/list/leadtable"),
-  {
-    ssr: false,
-    loading: LoadingPanel,
-  },
+  { ssr: false, loading: LoadingPanel },
 ) as React.ComponentType<{ selectedRegion?: string; selectedCity?: string }>;
 
 const LeadSaleTableModule = dynamic(
   () => import("../components/telesales/saleleadable"),
-  {
-    ssr: false,
-    loading: LoadingPanel,
-  },
+  { ssr: false, loading: LoadingPanel },
 );
 
 const EditLeadFormModule = dynamic(
   () => import("../components/pages/leads/list/EditForm/editleadform"),
-  {
-    ssr: false,
-    loading: LoadingPanel,
-  },
+  { ssr: false, loading: LoadingPanel },
 );
 
 const PresalesDashboardModule = dynamic(
   () => import("../components/presalesteam/dashboardpresales"),
-  {
-    ssr: false,
-    loading: LoadingPanel,
-  },
+  { ssr: false, loading: LoadingPanel },
 );
 
 const SalesTeamDashboardModule = dynamic(
   () => import("../components/telesales/telesalesdahboard"),
-  {
-    ssr: false,
-    loading: LoadingPanel,
-  },
+  { ssr: false, loading: LoadingPanel },
 );
 
 const TeamLeaderDashboardModule = dynamic(
   () => import("../components/pages/teamleader/teamleaderdashboard"),
-  {
-    ssr: false,
-    loading: LoadingPanel,
-  },
+  { ssr: false, loading: LoadingPanel },
 );
 
 const CityManagerDashboardModule = dynamic(
   () => import("../components/citymanger/citymanagerdashboard"),
-  {
-    ssr: false,
-    loading: LoadingPanel,
-  },
+  { ssr: false, loading: LoadingPanel },
 );
 
 const RateQuotationTableModule = dynamic(
   () => import("../components/pages/ratequation/list/ratequotationtable"),
-  {
-    ssr: false,
-    loading: LoadingPanel,
-  },
+  { ssr: false, loading: LoadingPanel },
 ) as React.ComponentType<{ leadData?: LeadRecord | null }>;
+
+const MonthlyEnquiryModule = dynamic(
+  () => import("../components/pages/leads/Reports/mereReport"),
+  { ssr: false, loading: LoadingPanel },
+);
+
+// ✅ FIX: LeadDistribution module imported at top level
+const LeadDistributionModule = dynamic(
+  () => import("../components/pages/leads/Reports/leadDistribution"),
+  { ssr: false, loading: LoadingPanel },
+);
 
 const masterTabs: MasterTab[] = [
   {
@@ -158,25 +139,17 @@ const masterTabs: MasterTab[] = [
     label: "Vendor Master",
     component: dynamic(
       () => import("../components/Master/Vendor/VendorFormData"),
-      {
-        ssr: false,
-        loading: LoadingPanel,
-      },
+      { ssr: false, loading: LoadingPanel },
     ),
   },
-
   {
     key: "vendor-table",
     label: "Vendor Table",
     component: dynamic(
       () => import("../components/Master/Vendor/vendortable"),
-      {
-        ssr: false,
-        loading: LoadingPanel,
-      },
+      { ssr: false, loading: LoadingPanel },
     ),
   },
-
   {
     key: "vehicles",
     label: "Vehicles Master",
@@ -198,10 +171,7 @@ const masterTabs: MasterTab[] = [
     label: "Vehicle Registration",
     component: dynamic(
       () => import("../components/Master/Vehicleregistration"),
-      {
-        ssr: false,
-        loading: LoadingPanel,
-      },
+      { ssr: false, loading: LoadingPanel },
     ),
   },
   {
@@ -217,10 +187,7 @@ const masterTabs: MasterTab[] = [
     label: "Driver Master",
     component: dynamic(
       () => import("../components/Master/Driver/DriverFormData"),
-      {
-        ssr: false,
-        loading: LoadingPanel,
-      },
+      { ssr: false, loading: LoadingPanel },
     ),
   },
   {
@@ -231,7 +198,6 @@ const masterTabs: MasterTab[] = [
       loading: LoadingPanel,
     }),
   },
-
   {
     key: "corporate-form",
     label: "Corporate Form",
@@ -240,40 +206,28 @@ const masterTabs: MasterTab[] = [
       loading: LoadingPanel,
     }),
   },
-
   {
     key: "customer-personal",
     label: "Customer Personal",
     component: dynamic(
       () => import("../components/Master/Customer/customerpersonal"),
-      {
-        ssr: false,
-        loading: LoadingPanel,
-      },
+      { ssr: false, loading: LoadingPanel },
     ),
   },
-
   {
     key: "customer-table",
     label: "Customer Table",
     component: dynamic(
       () => import("../components/Master/Customer/customertable"),
-      {
-        ssr: false,
-        loading: LoadingPanel,
-      },
+      { ssr: false, loading: LoadingPanel },
     ),
   },
-
   {
     key: "driver-table",
     label: "Driver Table",
     component: dynamic(
       () => import("../components/Master/Driver/drivertable"),
-      {
-        ssr: false,
-        loading: LoadingPanel,
-      },
+      { ssr: false, loading: LoadingPanel },
     ),
   },
   {
@@ -313,7 +267,6 @@ export default function DashboardPage() {
   const [selectedCity, setSelectedCity] = useState<string>("");
   const [activeYearKey, setActiveYearKey] = useState<string | null>(null);
   const [activeAccessKey, setActiveAccessKey] = useState<string | null>(null);
-
   const [userRole, setUserRole] = useState<string>("");
   const [userName, setUserName] = useState<string>("");
   const [userEmail, setUserEmail] = useState<string>("");
@@ -324,7 +277,15 @@ export default function DashboardPage() {
   const [selectedLeadForRateQuotation, setSelectedLeadForRateQuotation] =
     useState<LeadRecord | null>(null);
 
-  const resetAllReportStates = () => {};
+  const [showMonthlyEnquiry, setShowMonthlyEnquiry] = useState<boolean>(false);
+  const [showMonthlyDistribution, setShowMonthlyDistribution] =
+    useState<boolean>(false);
+
+  // ✅ FIX: resetAllReportStates now resets BOTH states — removed separate resetAllReportStatesDis
+  const resetAllReportStates = () => {
+    setShowMonthlyEnquiry(false);
+    setShowMonthlyDistribution(false);
+  };
 
   const dispatch = useDispatch<AppDispatch>();
   const { currentUser } = useSelector((state: RootState) => state.user);
@@ -333,7 +294,6 @@ export default function DashboardPage() {
     dispatch(currentUserThunk());
   }, [dispatch]);
 
-  // Handle URL search params for tab navigation
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
@@ -345,11 +305,9 @@ export default function DashboardPage() {
     }
   }, []);
 
-  // Simplified role detection logic
   useEffect(() => {
     if (currentUser) {
       const userAny = currentUser as any;
-
       const role = userAny.role || userAny.role_name || "user";
       const subDepartment_name =
         userAny.subDepartment_name ||
@@ -405,11 +363,9 @@ export default function DashboardPage() {
         resetAllReportStates();
       }
     };
-
     window.addEventListener("viewLead", handleViewLead as EventListener);
-    return () => {
+    return () =>
       window.removeEventListener("viewLead", handleViewLead as EventListener);
-    };
   }, []);
 
   useEffect(() => {
@@ -418,14 +374,12 @@ export default function DashboardPage() {
       setActiveLeadView("lead-table");
       resetAllReportStates();
     };
-
     window.addEventListener("navigateToLeadTable", handleNavigateToLeadTable);
-    return () => {
+    return () =>
       window.removeEventListener(
         "navigateToLeadTable",
         handleNavigateToLeadTable,
       );
-    };
   }, []);
 
   useEffect(() => {
@@ -438,17 +392,15 @@ export default function DashboardPage() {
         resetAllReportStates();
       }
     };
-
     window.addEventListener(
       "rateQuotation",
       handleRateQuotation as EventListener,
     );
-    return () => {
+    return () =>
       window.removeEventListener(
         "rateQuotation",
         handleRateQuotation as EventListener,
       );
-    };
   }, []);
 
   const handleLogout = () => {
@@ -514,10 +466,23 @@ export default function DashboardPage() {
     }
   };
 
+  const handleMonthlyEnquiry = () => {
+    resetAllReportStates();
+    setShowMonthlyEnquiry(true);
+    setActiveSection("leads");
+    setActiveLeadView("dashboard");
+  };
+
+  // ✅ FIX: handleMonthlyDistribution correctly sets showMonthlyDistribution
+  const handleMonthlyDistribution = () => {
+    resetAllReportStates();
+    setShowMonthlyDistribution(true);
+    setActiveSection("leads");
+    setActiveLeadView("dashboard");
+  };
+
   const ActiveMasterComponent = useMemo(() => {
-    if (activeSection !== "master") {
-      return null;
-    }
+    if (activeSection !== "master") return null;
     return (
       permittedMasterTabs.find((tab) => tab.key === activeMaster)?.component ??
       null
@@ -553,6 +518,24 @@ export default function DashboardPage() {
     }
 
     if (activeSection === "leads") {
+      // ✅ showMonthlyEnquiry — highest priority check
+      if (showMonthlyEnquiry) {
+        return (
+          <div className="space-y-6">
+            <MonthlyEnquiryModule />
+          </div>
+        );
+      }
+
+      // ✅ FIX: showMonthlyDistribution check — renders LeadDistributionModule
+      if (showMonthlyDistribution) {
+        return (
+          <div className="space-y-6">
+            <LeadDistributionModule />
+          </div>
+        );
+      }
+
       if (activeLeadView === "lead-form") {
         return (
           <div className="space-y-6">
@@ -610,6 +593,7 @@ export default function DashboardPage() {
         </div>
       );
     }
+
     if (activeSection === "admin") {
       return (
         <div className="space-y-6">
@@ -633,7 +617,6 @@ export default function DashboardPage() {
           </div>
         );
       }
-
       if (activeDashboardView === "teamleader-dashboard") {
         return (
           <div className="space-y-6">
@@ -641,7 +624,6 @@ export default function DashboardPage() {
           </div>
         );
       }
-
       if (activeDashboardView === "citymanager-dashboard") {
         return (
           <div className="space-y-6">
@@ -649,7 +631,6 @@ export default function DashboardPage() {
           </div>
         );
       }
-
       return (
         <div className="space-y-6">
           <LeadsOverviewModule />
@@ -694,6 +675,8 @@ export default function DashboardPage() {
         onAccessSelect={handleAccessSelect}
         onSalesLeadSelect={handleSalesLeadSelect}
         onSalesEditFormSelect={handleSalesEditFormSelect}
+        onMonthlyEnquiry={handleMonthlyEnquiry}
+        onMonthlyDistribution={handleMonthlyDistribution}
         onMasterSelect={(key) => {
           const targeted = permittedMasterTabs.find((tab) => tab.key === key);
           setActiveSection("master");
@@ -709,7 +692,7 @@ export default function DashboardPage() {
           if (key === "lead-form" || key === "lead-table") {
             setPendingModuleKey(null);
             setActiveSection("leads");
-            setActiveLeadView(key);
+            setActiveLeadView(key as LeadView);
             resetAllReportStates();
           } else if (key === "sale-lead-table") {
             handleSalesLeadSelect(key);

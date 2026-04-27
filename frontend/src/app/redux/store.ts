@@ -9,6 +9,7 @@ import travelAdvisorReducer from "../features/access/accessSlice";
 import NewcustomerReducer from "../features/NewCustomer/NewCustomerSlice";
 import vendorReducer from "../features/vendor/vendorSlice";
 import driverReducer from "../features/Driver/driverSlice";
+import monthlyReducer from "../features/Reports/monthlyReport/monthlyReportSlice";
 
 export const store = configureStore({
   reducer: {
@@ -22,6 +23,7 @@ export const store = configureStore({
     newCustomer: NewcustomerReducer,
     vendor: vendorReducer,
     driver: driverReducer,
+    report: monthlyReducer,
   },
 });
 

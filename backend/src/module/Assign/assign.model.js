@@ -7,7 +7,7 @@ export const findTravelAdvisorsByCityId = async (cityId) => {
     const [rows] = await hrmsPool.execute(
       `SELECT 
          u.id,
-         u.firstName,
+         u.aliasName,
          u.middleName,
          u.lastName
        FROM users u
@@ -24,7 +24,7 @@ export const findTravelAdvisorsByCityId = async (cityId) => {
 
     return rows.map((user) => ({
       id: user.id,
-      fullName: [user.firstName, user.middleName, user.lastName]
+      fullName: [user.aliasName, user.middleName, user.lastName]
         .filter(Boolean)
         .join(" "),
     }));
@@ -59,7 +59,7 @@ export const assignTravelAdvisorToLead = async (leadId, travelAdvisorId) => {
 //   try {
 //     const [rows] = await pool.query(
 //       `
-//       SELECT 
+//       SELECT
 //         l.*,
 //         c.uuid AS customer_uuid,
 //         CONCAT_WS(' ', c.firstName, c.middleName, c.lastName) AS fullName,
@@ -82,7 +82,7 @@ export const assignTravelAdvisorToLead = async (leadId, travelAdvisorId) => {
 //         c.pincode
 //       FROM leads l
 //       LEFT JOIN customers c ON l.customer_id = c.id
-     
+
 //       WHERE l.advisor_id = ?
 //       ORDER BY l.id DESC
 //       LIMIT ? OFFSET ?
@@ -160,7 +160,7 @@ export const getLeadsByAdvisorId = async (advisorId, limit, offset) => {
     return {
       leads: rows,
       totalCount: Number(totalCount),
-      monthlyStats,         // ← ye naya field add hua
+      monthlyStats, // ← ye naya field add hua
     };
   } catch (error) {
     console.error("getLeadsByAdvisorId error:", error);

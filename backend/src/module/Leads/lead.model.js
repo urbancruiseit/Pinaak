@@ -1,4 +1,4 @@
-import {hrmsPool, pool } from "../../config/mySqlDB.js";
+import { hrmsPool, pool } from "../../config/mySqlDB.js";
 import { generateUUID } from "../../utils/uuid.js";
 
 export const LEAD_TABLE = "leads";
@@ -32,6 +32,8 @@ export const LEAD_COLUMNS = {
   DAYS: "days",
   PICKUP_ADDRESS: "pickupAddress",
   DROP_ADDRESS: "dropAddress",
+  MULTIPLE_PICKUP: "multiplepickup",
+  MULTIPLE_DROP: "multipledrop",
   PASSENGER_TOTAL: "passengerTotal",
   PETS_NUMBER: "petsNumber",
   PETS_NAMES: "petsNames",
@@ -81,6 +83,8 @@ export const insertLead = async (data) => {
       days,
       pickupAddress,
       dropAddress,
+      multiplepickup,
+      multipledrop,
       passengerTotal,
       petsNumber,
       petsNames,
@@ -131,6 +135,8 @@ export const insertLead = async (data) => {
       int(days),
       safe(pickupAddress),
       safe(dropAddress),
+      safe(multiplepickup),
+      safe(multipledrop),
       int(passengerTotal),
       int(petsNumber),
       safe(petsNames),
@@ -174,6 +180,8 @@ export const insertLead = async (data) => {
         ${LEAD_COLUMNS.DAYS},
         ${LEAD_COLUMNS.PICKUP_ADDRESS},
         ${LEAD_COLUMNS.DROP_ADDRESS},
+         ${LEAD_COLUMNS.MULTIPLE_PICKUP},
+          ${LEAD_COLUMNS.MULTIPLE_DROP},
         ${LEAD_COLUMNS.PASSENGER_TOTAL},
         ${LEAD_COLUMNS.PETS_NUMBER},
         ${LEAD_COLUMNS.PETS_NAMES},
@@ -335,7 +343,7 @@ export const findLeadByUUID = async (uuid) => {
 
 //   // Main query with customer JOIN
 //   const query = `
-//     SELECT 
+//     SELECT
 //       l.*,
 
 //       c.uuid AS customer_uuid,
@@ -370,7 +378,7 @@ export const findLeadByUUID = async (uuid) => {
 
 //   // Count query
 //   const countQuery = `
-//     SELECT COUNT(*) as total 
+//     SELECT COUNT(*) as total
 //     FROM leads l
 //     LEFT JOIN customers c ON l.customer_id = c.id
 //     ${whereClause}
@@ -551,7 +559,6 @@ export const getAllUnwantedLeadsModel = async () => {
     throw error;
   }
 };
-
 
 export const updateLeadById = async (leadId, data) => {
   if (!leadId) throw new Error("Lead ID is required");

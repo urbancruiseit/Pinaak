@@ -399,7 +399,6 @@ export const getLeads = async (page, limit, cityIds) => {
   const limitNumber = parseInt(limit, 10);
   const offset = (pageNumber - 1) * limitNumber;
 
-  // City filter clause
   let whereClause = `WHERE (l.unwanted_status IS NULL OR l.unwanted_status != 'unwanted')`;
   let cityValues = [];
 
@@ -409,11 +408,9 @@ export const getLeads = async (page, limit, cityIds) => {
     cityValues = [...cityIds];
   }
 
-  // Main query
   const query = `
     SELECT 
       l.*,
-
       c.uuid AS customer_uuid,
       CONCAT_WS(' ', c.firstName, c.middleName, c.lastName) AS fullName,
       c.firstName,
@@ -433,7 +430,6 @@ export const getLeads = async (page, limit, cityIds) => {
       c.gender,
       c.state,
       c.pincode
-
     FROM leads l
     LEFT JOIN customers c ON l.customer_id = c.id
     ${whereClause}
@@ -444,7 +440,6 @@ export const getLeads = async (page, limit, cityIds) => {
   const queryValues = [...cityValues, limitNumber, offset];
   const [leads] = await pool.query(query, queryValues);
 
-  // Count query
   const countQuery = `
     SELECT COUNT(*) as total 
     FROM leads l
@@ -453,7 +448,7 @@ export const getLeads = async (page, limit, cityIds) => {
   `;
   const [countResult] = await pool.query(countQuery, cityValues);
 
-  // ── Advisor + Presales names from hrmsPool (ek hi query mein dono) ─────
+  // ── Advisor + Presales IDs collect karo ──────────────────────────────────
   const advisorIds = leads
     .map((l) => l.advisor_id)
     .filter((id) => id !== null && id !== undefined);
@@ -462,34 +457,48 @@ export const getLeads = async (page, limit, cityIds) => {
     .map((l) => l.presales_id)
     .filter((id) => id !== null && id !== undefined);
 
-  // Dono ki unique IDs ek set mein
   const allUserIds = [...new Set([...advisorIds, ...presalesIds])];
 
-  let userMap = {}; // { [user_id]: fullName }
+  let userMap = {}; // { [user_id]: { id, aliasName, firstName, middleName, lastName } }
 
   if (allUserIds.length > 0) {
     try {
       const placeholders = allUserIds.map(() => "?").join(",");
       const [users] = await hrmsPool.query(
-        `SELECT id, CONCAT_WS(' ', aliasName, middleName, lastName) AS fullName
+        `SELECT id, aliasName, firstName, middleName, lastName
          FROM users
          WHERE id IN (${placeholders})`,
         allUserIds,
       );
 
       users.forEach((u) => {
-        userMap[u.id] = u.fullName;
+        userMap[u.id] = u; // pura object store karo
       });
     } catch (err) {
       console.error("hrmsPool user fetch failed:", err.message);
     }
   }
 
-  // Har lead mein advisorFullName + presalesFullName attach karo
+  // ── Name helper ───────────────────────────────────────────────────────────
+  const getName = (userId, type) => {
+    const user = userMap[userId];
+    if (!user) return null;
+
+    const first =
+      type === "advisor"
+        ? user.aliasName || "" // advisor → aliasName
+        : user.firstName || ""; // presales → firstName
+
+    return (
+      `${first} ${user.middleName || ""} ${user.lastName || ""}`.trim() || null
+    );
+  };
+
+  // ── Leads mein names attach karo ──────────────────────────────────────────
   const leadsWithNames = leads.map((lead) => ({
     ...lead,
-    advisorFullName: userMap[lead.advisor_id] || null,
-    presalesFullName: userMap[lead.presales_id] || null,
+    advisorFullName: getName(lead.advisor_id, "advisor"),
+    presalesFullName: getName(lead.presales_id, "presales"),
   }));
 
   return {

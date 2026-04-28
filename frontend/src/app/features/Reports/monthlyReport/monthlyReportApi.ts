@@ -172,7 +172,7 @@ export const getLeadDistributionApi = async (
       success: res.success,
       month: res.month ?? params.month ?? now.getMonth() + 1,
       year: res.year ?? params.year ?? now.getFullYear(),
-      advisorId: res.advisorId ?? params.advisorId ?? null,
+      advisorId: params.advisorId ?? null, // backend doesn't return this, use param
       totalDaysInMonth: res.totalDaysInMonth ?? 0,
       data: Array.isArray(res.data) ? res.data : [],
       teamTotal: res.teamTotal ?? {

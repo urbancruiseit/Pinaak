@@ -84,7 +84,6 @@ export const assignTravelAdvisorApi = async (
   }
 };
 
-
 export interface AssignedLeadsResponse {
   leads: LeadRecord[];
   totalCount: number;
@@ -100,16 +99,44 @@ export interface AssignedLeadsResponse {
   }[];
 }
 
-
 export const getMyAssignedLeadsApi = async (page: number = 1) => {
   try {
     const response = await axiosInstance.get(`/assign/myleads?page=${page}`);
-    
-    const data = response?.data?.data; 
+
+    const data = response?.data?.data;
     if (!data) throw new Error("Invalid response from server");
-    
-    return data; // ← poora response nahi, sirf data
+
+    return data;
   } catch (error: any) {
     throw new Error(error?.response?.data?.message || error.message);
   }
 };
+
+// api/leadsApi.ts
+
+export const getMyLeadStatusCountApi = async () => {
+  try {
+    const response = await axiosInstance.get(`/assign/leads/status-count`);
+
+    const data = response?.data?.data;
+    if (!data) throw new Error("Invalid response from server");
+
+    return data;
+  } catch (error: any) {
+    throw new Error(error?.response?.data?.message || error.message);
+  }
+};
+
+export const getPresalesLeadStatusCountApi = async () => {
+  try {
+    const response = await axiosInstance.get(`/assign/leads/status-count-by-presales`);
+
+    const data = response?.data?.data;
+    if (!data) throw new Error("Invalid response from server");
+
+    return data;
+  } catch (error: any) {
+    throw new Error(error?.response?.data?.message || error.message);
+  }
+};
+

@@ -1,5 +1,9 @@
 "use client";
-import { useState, Fragment } from "react";
+import { fetchLeadDistribution } from "@/app/features/Reports/monthlyReport/monthlyReportSlice";
+import { AppDispatch, RootState } from "@/app/redux/store";
+import App from "next/app";
+import { useState, Fragment, use, useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
 
 const months = [
   { name: "Jan", days: 31 },
@@ -14,43 +18,6 @@ const months = [
   { name: "Oct", days: 31 },
   { name: "Nov", days: 30 },
   { name: "Dec", days: 31 },
-];
-
-// TEAM DATA with colors
-const team30 = [
-  {
-    name: "RN",
-    color: "bg-blue-50",
-    bookColor: "bg-blue-50",
-    nameColor: "bg-blue-50",
-
-    leads: Array.from({ length: 31 }, () => Math.floor(Math.random() * 5)),
-    book: Array.from({ length: 31 }, () => Math.floor(Math.random() * 2)),
-  },
-  {
-    name: "CT",
-    color: "bg-emerald-50",
-    bookColor: "bg-emerald-50",
-    nameColor: "bg-emerald-50",
-    leads: Array.from({ length: 31 }, () => Math.floor(Math.random() * 6)),
-    book: Array.from({ length: 31 }, () => Math.floor(Math.random() * 3)),
-  },
-  {
-    name: "AM",
-    color: "bg-purple-50",
-    bookColor: "bg-purple-50",
-    nameColor: "bg-purple-50",
-    leads: Array.from({ length: 31 }, () => Math.floor(Math.random() * 4)),
-    book: Array.from({ length: 31 }, () => Math.floor(Math.random() * 2)),
-  },
-  {
-    name: "SD",
-    color: "bg-amber-50",
-    bookColor: "bg-amber-50",
-    nameColor: "bg-amber-50",
-    leads: Array.from({ length: 31 }, () => Math.floor(Math.random() * 5)),
-    book: Array.from({ length: 31 }, () => Math.floor(Math.random() * 1)),
-  },
 ];
 
 const team60 = [
@@ -89,10 +56,7 @@ export default function DailyLeadReport() {
   const monthObj = months.find((m) => m.name === selectedMonth)!;
   const daysArray = Array.from({ length: monthObj.days }, (_, i) => i);
 
-  const allTeams = [
-    { teamName: "Team 20", members: team30 },
-    { teamName: "Team 60", members: team60 },
-  ];
+  const allTeams = [{ teamName: "Team 60", members: team60 }];
 
   const cell = "border-r border-b border-gray-300 text-center px-1 py-1";
   const headCell = "border-r border-b border-gray-300 px-2 py-2 text-center";
@@ -131,6 +95,12 @@ export default function DailyLeadReport() {
       0,
     );
 
+  const dispatch = useDispatch<AppDispatch>();
+  const { distribution } = useSelector((state: RootState) => state.report);
+  console.log("Lead Distribution from Redux:", distribution);
+  useEffect(() => {
+    dispatch(fetchLeadDistribution({ month: selectedMonth, year }));
+  }, [selectedMonth, year, dispatch]);
   return (
     <div className="">
       {/* HEADER */}

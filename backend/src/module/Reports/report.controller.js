@@ -54,13 +54,11 @@ export const getLeadCountByAdviserForMonthController = asyncHandler(
   async (req, res) => {
     const { month, year } = req.query;
 
-    // req.user se city_ids lo (pre-sales ka assigned cities)
-    const cityIds = req.user?.city_ids || [];
-    console.log("Tokenn", cityIds);
+    // Pass req directly — service reads req.user internally
     const data = await getPreSalesLeadAssignmentReport(
+      req,
       month ? Number(month) : undefined,
       year ? Number(year) : undefined,
-      cityIds,
     );
 
     return res.status(200).json(new ApiResponse(200, data, "Success"));

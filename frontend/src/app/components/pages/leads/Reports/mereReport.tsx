@@ -38,9 +38,9 @@ const getMonthsData = (year: number) => {
 };
 
 function getMonthColorClass(monthName: string): string {
-  if (["APR", "MAY", "JUN"].includes(monthName)) return "bg-emerald-300";
+  if (["APR", "MAY", "JUN"].includes(monthName)) return "bg-green-300";
   if (["JUL", "AUG", "SEP", "OCT"].includes(monthName)) return "bg-cyan-300";
-  if (["NOV", "DEC", "JAN"].includes(monthName)) return "bg-emerald-300";
+  if (["NOV", "DEC", "JAN"].includes(monthName)) return "bg-green-300";
   if (["FEB", "MAR"].includes(monthName)) return "bg-cyan-300";
 
   return "";
@@ -68,18 +68,16 @@ export default function MonthlyEnquiryReport() {
     loading,
     error,
   } = useSelector((s: RootState) => s.report);
-
   // ─── Fetch on year change ──────────────────────────────────
   useEffect(() => {
     dispatch(fetchMonthlyEnquiry(Number(year)));
   }, [year, dispatch]);
-
   // ─── Process data ──────────────────────────────────────────
   const reportData = useMemo(() => {
     const monthsData = getMonthsData(Number(year));
 
     return monthsData.map((month, index) => {
-      const monthNumber = index + 1;
+      const monthNumber = index + 4;
       const dailyData = Array(month.days).fill(0);
 
       if (apiData && apiData.length > 0) {
@@ -89,7 +87,6 @@ export default function MonthlyEnquiryReport() {
           }
         });
       }
-
       const total = dailyData.reduce((a: number, b: number) => a + b, 0);
       const avg = Math.round(total / month.days);
 
@@ -99,7 +96,6 @@ export default function MonthlyEnquiryReport() {
 
   const grandTotal = reportData.reduce((acc, m) => acc + m.total, 0);
 
-  // ─── Loading State ─────────────────────────────────────────
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -140,19 +136,6 @@ export default function MonthlyEnquiryReport() {
           </div>
 
           <div className="flex gap-4">
-            {/* Month Select */}
-            <select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="border border-gray-600 p-2 rounded bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {reportData.map((month) => (
-                <option key={month.name} value={month.name}>
-                  {month.name} ({month.days} days)
-                </option>
-              ))}
-            </select>
-
             {/* Year Select */}
             <select
               value={year}
@@ -179,16 +162,28 @@ export default function MonthlyEnquiryReport() {
       {/* ── Table ── */}
       <div className="overflow-x-auto border border-gray-600 rounded-lg shadow-sm">
         <table className="border-collapse w-full text-center font-bold">
-          <thead className="bg-yellow-300 text-black">
+          <thead className="bg-yellow-300 text-blue-900 text-2xl">
             <tr>
-              <th className="border border-gray-600 p-2">MONTH</th>
+              <th className="border border-gray-600 p-3 font-bold text-xl">
+                MONTH
+              </th>
+
               {[...Array(31)].map((_, i) => (
-                <th key={i} className="border border-gray-600 p-1 text-md">
+                <th
+                  key={i}
+                  className="border border-gray-600 p-2 font-bold text-lg"
+                >
                   {i + 1}
                 </th>
               ))}
-              <th className="border border-gray-600 p-2">TOTAL</th>
-              <th className="border border-gray-600 p-2">AVG</th>
+
+              <th className="border border-gray-600 p-3 font-bold text-green-600 text-xl">
+                TOTAL
+              </th>
+
+              <th className="border border-gray-600 p-3 font-bold text-red-600 text-xl">
+                AVG
+              </th>
             </tr>
           </thead>
 
@@ -196,12 +191,9 @@ export default function MonthlyEnquiryReport() {
             {reportData.map((month, idx) => {
               const monthColor = getMonthColorClass(month.name);
               return (
-                <tr
-                  key={idx}
-                  className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}
-                >
+                <tr key={idx}>
                   <td
-                    className={`border border-gray-600 p-2 font-bold ${monthColor}`}
+                    className={`border border-gray-600 p-2 font-bold text-xl ${monthColor}`}
                   >
                     {month.name}
                   </td>
@@ -209,7 +201,7 @@ export default function MonthlyEnquiryReport() {
                   {month.dailyData.map((value: number, i: number) => (
                     <td
                       key={i}
-                      className={`border border-gray-600 p-1 ${monthColor} ${value > 0 ? "font-bold" : ""}`}
+                      className={`border border-gray-600 p-1 text-lg ${monthColor} ${value > 0 ? "font-bold" : ""}`}
                     >
                       {value > 0 ? value : ""}
                     </td>
@@ -218,14 +210,15 @@ export default function MonthlyEnquiryReport() {
                   {[...Array(31 - month.days)].map((_, i) => (
                     <td
                       key={i}
-                      className="border border-gray-600 p-1 bg-gray-100"
+                      className={`border border-gray-600 p-1 ${monthColor}`}
                     />
                   ))}
 
-                  <td className="border border-gray-600 p-2 bg-amber-200 font-bold text-gray-800">
+                  <td className="border border-gray-600 p-2 bg-amber-200 font-bold text-green-800 text-xl">
                     {month.total}
                   </td>
-                  <td className="border border-gray-600 p-2 bg-amber-200 font-bold text-gray-800">
+
+                  <td className="border border-gray-600 p-2 bg-amber-200 font-bold text-red-800 text-xl">
                     {month.avg}
                   </td>
                 </tr>
@@ -233,8 +226,10 @@ export default function MonthlyEnquiryReport() {
             })}
 
             {/* ── Grand Total Row ── */}
-            <tr className="bg-yellow-200 text-black font-bold">
-              <td className="border border-gray-600 p-2">TOTAL</td>
+            {/* ── Grand Total Row ── */}
+            <tr className="bg-yellow-200 text-black font-bold text-lg">
+              <td className="border border-gray-600 p-2 text-xl">TOTAL</td>
+
               {[...Array(31)].map((_, dateIndex) => {
                 const dailyTotal = reportData.reduce((sum, month) => {
                   if (dateIndex < month.days) {
@@ -242,14 +237,24 @@ export default function MonthlyEnquiryReport() {
                   }
                   return sum;
                 }, 0);
+
                 return (
-                  <td key={dateIndex} className="border border-gray-600 p-2">
+                  <td
+                    key={dateIndex}
+                    className="border border-gray-600 p-2 text-lg"
+                  >
                     {dailyTotal > 0 ? dailyTotal : ""}
                   </td>
                 );
               })}
-              <td className="border border-gray-600 p-2">{grandTotal}</td>
-              <td className="border border-gray-600 p-2" />
+
+              <td className="border border-gray-600 p-2 text-2xl font-extrabold text-green-700">
+                {grandTotal}
+              </td>
+
+              <td className="border border-gray-600 p-2 text-xl font-bold text-red-700">
+                {/* empty avg cell */}
+              </td>
             </tr>
           </tbody>
         </table>

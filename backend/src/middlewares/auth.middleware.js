@@ -10,7 +10,7 @@ export const verifyJWT = asyncHandler(async (req, res, next) => {
   } else if (req.cookies?.accessToken) {
     token = req.cookies.accessToken;
   }
-  
+
   if (!token)
     return res.status(401).json({ message: "Authorization token missing" });
 
@@ -23,6 +23,7 @@ export const verifyJWT = asyncHandler(async (req, res, next) => {
     }
 
     req.user = { ...user, password: undefined };
+
     next();
   } catch (error) {
     console.error("JWT ERROR:", error.message);

@@ -140,7 +140,6 @@ export const getLeadsByAdvisorId = async (advisorId, limit, offset) => {
       [Number(advisorId)],
     );
 
-    // Monthly lead count from pickupDateTime
     const [monthlyStats] = await pool.query(
       `
       SELECT 
@@ -157,13 +156,116 @@ export const getLeadsByAdvisorId = async (advisorId, limit, offset) => {
       [Number(advisorId)],
     );
 
+    // ── Advisor + Presales names from hrmsPool ─────
+    const advisorIds = rows
+      .map((l) => l.advisor_id)
+      .filter((id) => id !== null && id !== undefined);
+
+    const presalesIds = rows
+      .map((l) => l.presales_id)
+      .filter((id) => id !== null && id !== undefined);
+
+    const allUserIds = [...new Set([...advisorIds, ...presalesIds])];
+
+    let userMap = {};
+
+    if (allUserIds.length > 0) {
+      try {
+        const placeholders = allUserIds.map(() => "?").join(",");
+        const [users] = await hrmsPool.query(
+          `SELECT id, CONCAT_WS(' ', firstName, middleName, lastName) AS fullName
+           FROM users
+           WHERE id IN (${placeholders})`,
+          allUserIds,
+        );
+        users.forEach((u) => {
+          userMap[u.id] = u.fullName;
+        });
+      } catch (err) {
+        console.error("hrmsPool user fetch failed:", err.message);
+      }
+    }
+
+    // Har lead mein advisorFullName + presalesFullName attach karo
+    const leadsWithNames = rows.map((lead) => ({
+      ...lead,
+      advisorFullName: userMap[lead.advisor_id] || null,
+      presalesFullName: userMap[lead.presales_id] || null,
+    }));
+
     return {
-      leads: rows,
+      leads: leadsWithNames,
       totalCount: Number(totalCount),
-      monthlyStats, // ← ye naya field add hua
+      monthlyStats,
     };
   } catch (error) {
     console.error("getLeadsByAdvisorId error:", error);
     throw error;
   }
 };
+
+export const getLeadStatusCountByAdvisorId = async (advisorId) => {
+  const [rows] = await pool.query(
+    `SELECT 
+      COUNT(*) AS totalLeads,
+      SUM(status = 'NEW') AS new,
+      SUM(status = 'KYC') AS kyc,
+      SUM(status = 'RFQ') AS rfq,
+      SUM(status = 'HOT') AS hot,
+      SUM(status = 'VEH-N') AS veh_n,
+      SUM(status = 'LOST') AS lost,
+      SUM(status = 'BOOK') AS book
+    FROM leads
+    WHERE advisor_id = ?`,
+    [advisorId],
+  );
+
+  const data = rows[0];
+
+  return {
+    totalLeads: data.totalLeads,
+    statusCount: {
+      NEW: data.new || 0,
+      KYC: data.kyc || 0,
+      RFQ: data.rfq || 0,
+      HOT: data.hot || 0,
+      "VEH-N": data.veh_n || 0,
+      LOST: data.lost || 0,
+      BOOK: data.book || 0,
+    },
+  };
+};
+
+
+export const getLeadStatusCountByPresalesId = async (presalesId) => {
+  const [rows] = await pool.query(
+    `SELECT 
+      COUNT(*) AS totalLeads,
+      SUM(status = 'NEW') AS new,
+      SUM(status = 'KYC') AS kyc,
+      SUM(status = 'RFQ') AS rfq,
+      SUM(status = 'HOT') AS hot,
+      SUM(status = 'VEH-N') AS veh_n,
+      SUM(status = 'LOST') AS lost,
+      SUM(status = 'BOOK') AS book
+    FROM leads
+    WHERE presales_id = ?`,
+    [presalesId],
+  );
+
+  const data = rows[0];
+
+  return {
+    totalLeads: data.totalLeads,
+    statusCount: {
+      NEW: data.new || 0,
+      KYC: data.kyc || 0,
+      RFQ: data.rfq || 0,
+      HOT: data.hot || 0,
+      "VEH-N": data.veh_n || 0,
+      LOST: data.lost || 0,
+      BOOK: data.book || 0,
+    },
+  };
+};
+

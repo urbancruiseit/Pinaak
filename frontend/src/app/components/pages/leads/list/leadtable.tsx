@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { ReactNode } from "react";
 import EditLeadForm from "./EditForm/editleadform";
@@ -37,6 +37,7 @@ import {
   type LeadStatusCounts,
   type LeadStatusPercentages,
 } from "../../../../../types/LeadsTable/leadstatus";
+import { fetchPresalesLeadStatusCount } from "@/app/features/access/accessSlice";
 
 const BANNER_GROUP_LIGHT_BG_CLASS: Record<string, string> = {
   STATUS: "bg-blue-200",
@@ -143,7 +144,12 @@ export default function LeadsTable() {
   const { leads, loading, error, totalPages, total } = useSelector(
     (state: RootState) => state.lead,
   );
-console.log("leads", leads)
+  const { leadStatus } = useSelector((state: RootState) => state.travelAdvisor);
+
+  useEffect(() => {
+    dispatch(fetchPresalesLeadStatusCount());
+  }, [dispatch]);
+
   useEffect(() => {
     dispatch(fetchLeads(currentPage));
   }, [dispatch, currentPage]);
@@ -337,7 +343,7 @@ console.log("leads", leads)
       // Search term filter
       if (term) {
         const haystack = [
-          lead.customerName,
+          lead.fullName,
           lead.companyName,
           lead.city,
           lead.source,
@@ -350,7 +356,6 @@ console.log("leads", leads)
           lead.vehicle3,
           lead.requirementVehicle,
           lead.vehicles,
-          lead.itinerary?.join(" ") ?? "",
           lead.customerEmail,
           lead.customerPhone,
           lead.telecaller,
@@ -425,8 +430,7 @@ console.log("leads", leads)
     cols.forEach((column) => {
       if (!column.groupLabel) {
         finishGroup();
-        // Don't add empty group for columns without groupLabel
-        // They will be handled individually in the header row
+
         return;
       }
 
@@ -611,49 +615,49 @@ console.log("leads", leads)
                 <LeadStatusBadge
                   type="total"
                   label="TOTAL"
-                  value={totalLeadsCount}
+                  value={leadStatus.totalLeads}
                   percentage={statusPercentages.totalPercentage}
                 />
                 <LeadStatusBadge
                   type="new"
                   label="NEW"
-                  value={statusCounts.newLeads}
+                  value={leadStatus.statusCount.NEW}
                   percentage={statusPercentages.newPercentage}
                 />
                 <LeadStatusBadge
                   type="rfq"
                   label="RFQ"
-                  value={statusCounts.rfqLeads}
+                  value={leadStatus.statusCount.RFQ}
                   percentage={statusPercentages.rfqPercentage}
                 />
                 <LeadStatusBadge
                   type="kyc"
                   label="KYC"
-                  value={statusCounts.kycLeads}
+                  value={leadStatus.statusCount.KYC}
                   percentage={statusPercentages.kycPercentage}
                 />
                 <LeadStatusBadge
                   type="hot"
                   label="HOT"
-                  value={statusCounts.hotLeads}
+                  value={leadStatus.statusCount.HOT}
                   percentage={statusPercentages.hotPercentage}
                 />
                 <LeadStatusBadge
                   type="vehn"
                   label="VEH-N"
-                  value={statusCounts.vehnLeads}
+                  value={leadStatus.statusCount["VEH-N"]}
                   percentage={statusPercentages.vehnPercentage}
                 />
                 <LeadStatusBadge
                   type="lost"
                   label="LOST"
-                  value={statusCounts.lostLeads}
+                  value={leadStatus.statusCount.LOST}
                   percentage={statusPercentages.lostPercentage}
                 />
                 <LeadStatusBadge
                   type="book"
                   label="BOOK"
-                  value={statusCounts.bookLeads}
+                  value={leadStatus.statusCount.BOOK}
                   percentage={statusPercentages.bookPercentage}
                 />
               </div>

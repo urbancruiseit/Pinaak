@@ -1,9 +1,10 @@
-
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import {
   AssignedLeadsResponse,
   assignTravelAdvisorApi,
   getMyAssignedLeadsApi,
+  getMyLeadStatusCountApi,
+  getPresalesLeadStatusCountApi,
   getTravelAdvisorsByCityApi,
 } from "./accessApi";
 import type { LeadRecord } from "@/types/types";
@@ -19,7 +20,29 @@ interface AssignedLeadsState {
   loading: boolean;
   error: string | null;
   page: number;
-  monthlyStats: { month: string; monthName: string; year: number; leadCount: number }[]; // ← add
+  monthlyStats: {
+    month: string;
+    monthName: string;
+    year: number;
+    leadCount: number;
+  }[];
+}
+
+interface StatusCount {
+  NEW: number;
+  KYC: number;
+  RFQ: number;
+  HOT: number;
+  "VEH-N": number;
+  LOST: number;
+  BOOK: number;
+}
+
+interface LeadStatusState {
+  totalLeads: number;
+  statusCount: StatusCount;
+  loading: boolean;
+  error: string | null;
 }
 
 interface TravelAdvisorState {
@@ -30,8 +53,10 @@ interface TravelAdvisorState {
   assignLoading: boolean;
   assignSuccess: boolean;
 
-  // ✅ New State
   assignedLeads: AssignedLeadsState;
+
+  // ❗ Missing tha (fix)
+  leadStatus: LeadStatusState;
 }
 
 // 🔹 Initial State
@@ -43,14 +68,29 @@ const initialState: TravelAdvisorState = {
   assignLoading: false,
   assignSuccess: false,
 
-  // ✅ New State Init
   assignedLeads: {
-  leads: [],
-  loading: false,
-  error: null,
-  page: 1,
-  monthlyStats: [], // ← add
-}
+    leads: [],
+    loading: false,
+    error: null,
+    page: 1,
+    monthlyStats: [],
+  },
+
+  // ❗ add kiya
+  leadStatus: {
+    totalLeads: 0,
+    statusCount: {
+      NEW: 0,
+      KYC: 0,
+      RFQ: 0,
+      HOT: 0,
+      "VEH-N": 0,
+      LOST: 0,
+      BOOK: 0,
+    },
+    loading: false,
+    error: null,
+  },
 };
 
 //
@@ -86,27 +126,53 @@ export const assignTravelAdvisor = createAsyncThunk<
   },
 );
 
-
-
-
+//
+// ✅ 3. My Assigned Leads
+//
 export const fetchMyAssignedLeads = createAsyncThunk<
-  AssignedLeadsResponse,  // return type
-  number,                  // argument type (page)
-  { rejectValue: string }  // ← rejectValue type
+  AssignedLeadsResponse,
+  number,
+  { rejectValue: string }
+>("access/fetchMyAssignedLeads", async (page, { rejectWithValue }) => {
+  try {
+    return await getMyAssignedLeadsApi(page);
+  } catch (error: any) {
+    return rejectWithValue(error.message);
+  }
+});
+
+//
+// ❗ FIX: syntax error tha yahan
+//
+export const fetchMyLeadStatusCount = createAsyncThunk<
+  { totalLeads: number; statusCount: StatusCount },
+  void,
+  { rejectValue: string }
+>("travelAdvisor/fetchMyLeadStatusCount", async (_, { rejectWithValue }) => {
+  try {
+    return await getMyLeadStatusCountApi();
+  } catch (error: any) {
+    return rejectWithValue(error.message);
+  }
+});
+
+export const fetchPresalesLeadStatusCount = createAsyncThunk<
+  { totalLeads: number; statusCount: StatusCount },
+  void,
+  { rejectValue: string }
 >(
-  "access/fetchMyAssignedLeads",
-  async (page, { rejectWithValue }) => {
+  "travelAdvisor/fetchPresalesLeadStatusCount",
+  async (_, { rejectWithValue }) => {
     try {
-      const data = await getMyAssignedLeadsApi(page);
-      return data;
+      return await getPresalesLeadStatusCountApi();
     } catch (error: any) {
       return rejectWithValue(error.message);
     }
-  }
+  },
 );
 
 //
-// ✅ Slice
+// 🔹 Slice
 //
 const travelAdvisorSlice = createSlice({
   name: "travelAdvisor",
@@ -152,21 +218,49 @@ const travelAdvisorSlice = createSlice({
         state.assignedLeads.loading = true;
         state.assignedLeads.error = null;
       })
-      builder.addCase(fetchMyAssignedLeads.fulfilled, (state, action) => {
-
-  state.assignedLeads.loading = false;
-  state.assignedLeads.leads = action.payload.leads;         
-  state.assignedLeads.page = action.payload.totalPages;      
-  state.assignedLeads.monthlyStats = action.payload.monthlyStats ?? []; 
-})
+      .addCase(fetchMyAssignedLeads.fulfilled, (state, action) => {
+        state.assignedLeads.loading = false;
+        state.assignedLeads.leads = action.payload.leads;
+        state.assignedLeads.page = action.payload.totalPages;
+        state.assignedLeads.monthlyStats = action.payload.monthlyStats ?? [];
+      })
       .addCase(fetchMyAssignedLeads.rejected, (state, action) => {
         state.assignedLeads.loading = false;
         state.assignedLeads.error =
           action.payload || "Failed to fetch assigned leads";
+      })
+
+      // 🔹 Lead Status Count
+      .addCase(fetchMyLeadStatusCount.pending, (state) => {
+        state.leadStatus.loading = true;
+        state.leadStatus.error = null;
+      })
+      .addCase(fetchMyLeadStatusCount.fulfilled, (state, action) => {
+        state.leadStatus.loading = false;
+        state.leadStatus.totalLeads = action.payload.totalLeads;
+        state.leadStatus.statusCount = action.payload.statusCount;
+      })
+      .addCase(fetchMyLeadStatusCount.rejected, (state, action) => {
+        state.leadStatus.loading = false;
+        state.leadStatus.error =
+          action.payload || "Failed to fetch lead status count";
+      })
+      .addCase(fetchPresalesLeadStatusCount.pending, (state) => {
+        state.leadStatus.loading = true;
+        state.leadStatus.error = null;
+      })
+      .addCase(fetchPresalesLeadStatusCount.fulfilled, (state, action) => {
+        state.leadStatus.loading = false;
+        state.leadStatus.totalLeads = action.payload.totalLeads;
+        state.leadStatus.statusCount = action.payload.statusCount;
+      })
+      .addCase(fetchPresalesLeadStatusCount.rejected, (state, action) => {
+        state.leadStatus.loading = false;
+        state.leadStatus.error =
+          action.payload || "Failed to fetch presales lead status count";
       });
   },
 });
 
 export const { resetAssignState } = travelAdvisorSlice.actions;
-
 export default travelAdvisorSlice.reducer;

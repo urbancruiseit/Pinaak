@@ -570,82 +570,12 @@ export function Navbar({
                 })}
               </>
             )}
+
             {showLeadsMenu && (
               <>
-                <div className="relative w-full md:w-auto">
-                  {(() => {
-                    const isOpen = openMenu === "lead-track-menu";
-                    return (
-                      <>
-                        <button
-                          type="button"
-                          className={`w-full md:w-auto flex items-center justify-between gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200
-                ${
-                  isOpen
-                    ? "bg-green-600 text-white shadow-lg md:scale-105"
-                    : "bg-white text-green-700 border-2 border-green-300 hover:border-green-500 hover:shadow-md hover:scale-[1.02] hover:bg-green-50"
-                } md:min-w-[100px] md:h-9 md:py-2`}
-                          onClick={() => {
-                            setOpenMenu((prev) =>
-                              prev === "lead-track-menu"
-                                ? null
-                                : "lead-track-menu",
-                            );
-                          }}
-                          aria-expanded={openMenu === "lead-track-menu"}
-                        >
-                          <span className="flex z-50 items-center truncate">
-                            <MapPin
-                              size={16}
-                              className="mr-1.5 flex-shrink-0"
-                            />
-                            Tracking
-                          </span>
-                          <ChevronDown
-                            size={14}
-                            className={`transition-transform duration-200 flex-shrink-0 ${isOpen ? "rotate-180" : ""}`}
-                          />
-                        </button>
+                {/* Existing New Lead, Lead Manager, TL Tables, Sales Lead Manager buttons... */}
 
-                        {/* ✅ SIRF EK <ul> — dono items iske andar */}
-                        {openMenu === "lead-track-menu" && (
-                          <ul className="w-full md:absolute md:left-0 z-50 py-1 mt-1 bg-white border-2 border-green-300 rounded-lg shadow-xl md:top-full md:w-56 max-h-80 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
-                            <li
-                              onClick={() => {
-                                onMonthlyEnquiry?.();
-                                setOpenMenu(null);
-                                setMobileOpen(false);
-                              }}
-                              className="px-3 py-2.5 md:py-2 text-sm transition-all hover:bg-green-50 hover:text-green-700 hover:pl-4 cursor-pointer text-gray-700 flex items-center gap-2"
-                            >
-                              <span className="w-1 h-1 rounded-full bg-green-300"></span>
-                              Monthly Enquiry
-                            </li>
-
-                            {/* ✅ NAYA ITEM — Monthly Distribution */}
-                            <li
-                              onClick={() => {
-                                onMonthlyDistribution?.();
-                                setOpenMenu(null);
-                                setMobileOpen(false);
-                              }}
-                              className="px-3 py-2.5 md:py-2 text-sm transition-all hover:bg-green-50 hover:text-green-700 hover:pl-4 cursor-pointer text-gray-700 flex items-center gap-2"
-                            >
-                              <span className="w-1 h-1 rounded-full bg-green-300"></span>
-                              Monthly Distribution
-                            </li>
-                          </ul>
-                        )}
-                      </>
-                    );
-                  })()}
-                </div>
-              </>
-            )}
-
-            {/* LEADS MENU */}
-            {showLeadsMenu && (
-              <>
+                {/* Existing New Lead button */}
                 {userRole?.toLowerCase() !== "sales" &&
                   !roleLabel?.toLowerCase().includes("travel") &&
                   !roleLabel?.toLowerCase().includes("advisor") && (
@@ -661,6 +591,7 @@ export function Navbar({
                     </div>
                   )}
 
+                {/* Existing Lead Manager button */}
                 {userRole?.toLowerCase() !== "sales" &&
                   !roleLabel?.toLowerCase().includes("travel") &&
                   !roleLabel?.toLowerCase().includes("advisor") && (
@@ -676,6 +607,7 @@ export function Navbar({
                     </div>
                   )}
 
+                {/* Existing TL Tables button */}
                 {(userRole?.toLowerCase() === "team leader" ||
                   userRole?.toLowerCase() === "teamleader" ||
                   userRole?.toLowerCase() === "admin") && (
@@ -691,6 +623,7 @@ export function Navbar({
                   </div>
                 )}
 
+                {/* Existing Sales Lead Manager button */}
                 {(userRole?.toLowerCase() === "sales" ||
                   userRole?.toLowerCase() === "admin" ||
                   userRole?.toLowerCase() === "travel advisor" ||
@@ -708,6 +641,79 @@ export function Navbar({
                     </button>
                   </div>
                 )}
+
+                {/* ✅ TRACKING MENU - HIDDEN FOR TRAVEL ADVISOR */}
+                {userRole?.toLowerCase() !== "travel advisor" &&
+                  userRole?.toLowerCase() !== "travel" &&
+                  !roleLabel?.toLowerCase().includes("travel") &&
+                  !roleLabel?.toLowerCase().includes("advisor") && (
+                    <div className="relative w-full md:w-auto">
+                      {(() => {
+                        const isOpen = openMenu === "lead-track-menu";
+                        return (
+                          <>
+                            <button
+                              type="button"
+                              className={`w-full md:w-auto flex items-center justify-between gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200
+                  ${
+                    isOpen
+                      ? "bg-green-600 text-white shadow-lg md:scale-105"
+                      : "bg-white text-green-700 border-2 border-green-300 hover:border-green-500 hover:shadow-md hover:scale-[1.02] hover:bg-green-50"
+                  } md:min-w-[100px] md:h-9 md:py-2`}
+                              onClick={() => {
+                                setOpenMenu((prev) =>
+                                  prev === "lead-track-menu"
+                                    ? null
+                                    : "lead-track-menu",
+                                );
+                              }}
+                              aria-expanded={openMenu === "lead-track-menu"}
+                            >
+                              <span className="flex z-50 items-center truncate">
+                                <MapPin
+                                  size={16}
+                                  className="mr-1.5 flex-shrink-0"
+                                />
+                                Tracking
+                              </span>
+                              <ChevronDown
+                                size={14}
+                                className={`transition-transform duration-200 flex-shrink-0 ${isOpen ? "rotate-180" : ""}`}
+                              />
+                            </button>
+
+                            {openMenu === "lead-track-menu" && (
+                              <ul className="w-full md:absolute md:left-0 z-50 py-1 mt-1 bg-white border-2 border-green-300 rounded-lg shadow-xl md:top-full md:w-56 max-h-80 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
+                                <li
+                                  onClick={() => {
+                                    onMonthlyEnquiry?.();
+                                    setOpenMenu(null);
+                                    setMobileOpen(false);
+                                  }}
+                                  className="px-3 py-2.5 md:py-2 text-sm transition-all hover:bg-green-50 hover:text-green-700 hover:pl-4 cursor-pointer text-gray-700 flex items-center gap-2"
+                                >
+                                  <span className="w-1 h-1 rounded-full bg-green-300"></span>
+                                  Monthly Enquiry (MER)
+                                </li>
+
+                                <li
+                                  onClick={() => {
+                                    onMonthlyDistribution?.();
+                                    setOpenMenu(null);
+                                    setMobileOpen(false);
+                                  }}
+                                  className="px-3 py-2.5 md:py-2 text-sm transition-all hover:bg-green-50 hover:text-green-700 hover:pl-4 cursor-pointer text-gray-700 flex items-center gap-2"
+                                >
+                                  <span className="w-1 h-1 rounded-full bg-green-300"></span>
+                                  Lead Distribution (LDR)
+                                </li>
+                              </ul>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </div>
+                  )}
               </>
             )}
 

@@ -8,7 +8,7 @@ export const getMonthlyEnquiry = async (year) => {
       return [];
     }
 
-    // 🔴 IMPORTANT: Using enquiryTime instead of created_at
+    // IMPORTANT: Using enquiryTime instead of created_at
     const query = `
       SELECT 
         MONTH(enquiryTime) AS month,
@@ -77,7 +77,7 @@ export const getLeadCountByDateForYear = async (
 
 export const getPreSalesLeadAssignmentReport = async (req, month, year) => {
   const preSalesUser = req.user;
-  const cityIds = preSalesUser.city_ids; // [1,2,3,...19]
+  const cityIds = preSalesUser.city_ids;
 
   if (!cityIds || cityIds.length === 0) {
     return {
@@ -91,93 +91,97 @@ export const getPreSalesLeadAssignmentReport = async (req, month, year) => {
 
   const totalDaysInMonth = new Date(year, month, 0).getDate();
 
-  // Step 1 — Leads fetch karo (city-wise + day-wise + advisor-wise)
-  const placeholders = cityIds.map(() => "?").join(",");
+  // Step 1 — HRMS se city-wise 'travels adviser' role wale users fetch karo
+  const cityPlaceholders = cityIds.map(() => "?").join(",");
 
-  const [rows] = await pool.execute(
+  const [advisorUsers] = await hrmsPool.execute(
     `SELECT 
-      l.advisor_id,
-      l.city_id,
-      DAY(l.enquiryTime)                                        AS day,
-      COUNT(l.id)                                               AS total_leads,
-      SUM(CASE WHEN l.status = 'Book' THEN 1 ELSE 0 END)       AS booked_leads,
-      SUM(CASE WHEN l.advisor_id IS NULL OR l.advisor_id = 0 
-               THEN 1 ELSE 0 END)                              AS unassigned_leads
-     FROM leads l
-     WHERE 
-      MONTH(l.enquiryTime) = ?
-      AND YEAR(l.enquiryTime)  = ?
-      AND l.city_id IN (${placeholders})
-     GROUP BY l.advisor_id, l.city_id, DAY(l.enquiryTime)
-     ORDER BY l.advisor_id ASC, DAY(l.enquiryTime) ASC`,
-    [month, year, ...cityIds],
+       u.id,
+       CONCAT_WS(' ', u.firstName, u.middleName, u.lastName) AS adviser_name,
+       u.city_id
+     FROM users u
+     INNER JOIN roles r ON u.role_id = r.id
+     WHERE r.role_name = 'travels adviser'
+       AND u.city_id IN (${cityPlaceholders})
+       AND u.is_active = 1`,
+    cityIds,
   );
 
-  if (rows.length === 0) {
+  if (advisorUsers.length === 0) {
     return {
       success: true,
       month,
       year,
       preSalesId: preSalesUser.id,
+      preSalesName: preSalesUser.fullName,
+      cities: preSalesUser.city_names,
+      totalDaysInMonth,
       data: [],
       teamTotal: null,
     };
   }
 
-  // Step 2 — Unique advisor IDs nikalo (NULL/0 hatao)
-  const advisorIds = [
-    ...new Set(rows.map((r) => r.advisor_id).filter((id) => id && id !== 0)),
-  ];
+  // Step 2 — Advisor ID → name map
+  const userMap = {};
+  const advisorIds = advisorUsers.map((u) => {
+    userMap[u.id] = u.adviser_name;
+    return u.id;
+  });
 
-  // Step 3 — HRMS se advisor names lo
-  let userMap = {};
-  if (advisorIds.length > 0) {
-    const [users] = await hrmsPool.execute(
-      `SELECT 
-        id,
-        CONCAT_WS(' ', firstName, middleName, lastName) AS adviser_name
-       FROM users
-       WHERE id IN (${advisorIds.map(() => "?").join(",")})`,
-      advisorIds,
-    );
-    users.forEach((u) => {
-      userMap[u.id] = u.adviser_name;
-    });
-  }
+  // Step 3 — Leads fetch karo (advisor-wise + day-wise)
+  const advisorPlaceholders = advisorIds.map(() => "?").join(",");
+  const leadPlaceholders = cityIds.map(() => "?").join(",");
 
-  // Step 4 — City name map (req.user se hi milti hai)
+  const [rows] = await pool.execute(
+    `SELECT 
+       l.advisor_id,
+       l.city_id,
+       DAY(l.enquiryTime)                                  AS day,
+       COUNT(l.id)                                         AS total_leads,
+       SUM(CASE WHEN l.status = 'Book' THEN 1 ELSE 0 END) AS booked_leads
+     FROM leads l
+     WHERE 
+       MONTH(l.enquiryTime) = ?
+       AND YEAR(l.enquiryTime)  = ?
+       AND l.city_id IN (${leadPlaceholders})
+       AND l.advisor_id IN (${advisorPlaceholders})
+     GROUP BY l.advisor_id, l.city_id, DAY(l.enquiryTime)
+     ORDER BY l.advisor_id ASC, DAY(l.enquiryTime) ASC`,
+    [month, year, ...cityIds, ...advisorIds],
+  );
+
+  // Step 4 — City name map
   const cityMap = {};
   preSalesUser.city_ids.forEach((id, idx) => {
     cityMap[id] = preSalesUser.city_names[idx];
   });
 
-  // Step 5 — Advisor-wise data build karo
+  // Step 5 — Sabhi advisors ka base structure banao (leads hon ya na hon)
   const adviserMap = {};
 
+  advisorUsers.forEach((u) => {
+    adviserMap[u.id] = {
+      adviser_id: u.id,
+      adviser_name: u.adviser_name,
+      city_id: u.city_id,
+      city_name: cityMap[u.city_id] || "Unknown",
+      total_leads: 0,
+      total_booked: 0,
+      active_days: new Set(),
+      days: Array.from({ length: totalDaysInMonth }, (_, i) => ({
+        day: i + 1,
+        leads: 0,
+        booked: 0,
+      })),
+    };
+  });
+
+  // Step 6 — Leads rows se data fill karo
   rows.forEach((row) => {
-    const advisorKey = row.advisor_id || "unassigned";
+    const adviser = adviserMap[row.advisor_id];
+    if (!adviser) return; // safety check
 
-    if (!adviserMap[advisorKey]) {
-      adviserMap[advisorKey] = {
-        adviser_id: advisorKey === "unassigned" ? null : row.advisor_id,
-        adviser_name:
-          advisorKey === "unassigned"
-            ? "Unassigned"
-            : userMap[row.advisor_id] || "Unknown",
-        total_leads: 0,
-        total_booked: 0,
-        active_days: new Set(),
-        days: Array.from({ length: totalDaysInMonth }, (_, i) => ({
-          day: i + 1,
-          leads: 0,
-          booked: 0,
-        })),
-      };
-    }
-
-    const adviser = adviserMap[advisorKey];
     const dayIndex = row.day - 1;
-
     adviser.days[dayIndex].leads += Number(row.total_leads);
     adviser.days[dayIndex].booked += Number(row.booked_leads);
     adviser.total_leads += Number(row.total_leads);
@@ -185,10 +189,12 @@ export const getPreSalesLeadAssignmentReport = async (req, month, year) => {
     adviser.active_days.add(row.day);
   });
 
-  // Step 6 — Final format (same as image table)
+  // Step 7 — Final format
   const data = Object.values(adviserMap).map((adviser) => ({
     adviser_id: adviser.adviser_id,
     adviser_name: adviser.adviser_name,
+    city_id: adviser.city_id,
+    city_name: adviser.city_name,
     total_leads: adviser.total_leads,
     total_booked: adviser.total_booked,
     avg_leads_per_day:
@@ -203,10 +209,10 @@ export const getPreSalesLeadAssignmentReport = async (req, month, year) => {
             ((adviser.total_booked / adviser.total_leads) * 100).toFixed(1),
           )
         : 0,
-    days: adviser.days, // [{day:1, leads:3, booked:1}, ...]
+    days: adviser.days,
   }));
 
-  // Step 7 — Team Total row
+  // Step 8 — Team Total
   const teamTotal = {
     total_leads: data.reduce((s, a) => s + a.total_leads, 0),
     total_booked: data.reduce((s, a) => s + a.total_booked, 0),
@@ -223,9 +229,9 @@ export const getPreSalesLeadAssignmentReport = async (req, month, year) => {
     year,
     preSalesId: preSalesUser.id,
     preSalesName: preSalesUser.fullName,
-    cities: preSalesUser.city_names, // assigned cities
+    cities: preSalesUser.city_names,
     totalDaysInMonth,
-    data, // adviser-wise rows
+    data,
     teamTotal,
   };
 };

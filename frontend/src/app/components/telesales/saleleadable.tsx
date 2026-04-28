@@ -18,7 +18,10 @@ import {
   LEAD_STATUS_OPTIONS,
   MONTH_OPTIONS,
 } from "../../../types/LeadsTable/leadstabledata";
-import { fetchMyAssignedLeads } from "@/app/features/access/accessSlice";
+import {
+  fetchMyAssignedLeads,
+  fetchMyLeadStatusCount,
+} from "@/app/features/access/accessSlice";
 
 import { Eye, Edit } from "lucide-react";
 import {
@@ -74,7 +77,12 @@ export default function LeadsTable() {
     (state: RootState) => state.travelAdvisor.assignedLeads,
   );
 
+  const { leadStatus } = useSelector((state: RootState) => state.travelAdvisor);
+  console.log("Assigned Leads State:", leadStatus);
   // ─── Data Fetching ───────────────────────────────────────────────────────────
+  useEffect(() => {
+    dispatch(fetchMyLeadStatusCount());
+  }, [dispatch]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -161,7 +169,6 @@ export default function LeadsTable() {
     if (paxOpen) document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [paxOpen]);
-
 
   const hookColumns = useLeadColumns({
     handleUnwantedClick: () => {},
@@ -425,15 +432,15 @@ export default function LeadsTable() {
 
   // ─── Stats ───────────────────────────────────────────────────────────────────
 
-  const totalLeadsCount = filteredLeads.length || 0;
-  const blankLeads = filteredLeads.filter((l) => l.status === "Blank").length;
-  const bookLeads = filteredLeads.filter((l) => l.status === "Book").length;
-  const lostLeads = filteredLeads.filter((l) => l.status === "Lost").length;
-  const newLeads = filteredLeads.filter((l) => l.status === "New").length;
-  const kycLeads = filteredLeads.filter((l) => l.status === "KYC").length;
-  const rfqLeads = filteredLeads.filter((l) => l.status === "RFQ").length;
-  const hotLeads = filteredLeads.filter((l) => l.status === "HOT").length;
-  const vehnLeads = filteredLeads.filter((l) => l.status === "Veh-n").length;
+  const totalLeadsCount = leadStatus?.totalLeads || 0;
+  const newLeads = Number(leadStatus?.statusCount?.NEW ?? 0);
+  const kycLeads = Number(leadStatus?.statusCount?.KYC ?? 0);
+  const rfqLeads = Number(leadStatus?.statusCount?.RFQ ?? 0);
+  const hotLeads = Number(leadStatus?.statusCount?.HOT ?? 0);
+  const vehnLeads = Number(leadStatus?.statusCount?.["VEH-N"] ?? 0); // ← capital N
+  const lostLeads = Number(leadStatus?.statusCount?.LOST ?? 0);
+  const bookLeads = Number(leadStatus?.statusCount?.BOOK ?? 0);
+  const blankLeads = 0; // not in API response, keep as 0
 
   const pct = (n: number) =>
     totalLeadsCount > 0 ? ((n / totalLeadsCount) * 100).toFixed(1) : "0.0";

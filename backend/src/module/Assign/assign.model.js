@@ -173,7 +173,7 @@ export const getLeadsByAdvisorId = async (advisorId, limit, offset) => {
       try {
         const placeholders = allUserIds.map(() => "?").join(",");
         const [users] = await hrmsPool.query(
-          `SELECT id, CONCAT_WS(' ', firstName, middleName, lastName) AS fullName
+          `SELECT id, CONCAT_WS(' ', aliasName, middleName, lastName) AS fullName
            FROM users
            WHERE id IN (${placeholders})`,
           allUserIds,
@@ -236,7 +236,6 @@ export const getLeadStatusCountByAdvisorId = async (advisorId) => {
   };
 };
 
-
 export const getLeadStatusCountByPresalesId = async (presalesId) => {
   const [rows] = await pool.query(
     `SELECT 
@@ -268,4 +267,3 @@ export const getLeadStatusCountByPresalesId = async (presalesId) => {
     },
   };
 };
-

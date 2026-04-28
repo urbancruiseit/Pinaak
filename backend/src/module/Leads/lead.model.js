@@ -471,7 +471,7 @@ export const getLeads = async (page, limit, cityIds) => {
     try {
       const placeholders = allUserIds.map(() => "?").join(",");
       const [users] = await hrmsPool.query(
-        `SELECT id, CONCAT_WS(' ', firstName, middleName, lastName) AS fullName
+        `SELECT id, CONCAT_WS(' ', aliasName, middleName, lastName) AS fullName
          FROM users
          WHERE id IN (${placeholders})`,
         allUserIds,

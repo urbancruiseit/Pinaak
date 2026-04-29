@@ -18,12 +18,18 @@ interface LeadState {
   createLoading: boolean;
   error: string | null;
 
+  selectedMonth: number;
+  selectedYear: number;
+  statusCounts: StatusCounts;
+  totalLeads: number;
+  search: string;
+
   unwantedLeads: LeadRecord[];
   unwantedLeadsLoading: boolean;
   unwantedLeadsTotal: number;
   unwantedLeadsError: string | null;
 }
-
+const now = new Date();
 const initialState: LeadState = {
   leads: [],
   total: 0,
@@ -34,6 +40,20 @@ const initialState: LeadState = {
   error: null,
   totalPages: 1,
 
+  selectedMonth: now.getMonth() + 1,
+  selectedYear: now.getFullYear(),
+  statusCounts: {
+    NEW: 0,
+    RFQ: 0,
+    KYC: 0,
+    HOT: 0,
+    "VEH-N": 0,
+    LOST: 0,
+    BOOK: 0,
+  },
+  totalLeads: 0,
+  search: "",
+
   unwantedLeads: [],
   unwantedLeadsLoading: false,
   unwantedLeadsTotal: 0,
@@ -43,9 +63,22 @@ const initialState: LeadState = {
 /* ---------- FETCH LEADS ---------- */
 export const fetchLeads = createAsyncThunk(
   "lead/fetchLeads",
-  async (page: number, { rejectWithValue }) => {
+  async (
+    {
+      page = 1,
+      search = "",
+      month,
+      year,
+    }: {
+      page?: number;
+      search?: string;
+      month?: number;
+      year?: number;
+    },
+    { rejectWithValue },
+  ) => {
     try {
-      return await getLeadApi(page);
+      return await getLeadApi(page, search, month, year);
     } catch (error: any) {
       return rejectWithValue(error.message);
     }
@@ -121,29 +154,41 @@ const leadSlice = createSlice({
     setLimit(state, action) {
       state.limit = action.payload;
     },
+    setSearch(state, action) {
+      state.search = action.payload;
+      state.page = 1; // ← search change hone pe page reset
+    },
+    setMonthYear(state, action) {
+      state.selectedMonth = action.payload.month;
+      state.selectedYear = action.payload.year;
+      state.page = 1; // ← month change hone pe page reset
+    },
     resetLeads(state) {
       state.leads = [];
       state.page = 1;
       state.total = 0;
+      state.search = "";
     },
   },
   extraReducers: (builder) => {
     builder
 
-      .addCase(fetchLeads.pending, (state) => {
+     .addCase(fetchLeads.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchLeads.fulfilled, (state, action) => {
         state.loading = false;
+        console.log("action paload ", action.payload)
         state.leads = action.payload.leads;
         state.total = action.payload.total;
         state.page = action.payload.page;
         state.limit = action.payload.limit;
-        state.totalPages =
-          action.payload.totalPages ||
-          Math.ceil(action.payload.total / action.payload.limit) ||
-          1;
+        state.totalPages = action.payload.totalPages || 1;
+        state.selectedMonth = action.payload.selectedMonth;
+        state.selectedYear = action.payload.selectedYear;
+        state.statusCounts = action.payload.statusCounts;
+        state.totalLeads = action.payload.totalLeads;
       })
       .addCase(fetchLeads.rejected, (state, action) => {
         state.loading = false;

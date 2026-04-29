@@ -1,4 +1,4 @@
-import { pool } from "../../config/mySqlDB.js";
+import { hrmsPool, pool } from "../../config/mySqlDB.js";
 
 export const getMonthlyEnquiry = async (year) => {
   try {
@@ -77,159 +77,134 @@ export const getLeadCountByDateForYear = async (
 
 export const getPreSalesLeadAssignmentReport = async (req, month, year) => {
   const preSalesUser = req.user;
-  const cityIds = preSalesUser.city_ids;
-
-  if (!cityIds || cityIds.length === 0) {
-    return {
-      success: false,
-      message: "No cities assigned to this pre-sales user",
-    };
-  }
 
   month = month || new Date().getMonth() + 1;
   year = year || new Date().getFullYear();
 
   const totalDaysInMonth = new Date(year, month, 0).getDate();
 
-  // Step 1 — HRMS se city-wise 'travels adviser' role wale users fetch karo
+  // Step 1 — City IDs directly req.user se
+  const cityIds = preSalesUser.city_ids;
+
+  if (!cityIds || cityIds.length === 0) {
+    return { success: false, message: "No cities assigned to this user" };
+  }
+
   const cityPlaceholders = cityIds.map(() => "?").join(",");
 
-  const [advisorUsers] = await hrmsPool.execute(
-    `SELECT 
-       u.id,
-       CONCAT_WS(' ', u.firstName, u.middleName, u.lastName) AS adviser_name,
-       u.city_id
-     FROM users u
-     INNER JOIN roles r ON u.role_id = r.id
-     WHERE r.role_name = 'travels adviser'
-       AND u.city_id IN (${cityPlaceholders})
-       AND u.is_active = 1`,
-    cityIds,
-  );
+  // Step 2 — In cities ke travel advisers HRMS se nikalo
+const [advisorUsers] = await hrmsPool.execute(
+  `SELECT 
+     u.id,
+     CONCAT_WS(' ', u.aliasName, u.middleName, u.lastName) AS adviser_name
+   FROM users u
+   INNER JOIN roles r ON u.role_id = r.id
+   INNER JOIN access_control ac ON ac.employee_id = u.id
+   INNER JOIN access_control_cities acc ON acc.access_control_id = ac.id
+   WHERE r.role_name = 'Travel Advisor'
+     AND acc.city_id IN (${cityPlaceholders})
+     AND u.is_active = 1`,
+  cityIds
+);
 
-  if (advisorUsers.length === 0) {
+  if (!advisorUsers.length) {
     return {
       success: true,
-      month,
-      year,
-      preSalesId: preSalesUser.id,
-      preSalesName: preSalesUser.fullName,
-      cities: preSalesUser.city_names,
+      month, year,
       totalDaysInMonth,
       data: [],
       teamTotal: null,
     };
   }
 
-  // Step 2 — Advisor ID → name map
-  const userMap = {};
-  const advisorIds = advisorUsers.map((u) => {
-    userMap[u.id] = u.adviser_name;
-    return u.id;
-  });
-
-  // Step 3 — Leads fetch karo (advisor-wise + day-wise)
+  const advisorIds = advisorUsers.map((u) => u.id);
   const advisorPlaceholders = advisorIds.map(() => "?").join(",");
-  const leadPlaceholders = cityIds.map(() => "?").join(",");
 
-  const [rows] = await pool.execute(
+  // Step 3 — Har adviser ko date-wise kitne leads aaye
+  const [leadRows] = await pool.execute(
     `SELECT 
        l.advisor_id,
-       l.city_id,
-       DAY(l.enquiryTime)                                  AS day,
-       COUNT(l.id)                                         AS total_leads,
-       SUM(CASE WHEN l.status = 'Book' THEN 1 ELSE 0 END) AS booked_leads
+       DAY(l.enquiryTime)                                   AS day,
+       COUNT(l.id)                                          AS total_leads,
+       SUM(CASE WHEN l.status = 'Book' THEN 1 ELSE 0 END)  AS booked_leads
      FROM leads l
      WHERE 
        MONTH(l.enquiryTime) = ?
-       AND YEAR(l.enquiryTime)  = ?
-       AND l.city_id IN (${leadPlaceholders})
+       AND YEAR(l.enquiryTime) = ?
        AND l.advisor_id IN (${advisorPlaceholders})
-     GROUP BY l.advisor_id, l.city_id, DAY(l.enquiryTime)
+     GROUP BY l.advisor_id, DAY(l.enquiryTime)
      ORDER BY l.advisor_id ASC, DAY(l.enquiryTime) ASC`,
-    [month, year, ...cityIds, ...advisorIds],
+    [month, year, ...advisorIds]
   );
 
-  // Step 4 — City name map
-  const cityMap = {};
-  preSalesUser.city_ids.forEach((id, idx) => {
-    cityMap[id] = preSalesUser.city_names[idx];
-  });
-
-  // Step 5 — Sabhi advisors ka base structure banao (leads hon ya na hon)
+  // Step 4 — Har adviser ka base structure
   const adviserMap = {};
-
   advisorUsers.forEach((u) => {
     adviserMap[u.id] = {
-      adviser_id: u.id,
+      adviser_id:   u.id,
       adviser_name: u.adviser_name,
-      city_id: u.city_id,
-      city_name: cityMap[u.city_id] || "Unknown",
-      total_leads: 0,
+      total_leads:  0,
       total_booked: 0,
-      active_days: new Set(),
+      active_days:  new Set(),
       days: Array.from({ length: totalDaysInMonth }, (_, i) => ({
-        day: i + 1,
-        leads: 0,
+        day:    i + 1,
+        leads:  0,
         booked: 0,
       })),
     };
   });
 
-  // Step 6 — Leads rows se data fill karo
-  rows.forEach((row) => {
-    const adviser = adviserMap[row.advisor_id];
-    if (!adviser) return; // safety check
+  // Step 5 — Leads data fill karo
+ // Step 5 — Leads data fill karo
+const filledDays = {}; // track karo kaunse days mein data aaya
 
-    const dayIndex = row.day - 1;
-    adviser.days[dayIndex].leads += Number(row.total_leads);
-    adviser.days[dayIndex].booked += Number(row.booked_leads);
-    adviser.total_leads += Number(row.total_leads);
-    adviser.total_booked += Number(row.booked_leads);
-    adviser.active_days.add(row.day);
-  });
+leadRows.forEach((row) => {
+  const adviser = adviserMap[row.advisor_id];
+  if (!adviser) return;
 
-  // Step 7 — Final format
-  const data = Object.values(adviserMap).map((adviser) => ({
-    adviser_id: adviser.adviser_id,
-    adviser_name: adviser.adviser_name,
-    city_id: adviser.city_id,
-    city_name: adviser.city_name,
-    total_leads: adviser.total_leads,
-    total_booked: adviser.total_booked,
-    avg_leads_per_day:
-      adviser.active_days.size > 0
-        ? parseFloat(
-            (adviser.total_leads / adviser.active_days.size).toFixed(2),
-          )
-        : 0,
-    cntb_percentage:
-      adviser.total_leads > 0
-        ? parseFloat(
-            ((adviser.total_booked / adviser.total_leads) * 100).toFixed(1),
-          )
-        : 0,
-    days: adviser.days,
-  }));
+  const dayIndex = row.day - 1;
+  adviser.days[dayIndex].leads  = Number(row.total_leads);
+  adviser.days[dayIndex].booked = Number(row.booked_leads);
+  adviser.total_leads           += Number(row.total_leads);
+  adviser.total_booked          += Number(row.booked_leads);
+  adviser.active_days.add(row.day);
+});
 
-  // Step 8 — Team Total
-  const teamTotal = {
-    total_leads: data.reduce((s, a) => s + a.total_leads, 0),
-    total_booked: data.reduce((s, a) => s + a.total_booked, 0),
-    days: Array.from({ length: totalDaysInMonth }, (_, i) => ({
-      day: i + 1,
-      leads: data.reduce((s, a) => s + a.days[i].leads, 0),
-      booked: data.reduce((s, a) => s + a.days[i].booked, 0),
-    })),
-  };
+// Step 6 — Final format
+const data = Object.values(adviserMap).map((adviser) => ({
+  adviser_id:        adviser.adviser_id,
+  adviser_name:      adviser.adviser_name,
+  total_leads:       adviser.total_leads,
+  total_booked:      adviser.total_booked,
+  avg_leads_per_day:
+    adviser.active_days.size > 0
+      ? parseFloat((adviser.total_leads / adviser.active_days.size).toFixed(2))
+      : "-",
+  cntb_percentage:
+    adviser.total_leads > 0
+      ? parseFloat(((adviser.total_booked / adviser.total_leads) * 100).toFixed(1))
+      : "-",
+  days: adviser.days.map((d) => ({
+    day:    d.day,
+    leads:  d.leads  === 0 ? "-" : d.leads,
+    booked: d.booked === 0 ? "-" : d.booked,
+  })),
+}));
 
+  // Step 7 — Team total
+ const teamTotal = {
+  total_leads:  data.reduce((s, a) => s + a.total_leads, 0),
+  total_booked: data.reduce((s, a) => s + a.total_booked, 0),
+  days: Array.from({ length: totalDaysInMonth }, (_, i) => ({
+    day:    i + 1,
+    leads:  data.reduce((s, a) => s + (Number(a.days[i].leads) || 0), 0) || "-",
+    booked: data.reduce((s, a) => s + (Number(a.days[i].booked) || 0), 0) || "-",
+  })),
+};
   return {
     success: true,
     month,
     year,
-    preSalesId: preSalesUser.id,
-    preSalesName: preSalesUser.fullName,
-    cities: preSalesUser.city_names,
     totalDaysInMonth,
     data,
     teamTotal,

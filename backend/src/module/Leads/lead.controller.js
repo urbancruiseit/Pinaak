@@ -95,15 +95,28 @@ const createLeads = asyncHandler(async (req, res) => {
     ),
   );
 });
-
 const listLeads = asyncHandler(async (req, res) => {
   const user = req.user;
   const userCityIds = user.city_ids || [];
+  const presalesId = user.id;
 
   const page = parseInt(req.query.page) || 1;
   const limit = 14;
+  const search = req.query.search || "";
+  const month = req.query.month || null;
+  const year = req.query.year || null;
 
-  const leadsData = await getLeads(page, limit, userCityIds);
+ 
+  const leadsData = await getLeads(
+    page,
+    limit,
+    userCityIds,
+    search,
+    presalesId,
+    month,
+    year
+  );
+
   res
     .status(200)
     .json(new ApiResponse(200, leadsData, "Leads fetched successfully"));

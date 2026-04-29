@@ -1,128 +1,87 @@
 "use client";
 import { fetchLeadDistribution } from "@/app/features/Reports/monthlyReport/monthlyReportSlice";
 import { AppDispatch, RootState } from "@/app/redux/store";
-import App from "next/app";
-import { useState, Fragment, use, useEffect } from "react";
+import { useState, Fragment, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 
-const months = [
-  { name: "Jan", days: 31 },
-  { name: "Feb", days: 28 },
-  { name: "Mar", days: 31 },
-  { name: "Apr", days: 30 },
-  { name: "May", days: 31 },
-  { name: "Jun", days: 30 },
-  { name: "Jul", days: 31 },
-  { name: "Aug", days: 31 },
-  { name: "Sep", days: 30 },
-  { name: "Oct", days: 31 },
-  { name: "Nov", days: 30 },
-  { name: "Dec", days: 31 },
+const monthsList = [
+  { name: "Jan", num: 1 },
+  { name: "Feb", num: 2 },
+  { name: "Mar", num: 3 },
+  { name: "Apr", num: 4 },
+  { name: "May", num: 5 },
+  { name: "Jun", num: 6 },
+  { name: "Jul", num: 7 },
+  { name: "Aug", num: 8 },
+  { name: "Sep", num: 9 },
+  { name: "Oct", num: 10 },
+  { name: "Nov", num: 11 },
+  { name: "Dec", num: 12 },
 ];
 
-const team60 = [
-  {
-    name: "JK",
-    color: "bg-indigo-50",
-    bookColor: "bg-indigo-50",
-    nameColor: "bg-indigo-50",
-    leads: Array.from({ length: 31 }, () => Math.floor(Math.random() * 5)),
-    book: Array.from({ length: 31 }, () => Math.floor(Math.random() * 2)),
-  },
-  {
-    name: "LP",
-    color: "bg-cyan-50",
-    bookColor: "bg-cyan-50",
-    nameColor: "bg-cyan-50",
-    leads: Array.from({ length: 31 }, () => Math.floor(Math.random() * 6)),
-    book: Array.from({ length: 31 }, () => Math.floor(Math.random() * 3)),
-  },
-  {
-    name: "MN",
-    color: "bg-rose-50",
-    bookColor: "bg-rose-50",
-    nameColor: "bg-rose-50",
-    leads: Array.from({ length: 31 }, () => Math.floor(Math.random() * 5)),
-    book: Array.from({ length: 31 }, () => Math.floor(Math.random() * 1)),
-  },
+const rowColors = [
+  { bg: "bg-indigo-50", name: "bg-indigo-50" },
+  { bg: "bg-cyan-50",   name: "bg-cyan-50" },
+  { bg: "bg-rose-50",   name: "bg-rose-50" },
+  { bg: "bg-green-50",  name: "bg-green-50" },
+  { bg: "bg-purple-50", name: "bg-purple-50" },
+  { bg: "bg-yellow-50", name: "bg-yellow-50" },
 ];
-
-const sum = (arr: number[]) => arr.reduce((a, b) => a + b, 0);
 
 export default function DailyLeadReport() {
-  const [year, setYear] = useState("2026");
-  const [selectedMonth, setSelectedMonth] = useState(months[0].name);
+  const currentMonth = new Date().getMonth() + 1;
+  const currentYear  = String(new Date().getFullYear());
 
-  const monthObj = months.find((m) => m.name === selectedMonth)!;
-  const daysArray = Array.from({ length: monthObj.days }, (_, i) => i);
+  const [selectedMonthNum, setSelectedMonthNum] = useState(currentMonth);
+  const [year, setYear]                         = useState(currentYear);
 
-  const allTeams = [{ teamName: "Team 60", members: team60 }];
+  const dispatch   = useDispatch<AppDispatch>();
+  const { distribution } = useSelector((state: RootState) => state.report);
 
-  const cell = "border-r border-b border-gray-300 text-center px-1 py-1";
+  useEffect(() => {
+    dispatch(fetchLeadDistribution({ month: selectedMonthNum, year }));
+  }, [selectedMonthNum, year, dispatch]);
+
+  // API se data
+  const apiData        = distribution?.data          ?? [];
+  const teamTotal      = distribution?.teamTotal      ?? null;
+  const totalDays      = distribution?.totalDaysInMonth ?? 30;
+  const daysArray      = Array.from({ length: totalDays }, (_, i) => i);
+
+  const selectedMonthName = monthsList.find((m) => m.num === selectedMonthNum)?.name ?? "";
+
+  const cell     = "border-r border-b border-gray-300 text-center px-1 py-1";
   const headCell = "border-r border-b border-gray-300 px-2 py-2 text-center";
 
-  const allTeamsTotalLeads = allTeams.reduce(
-    (tAcc, team) =>
-      tAcc +
-      team.members.reduce(
-        (mAcc, p) => mAcc + sum(p.leads.slice(0, monthObj.days)),
-        0,
-      ),
-    0,
-  );
-
-  const allTeamsTotalBook = allTeams.reduce(
-    (tAcc, team) =>
-      tAcc +
-      team.members.reduce(
-        (mAcc, p) => mAcc + sum(p.book.slice(0, monthObj.days)),
-        0,
-      ),
-    0,
-  );
-
-  const allTeamsAvg = Math.round(allTeamsTotalLeads / monthObj.days);
-
-  const allTeamsCntb =
-    allTeamsTotalLeads > 0
-      ? ((allTeamsTotalBook / allTeamsTotalLeads) * 100).toFixed(1)
-      : "0.0";
-
-  const allTeamsDayTotal = (day: number) =>
-    allTeams.reduce(
-      (tAcc, team) =>
-        tAcc + team.members.reduce((mAcc, p) => mAcc + (p.leads[day] || 0), 0),
-      0,
+  // Loading state
+  if (distribution?.loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-gray-500 text-lg">Loading...</p>
+      </div>
     );
+  }
 
-  const dispatch = useDispatch<AppDispatch>();
-  const { distribution } = useSelector((state: RootState) => state.report);
-  console.log("Lead Distribution from Redux:", distribution);
-  useEffect(() => {
-    dispatch(fetchLeadDistribution({ month: selectedMonth, year }));
-  }, [selectedMonth, year, dispatch]);
   return (
     <div className="">
       {/* HEADER */}
       <div className="mb-4 bg-orange-100 shadow-lg rounded-md flex justify-between items-center">
         <div className="sticky top-0 z-10 bg-orange-100 p-3 rounded-md">
-          <div className="flex justify-between items-center">
-            <div className="pl-4 border-l-8 border-orange-500 bg-white px-3 rounded-md shadow-md">
-              <h2 className="text-4xl font-bold text-left py-4 text-orange-600 p-2">
-                📊 Leads Distribution Report – {selectedMonth} {year}
-              </h2>
-            </div>
+          <div className="pl-4 border-l-8 border-orange-500 bg-white px-3 rounded-md shadow-md">
+            <h2 className="text-4xl font-bold text-left py-4 text-orange-600 p-2">
+              Leads Distribution Report – {selectedMonthName} {year}
+            </h2>
           </div>
         </div>
 
-        <div className="flex gap-3">
+        <div className="flex gap-3 pr-4">
           <select
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
+            value={selectedMonthNum}
+            onChange={(e) => setSelectedMonthNum(Number(e.target.value))}
             className="border rounded px-3 py-2 font-semibold"
           >
-            {months.map((m) => (
-              <option key={m.name}>{m.name}</option>
+            {monthsList.map((m) => (
+              <option key={m.num} value={m.num}>{m.name}</option>
             ))}
           </select>
 
@@ -138,168 +97,109 @@ export default function DailyLeadReport() {
         </div>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full border border-gray-400 border-separate border-spacing-0 text-md font-semibold">
-          <thead>
-            <tr className="bg-blue-950 text-white">
-              <th className={headCell}>TEAM</th>
-              <th className={headCell}>NAME</th>
-              <th className={headCell}>STATUS</th>
-              {daysArray.map((d) => (
-                <th key={d} className={headCell}>
-                  {d + 1}
-                </th>
-              ))}
-              <th className="border-b border-white bg-blue-950 text-white px-2 py-2 relative">
-                TOTAL
-                {/* White border using outline */}
-                <div className="absolute inset-0 pointer-events-none border-r border-white"></div>
-              </th>
-              <th className="border-b border-white bg-blue-950 text-white px-2 py-2 relative">
-                AVG
-                <div className="absolute inset-0 pointer-events-none border-r border-white"></div>
-              </th>
-              <th className="border-b border-white bg-blue-950 text-white px-2 py-2 relative">
-                CNTB %
-              </th>
-            </tr>
-          </thead>
+      {/* NO DATA */}
+      {apiData.length === 0 ? (
+        <div className="flex items-center justify-center h-40">
+          <p className="text-gray-400 text-lg">No data found for this period.</p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full border border-gray-400 border-separate border-spacing-0 text-md font-semibold">
+            <thead>
+              <tr className="bg-blue-950 text-white">
+                <th className={headCell}>NAME</th>
+                <th className={headCell}>STATUS</th>
+                {daysArray.map((d) => (
+                  <th key={d} className={headCell}>{d + 1}</th>
+                ))}
+                <th className="border-b border-white bg-blue-950 text-white px-2 py-2">TOTAL</th>
+                <th className="border-b border-white bg-blue-950 text-white px-2 py-2">AVG/DAY</th>
+                <th className="border-b border-white bg-blue-950 text-white px-2 py-2">CNTB %</th>
+              </tr>
+            </thead>
 
-          <tbody>
-            {allTeams.map((team) => (
-              <Fragment key={team.teamName}>
-                {team.members.map((p, index) => {
-                  const leads = p.leads.slice(0, monthObj.days);
-                  const book = p.book.slice(0, monthObj.days);
-                  const totalLeads = sum(leads);
-                  const totalBook = sum(book);
-                  const avg = Math.round(totalLeads / monthObj.days);
-                  const cntb = totalLeads
-                    ? ((totalBook / totalLeads) * 100).toFixed(1)
-                    : "0.0";
+            <tbody>
+              {apiData.map((adviser: any, index: number) => {
+                const color = rowColors[index % rowColors.length];
 
-                  return (
-                    <Fragment key={p.name}>
-                      <tr className={p.color}>
-                        {/* TEAM NAME VERTICAL */}
-                        {index === 0 && (
-                          <td
-                            rowSpan={team.members.length * 2}
-                            className="border-r border-b border-white text-center font-bold bg-blue-900 w-10"
-                          >
-                            <div className="flex items-center justify-center h-full">
-                              <span
-                                className="font-extrabold text-white text-lg whitespace-nowrap"
-                                style={{
-                                  writingMode: "vertical-rl",
-                                  transform: "rotate(180deg)",
-                                }}
-                              >
-                                {team.teamName}
-                              </span>
-                            </div>
-                          </td>
-                        )}
+                return (
+                  <Fragment key={adviser.adviser_id}>
+                    {/* LEADS ROW */}
+                    <tr className={color.bg}>
+                      <td
+                        rowSpan={2}
+                        className={`${cell} font-bold text-xl ${color.name}`}
+                      >
+                        {adviser.adviser_name}
+                      </td>
 
-                        <td
-                          rowSpan={2}
-                          className={`${cell} font-bold text-xl ${p.nameColor}`}
-                        >
-                          {p.name}
+                      <td className={`${cell} text-blue-700`}>Lead</td>
+
+                      {adviser.days.map((d: any) => (
+                        <td key={d.day} className={cell}>
+                          {d.leads || 0}
                         </td>
+                      ))}
 
-                        <td className={`${cell} text-blue-700`}>Lead</td>
+                      <td className={`${cell} font-extrabold text-green-700 bg-amber-200`}>
+                        {adviser.total_leads}
+                      </td>
+                      <td className={`${cell} font-extrabold bg-amber-200`}>
+                        {adviser.avg_leads_per_day}
+                      </td>
+                      <td
+                        rowSpan={2}
+                        className="border-b border-gray-400 px-2 py-1 font-extrabold text-purple-700 bg-amber-200 text-center"
+                      >
+                        {adviser.cntb_percentage}%
+                      </td>
+                    </tr>
 
-                        {leads.map((v, i) => (
-                          <td key={i} className={cell}>
-                            {v}
-                          </td>
-                        ))}
+                    {/* BOOKED ROW */}
+                    <tr className={color.bg}>
+                      <td className={`${cell} text-pink-700`}>Book</td>
 
-                        <td
-                          className={`${cell} font-extrabold text-green-700 bg-amber-200`}
-                        >
-                          {totalLeads}
+                      {adviser.days.map((d: any) => (
+                        <td key={d.day} className={cell}>
+                          {d.booked || 0}
                         </td>
+                      ))}
 
-                        <td className={`${cell} font-extrabold bg-amber-200`}>
-                          {avg}
-                        </td>
+                      <td className={`${cell} font-extrabold text-red-600 bg-amber-200`}>
+                        {adviser.total_booked}
+                      </td>
+                      <td className={`${cell} font-extrabold text-red-600 bg-amber-200`}>
+                        —
+                      </td>
+                    </tr>
+                  </Fragment>
+                );
+              })}
 
-                        <td
-                          rowSpan={2}
-                          className="border-b border-gray-400 px-2 py-1 font-extrabold text-purple-700 bg-amber-200"
-                        >
-                          {cntb}%
-                        </td>
-                      </tr>
-
-                      <tr className={p.bookColor}>
-                        <td className={`${cell} text-pink-700`}>Book</td>
-
-                        {book.map((v, i) => (
-                          <td key={i} className={cell}>
-                            {v}
-                          </td>
-                        ))}
-
-                        <td
-                          className={`${cell} font-extrabold text-red-600 bg-amber-200`}
-                        >
-                          {totalBook}
-                        </td>
-
-                        <td
-                          className={`${cell} font-extrabold text-red-600 bg-amber-200`}
-                        >
-                          -
-                        </td>
-                      </tr>
-                    </Fragment>
-                  );
-                })}
-
-                {/* TEAM TOTAL */}
+              {/* TEAM TOTAL ROW */}
+              {teamTotal && (
                 <tr className="bg-amber-600 text-white font-extrabold">
-                  <td colSpan={3} className={cell}>
-                    Team Total
-                  </td>
+                  <td colSpan={2} className={cell}>Team Total</td>
 
-                  {daysArray.map((d) => (
-                    <td key={d} className={cell}>
-                      {team.members.reduce((a, p) => a + (p.leads[d] || 0), 0)}
+                  {teamTotal.days.map((d: any) => (
+                    <td key={d.day} className={cell}>
+                      {d.leads || 0}
                     </td>
                   ))}
 
-                  <td className={`${cell} `}>
-                    {team.members.reduce(
-                      (a, p) => a + sum(p.leads.slice(0, monthObj.days)),
-                      0,
-                    )}
+                  <td className={cell}>{teamTotal.total_leads}</td>
+                  <td className={cell}>—</td>
+                  <td className="text-center px-2">
+                    {teamTotal.total_leads > 0
+                      ? ((teamTotal.total_booked / teamTotal.total_leads) * 100).toFixed(1)
+                      : "0.0"}%
                   </td>
-                  <td className={`${cell} `}>—</td>
-                  <td className="">—</td>
                 </tr>
-              </Fragment>
-            ))}
-
-            {/* ALL TEAMS TOTAL */}
-            <tr className="bg-blue-950 text-white font-extrabold text-xl h-10">
-              <td colSpan={3} className={cell}>
-                All Teams Total
-              </td>
-              {daysArray.map((d) => (
-                <td key={d} className={cell}>
-                  {allTeamsDayTotal(d)}
-                </td>
-              ))}
-              <td className={`${cell}`}>{allTeamsTotalLeads}</td>
-              <td className={`${cell} `}>{allTeamsAvg}</td>
-              <td className="">{allTeamsCntb}%</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

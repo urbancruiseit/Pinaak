@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 import { asyncHandler } from "../utils/asyncHandler.js";
-import { findHrmsUserById } from "../module/user/user.model.js";
+import { findHrmsUserById, findUserById } from "../module/user/user.model.js";
 
 export const verifyJWT = asyncHandler(async (req, res, next) => {
   let token;
@@ -17,7 +17,7 @@ export const verifyJWT = asyncHandler(async (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
 
-    const user = await findHrmsUserById(decoded.id);
+    const user = await findUserById(decoded.id);
     if (!user) {
       return res.status(401).json({ message: "User not found" });
     }

@@ -60,7 +60,7 @@ export const getLeadCountByAdviserForMonthController = asyncHandler(
       month ? Number(month) : undefined,
       year ? Number(year) : undefined,
     );
-
+console.log("distribution leads ", data)
     return res.status(200).json(new ApiResponse(200, data, "Success"));
   },
 );

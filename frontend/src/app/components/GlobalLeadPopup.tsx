@@ -40,7 +40,7 @@ const isNewStatus = (status?: string) => {
   return s === "-" || s === "NEW";
 };
 
-const POLL_INTERVAL_MS = 15 * 60 * 1000; // 15 seconds
+const POLL_INTERVAL_MS = 15 * 60 * 1000;
 
 export default function GlobalLeadPopup() {
   const dispatch = useDispatch<AppDispatch>();
@@ -214,7 +214,7 @@ export default function GlobalLeadPopup() {
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
       <div
-        className={`absolute inset-0 bg-black/60 backdrop-blur-sm transition-all duration-300 ${
+        className={`absolute inset-0 bg-black/55 transition-all duration-300 ${
           isAnimatingOut ? "opacity-0" : "opacity-100"
         }`}
         onClick={handleClose}
@@ -227,118 +227,230 @@ export default function GlobalLeadPopup() {
         }}
         className="relative w-full max-w-2xl mx-4"
       >
-        <div className="relative bg-gradient-to-br from-white via-indigo-50/90 to-purple-50/90 backdrop-blur-sm border border-white/30 rounded-3xl shadow-2xl shadow-indigo-500/30 overflow-hidden">
-          <div className="absolute inset-0 rounded-3xl bg-gradient-to-r from-orange-400 via-pink-400 to-purple-400 opacity-75 blur-xl animate-pulse" />
-          <div className="absolute inset-[1px] rounded-3xl bg-gradient-to-br from-white via-indigo-50/90 to-purple-50/90" />
-
-          <div className="relative p-6">
+        {/* Green outer wrapper */}
+        <div
+          className="rounded-3xl p-[3px] shadow-2xl"
+          style={{
+            background: "#16a34a",
+            boxShadow: "0 8px 32px rgba(22,163,74,0.35)",
+          }}
+        >
+          <div className="rounded-[22px] p-6" style={{ background: "#16a34a" }}>
             {/* Header */}
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-3">
-                <div className="relative">
-                  <Bell className="w-7 h-7 text-orange-500 animate-bounce" />
-                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full animate-ping" />
-                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-500 rounded-full" />
-                </div>
-                <h2 className="text-3xl font-extrabold bg-gradient-to-r from-orange-600 to-pink-600 bg-clip-text text-transparent">
+                <Bell className="w-6 h-6 text-white animate-bounce" />
+                <h2 className="text-2xl font-extrabold text-white">
                   🚀 New Lead Arrived!
                 </h2>
               </div>
+              {/* Cross button - red bg, white icon */}
               <button
                 onClick={handleClose}
-                className="w-8 h-8 bg-white/80 hover:bg-red-100 text-gray-500 hover:text-red-600 rounded-full flex items-center justify-center transition-all duration-200 shadow-sm hover:shadow-md"
+                className="w-8 h-8 flex items-center justify-center rounded-full transition-all duration-200"
+                style={{ background: "#dc2626" }}
               >
-                <X size={18} />
+                <X size={14} color="white" />
               </button>
             </div>
 
-            {/* Body */}
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 shadow-inner border border-white/50">
-              <div className="space-y-4">
-                <div className="flex items-start gap-3 text-gray-700 pb-2 border-b border-gray-100">
-                  <Clock className="w-5 h-5 mt-0.5 text-indigo-500" />
-                  <div className="flex-1">
+            {/* White body card */}
+            <div
+              className="rounded-2xl p-5"
+              style={{
+                background: "#ffffff",
+                border: "0.5px solid rgba(255,255,255,0.3)",
+              }}
+            >
+              <div className="space-y-3">
+                {/* Date & Time */}
+                <div
+                  className="flex items-center gap-3 pb-3"
+                  style={{ borderBottom: "0.5px solid #e5e7eb" }}
+                >
+                  <Clock
+                    className="w-4 h-4 flex-shrink-0"
+                    style={{ color: "#6366f1" }}
+                  />
+                  <span className="text-sm text-gray-700">
                     <span className="font-semibold text-gray-800">
-                      Arrival Time:
+                      Leads Date &amp; Time:
                     </span>
-                    <span className="ml-2 text-sm font-medium text-indigo-600">
-                      {formatDateTime(lead.createdAt || lead.date)}
+                    <span
+                      className="ml-2 font-medium"
+                      style={{ color: "#6366f1" }}
+                    >
+                      {formatDateTime(lead.enquiryTime || lead.date)}
                     </span>
-                  </div>
+                  </span>
                 </div>
 
-                <div className="flex items-start gap-3 text-gray-700 pb-2 border-b border-gray-100">
-                  <User className="w-5 h-5 mt-0.5 text-indigo-500" />
-                  <div className="flex-1">
-                    <span className="font-semibold text-gray-800">
-                      Customer Name:
-                    </span>
-                    <span className="ml-2 text-base font-bold text-indigo-700">
-                      {lead.fullName}
-                    </span>
+                {/* Customer Name - green card style */}
+                <div
+                  className="rounded-xl p-3 flex items-center gap-3"
+                  style={{
+                    background: "#f0fdf4",
+                    border: "0.5px solid #bbf7d0",
+                  }}
+                >
+                  <div
+                    className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-medium text-white flex-shrink-0"
+                    style={{ background: "#16a34a" }}
+                  >
+                    {lead.fullName
+                      ?.split(" ")
+                      .map((n) => n[0])
+                      .join("")
+                      .slice(0, 2)
+                      .toUpperCase()}
                   </div>
-                </div>
-
-                {(lead.customerEmail || lead.customerPhone) && (
-                  <div className="flex items-start gap-3 text-gray-700 pb-2 border-b border-gray-100">
-                    <div className="flex gap-2 flex-wrap">
-                      {lead.customerPhone && (
-                        <div className="flex items-center gap-1">
-                          <Phone className="w-4 h-4 text-green-500" />
-                          <span className="text-sm">{lead.customerPhone}</span>
-                        </div>
-                      )}
-                      {lead.customerEmail && (
-                        <div className="flex items-center gap-1 ml-3">
-                          <Mail className="w-4 h-4 text-blue-500" />
-                          <span className="text-sm">{lead.customerEmail}</span>
-                        </div>
-                      )}
+                  <div>
+                    <div className="text-xs text-gray-500 mb-0.5">
+                      Customer Name
                     </div>
+                    <div
+                      className="text-base font-semibold"
+                      style={{ color: "#15803d" }}
+                    >
+                      {lead.fullName}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Phone & Email - green card style */}
+                {(lead.customerEmail || lead.customerPhone) && (
+                  <div
+                    className="rounded-xl p-3 flex items-center gap-5"
+                    style={{
+                      background: "#f0fdf4",
+                      border: "0.5px solid #bbf7d0",
+                    }}
+                  >
+                    {lead.customerPhone && (
+                      <div className="flex items-center gap-2">
+                        <Phone
+                          className="w-4 h-4"
+                          style={{ color: "#16a34a" }}
+                        />
+                        <span className="text-sm font-medium text-gray-700">
+                          {lead.customerPhone}
+                        </span>
+                      </div>
+                    )}
+                    {lead.customerEmail && (
+                      <div className="flex items-center gap-2">
+                        <Mail
+                          className="w-4 h-4"
+                          style={{ color: "#3b82f6" }}
+                        />
+                        <span className="text-sm font-medium text-gray-700">
+                          {lead.customerEmail}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 )}
 
-                <div className="flex items-start gap-3 text-gray-700">
-                  <CalendarRange className="w-5 h-5 mt-0.5 text-indigo-500" />
-                  <div className="flex-1">
-                    <span className="font-semibold text-gray-800 block mb-2">
-                      Travel Details:
+                {/* Travel Details */}
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <CalendarRange
+                      className="w-4 h-4"
+                      style={{ color: "#6366f1" }}
+                    />
+                    <span className="text-sm font-semibold text-gray-800">
+                      Travel Details
                     </span>
-                    <div className="grid grid-cols-2 gap-3 text-sm">
-                      <div className="bg-indigo-50 rounded-lg p-2">
-                        <div className="text-xs text-gray-500">Start Date</div>
-                        <div className="font-semibold text-indigo-700">
-                          {formatDate(lead.pickupDateTime)}
-                        </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div
+                      className="rounded-xl p-3"
+                      style={{
+                        background: "#f0fdf4",
+                        border: "0.5px solid #bbf7d0",
+                      }}
+                    >
+                      <div className="text-xs text-gray-500 mb-1">
+                        Start Date
                       </div>
-                      <div className="bg-indigo-50 rounded-lg p-2">
-                        <div className="text-xs text-gray-500">End Date</div>
-                        <div className="font-semibold text-indigo-700">
-                          {formatDate(lead.dropDateTime)}
-                        </div>
+                      <div
+                        className="text-sm font-semibold"
+                        style={{ color: "#15803d" }}
+                      >
+                        {formatDate(lead.pickupDateTime)}
                       </div>
                     </div>
-                    {lead.days && (
-                      <div className="mt-2 text-xs text-gray-500 bg-amber-50 inline-block px-2 py-1 rounded-full">
-                        📅 Duration: {lead.days} days
+                    <div
+                      className="rounded-xl p-3"
+                      style={{
+                        background: "#f0fdf4",
+                        border: "0.5px solid #bbf7d0",
+                      }}
+                    >
+                      <div className="text-xs text-gray-500 mb-1">End Date</div>
+                      <div
+                        className="text-sm font-semibold"
+                        style={{ color: "#15803d" }}
+                      >
+                        {formatDate(lead.dropDateTime)}
                       </div>
-                    )}
+                    </div>
+                    <div
+                      className="rounded-xl p-3"
+                      style={{
+                        background: "#f0fdf4",
+                        border: "0.5px solid #bbf7d0",
+                      }}
+                    >
+                      <div className="text-xs text-gray-500 mb-1">Duration</div>
+                      <div
+                        className="text-sm font-semibold"
+                        style={{ color: "#15803d" }}
+                      >
+                        {lead.days} days
+                      </div>
+                    </div>
+                    <div
+                      className="rounded-xl p-3"
+                      style={{
+                        background: "#f0fdf4",
+                        border: "0.5px solid #bbf7d0",
+                      }}
+                    >
+                      <div className="text-xs text-gray-500 mb-1">Pax</div>
+                      <div
+                        className="text-sm font-semibold"
+                        style={{ color: "#15803d" }}
+                      >
+                        {lead.passengerTotal} pax
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Actions */}
-            <div className="flex gap-3 mt-6">
+            {/* Action Buttons */}
+            <div className="flex gap-3 mt-5">
               <button
                 onClick={handleClose}
-                className="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 py-3 rounded-xl font-semibold transition-all duration-200"
+                className="flex-1 py-3 rounded-xl text-sm font-semibold transition-all duration-200"
+                style={{
+                  background: "rgba(255,255,255,0.2)",
+                  border: "0.5px solid rgba(255,255,255,0.4)",
+                  color: "#ffffff",
+                }}
               >
-                CLOSE (15 min )
+                CLOSE (15 min)
               </button>
               <button
                 onClick={handleSnooze}
-                className="flex-1 bg-amber-100 hover:bg-amber-200 text-amber-700 py-3 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-2"
+                className="flex-1 py-3 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2"
+                style={{
+                  background: "rgba(255,255,255,0.15)",
+                  border: "0.5px solid rgba(255,255,255,0.4)",
+                  color: "#ffffff",
+                }}
               >
                 <Clock className="w-4 h-4" />
                 <span>Remind in 60 min</span>

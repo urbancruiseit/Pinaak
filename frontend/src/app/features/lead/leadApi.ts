@@ -45,24 +45,64 @@ export interface PaginatedLeadsResponse {
   totalPages: number;
 }
 
+export interface StatusCounts {
+  NEW: number;
+  RFQ: number;
+  KYC: number;
+  HOT: number;
+  "VEH-N": number;
+  LOST: number;
+  BOOK: number;
+}
+
+export interface PaginatedLeadsResponse {
+  leads: LeadRecord[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  selectedMonth: number;
+  selectedYear: number;
+  statusCounts: StatusCounts;
+  totalLeads: number;
+}
+
 export const getLeadApi = async (
   page: number = 1,
+  search: string = "",
+  month?: number,
+  year?: number,
 ): Promise<PaginatedLeadsResponse> => {
   try {
-    const response = await axiosInstance.get<
-      ApiResponse<PaginatedLeadsResponse>
-    >("/lead", {
-      params: { page },
+    const response = await axiosInstance.get("/lead", {
+      params: {
+        page,
+        ...(search && { search }),
+        ...(month && { month }),
+        ...(year && { year }),
+      },
     });
 
-    const data = response.data.data;
+    const data: PaginatedLeadsResponse = response.data.data;
 
     return {
       leads: data.leads || [],
       total: data.total || 0,
       page: data.page || page,
-      limit: data.limit || 15,
-      totalPages: Math.ceil((data.total || 0) / (data.limit || 15)),
+      limit: data.limit || 14,
+      totalPages: data.totalPages || 1,
+      selectedMonth: data.selectedMonth,
+      selectedYear: data.selectedYear,
+      statusCounts: data.statusCounts || {
+        NEW: 0,
+        RFQ: 0,
+        KYC: 0,
+        HOT: 0,
+        "VEH-N": 0,
+        LOST: 0,
+        BOOK: 0,
+      },
+      totalLeads: data.totalLeads || 0,
     };
   } catch (error: any) {
     console.error("Get Leads Error:", error.response?.data || error.message);

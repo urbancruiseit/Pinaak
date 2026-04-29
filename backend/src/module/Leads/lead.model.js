@@ -326,12 +326,13 @@ export const findLeadByUUID = async (uuid) => {
   }
 };
 
+
+
 // export const getLeads = async (page, limit, cityIds) => {
 //   const pageNumber = parseInt(page, 10);
 //   const limitNumber = parseInt(limit, 10);
 //   const offset = (pageNumber - 1) * limitNumber;
 
-//   // City filter clause
 //   let whereClause = `WHERE (l.unwanted_status IS NULL OR l.unwanted_status != 'unwanted')`;
 //   let cityValues = [];
 
@@ -341,11 +342,9 @@ export const findLeadByUUID = async (uuid) => {
 //     cityValues = [...cityIds];
 //   }
 
-//   // Main query with customer JOIN
 //   const query = `
-//     SELECT
+//     SELECT 
 //       l.*,
-
 //       c.uuid AS customer_uuid,
 //       CONCAT_WS(' ', c.firstName, c.middleName, c.lastName) AS fullName,
 //       c.firstName,
@@ -365,7 +364,6 @@ export const findLeadByUUID = async (uuid) => {
 //       c.gender,
 //       c.state,
 //       c.pincode
-
 //     FROM leads l
 //     LEFT JOIN customers c ON l.customer_id = c.id
 //     ${whereClause}
@@ -376,36 +374,114 @@ export const findLeadByUUID = async (uuid) => {
 //   const queryValues = [...cityValues, limitNumber, offset];
 //   const [leads] = await pool.query(query, queryValues);
 
-//   // Count query
 //   const countQuery = `
-//     SELECT COUNT(*) as total
+//     SELECT COUNT(*) as total 
 //     FROM leads l
 //     LEFT JOIN customers c ON l.customer_id = c.id
 //     ${whereClause}
 //   `;
-
 //   const [countResult] = await pool.query(countQuery, cityValues);
 
+//   // ── Advisor + Presales IDs collect karo ──────────────────────────────────
+//   const advisorIds = leads
+//     .map((l) => l.advisor_id)
+//     .filter((id) => id !== null && id !== undefined);
+
+//   const presalesIds = leads
+//     .map((l) => l.presales_id)
+//     .filter((id) => id !== null && id !== undefined);
+
+//   const allUserIds = [...new Set([...advisorIds, ...presalesIds])];
+
+//   let userMap = {}; // { [user_id]: { id, aliasName, firstName, middleName, lastName } }
+
+//   if (allUserIds.length > 0) {
+//     try {
+//       const placeholders = allUserIds.map(() => "?").join(",");
+//       const [users] = await hrmsPool.query(
+//         `SELECT id, aliasName, firstName, middleName, lastName
+//          FROM users
+//          WHERE id IN (${placeholders})`,
+//         allUserIds,
+//       );
+
+//       users.forEach((u) => {
+//         userMap[u.id] = u; // pura object store karo
+//       });
+//     } catch (err) {
+//       console.error("hrmsPool user fetch failed:", err.message);
+//     }
+//   }
+
+//   // ── Name helper ───────────────────────────────────────────────────────────
+//   const getName = (userId, type) => {
+//     const user = userMap[userId];
+//     if (!user) return null;
+
+//     const first =
+//       type === "advisor"
+//         ? user.aliasName || "" // advisor → aliasName
+//         : user.firstName || ""; // presales → firstName
+
+//     return (
+//       `${first} ${user.middleName || ""} ${user.lastName || ""}`.trim() || null
+//     );
+//   };
+
+//   // ── Leads mein names attach karo ──────────────────────────────────────────
+//   const leadsWithNames = leads.map((lead) => ({
+//     ...lead,
+//     advisorFullName: getName(lead.advisor_id, "advisor"),
+//     presalesFullName: getName(lead.presales_id, "presales"),
+//   }));
+
 //   return {
-//     leads,
+//     leads: leadsWithNames,
 //     total: countResult[0].total,
 //     page: pageNumber,
 //     totalPages: Math.ceil(countResult[0].total / limitNumber),
 //   };
 // };
 
-export const getLeads = async (page, limit, cityIds) => {
+export const getLeads = async (page, limit, cityIds, search, presalesId, month, year) => {
   const pageNumber = parseInt(page, 10);
   const limitNumber = parseInt(limit, 10);
   const offset = (pageNumber - 1) * limitNumber;
 
-  let whereClause = `WHERE (l.unwanted_status IS NULL OR l.unwanted_status != 'unwanted')`;
-  let cityValues = [];
+  const now = new Date();
+  const selectedMonth = month ? parseInt(month, 10) : now.getMonth() + 1;
+  const selectedYear = year ? parseInt(year, 10) : now.getFullYear();
 
+  let whereClause = `WHERE (l.unwanted_status IS NULL OR l.unwanted_status != 'unwanted')`;
+  let values = [];
+
+  // ── Presales filter ───────────────────────────────────────────────────────
+  if (presalesId) {
+    whereClause += ` AND l.presales_id = ?`;
+    values.push(presalesId);
+  }
+
+  // ── Month + Year filter ───────────────────────────────────────────────────
+  whereClause += ` AND MONTH(l.created_at) = ? AND YEAR(l.created_at) = ?`;
+  values.push(selectedMonth, selectedYear);
+
+  // ── City filter ───────────────────────────────────────────────────────────
   if (cityIds && cityIds.length > 0) {
     const placeholders = cityIds.map(() => "?").join(",");
     whereClause += ` AND l.city_id IN (${placeholders})`;
-    cityValues = [...cityIds];
+    values.push(...cityIds);
+  }
+
+  // ── Search filter ─────────────────────────────────────────────────────────
+  if (search && search.trim()) {
+    const like = `%${search.trim()}%`;
+    whereClause += ` AND (
+      CONCAT_WS(' ', c.firstName, c.middleName, c.lastName) LIKE ?
+      OR c.customerEmail LIKE ?
+      OR c.customerPhone LIKE ?
+      OR c.alternatePhone LIKE ?
+    )`;
+    values.push(like, like, like, like);
   }
 
   const query = `
@@ -437,18 +513,42 @@ export const getLeads = async (page, limit, cityIds) => {
     LIMIT ? OFFSET ?
   `;
 
-  const queryValues = [...cityValues, limitNumber, offset];
-  const [leads] = await pool.query(query, queryValues);
+  const [leads] = await pool.query(query, [...values, limitNumber, offset]);
 
+  // ── Total count ───────────────────────────────────────────────────────────
   const countQuery = `
     SELECT COUNT(*) as total 
     FROM leads l
     LEFT JOIN customers c ON l.customer_id = c.id
     ${whereClause}
   `;
-  const [countResult] = await pool.query(countQuery, cityValues);
+  const [countResult] = await pool.query(countQuery, values);
 
-  // ── Advisor + Presales IDs collect karo ──────────────────────────────────
+  // ── Status wise count ─────────────────────────────────────────────────────
+  const statusList = ["NEW", "RFQ", "KYC", "HOT", "VEH-N", "LOST", "BOOK"];
+
+  const statusQuery = `
+    SELECT l.status, COUNT(*) as count
+    FROM leads l
+    LEFT JOIN customers c ON l.customer_id = c.id
+    ${whereClause}
+    GROUP BY l.status
+  `;
+  const [statusResult] = await pool.query(statusQuery, values);
+
+  const statusCounts = {};
+  statusList.forEach((s) => { statusCounts[s] = 0; });
+
+  statusResult.forEach((s) => {
+    const key = (s.status || "").toUpperCase();
+    if (statusCounts.hasOwnProperty(key)) {
+      statusCounts[key] = parseInt(s.count, 10);
+    }
+  });
+
+  const totalLeads = Object.values(statusCounts).reduce((a, b) => a + b, 0);
+
+  // ── Advisor + Presales names ──────────────────────────────────────────────
   const advisorIds = leads
     .map((l) => l.advisor_id)
     .filter((id) => id !== null && id !== undefined);
@@ -458,8 +558,7 @@ export const getLeads = async (page, limit, cityIds) => {
     .filter((id) => id !== null && id !== undefined);
 
   const allUserIds = [...new Set([...advisorIds, ...presalesIds])];
-
-  let userMap = {}; // { [user_id]: { id, aliasName, firstName, middleName, lastName } }
+  let userMap = {};
 
   if (allUserIds.length > 0) {
     try {
@@ -468,33 +567,23 @@ export const getLeads = async (page, limit, cityIds) => {
         `SELECT id, aliasName, firstName, middleName, lastName
          FROM users
          WHERE id IN (${placeholders})`,
-        allUserIds,
+        allUserIds
       );
-
       users.forEach((u) => {
-        userMap[u.id] = u; // pura object store karo
+        userMap[u.id] = u;
       });
     } catch (err) {
       console.error("hrmsPool user fetch failed:", err.message);
     }
   }
 
-  // ── Name helper ───────────────────────────────────────────────────────────
   const getName = (userId, type) => {
     const user = userMap[userId];
     if (!user) return null;
-
-    const first =
-      type === "advisor"
-        ? user.aliasName || "" // advisor → aliasName
-        : user.firstName || ""; // presales → firstName
-
-    return (
-      `${first} ${user.middleName || ""} ${user.lastName || ""}`.trim() || null
-    );
+    const first = type === "advisor" ? user.aliasName || "" : user.firstName || "";
+    return `${first} ${user.middleName || ""} ${user.lastName || ""}`.trim() || null;
   };
 
-  // ── Leads mein names attach karo ──────────────────────────────────────────
   const leadsWithNames = leads.map((lead) => ({
     ...lead,
     advisorFullName: getName(lead.advisor_id, "advisor"),
@@ -506,8 +595,13 @@ export const getLeads = async (page, limit, cityIds) => {
     total: countResult[0].total,
     page: pageNumber,
     totalPages: Math.ceil(countResult[0].total / limitNumber),
+    selectedMonth,
+    selectedYear,
+    statusCounts,
+    totalLeads,
   };
 };
+
 
 export const updateLeadUnwantedStatus = async (leadId, status) => {
   try {

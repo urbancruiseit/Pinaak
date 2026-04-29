@@ -1,18 +1,16 @@
 "use client";
 
-import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
-import type { ReactNode } from "react";
-import EditLeadForm from "./EditForm/editleadform";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { LeadRecord } from "../../../../../types/types";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/app/redux/store";
-import { fetchLeads } from "@/app/features/lead/leadSlice";
+// ✅ fetchLeads import — setMonthYear action bhi add kiya
+import { fetchLeads,} from "@/app/features/lead/leadSlice";
 import LeadDetailsModel from "../../../DetailModel/LeadModel/leadTabledetailsmodel";
 import UnwantedModal from "../../../DetailModel/LeadModel/UnwantedModal";
 import Pagination from "../../../ui/pagination";
 import AssignSalesModal from "../../../DetailModel/LeadModel/AssignSalesModal";
-import { markUnwanted } from "@/app/features/lead/leadSlice";
+import EditLeadForm from "./EditForm/editleadform";
 
 import {
   useLeadColumns,
@@ -27,7 +25,6 @@ import {
   CITY_OPTIONS,
 } from "../../../../../types/LeadsTable/leadstabledata";
 
-// Import from leadstatus
 import {
   calculateLeadStatusCounts,
   calculateLeadStatusPercentages,
@@ -37,7 +34,8 @@ import {
   type LeadStatusCounts,
   type LeadStatusPercentages,
 } from "../../../../../types/LeadsTable/leadstatus";
-import { fetchPresalesLeadStatusCount } from "@/app/features/access/accessSlice";
+
+// ✅ fetchPresalesLeadStatusCount hataya — ab Redux lead state se data aayega
 
 const BANNER_GROUP_LIGHT_BG_CLASS: Record<string, string> = {
   STATUS: "bg-blue-200",
@@ -67,36 +65,11 @@ const BANNER_GROUP_BG_CLASS: Record<string, string> = {
   "Travel Req.": "bg-rose-800",
 };
 
-const OCCASION_COLOR_MAP: Record<string, string> = {
-  Wedding: "text-red-900 font-bold",
-  Vacation: "text-orange-900 font-bold",
-  Pilgrimage: "text-cyan-700 font-bold",
-  Corporate: "text-pink-700 font-bold",
-  Event: "text-blue-900 font-bold",
-  Local: "text-green-900 font-bold",
-};
-
-const statusClassMap: Record<LeadRecord["status"], string> = {
-  New: "bg-blue-100 text-blue-600",
-  KYC: "bg-amber-100 text-amber-600",
-  RFQ: "bg-red-100 text-red-800",
-  HOT: "bg-pink-100 text-pink-600",
-  Book: "bg-green-600 text-white font-bold",
-  "Veh-n": "bg-purple-100 text-purple-600",
-  Lost: "bg-black text-white font-bold",
-  Blank: "bg-gray-100 text-gray-600",
-};
-
 export default function LeadsTable() {
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState<
-    "All" | LeadRecord["status"]
-  >("All");
-  const [cityFilter, setCityFilter] = useState<
-    "All" | (typeof CITY_OPTIONS)[number]
-  >("All");
+  const [statusFilter, setStatusFilter] = useState<"All" | LeadRecord["status"]>("All");
+  const [cityFilter, setCityFilter] = useState<"All" | (typeof CITY_OPTIONS)[number]>("All");
   const [yearFilter, setYearFilter] = useState<"All" | "2025" | "2026">("All");
-
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const [startMonth, setStartMonth] = useState("");
   const [endMonth, setEndMonth] = useState("");
@@ -112,21 +85,55 @@ export default function LeadsTable() {
   const paxBtnRef = useRef<HTMLButtonElement>(null);
   const daysBtnRef = useRef<HTMLButtonElement>(null);
   const [daysOpen, setDaysOpen] = useState(false);
-  const [paxDropdownStyle, setPaxDropdownStyle] = useState<React.CSSProperties>(
-    {},
-  );
-  const [daysDropdownStyle, setDaysDropdownStyle] =
-    useState<React.CSSProperties>({});
+  const [paxDropdownStyle, setPaxDropdownStyle] = useState<React.CSSProperties>({});
+  const [daysDropdownStyle, setDaysDropdownStyle] = useState<React.CSSProperties>({});
   const paxDropdownRef = useRef<HTMLDivElement>(null);
   const daysDropdownRef = useRef<HTMLDivElement>(null);
-
   const [unwantedModalOpen, setUnwantedModalOpen] = useState(false);
-  const [selectedUnwantedLead, setSelectedUnwantedLead] =
-    useState<LeadRecord | null>(null);
-
-  // Assign Sales Modal state and handlers
+  const [selectedUnwantedLead, setSelectedUnwantedLead] = useState<LeadRecord | null>(null);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState<LeadRecord | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 14;
+
+  const dispatch = useDispatch<AppDispatch>();
+
+  // ✅ Redux lead state se saara data le rahe hain
+  // selectedMonth, selectedYear, statusCounts, totalLeads ab yahan se aayenge
+  const {
+    leads,
+    loading,
+    error,
+    totalPages,
+    total,
+    selectedMonth: reduxMonth,   // ✅ Redux se current month
+    selectedYear: reduxYear,     // ✅ Redux se current year
+    statusCounts,                // ✅ Redux se status counts
+    totalLeads,                  // ✅ Redux se total leads
+  } = useSelector((state: RootState) => state.lead);
+
+  // ✅ fetchPresalesLeadStatusCount wala useEffect hataya
+  // Ab lead fetch hone pe automatically statusCounts aayega
+
+  // ✅ page + reduxMonth + reduxYear change hone pe fetch karo
+  useEffect(() => {
+    dispatch(fetchLeads({
+      page:  currentPage,
+      month: reduxMonth,
+      year:  reduxYear,
+    }));
+  }, [dispatch, currentPage, reduxMonth, reduxYear]);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  // ✅ Month/Year filter change hone pe Redux state update karo
+  // Ye action leadSlice me already hai — setMonthYear
+  const handleMonthYearChange = (month: number, year: number) => {
+    setCurrentPage(1); // page reset karo
+    dispatch(setMonthYear({ month, year }));
+  };
 
   const handleAssignClick = (lead: LeadRecord) => {
     setSelectedLead(lead);
@@ -136,26 +143,6 @@ export default function LeadsTable() {
   const handleCloseModal = () => {
     setIsAssignModalOpen(false);
     setSelectedLead(null);
-  };
-  const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = 14;
-
-  const dispatch = useDispatch<AppDispatch>();
-  const { leads, loading, error, totalPages, total } = useSelector(
-    (state: RootState) => state.lead,
-  );
-  const { leadStatus } = useSelector((state: RootState) => state.travelAdvisor);
-
-  useEffect(() => {
-    dispatch(fetchPresalesLeadStatusCount());
-  }, [dispatch]);
-
-  useEffect(() => {
-    dispatch(fetchLeads(currentPage));
-  }, [dispatch, currentPage]);
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
   };
 
   const handleViewLead = (lead: LeadRecord) => {
@@ -184,22 +171,23 @@ export default function LeadsTable() {
     const handleLeadSubmitted = () => {
       setEditLead(null);
       setDetailLead(null);
-      dispatch(fetchLeads(currentPage));
+      dispatch(fetchLeads({
+        page:  currentPage,
+        month: reduxMonth,
+        year:  reduxYear,
+      }));
     };
     window.addEventListener("leadSubmitted", handleLeadSubmitted);
-    return () =>
-      window.removeEventListener("leadSubmitted", handleLeadSubmitted);
-  }, [dispatch, currentPage]);
+    return () => window.removeEventListener("leadSubmitted", handleLeadSubmitted);
+  }, [dispatch, currentPage, reduxMonth, reduxYear]);
 
-  // Handle assignLead event from table columns
   useEffect(() => {
     const handleAssignLead = (event: Event) => {
       const customEvent = event as CustomEvent<LeadRecord>;
       if (customEvent.detail) {
-        handleAssignClick(customEvent.detail); // 🔥 full lead pass karo
+        handleAssignClick(customEvent.detail);
       }
     };
-
     window.addEventListener("assignLead", handleAssignLead);
     return () => window.removeEventListener("assignLead", handleAssignLead);
   }, []);
@@ -243,9 +231,7 @@ export default function LeadsTable() {
         setPaxOpen(false);
       }
     };
-    if (paxOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
+    if (paxOpen) document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [paxOpen]);
 
@@ -260,36 +246,25 @@ export default function LeadsTable() {
         setDaysOpen(false);
       }
     };
-    if (daysOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
+    if (daysOpen) document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [daysOpen]);
 
   const bannerColumnsMeta = useMemo(() => {
     const meta = columns
       .map((column, index) => {
-        const bannerCol = TABLE_BANNER_COLUMNS.find(
-          (c) => c.key === column.key,
-        );
+        const bannerCol = TABLE_BANNER_COLUMNS.find((c) => c.key === column.key);
         const groupLabel = bannerCol?.groupLabel;
         const headerBgClass = groupLabel
           ? (BANNER_GROUP_LIGHT_BG_CLASS[groupLabel] ?? "bg-slate-50")
           : "bg-slate-50";
-
-        return {
-          ...column,
-          index,
-          headerBgClass,
-          groupLabel,
-        };
+        return { ...column, index, headerBgClass, groupLabel };
       })
       .filter(Boolean) as (LeadColumn & {
       index: number;
       headerBgClass: string;
       groupLabel?: string;
     })[];
-
     return meta.sort((a, b) => a.index - b.index);
   }, [columns]);
 
@@ -303,144 +278,67 @@ export default function LeadsTable() {
     if (freezeIndex === -1) setFreezeKey(null);
   }, [freezeIndex, freezeKey]);
 
-  const statusOptions: ("All" | LeadRecord["status"])[] = [
-    "All",
-    ...LEAD_STATUS_OPTIONS,
-  ];
-  const cityOptions: ("All" | (typeof CITY_OPTIONS)[number])[] = [
-    "All",
-    ...CITY_OPTIONS,
-  ];
+  const statusOptions: ("All" | LeadRecord["status"])[] = ["All", ...LEAD_STATUS_OPTIONS];
+  const cityOptions: ("All" | (typeof CITY_OPTIONS)[number])[] = ["All", ...CITY_OPTIONS];
 
-  // FIXED: Filter by enquiry month (lead.date) instead of pickup month
   const filteredLeads = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
     const startDate = startMonth ? new Date(startMonth) : null;
     const endDate = endMonth ? new Date(`${endMonth}T23:59:59`) : null;
 
     return leads.filter((lead) => {
-      // Status filter
       if (statusFilter !== "All" && lead.status !== statusFilter) return false;
-
-      // City filter
       if (cityFilter !== "All" && lead.city !== cityFilter) return false;
-
-      // Year filter
       if (yearFilter !== "All") {
         const leadYear = new Date(lead.date).getFullYear().toString();
         if (leadYear !== yearFilter) return false;
       }
-
-      // MONTH FILTER - FIXED: Filter by enquiry month (lead.date)
       if (selectedMonth) {
         const enquiryDate = new Date(lead.date);
         if (isNaN(enquiryDate.getTime())) return false;
-        const enquiryMonth = enquiryDate.getMonth() + 1; // getMonth() returns 0-11
-        const selectedMonthNum = parseInt(selectedMonth);
-        if (enquiryMonth !== selectedMonthNum) return false;
+        const enquiryMonth = enquiryDate.getMonth() + 1;
+        if (enquiryMonth !== parseInt(selectedMonth)) return false;
       }
-
-      // Search term filter
       if (term) {
         const haystack = [
-          lead.fullName,
-          lead.companyName,
-          lead.city,
-          lead.source,
-          lead.tripType,
-          lead.customerType,
-          lead.customerCategoryType,
-          lead.serviceType,
-          lead.occasion,
-          lead.vehicle2,
-          lead.vehicle3,
-          lead.requirementVehicle,
-          lead.vehicles,
-          lead.customerEmail,
-          lead.customerPhone,
-          lead.telecaller,
-          lead.petsNames ?? "",
-          lead.pickupAddress,
-          lead.dropAddress,
-          lead.remarks,
+          lead.fullName, lead.companyName, lead.city, lead.source,
+          lead.tripType, lead.customerType, lead.customerCategoryType,
+          lead.serviceType, lead.occasion, lead.vehicle2, lead.vehicle3,
+          lead.requirementVehicle, lead.vehicles, lead.customerEmail,
+          lead.customerPhone, lead.telecaller, lead.petsNames ?? "",
+          lead.pickupAddress, lead.dropAddress, lead.remarks,
           lead.km ? String(Number(lead.km).toFixed(0)) : "",
           lead.days ? String(lead.days) : "",
           lead.passengerTotal ? String(lead.passengerTotal) : "",
           lead.totalBaggage ? String(lead.totalBaggage) : "",
         ];
-        const hasMatch = haystack.some(
-          (value) => value && value.toLowerCase().includes(term),
-        );
-        if (!hasMatch) return false;
+        if (!haystack.some((v) => v && v.toLowerCase().includes(term))) return false;
       }
-
-      // Date range filter
       if (startDate || endDate) {
         const leadDate = new Date(`${lead.date}T00:00`);
         if (startDate && leadDate < startDate) return false;
         if (endDate && leadDate > endDate) return false;
       }
-
-      // Pax filter
-      if (
-        selectedPax.length > 0 &&
-        !selectedPax.includes(Number(lead.passengerTotal))
-      )
-        return false;
-
-      // Days filter
-      if (selectedDays.length > 0 && !selectedDays.includes(Number(lead.days)))
-        return false;
-
+      if (selectedPax.length > 0 && !selectedPax.includes(Number(lead.passengerTotal))) return false;
+      if (selectedDays.length > 0 && !selectedDays.includes(Number(lead.days))) return false;
       return true;
     });
-  }, [
-    leads,
-    statusFilter,
-    cityFilter,
-    yearFilter,
-    selectedMonth, // Make sure this is included in dependencies
-    searchTerm,
-    startMonth,
-    endMonth,
-    selectedPax,
-    selectedDays,
-  ]);
+  }, [leads, statusFilter, cityFilter, yearFilter, selectedMonth, searchTerm, startMonth, endMonth, selectedPax, selectedDays]);
 
-  const frozenColumns = useMemo(() => {
-    return bannerColumnsMeta.slice(0, freezeIndex + 1);
-  }, [bannerColumnsMeta, freezeIndex]);
-
-  const scrollableColumns = useMemo(() => {
-    return bannerColumnsMeta.slice(freezeIndex + 1);
-  }, [bannerColumnsMeta, freezeIndex]);
+  const frozenColumns = useMemo(() => bannerColumnsMeta.slice(0, freezeIndex + 1), [bannerColumnsMeta, freezeIndex]);
+  const scrollableColumns = useMemo(() => bannerColumnsMeta.slice(freezeIndex + 1), [bannerColumnsMeta, freezeIndex]);
 
   const getBannerGroups = (cols: typeof bannerColumnsMeta) => {
     const groups: Array<{ id: string; label: string; colSpan: number }> = [];
-    let currentGroup: { id: string; label: string; colSpan: number } | null =
-      null;
-
+    let currentGroup: { id: string; label: string; colSpan: number } | null = null;
     const finishGroup = () => {
-      if (currentGroup) {
-        groups.push(currentGroup);
-        currentGroup = null;
-      }
+      if (currentGroup) { groups.push(currentGroup); currentGroup = null; }
     };
-
     cols.forEach((column) => {
-      if (!column.groupLabel) {
-        finishGroup();
-
-        return;
-      }
-
+      if (!column.groupLabel) { finishGroup(); return; }
       if (!currentGroup || currentGroup.label !== column.groupLabel) {
         finishGroup();
-        currentGroup = {
-          id: `${column.groupLabel}-${column.index}`,
-          label: column.groupLabel,
-          colSpan: 1,
-        };
+        currentGroup = { id: `${column.groupLabel}-${column.index}`, label: column.groupLabel, colSpan: 1 };
       } else {
         currentGroup.colSpan += 1;
       }
@@ -449,13 +347,13 @@ export default function LeadsTable() {
     return groups;
   };
 
-  const leftBannerGroups = useMemo(
-    () => getBannerGroups(frozenColumns),
-    [frozenColumns],
-  );
-  const rightBannerGroups = useMemo(
-    () => getBannerGroups(scrollableColumns),
-    [scrollableColumns],
+  const leftBannerGroups = useMemo(() => getBannerGroups(frozenColumns), [frozenColumns]);
+  const rightBannerGroups = useMemo(() => getBannerGroups(scrollableColumns), [scrollableColumns]);
+
+  // ✅ statusCounts se percentages calculate karo
+  const statusPercentages: LeadStatusPercentages = useMemo(
+    () => calculateLeadStatusPercentages(statusCounts),
+    [statusCounts],
   );
 
   const renderTableSection = (
@@ -463,24 +361,14 @@ export default function LeadsTable() {
     banners: typeof leftBannerGroups,
     isLeft: boolean,
   ) => (
-    <div
-      className={`overflow-x-auto custom-scrollbar ${isLeft ? "border-r border-white" : ""}`}
-      style={{ maxWidth: "100%" }}
-    >
+    <div className={`overflow-x-auto custom-scrollbar ${isLeft ? "border-r border-white" : ""}`} style={{ maxWidth: "100%" }}>
       <table className="min-w-full text-xs border border-collapse border-white sm:text-sm">
         <thead>
           <tr>
-            {banners.map((group, index) => {
-              const groupBgClass = group.label
-                ? (BANNER_GROUP_BG_CLASS[group.label] ?? "bg-slate-900")
-                : "bg-white border-b-0";
-
+            {banners.map((group) => {
+              const groupBgClass = group.label ? (BANNER_GROUP_BG_CLASS[group.label] ?? "bg-slate-900") : "bg-white border-b-0";
               return (
-                <th
-                  key={group.id}
-                  colSpan={group.colSpan}
-                  className={`p-1 sticky top-0 z-30 ${group.label ? "border border-white" : ""} ${groupBgClass}`}
-                >
+                <th key={group.id} colSpan={group.colSpan} className={`p-1 sticky top-0 z-30 ${group.label ? "border border-white" : ""} ${groupBgClass}`}>
                   {group.label && (
                     <div className="px-2 py-1 text-[18px] font-black uppercase tracking-[0.35em] text-white min-w-max">
                       {group.label}
@@ -491,23 +379,12 @@ export default function LeadsTable() {
             })}
           </tr>
           <tr>
-            {cols.map((column, index) => {
-              const bannerCol = TABLE_BANNER_COLUMNS.find(
-                (c) => c.key === column.key,
-              );
+            {cols.map((column) => {
+              const bannerCol = TABLE_BANNER_COLUMNS.find((c) => c.key === column.key);
               const groupLabel = bannerCol?.groupLabel;
-              const headerBgClass = groupLabel
-                ? (BANNER_GROUP_BG_CLASS[groupLabel] ?? "bg-slate-900")
-                : "bg-slate-900";
-
-              const headerClassName = `sticky top-[30px] border border-white ${headerBgClass} px-1 text-left text-[11px] font-bold uppercase tracking-wide text-white sm:text-xs z-20 shadow-[0_2px_4px_-2px_rgba(0,0,0,0.1)]`;
-
+              const headerBgClass = groupLabel ? (BANNER_GROUP_BG_CLASS[groupLabel] ?? "bg-slate-900") : "bg-slate-900";
               return (
-                <th
-                  key={column.key}
-                  scope="col"
-                  className={headerClassName.trim()}
-                >
+                <th key={column.key} scope="col" className={`sticky top-[30px] border border-white ${headerBgClass} px-1 text-left text-[11px] font-bold uppercase tracking-wide text-white sm:text-xs z-20`}>
                   <div className="relative flex items-center justify-between w-full">
                     <span className="text-center w-full">{column.label}</span>
                   </div>
@@ -519,43 +396,23 @@ export default function LeadsTable() {
         <tbody>
           {loading ? (
             <tr>
-              <td
-                className="text-sm font-semibold text-center border border-white text-slate-500"
-                colSpan={cols.length}
-              >
+              <td className="text-sm font-semibold text-center border border-white text-slate-500" colSpan={cols.length}>
                 Loading...
               </td>
             </tr>
           ) : filteredLeads.length === 0 ? (
             <tr>
-              <td
-                className="px-4 text-sm font-semibold text-center border border-white text-slate-500"
-                colSpan={cols.length}
-              >
+              <td className="px-4 text-sm font-semibold text-center border border-white text-slate-500" colSpan={cols.length}>
                 No leads.
               </td>
             </tr>
           ) : (
             filteredLeads.map((lead, rowIndex) => (
-              <tr
-                key={lead.id}
-                className={rowIndex % 2 === 0 ? "bg-white" : "bg-slate-50"}
-              >
+              <tr key={lead.id} className={rowIndex % 2 === 0 ? "bg-white" : "bg-slate-50"}>
                 {cols.map((column) => {
-                  const bgClass = column.headerBgClass;
-                  const isAddress =
-                    column.key === "pickupAddress" ||
-                    column.key === "dropAddress" ||
-                    column.key === "itinerary";
-
-                  const cellClassName = `
-                    whitespace-nowrap border border-white text-slate-800 p-[3px_6px]
-                    ${isAddress ? "text-[12px] !font-normal" : "text-sm font-extrabold"}
-                    ${bgClass}
-                  `;
-
+                  const isAddress = column.key === "pickupAddress" || column.key === "dropAddress" || column.key === "itinerary";
                   return (
-                    <td key={column.key} className={cellClassName.trim()}>
+                    <td key={column.key} className={`whitespace-nowrap border border-white text-slate-800 p-[3px_6px] ${isAddress ? "text-[12px] !font-normal" : "text-sm font-extrabold"} ${column.headerBgClass}`}>
                       {column.render(lead, rowIndex)}
                     </td>
                   );
@@ -568,28 +425,13 @@ export default function LeadsTable() {
     </div>
   );
 
-  const statusCounts: LeadStatusCounts = useMemo(
-    () => calculateLeadStatusCounts(filteredLeads),
-    [filteredLeads],
-  );
-
-  const statusPercentages: LeadStatusPercentages = useMemo(
-    () => calculateLeadStatusPercentages(statusCounts),
-    [statusCounts],
-  );
-
-  const totalLeadsCount = total || 0;
-
   if (editLead) {
     return (
       <div className="w-full">
         <div className="mb-4"></div>
         <EditLeadForm
           initialData={editLead}
-          onSuccess={() => {
-            setEditLead(null);
-            dispatch(fetchLeads(currentPage));
-          }}
+          onSuccess={() => { setEditLead(null); dispatch(fetchLeads({ page: currentPage, month: reduxMonth, year: reduxYear })); }}
           onCancel={() => setEditLead(null)}
         />
       </div>
@@ -612,71 +454,30 @@ export default function LeadsTable() {
 
             <div className="flex flex-wrap items-center gap-1">
               <div className="flex flex-wrap items-center gap-2 ml-10">
-                <LeadStatusBadge
-                  type="total"
-                  label="TOTAL"
-                  value={leadStatus.totalLeads}
-                  percentage={statusPercentages.totalPercentage}
-                />
-                <LeadStatusBadge
-                  type="new"
-                  label="NEW"
-                  value={leadStatus.statusCount.NEW}
-                  percentage={statusPercentages.newPercentage}
-                />
-                <LeadStatusBadge
-                  type="rfq"
-                  label="RFQ"
-                  value={leadStatus.statusCount.RFQ}
-                  percentage={statusPercentages.rfqPercentage}
-                />
-                <LeadStatusBadge
-                  type="kyc"
-                  label="KYC"
-                  value={leadStatus.statusCount.KYC}
-                  percentage={statusPercentages.kycPercentage}
-                />
-                <LeadStatusBadge
-                  type="hot"
-                  label="HOT"
-                  value={leadStatus.statusCount.HOT}
-                  percentage={statusPercentages.hotPercentage}
-                />
-                <LeadStatusBadge
-                  type="vehn"
-                  label="VEH-N"
-                  value={leadStatus.statusCount["VEH-N"]}
-                  percentage={statusPercentages.vehnPercentage}
-                />
-                <LeadStatusBadge
-                  type="lost"
-                  label="LOST"
-                  value={leadStatus.statusCount.LOST}
-                  percentage={statusPercentages.lostPercentage}
-                />
-                <LeadStatusBadge
-                  type="book"
-                  label="BOOK"
-                  value={leadStatus.statusCount.BOOK}
-                  percentage={statusPercentages.bookPercentage}
-                />
+                {/* ✅ leadStatus hataya — ab Redux statusCounts + totalLeads use ho raha hai */}
+                <LeadStatusBadge type="total" label="TOTAL" value={total}            percentage={statusPercentages.totalPercentage} />
+                <LeadStatusBadge type="new"   label="NEW"   value={statusCounts.NEW}      percentage={statusPercentages.newPercentage} />
+                <LeadStatusBadge type="rfq"   label="RFQ"   value={statusCounts.RFQ}      percentage={statusPercentages.rfqPercentage} />
+                <LeadStatusBadge type="kyc"   label="KYC"   value={statusCounts.KYC}      percentage={statusPercentages.kycPercentage} />
+                <LeadStatusBadge type="hot"   label="HOT"   value={statusCounts.HOT}      percentage={statusPercentages.hotPercentage} />
+                <LeadStatusBadge type="vehn"  label="VEH-N" value={statusCounts["VEH-N"]} percentage={statusPercentages.vehnPercentage} />
+                <LeadStatusBadge type="lost"  label="LOST"  value={statusCounts.LOST}     percentage={statusPercentages.lostPercentage} />
+                <LeadStatusBadge type="book"  label="BOOK"  value={statusCounts.BOOK}     percentage={statusPercentages.bookPercentage} />
               </div>
 
               <div className="flex flex-wrap items-center gap-2 ml-10">
                 {MONTH_OPTIONS.map((month) => {
                   const currentMonth = new Date().getMonth() + 1;
                   const isCurrentMonth = Number(month.value) === currentMonth;
-                  const monthPickupCount = calculateMonthPickupCounts(
-                    filteredLeads,
-                    month.value,
-                  );
-
+                  const monthPickupCount = calculateMonthPickupCounts(filteredLeads, month.value);
                   return (
                     <MonthPickupBadge
                       key={month.value}
                       month={month}
                       count={monthPickupCount}
                       isCurrentMonth={isCurrentMonth}
+                      // ✅ Month click hone pe Redux update karo
+                      onClick={() => handleMonthYearChange(Number(month.value), reduxYear)}
                     />
                   );
                 })}
@@ -690,9 +491,7 @@ export default function LeadsTable() {
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
             statusFilter={statusFilter}
-            onStatusChange={(value) =>
-              setStatusFilter(value as typeof statusFilter)
-            }
+            onStatusChange={(value) => setStatusFilter(value as typeof statusFilter)}
             statusOptions={statusOptions}
             cityFilter={cityFilter}
             onCityChange={(value) => setCityFilter(value as typeof cityFilter)}
@@ -736,11 +535,7 @@ export default function LeadsTable() {
                 </div>
               )}
               <div className="flex-1 min-w-0 bg-white">
-                {renderTableSection(
-                  scrollableColumns,
-                  rightBannerGroups,
-                  false,
-                )}
+                {renderTableSection(scrollableColumns, rightBannerGroups, false)}
               </div>
             </div>
           </div>
@@ -748,7 +543,7 @@ export default function LeadsTable() {
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages || 1}
-            totalItems={totalLeadsCount}
+            totalItems={total}
             rowsPerPage={rowsPerPage}
             onPageChange={handlePageChange}
           />
@@ -759,12 +554,10 @@ export default function LeadsTable() {
         <LeadDetailsModel
           lead={detailLead}
           isOpen={isDetailModalOpen}
-          onClose={() => {
-            setIsDetailModalOpen(false);
-            setTimeout(() => setDetailLead(null), 300);
-          }}
+          onClose={() => { setIsDetailModalOpen(false); setTimeout(() => setDetailLead(null), 300); }}
         />
       )}
+
       {unwantedModalOpen && selectedUnwantedLead && (
         <UnwantedModal
           isOpen={unwantedModalOpen}
@@ -778,7 +571,7 @@ export default function LeadsTable() {
           isOpen={isAssignModalOpen}
           onClose={handleCloseModal}
           leadId={selectedLead.id}
-          cityId={selectedLead.city_id} // 🔥 correct
+          cityId={selectedLead.city_id}
         />
       )}
     </>

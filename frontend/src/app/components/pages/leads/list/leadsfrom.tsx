@@ -67,8 +67,8 @@ const schema = z.object({
   dropDateTime: z.string().optional(),
   days: z.number().optional(),
   pickupAddress: z.string().optional(),
-  multiplepickup: z.union([z.array(z.string()), z.string()]).optional(),
-  multipledrop: z.union([z.array(z.string()), z.string()]).optional(),
+  multiplepickup: z.string().optional(),
+  multipledrop: z.string().optional(),
   dropAddress: z.string().optional(),
   pickupcity: z.string().optional(),
   dropcity: z.string().optional(),
@@ -413,8 +413,8 @@ const LeadsForm: React.FC = () => {
       occasion: "",
       dropDateTime: "",
       pickupAddress: "",
-      multiplepickup: [],
-      multipledrop: [],
+      multiplepickup: "",
+      multipledrop: "",
       dropAddress: "",
       customerAddress: "",
       dropcity: "",
@@ -526,28 +526,8 @@ const LeadsForm: React.FC = () => {
           : null,
         dropDateTime: data.dropDateTime ? `${data.dropDateTime}:00` : null,
         pickupAddress: data.pickupAddress || "",
-        multiplepickup: JSON.stringify(
-          (() => {
-            const val = data.multiplepickup;
-            if (!val) return [];
-            if (Array.isArray(val)) return val;
-            return String(val)
-              .split(",")
-              .map((s) => s.trim())
-              .filter(Boolean);
-          })(),
-        ),
-        multipledrop: JSON.stringify(
-          (() => {
-            const val = data.multipledrop;
-            if (!val) return [];
-            if (Array.isArray(val)) return val;
-            return String(val)
-              .split(",")
-              .map((s) => s.trim())
-              .filter(Boolean);
-          })(),
-        ),
+       multiplepickup:data.multiplepickup ||"",
+        multipledrop:data.multipledrop ||"",
 
         dropAddress: data.dropAddress || "",
         customerAddress: data.customerAddress || "",
@@ -1426,32 +1406,7 @@ const LeadsForm: React.FC = () => {
                       )}
                     </div>
 
-                    {/* Multiple Pickup City */}
-                    <div className="w-full md:w-[30%]">
-                      <label className="block mb-1 font-extrabold text-gray-700 text-md">
-                        Multiple Pickup
-                      </label>
-                      <div className="relative group">
-                        <Info
-                          size={15}
-                          className="absolute -top-6 right-0 text-blue-500 cursor-help"
-                        />
-                        <input
-                          {...register("multiplepickup")}
-                          className="w-full py-2 pl-10 pr-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          placeholder="multiple pickup city"
-                        />
-                        <MapPin
-                          className="absolute text-purple-600 -translate-y-1/2 left-3 top-1/2"
-                          size={20}
-                        />
-                      </div>
-                      {errors.multiplepickup && (
-                        <p className="mt-1 text-sm text-red-500">
-                          {errors.multiplepickup.message}
-                        </p>
-                      )}
-                    </div>
+                    
 
                     {/* Pickup Address */}
                     <div className="w-full md:w-[40%]">
@@ -1476,6 +1431,33 @@ const LeadsForm: React.FC = () => {
                       {errors.pickupAddress && (
                         <p className="mt-1 text-sm text-red-500">
                           {errors.pickupAddress.message}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Multiple Pickup City */}
+                    <div className="w-full md:w-[30%]">
+                      <label className="block mb-1 font-extrabold text-gray-700 text-md">
+                          Additional Pickup Addresses
+                      </label>
+                      <div className="relative group">
+                        <Info
+                          size={15}
+                          className="absolute -top-6 right-0 text-blue-500 cursor-help"
+                        />
+                        <input
+                          {...register("multiplepickup")}
+                          className="w-full py-2 pl-10 pr-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          placeholder="multiple pickup city"
+                        />
+                        <MapPin
+                          className="absolute text-purple-600 -translate-y-1/2 left-3 top-1/2"
+                          size={20}
+                        />
+                      </div>
+                      {errors.multiplepickup && (
+                        <p className="mt-1 text-sm text-red-500">
+                          {errors.multiplepickup.message}
                         </p>
                       )}
                     </div>
@@ -1586,10 +1568,23 @@ const LeadsForm: React.FC = () => {
                           )}
                         </div>
 
-                        {/* Multiple Drop City */}
+                       
+
                         <div className="w-full md:w-[30%]">
                           <label className="block mb-1 font-extrabold text-gray-700 text-md">
-                            Multiple Drop
+                            Drop Address
+                          </label>
+                          <input
+                            {...register("dropAddress")}
+                            className="w-full py-2 pl-3 pr-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="Address"
+                          />
+                        </div>
+
+                         {/* Multiple Drop City */}
+                        <div className="w-full md:w-[30%]">
+                          <label className="block mb-1 font-extrabold text-gray-700 text-md">
+                            Additional Drop Addresses
                           </label>
                           <div className="relative group">
                             <Info
@@ -1611,17 +1606,6 @@ const LeadsForm: React.FC = () => {
                               {errors.multipledrop.message}
                             </p>
                           )}
-                        </div>
-
-                        <div className="w-full md:w-[30%]">
-                          <label className="block mb-1 font-extrabold text-gray-700 text-md">
-                            Drop Address
-                          </label>
-                          <input
-                            {...register("dropAddress")}
-                            className="w-full py-2 pl-3 pr-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="Address"
-                          />
                         </div>
                       </>
                     )}

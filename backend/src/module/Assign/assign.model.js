@@ -55,56 +55,61 @@ export const assignTravelAdvisorToLead = async (leadId, travelAdvisorId) => {
   }
 };
 
-// export const getLeadsByAdvisorId = async (advisorId, limit, offset) => {
-//   try {
-//     const [rows] = await pool.query(
-//       `
-//       SELECT
-//         l.*,
-//         c.uuid AS customer_uuid,
-//         CONCAT_WS(' ', c.firstName, c.middleName, c.lastName) AS fullName,
-//         c.firstName,
-//         c.middleName,
-//         c.lastName,
-//         c.customerPhone,
-//         c.customerEmail,
-//         c.companyName,
-//         c.customerType,
-//         c.customerCategoryType,
-//         c.alternatePhone,
-//         c.countryName,
-//         c.customerCity,
-//         c.address,
-//         c.date_of_birth,
-//         c.anniversary,
-//         c.gender,
-//         c.state,
-//         c.pincode
-//       FROM leads l
-//       LEFT JOIN customers c ON l.customer_id = c.id
 
-//       WHERE l.advisor_id = ?
-//       ORDER BY l.id DESC
-//       LIMIT ? OFFSET ?
-//       `,
-//       [Number(advisorId), Number(limit), Number(offset)],
-//     );
-
-//     const [[{ totalCount }]] = await pool.query(
-//       `SELECT COUNT(*) AS totalCount FROM leads WHERE advisor_id = ?`,
-//       [Number(advisorId)],
-//     );
-
-//     return { leads: rows, totalCount: Number(totalCount) };
-//   } catch (error) {
-//     console.error("getLeadsByAdvisorId error:", error);
-//     throw error;
-//   }
-// };
-export const getLeadsByAdvisorId = async (advisorId, limit, offset) => {
+export const getLeadsByAdvisorId = async (
+  advisorId,
+  page,
+  limit,
+  cityIds,
+  search,
+  month,
+  year
+) => {
   try {
-    const [rows] = await pool.query(
-      `
+    const pageNumber = parseInt(page, 10) || 1;
+    const limitNumber = parseInt(limit, 10) || 10;
+    const offset = (pageNumber - 1) * limitNumber;
+
+    const now = new Date();
+    const selectedMonth = month ? parseInt(month, 10) : null; // ✅ null by default
+    const selectedYear = year ? parseInt(year, 10) : now.getFullYear();
+
+    let whereClause = `WHERE (l.unwanted_status IS NULL OR l.unwanted_status != 'unwanted')`;
+    let values = [];
+
+    // ── Advisor filter ────────────────────────────────────────────────────
+    if (advisorId) {
+      whereClause += ` AND l.advisor_id = ?`;
+      values.push(Number(advisorId));
+    }
+
+    // ✅ Month filter — sirf tab jab month pass ho, by default sab data
+    if (selectedMonth) {
+      whereClause += ` AND MONTH(l.pickupDateTime) = ? AND YEAR(l.pickupDateTime) = ?`;
+      values.push(selectedMonth, selectedYear);
+    }
+
+    // ── City filter ───────────────────────────────────────────────────────
+    if (cityIds && cityIds.length > 0) {
+      const placeholders = cityIds.map(() => "?").join(",");
+      whereClause += ` AND l.city_id IN (${placeholders})`;
+      values.push(...cityIds);
+    }
+
+    // ── Search filter ─────────────────────────────────────────────────────
+    if (search && search.trim()) {
+      const like = `%${search.trim()}%`;
+      whereClause += ` AND (
+        CONCAT_WS(' ', c.firstName, c.middleName, c.lastName) LIKE ?
+        OR c.customerEmail LIKE ?
+        OR c.customerPhone LIKE ?
+        OR c.alternatePhone LIKE ?
+      )`;
+      values.push(like, like, like, like);
+    }
+
+    // ── Main query ────────────────────────────────────────────────────────
+    const query = `
       SELECT 
         l.*,
         c.uuid AS customer_uuid,
@@ -128,17 +133,55 @@ export const getLeadsByAdvisorId = async (advisorId, limit, offset) => {
         c.pincode
       FROM leads l
       LEFT JOIN customers c ON l.customer_id = c.id
-      WHERE l.advisor_id = ?
-      ORDER BY l.id DESC
+      ${whereClause}
+      ORDER BY l.created_at DESC
       LIMIT ? OFFSET ?
-      `,
-      [Number(advisorId), Number(limit), Number(offset)],
-    );
+    `;
 
-    const [[{ totalCount }]] = await pool.query(
-      `SELECT COUNT(*) AS totalCount FROM leads WHERE advisor_id = ?`,
-      [Number(advisorId)],
-    );
+    const [leads] = await pool.query(query, [...values, limitNumber, offset]);
+
+    // ── Total count ───────────────────────────────────────────────────────
+    const countQuery = `
+      SELECT COUNT(*) as total
+      FROM leads l
+      LEFT JOIN customers c ON l.customer_id = c.id
+      ${whereClause}
+    `;
+    const [countResult] = await pool.query(countQuery, values);
+
+    // ── Status wise count ─────────────────────────────────────────────────
+    const statusList = ["NEW", "RFQ", "KYC", "HOT", "VEH-N", "LOST", "BOOK"];
+
+    const statusQuery = `
+      SELECT l.status, COUNT(*) as count
+      FROM leads l
+      LEFT JOIN customers c ON l.customer_id = c.id
+      ${whereClause}
+      GROUP BY l.status
+    `;
+    const [statusResult] = await pool.query(statusQuery, values);
+
+    const statusCounts = {};
+    statusList.forEach((s) => { statusCounts[s] = 0; });
+
+    statusResult.forEach((s) => {
+      const key = (s.status || "").toUpperCase();
+      if (statusCounts.hasOwnProperty(key)) {
+        statusCounts[key] = parseInt(s.count, 10);
+      }
+    });
+
+    const totalLeads = Object.values(statusCounts).reduce((a, b) => a + b, 0);
+
+    // ── Monthly stats ─────────────────────────────────────────────────────
+    let monthlyStatsWhereClause = `WHERE pickupDateTime IS NOT NULL
+      AND (unwanted_status IS NULL OR unwanted_status != 'unwanted')`;
+    let monthlyStatsValues = [];
+
+    if (advisorId) {
+      monthlyStatsWhereClause += ` AND advisor_id = ?`;
+      monthlyStatsValues.push(Number(advisorId));
+    }
 
     const [monthlyStats] = await pool.query(
       `
@@ -148,54 +191,63 @@ export const getLeadsByAdvisorId = async (advisorId, limit, offset) => {
         YEAR(pickupDateTime) AS year,
         COUNT(*) AS leadCount
       FROM leads
-      WHERE advisor_id = ?
-        AND pickupDateTime IS NOT NULL
+      ${monthlyStatsWhereClause}
       GROUP BY DATE_FORMAT(pickupDateTime, '%Y-%m'), MONTHNAME(pickupDateTime), YEAR(pickupDateTime)
       ORDER BY month DESC
       `,
-      [Number(advisorId)],
+      monthlyStatsValues
     );
 
-    // ── Advisor + Presales names from hrmsPool ─────
-    const advisorIds = rows
+    // ── Advisor + Presales names ──────────────────────────────────────────
+    const advisorIds = leads
       .map((l) => l.advisor_id)
       .filter((id) => id !== null && id !== undefined);
 
-    const presalesIds = rows
+    const presalesIds = leads
       .map((l) => l.presales_id)
       .filter((id) => id !== null && id !== undefined);
 
     const allUserIds = [...new Set([...advisorIds, ...presalesIds])];
-
     let userMap = {};
 
     if (allUserIds.length > 0) {
       try {
         const placeholders = allUserIds.map(() => "?").join(",");
         const [users] = await hrmsPool.query(
-          `SELECT id, CONCAT_WS(' ', aliasName, middleName, lastName) AS fullName
+          `SELECT id, aliasName, firstName, middleName, lastName
            FROM users
            WHERE id IN (${placeholders})`,
-          allUserIds,
+          allUserIds
         );
-        users.forEach((u) => {
-          userMap[u.id] = u.fullName;
-        });
+        users.forEach((u) => { userMap[u.id] = u; });
       } catch (err) {
         console.error("hrmsPool user fetch failed:", err.message);
       }
     }
 
-    // Har lead mein advisorFullName + presalesFullName attach karo
-    const leadsWithNames = rows.map((lead) => ({
+    const getName = (userId, type) => {
+      const user = userMap[userId];
+      if (!user) return null;
+      const first = type === "advisor" ? user.aliasName || "" : user.firstName || "";
+      return `${first} ${user.middleName || ""} ${user.lastName || ""}`.trim() || null;
+    };
+
+    const leadsWithNames = leads.map((lead) => ({
       ...lead,
-      advisorFullName: userMap[lead.advisor_id] || null,
-      presalesFullName: userMap[lead.presales_id] || null,
+      advisorFullName: getName(lead.advisor_id, "advisor"),
+      presalesFullName: getName(lead.presales_id, "presales"),
     }));
 
     return {
       leads: leadsWithNames,
-      totalCount: Number(totalCount),
+      total: countResult[0].total,
+      page: pageNumber,
+      totalPages: Math.ceil(countResult[0].total / limitNumber),
+      hasNextPage: pageNumber < Math.ceil(countResult[0].total / limitNumber),
+      selectedMonth,  // ✅ null aayega jab koi month select na ho
+      selectedYear,
+      statusCounts,
+      totalLeads,
       monthlyStats,
     };
   } catch (error) {
@@ -204,37 +256,7 @@ export const getLeadsByAdvisorId = async (advisorId, limit, offset) => {
   }
 };
 
-export const getLeadStatusCountByAdvisorId = async (advisorId) => {
-  const [rows] = await pool.query(
-    `SELECT 
-      COUNT(*) AS totalLeads,
-      SUM(status = 'NEW') AS new,
-      SUM(status = 'KYC') AS kyc,
-      SUM(status = 'RFQ') AS rfq,
-      SUM(status = 'HOT') AS hot,
-      SUM(status = 'VEH-N') AS veh_n,
-      SUM(status = 'LOST') AS lost,
-      SUM(status = 'BOOK') AS book
-    FROM leads
-    WHERE advisor_id = ?`,
-    [advisorId],
-  );
 
-  const data = rows[0];
-
-  return {
-    totalLeads: data.totalLeads,
-    statusCount: {
-      NEW: data.new || 0,
-      KYC: data.kyc || 0,
-      RFQ: data.rfq || 0,
-      HOT: data.hot || 0,
-      "VEH-N": data.veh_n || 0,
-      LOST: data.lost || 0,
-      BOOK: data.book || 0,
-    },
-  };
-};
 
 export const getLeadStatusCountByPresalesId = async (presalesId) => {
   const [rows] = await pool.query(

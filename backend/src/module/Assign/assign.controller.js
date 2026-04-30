@@ -5,7 +5,7 @@ import {
   assignTravelAdvisorToLead,
   findTravelAdvisorsByCityId,
   getLeadsByAdvisorId,
-  getLeadStatusCountByAdvisorId,
+
   getLeadStatusCountByPresalesId,
 } from "./assign.model.js";
 
@@ -48,13 +48,25 @@ const assignTravelAdvisor = asyncHandler(async (req, res) => {
 const getMyAssignedLeads = asyncHandler(async (req, res) => {
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const limit = 13;
-  const offset = (page - 1) * limit;
   const userId = req.user.id;
-  const { leads, totalCount, monthlyStats } = await getLeadsByAdvisorId(
-    userId,
-    limit,
-    offset,
-  );
+
+  const cityIds = req.query.cityIds
+    ? req.query.cityIds.split(",").map(Number)
+    : [];
+  const search = req.query.search || "";
+  const month = req.query.month || null;
+  const year = req.query.year || null;
+
+  const {
+    leads,
+    total,
+    totalPages,
+    selectedMonth,
+    selectedYear,
+    statusCounts,
+    totalLeads,
+    monthlyStats,
+  } = await getLeadsByAdvisorId(userId, page, limit, cityIds, search, month, year);
 
   return res.status(200).json(
     new ApiResponse(
@@ -62,9 +74,13 @@ const getMyAssignedLeads = asyncHandler(async (req, res) => {
       {
         page,
         limit,
-        totalCount,
-        totalPages: Math.ceil(totalCount / limit),
-        hasNextPage: page * limit < totalCount,
+        total,
+        totalPages,
+        hasNextPage: page < totalPages,
+        selectedMonth,
+        selectedYear,
+        statusCounts,
+        totalLeads,
         leads,
         monthlyStats,
       },
@@ -75,21 +91,7 @@ const getMyAssignedLeads = asyncHandler(async (req, res) => {
   );
 });
 
-const getLeadStatusCount = asyncHandler(async (req, res) => {
-  const advisorId = req.user.id;
 
-  // if (req.user.role_name === "Travel Advisor") {
-  //   advisorId = req.user.id; // ✅ Current user ka id
-  // } else {
-  //   advisorId = req.params.advisorId; // ✅ Params se
-  // }
-  console.log("Advisor ID being used:", advisorId);
-  const data = await getLeadStatusCountByAdvisorId(advisorId);
-
-  return res
-    .status(200)
-    .json(new ApiResponse(200, data, "Lead status count fetched successfully"));
-});
 
 const LeadStatusCountByPresalesId = asyncHandler(async (req, res) => {
   const presaleId = req.user.id;
@@ -110,6 +112,6 @@ export {
   getTravelAdvisorsByCityId,
   assignTravelAdvisor,
   getMyAssignedLeads,
-  getLeadStatusCount,
+  
   LeadStatusCountByPresalesId,
 };

@@ -449,21 +449,25 @@ export const getLeads = async (page, limit, cityIds, search, presalesId, month, 
   const offset = (pageNumber - 1) * limitNumber;
 
   const now = new Date();
-  const selectedMonth = month ? parseInt(month, 10) : now.getMonth() + 1;
+  const selectedMonth = month ? parseInt(month, 10) : null; // ✅ null by default
   const selectedYear = year ? parseInt(year, 10) : now.getFullYear();
 
   let whereClause = `WHERE (l.unwanted_status IS NULL OR l.unwanted_status != 'unwanted')`;
   let values = [];
 
   // ── Presales filter ───────────────────────────────────────────────────────
-  if (presalesId) {
+  // ✅ Fix — sirf valid numeric id ho tab filter lagao
+  if (presalesId && Number(presalesId) > 0) {
     whereClause += ` AND l.presales_id = ?`;
     values.push(presalesId);
   }
 
   // ── Month + Year filter ───────────────────────────────────────────────────
-  whereClause += ` AND MONTH(l.created_at) = ? AND YEAR(l.created_at) = ?`;
-  values.push(selectedMonth, selectedYear);
+  // ✅ Fix — sirf tab lagao jab month explicitly select ho
+  if (selectedMonth) {
+    whereClause += ` AND MONTH(l.created_at) = ? AND YEAR(l.created_at) = ?`;
+    values.push(selectedMonth, selectedYear);
+  }
 
   // ── City filter ───────────────────────────────────────────────────────────
   if (cityIds && cityIds.length > 0) {
@@ -569,9 +573,7 @@ export const getLeads = async (page, limit, cityIds, search, presalesId, month, 
          WHERE id IN (${placeholders})`,
         allUserIds
       );
-      users.forEach((u) => {
-        userMap[u.id] = u;
-      });
+      users.forEach((u) => { userMap[u.id] = u; });
     } catch (err) {
       console.error("hrmsPool user fetch failed:", err.message);
     }
@@ -595,7 +597,7 @@ export const getLeads = async (page, limit, cityIds, search, presalesId, month, 
     total: countResult[0].total,
     page: pageNumber,
     totalPages: Math.ceil(countResult[0].total / limitNumber),
-    selectedMonth,
+    selectedMonth,  // ✅ null aayega jab koi month select na ho
     selectedYear,
     statusCounts,
     totalLeads,

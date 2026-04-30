@@ -979,9 +979,30 @@ const EditLeadForm: React.FC<{
                         </p>
                       )}
                     </div>
+                     <div className="w-full md:w-[20%]">
+                      <label className="block mb-1 font-extrabold text-gray-700 text-md">
+                        Multiple Pickup  
+                      </label>
+                      <div className="relative">
+                        <input
+                          {...register("multiplepickup")}
+                          className="w-full py-2 pl-10 pr-3 border border-gray-300 rounded-md"
+                          placeholder="Enter Multiple Pickup"
+                        />
+                        <MapPin
+                          className="absolute text-purple-600 -translate-y-1/2 left-3 top-1/2"
+                          size={20}
+                        />
+                      </div>
+                      {errors.multiplepickup && (
+                        <p className="mt-1 text-sm text-red-500">
+                          {errors.multiplepickup.message}
+                        </p>
+                      )}
+                    </div>
 
                     {/* Pickup Address */}
-                    <div className="w-full md:w-[50%]">
+                    <div className="w-full md:w-[30%]">
                       <label className="block mb-1 font-extrabold text-gray-700 text-md">
                         Pickup Address <span className="text-red-500">*</span>
                       </label>
@@ -1085,6 +1106,28 @@ const EditLeadForm: React.FC<{
                       )}
                     </div>
 
+                    <div className="w-full md:w-[20%]">
+                      <label className="block mb-1 font-extrabold text-gray-700 text-md">
+                        Multiple Drop  
+                      </label>
+                      <div className="relative">
+                        <input
+                          {...register("multipledrop")}
+                          className="w-full py-2 pl-10 pr-3 border border-gray-300 rounded-md"
+                          placeholder="Enter Multiple Pickup"
+                        />
+                        <MapPin
+                          className="absolute text-purple-600 -translate-y-1/2 left-3 top-1/2"
+                          size={20}
+                        />
+                      </div>
+                      {errors.multipledrop && (
+                        <p className="mt-1 text-sm text-red-500">
+                          {errors.multipledrop.message}
+                        </p>
+                      )}
+                    </div>
+
                     {/* Drop Address */}
                     <div className="w-full md:w-[30%]">
                       <label className="block mb-1 font-extrabold text-gray-700 text-md">
@@ -1096,6 +1139,8 @@ const EditLeadForm: React.FC<{
                         placeholder="Address"
                       />
                     </div>
+
+                    
 
                     {/* Service Type */}
                     <div className="w-full md:w-[15%]">

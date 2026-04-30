@@ -44,6 +44,8 @@ export const leadSchema = z.object({
   pickupDateTime: z.string().min(1, "Pickup date is required"),
   dropDateTime: z.string().optional(),
   days: z.number().min(1, "Days is required"),
+  multipledrop: z.string().optional(),
+  multiplepickup: z.string().optional(),
   pickupAddress: z.string().min(1, "Pickup address is required"),
   dropAddress: z.string().min(1, "Drop address is required"),
   pickupcity: z.string().min(1, "Pickup city is required"),

@@ -117,6 +117,7 @@ const CityManagerDashboardModule = dynamic(
   { ssr: false, loading: LoadingPanel },
 );
 
+
 const RateQuotationTableModule = dynamic(
   () => import("../components/pages/ratequation/list/ratequotationtable"),
   { ssr: false, loading: LoadingPanel },
@@ -305,53 +306,95 @@ export default function DashboardPage() {
     }
   }, []);
 
-  useEffect(() => {
-    if (currentUser) {
-      const userAny = currentUser as any;
-      const role = userAny.role || userAny.role_name || "user";
-      const subDepartment_name =
-        userAny.subDepartment_name ||
-        userAny.subdepartname_name ||
-        userAny.department ||
-        "";
-      const departmentName =
-        userAny.department_name || userAny.departmentname || "";
+   useEffect(() => {
+     if (currentUser) {
+       const userAny = currentUser as any;
+       const role = userAny.role || userAny.role_name || "user";
+       const subDepartment_name =
+         userAny.subDepartment_name ||
+         userAny.subdepartname_name ||
+         userAny.department ||
+         "";
+       const departmentName =
+         userAny.department_name || userAny.departmentname || "";
 
-      setUserRole(role);
-      setUserName(currentUser.fullName || "User");
-      setUserEmail(currentUser.role || "");
-      setUserSubDepartment(subDepartment_name);
-      setUserDepartment(departmentName);
+       setUserRole(role);
+       setUserName(currentUser.fullName || "User");
+       setUserEmail(currentUser.email || ""); // Fixed: use email instead of role
+       setUserSubDepartment(subDepartment_name);
+       setUserDepartment(departmentName);
 
-      const isTelesales = subDepartment_name?.toLowerCase() === "tele-sales";
-      const isPresales = subDepartment_name?.toLowerCase() === "pre-sales";
-      const isTeamLeaderSales =
-        isTelesales && role?.toLowerCase().includes("team leader");
-      const isCityManager =
-        isTelesales && role?.toLowerCase().includes("city manager");
+       // Handle superadmin case first - full access
+       if (role?.toLowerCase() === "superadmin") {
+         // Superadmin gets full access - default to leads dashboard
+         setActiveSection("leads");
+         setActiveLeadView("dashboard");
+         setActiveDashboardView("leads-dashboard");
+       } 
+       // Handle Manager, Team Leader, Employee roles
+       else if (
+         role?.toLowerCase() === "manager" ||
+         role?.toLowerCase() === "team leader" ||
+         role?.toLowerCase() === "employee"
+       ) {
+         // Check for sales department roles
+         const isSalesDepartment = departmentName?.toLowerCase() === "sales";
+         const isPreSalesSubDepartment = subDepartment_name?.toLowerCase() === "pre-sales";
+         
+         // Pre-Sales specific roles
+         if (isSalesDepartment && isPreSalesSubDepartment) {
+           const roleLower = role?.toLowerCase() || "";
+           if (roleLower.includes("team leader")) {
+             setActiveSection("dashboard");
+             setActiveDashboardView("teamleader-dashboard");
+           } else if (roleLower.includes("manager")) {
+             setActiveSection("dashboard");
+             setActiveDashboardView("presales-dashboard");
+           } else {
+             // Pre-Sales Executive or other pre-sales roles
+             setActiveSection("dashboard");
+             setActiveDashboardView("presales-dashboard");
+           }
+         } 
+         // Other department roles - default to leads
+         else {
+           setActiveSection("leads");
+           setActiveLeadView("dashboard");
+           setActiveDashboardView("leads-dashboard");
+         }
+       }
+       // Handle existing tele-sales logic
+       else {
+         const isTelesales = subDepartment_name?.toLowerCase() === "tele-sales";
+         const isPresales = subDepartment_name?.toLowerCase() === "pre-sales";
+         const isTeamLeaderSales =
+           isTelesales && role?.toLowerCase().includes("team leader");
+         const isCityManager =
+           isTelesales && role?.toLowerCase().includes("city manager");
 
-      if (isTeamLeaderSales) {
-        setActiveSection("dashboard");
-        setActiveDashboardView("teamleader-dashboard");
-      } else if (isCityManager) {
-        setActiveSection("dashboard");
-        setActiveDashboardView("citymanager-dashboard");
-      } else if (isTelesales) {
-        setActiveSection("dashboard");
-        setActiveDashboardView("telesales-dashboard");
-      } else if (isPresales) {
-        setActiveSection("dashboard");
-        setActiveDashboardView("presales-dashboard");
-      } else {
-        setActiveSection("leads");
-        setActiveLeadView("dashboard");
-        setActiveDashboardView("leads-dashboard");
-      }
+         if (isTeamLeaderSales) {
+           setActiveSection("dashboard");
+           setActiveDashboardView("teamleader-dashboard");
+         } else if (isCityManager) {
+           setActiveSection("dashboard");
+           setActiveDashboardView("citymanager-dashboard");
+         } else if (isTelesales) {
+           setActiveSection("dashboard");
+           setActiveDashboardView("telesales-dashboard");
+         } else if (isPresales) {
+           setActiveSection("dashboard");
+           setActiveDashboardView("presales-dashboard");
+         } else {
+           setActiveSection("leads");
+           setActiveLeadView("dashboard");
+           setActiveDashboardView("leads-dashboard");
+         }
+       }
 
-      setPendingModuleKey(null);
-      resetAllReportStates();
-    }
-  }, [currentUser]);
+       setPendingModuleKey(null);
+       resetAllReportStates();
+     }
+   }, [currentUser]);
 
   useEffect(() => {
     const handleViewLead = (event: CustomEvent<LeadRecord>) => {

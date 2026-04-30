@@ -1,8 +1,14 @@
 "use client";
 
 import { createPortal } from "react-dom";
+import { useEffect, useRef, useCallback } from "react";
 import type { LeadColumn } from "./leadTableColumns";
 import { MONTH_OPTIONS } from "./leadstabledata";
+import { useAppDispatch } from "@/hooks/useRedux";
+import { useSelector } from "react-redux";
+import { RootState } from "@/app/redux/store";
+import { fetchLeads } from "@/app/features/lead/leadSlice";
+// apna actual path adjust karo
 
 export interface SearchFiltersProps {
   searchTerm: string;
@@ -79,7 +85,73 @@ export function LeadSearchFilters({
   endType,
   onEndTypeChange,
 }: SearchFiltersProps) {
-  
+
+  const dispatch = useAppDispatch();
+  const { leads } = useSelector((state: RootState) => state.lead);
+
+  // ─── Search debounce ───────────────────────────────────────────────────────
+  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleSearchChange = useCallback(
+    (value: string) => {
+      onSearchChange(value); // parent state update (input controlled)
+
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+
+      searchDebounceRef.current = setTimeout(() => {
+        dispatch(
+          fetchLeads({
+            page: 1,
+            search: value,
+            // month aur year bhi bhejo agar selectedMonth set hai
+            ...(selectedMonth
+              ? {
+                  month: Number(selectedMonth),
+                  year: new Date().getFullYear(),
+                }
+              : {}),
+          })
+        );
+      }, 400); // 400ms debounce
+    },
+    [dispatch, onSearchChange, selectedMonth]
+  );
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    };
+  }, []);
+
+  // ─── Month change ──────────────────────────────────────────────────────────
+  const handleMonthChange = useCallback(
+    (month: string | null) => {
+      onMonthChange(month); // parent state update
+
+      if (month) {
+        dispatch(
+          fetchLeads({
+            page: 1,
+            month: Number(month),
+            year: new Date().getFullYear(),
+            search: searchTerm || undefined,
+          })
+        );
+      } else {
+        // Month deselect → sab leads fetch karo
+        dispatch(
+          fetchLeads({
+            page: 1,
+            search: searchTerm || undefined,
+          })
+        );
+      }
+    },
+    [dispatch, onMonthChange, searchTerm]
+  );
+
+  // ─── Checkbox helpers ──────────────────────────────────────────────────────
   const handlePaxCheckbox = (num: number) => {
     onPaxChange(
       selectedPax.includes(num)
@@ -96,13 +168,8 @@ export function LeadSearchFilters({
     );
   };
 
-  const handleClearPax = () => {
-    onPaxChange([]);
-  };
-
-  const handleClearDays = () => {
-    onDaysChange([]);
-  };
+  const handleClearPax = () => onPaxChange([]);
+  const handleClearDays = () => onDaysChange([]);
 
   const handleDateFocus = (
     e: React.FocusEvent<HTMLInputElement>,
@@ -110,9 +177,7 @@ export function LeadSearchFilters({
   ) => {
     setType("date");
     setTimeout(() => {
-      try {
-        e.currentTarget.showPicker();
-      } catch {}
+      try { e.currentTarget.showPicker(); } catch {}
     }, 0);
   };
 
@@ -122,16 +187,11 @@ export function LeadSearchFilters({
   ) => {
     setType("date");
     setTimeout(() => {
-      try {
-        e.currentTarget.showPicker();
-      } catch {}
+      try { e.currentTarget.showPicker(); } catch {}
     }, 0);
   };
 
-  const handleDateBlur = (
-    value: string,
-    setType: (type: string) => void
-  ) => {
+  const handleDateBlur = (value: string, setType: (type: string) => void) => {
     if (!value) setType("text");
   };
 
@@ -141,7 +201,7 @@ export function LeadSearchFilters({
       <div className="flex flex-col gap-1">
         <input
           value={searchTerm}
-          onChange={(event) => onSearchChange(event.target.value)}
+          onChange={(e) => handleSearchChange(e.target.value)}
           placeholder="Search"
           className="w-full px-3 py-2 text-sm font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
         />
@@ -151,14 +211,12 @@ export function LeadSearchFilters({
       <div className="flex flex-col gap-1">
         <select
           value={statusFilter}
-          onChange={(event) => onStatusChange(event.target.value)}
+          onChange={(e) => onStatusChange(e.target.value)}
           className="w-full px-3 py-2 text-sm font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
         >
           <option value="All">All Statuses</option>
           {statusOptions.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
+            <option key={option} value={option}>{option}</option>
           ))}
         </select>
       </div>
@@ -167,14 +225,12 @@ export function LeadSearchFilters({
       <div className="flex flex-col gap-1">
         <select
           value={cityFilter}
-          onChange={(event) => onCityChange(event.target.value)}
+          onChange={(e) => onCityChange(e.target.value)}
           className="w-full px-3 py-2 text-sm font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
         >
           <option value="All">All City</option>
           {cityOptions.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
+            <option key={option} value={option}>{option}</option>
           ))}
         </select>
       </div>
@@ -186,9 +242,7 @@ export function LeadSearchFilters({
           onClick={onPaxToggle}
           className="w-full px-3 h-9 text-sm font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 text-left flex justify-between items-center bg-white"
         >
-          {selectedPax.length > 0
-            ? `${selectedPax.length} Pax Selected`
-            : "Select Pax"}
+          {selectedPax.length > 0 ? `${selectedPax.length} Pax Selected` : "Select Pax"}
           <span>▾</span>
         </button>
         {paxOpen &&
@@ -200,23 +254,13 @@ export function LeadSearchFilters({
               style={paxDropdownStyle}
             >
               <label className="flex items-center gap-2 px-3 py-2 hover:bg-slate-100 cursor-pointer">
-                <button
-                  onClick={handleClearPax}
-                  className="text-sm text-red-600 font-semibold hover:underline"
-                >
+                <button onClick={handleClearPax} className="text-sm text-red-600 font-semibold hover:underline">
                   Clear All
                 </button>
               </label>
               {Array.from({ length: 100 }, (_, i) => i + 1).map((num) => (
-                <label
-                  key={num}
-                  className="flex items-center gap-2 px-3 py-2 hover:bg-slate-100 cursor-pointer"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedPax.includes(num)}
-                    onChange={() => handlePaxCheckbox(num)}
-                  />
+                <label key={num} className="flex items-center gap-2 px-3 py-2 hover:bg-slate-100 cursor-pointer">
+                  <input type="checkbox" checked={selectedPax.includes(num)} onChange={() => handlePaxCheckbox(num)} />
                   <span className="text-sm text-black">{num} Pax</span>
                 </label>
               ))}
@@ -232,9 +276,7 @@ export function LeadSearchFilters({
           onClick={onDaysToggle}
           className="w-full px-3 h-9 text-sm font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 text-left flex justify-between items-center bg-white"
         >
-          {selectedDays.length > 0
-            ? `${selectedDays.length} Days Selected`
-            : "Select Days"}
+          {selectedDays.length > 0 ? `${selectedDays.length} Days Selected` : "Select Days"}
           <span>▾</span>
         </button>
         {daysOpen &&
@@ -246,23 +288,13 @@ export function LeadSearchFilters({
               style={daysDropdownStyle}
             >
               <label className="flex items-center gap-2 px-3 py-2 hover:bg-slate-100 cursor-pointer">
-                <button
-                  onClick={handleClearDays}
-                  className="text-sm text-red-600 font-semibold hover:underline"
-                >
+                <button onClick={handleClearDays} className="text-sm text-red-600 font-semibold hover:underline">
                   Clear All
                 </button>
               </label>
               {Array.from({ length: 100 }, (_, i) => i + 1).map((num) => (
-                <label
-                  key={num}
-                  className="flex items-center gap-2 px-3 py-2 hover:bg-slate-100 cursor-pointer"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedDays.includes(num)}
-                    onChange={() => handleDaysCheckbox(num)}
-                  />
+                <label key={num} className="flex items-center gap-2 px-3 py-2 hover:bg-slate-100 cursor-pointer">
+                  <input type="checkbox" checked={selectedDays.includes(num)} onChange={() => handleDaysCheckbox(num)} />
                   <span className="text-sm text-black">{num} Days</span>
                 </label>
               ))}
@@ -275,18 +307,12 @@ export function LeadSearchFilters({
       <div className="flex flex-col gap-1">
         <select
           value={freezeKey ?? "none"}
-          onChange={(event) =>
-            onFreezeChange(
-              event.target.value === "none" ? null : event.target.value,
-            )
-          }
+          onChange={(e) => onFreezeChange(e.target.value === "none" ? null : e.target.value)}
           className="w-full px-3 py-2 text-sm font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
         >
           <option value="none">Freeze Columns</option>
           {columns.map((column) => (
-            <option key={column.key} value={column.key}>
-              {column.label}
-            </option>
+            <option key={column.key} value={column.key}>{column.label}</option>
           ))}
         </select>
       </div>
@@ -303,7 +329,7 @@ export function LeadSearchFilters({
               <button
                 key={month.value}
                 type="button"
-                onClick={() => onMonthChange(isActive ? null : month.value)}
+                onClick={() => handleMonthChange(isActive ? null : month.value)}
                 className={`text-md font-extrabold rounded-lg transition-all shadow-sm min-w-[50px] h-9 ${
                   isCurrentMonth
                     ? "bg-blue-600 text-white ring-2 ring-blue-400"
@@ -322,7 +348,7 @@ export function LeadSearchFilters({
           <input
             type={startType}
             value={startMonth}
-            onChange={(event) => onStartMonthChange(event.target.value)}
+            onChange={(e) => onStartMonthChange(e.target.value)}
             placeholder="Start Date"
             onFocus={(e) => handleDateFocus(e, onStartTypeChange)}
             onClick={(e) => handleDateClick(e, onStartTypeChange)}
@@ -333,7 +359,7 @@ export function LeadSearchFilters({
             type={endType}
             value={endMonth}
             min={startMonth}
-            onChange={(event) => onEndMonthChange(event.target.value)}
+            onChange={(e) => onEndMonthChange(e.target.value)}
             placeholder="End Date"
             onFocus={(e) => handleDateFocus(e, onEndTypeChange)}
             onClick={(e) => handleDateClick(e, onEndTypeChange)}

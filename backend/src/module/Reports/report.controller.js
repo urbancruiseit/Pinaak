@@ -56,7 +56,7 @@ export const getLeadCountByAdviserForMonthController = asyncHandler(
 
     // Pass req directly — service reads req.user internally
     const data = await getPreSalesLeadAssignmentReport(
-      req,
+     req,
       month ? Number(month) : undefined,
       year ? Number(year) : undefined,
     );

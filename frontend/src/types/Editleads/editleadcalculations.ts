@@ -215,6 +215,8 @@ export const prepareLeadPayload = (
     lostReasonDetails: data.lostReasonDetails || "",
     followUp: data.followUp || "",
     message: "",
+    multiplepickup: data.multiplepickup || "",
+    multipledrop: data.multipledrop || "",
   };
 };
 
@@ -284,7 +286,8 @@ export const mapInitialDataToForm = (initialData: LeadRecord) => {
       // ✅ KEY FIX: UTC → IST convert for input fields
       pickupDateTime: formatDateTimeForInput(initialData.pickupDateTime),
       dropDateTime: formatDateTimeForInput(initialData.dropDateTime),
-
+      multiplepickup: initialData.multiplepickup || "",
+      multipledrop: initialData.multipledrop || "",
       pickupAddress: initialData.pickupAddress || "",
       dropAddress: initialData.dropAddress || "",
       pickupcity: (initialData as any).pickupcity || "",

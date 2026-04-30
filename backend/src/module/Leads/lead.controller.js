@@ -98,7 +98,9 @@ const createLeads = asyncHandler(async (req, res) => {
 const listLeads = asyncHandler(async (req, res) => {
   const user = req.user;
   const userCityIds = user.city_ids || [];
-  const presalesId = user.id;
+
+  // ✅ Sirf "Pre-Sales Executive" role ho tab presalesId pass karo
+  const presalesId = user.role_name === "Pre-Sales Executive" ? user.id : null;
 
   const page = parseInt(req.query.page) || 1;
   const limit = 14;
@@ -106,7 +108,6 @@ const listLeads = asyncHandler(async (req, res) => {
   const month = req.query.month || null;
   const year = req.query.year || null;
 
- 
   const leadsData = await getLeads(
     page,
     limit,
@@ -117,6 +118,7 @@ const listLeads = asyncHandler(async (req, res) => {
     year
   );
 
+ 
   res
     .status(200)
     .json(new ApiResponse(200, leadsData, "Leads fetched successfully"));

@@ -84,26 +84,69 @@ export const assignTravelAdvisorApi = async (
   }
 };
 
-export interface AssignedLeadsResponse {
-  leads: LeadRecord[];
-  totalCount: number;
-  totalPages: number;
-  page: number;
-  limit: number;
-  hasNextPage: boolean;
-  monthlyStats: {
-    month: string;
-    monthName: string;
-    year: number;
-    leadCount: number;
-  }[];
+
+
+
+export interface MonthlyStats {
+  month: string;
+  monthName: string;
+  year: number;
+  leadCount: number;
 }
 
-export const getMyAssignedLeadsApi = async (page: number = 1) => {
-  try {
-    const response = await axiosInstance.get(`/assign/myleads?page=${page}`);
+export interface StatusCounts {
+  NEW: number;
+  RFQ: number;
+  KYC: number;
+  HOT: number;
+  "VEH-N": number;
+  LOST: number;
+  BOOK: number;
+}
 
-    const data = response?.data?.data;
+export interface AssignedLeadsResponse {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  selectedMonth: number;
+  selectedYear: number;
+  statusCounts: StatusCounts;
+  totalLeads: number;
+  leads: LeadRecord[];
+  monthlyStats: MonthlyStats[];
+}
+
+export const getMyAssignedLeadsApi = async (
+  page: number = 1,
+  filters?: {
+    cityIds?: number[];
+    search?: string;
+    month?: number | null;
+    year?: number | null;
+  }
+): Promise<AssignedLeadsResponse> => {
+  try {
+    const params = new URLSearchParams();
+    params.append("page", String(page));
+
+    if (filters?.cityIds && filters.cityIds.length > 0) {
+      params.append("cityIds", filters.cityIds.join(","));
+    }
+    if (filters?.search && filters.search.trim()) {
+      params.append("search", filters.search.trim());
+    }
+    if (filters?.month != null) {
+      params.append("month", String(filters.month));
+    }
+    if (filters?.year != null) {
+      params.append("year", String(filters.year));
+    }
+
+    const response = await axiosInstance.get(`/assign/myleads?${params.toString()}`);
+
+    const data: AssignedLeadsResponse = response?.data?.data;
     if (!data) throw new Error("Invalid response from server");
 
     return data;
@@ -111,7 +154,6 @@ export const getMyAssignedLeadsApi = async (page: number = 1) => {
     throw new Error(error?.response?.data?.message || error.message);
   }
 };
-
 // api/leadsApi.ts
 
 export const getMyLeadStatusCountApi = async () => {

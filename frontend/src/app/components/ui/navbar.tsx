@@ -311,35 +311,49 @@ export function Navbar({
   const userCityNames = (currentUser as any)?.city_names ?? [];
   const userCityIds = (currentUser as any)?.city_ids ?? [];
 
-  // ✅ currentUser se email, department, subDepartment nikalo
-  const rawUser = (currentUser as any) ?? {};
-  const userData = rawUser?.data ?? rawUser;
-  const userEmail =
-    rawUser?.personalEmail ??
-    userData?.personalEmail ??
-    rawUser?.user_email ??
-    "";
-  const userAliasName =
-    rawUser?.aliasName ??
-    userData?.aliasName ??
-    rawUser?.alias_name ??
-    userData?.alias_name ??
-    "";
+// ✅ currentUser se email, department, subDepartment nikalo
+const rawUser = (currentUser as any) ?? {};
+const userData = rawUser?.data ?? rawUser;
+const userEmail =
+  rawUser?.personalEmail ??
+  userData?.personalEmail ??
+  rawUser?.user_email ??
+  "";
+const userAliasName =
+  rawUser?.aliasName ??
+  userData?.aliasName ??
+  rawUser?.alias_name ??
+  userData?.alias_name ??
+  "";
 
-  const userDepartment =
-    rawUser?.department ??
-    userData?.department ??
-    rawUser?.dept_name ??
-    userData?.dept_name ??
-    "";
-  const userSubDepartment =
-    rawUser?.subDepartment_name ??
-    userData?.subDepartment_name ??
-    rawUser?.sub_department ??
-    userData?.sub_department ??
-    rawUser?.subdept_name ??
-    userData?.subdept_name ??
-    "";
+const userDepartment =
+  rawUser?.department ??
+  userData?.department ??
+  rawUser?.dept_name ??
+  userData?.dept_name ??
+  "";
+const userSubDepartment =
+  rawUser?.subDepartment_name ??
+  userData?.subDepartment_name ??
+  rawUser?.sub_department ??
+  userData?.sub_department ??
+  rawUser?.subdept_name ??
+  userData?.subdept_name ??
+  "";
+
+// ✅ Extract admin role from currentUser (for SUPER_ADMIN and MANAGER check)
+const adminRole =
+  rawUser?.access_role ??
+  userData?.access_role ??
+  rawUser?.accessRole ??
+  userData?.accessRole ??
+  rawUser?.admin_role ??
+  userData?.admin_role ??
+  rawUser?.role ??
+  userData?.role ??
+  rawUser?.adminRole ??
+  userData?.adminRole ??
+  "";
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const navbarRef = useRef<HTMLDivElement>(null);
@@ -447,6 +461,11 @@ export function Navbar({
       toast.error("Logout failed");
     }
   };
+
+  // Check if user is SUPER_ADMIN or MANAGER
+  const shouldShowLeadManagerDropdown = 
+    adminRole?.toLowerCase() === "super_admin" || 
+    adminRole?.toLowerCase() === "manager";
 
   return (
     <nav
@@ -573,8 +592,6 @@ export function Navbar({
 
             {showLeadsMenu && (
               <>
-                {/* Existing New Lead, Lead Manager, TL Tables, Sales Lead Manager buttons... */}
-
                 {/* Existing New Lead button */}
                 {userRole?.toLowerCase() !== "sales" &&
                   !roleLabel?.toLowerCase().includes("travel") &&
@@ -591,20 +608,72 @@ export function Navbar({
                     </div>
                   )}
 
-                {/* Existing Lead Manager button */}
+                {/* Lead Manager Button with conditional dropdown for SUPER_ADMIN or MANAGER */}
                 {userRole?.toLowerCase() !== "sales" &&
                   !roleLabel?.toLowerCase().includes("travel") &&
                   !roleLabel?.toLowerCase().includes("advisor") && (
-                    <div className="relative w-full md:w-auto">
-                      <button
-                        type="button"
-                        className="w-full md:w-auto flex items-center justify-center gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200 bg-white text-emerald-700 border-2 border-emerald-300 hover:border-emerald-500 hover:shadow-md hover:scale-[1.02] md:min-w-[100px] md:h-9 md:py-2"
-                        onClick={() => onLeadSelect?.("lead-table")}
-                      >
-                        <FileText size={16} className="mr-1.5 flex-shrink-0" />
-                        <span className="truncate">Lead Manager</span>
-                      </button>
-                    </div>
+                    <>
+                      {shouldShowLeadManagerDropdown ? (
+                        // SUPER_ADMIN or MANAGER: Show dropdown with both options
+                        <div className="relative w-full md:w-auto">
+                          <button
+                            type="button"
+                            className="w-full md:w-auto flex items-center justify-between gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200 bg-white text-emerald-700 border-2 border-emerald-300 hover:border-emerald-500 hover:shadow-md hover:scale-[1.02] md:min-w-[100px] md:h-9 md:py-2"
+                            onClick={() =>
+                              setOpenMenu((prev) =>
+                                prev === "lead-manager-superadmin" ? null : "lead-manager-superadmin"
+                              )
+                            }
+                          >
+                            <FileText size={16} className="mr-1.5 flex-shrink-0" />
+                            <span className="truncate">Lead Manager</span>
+                            <ChevronDown
+                              size={14}
+                              className={`transition-transform duration-200 flex-shrink-0 ${
+                                openMenu === "lead-manager-superadmin" ? "rotate-180" : ""
+                              }`}
+                            />
+                          </button>
+
+                          {openMenu === "lead-manager-superadmin" && (
+                            <ul className="w-full md:absolute md:left-0 z-50 py-1 mt-1 bg-white border-2 border-emerald-300 rounded-lg shadow-xl md:top-full md:w-64 max-h-80 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
+                              {/* Presales Lead Manager */}
+                              <li
+                                onClick={() => {
+                                  handleLeadSelect("lead-table");
+                                }}
+                                className="px-3 py-2.5 md:py-2 text-sm transition-all cursor-pointer flex items-center gap-2 text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 hover:pl-4"
+                              >
+                                <span className="w-1 h-1 rounded-full bg-emerald-300"></span>
+                                Presales Lead Manager
+                              </li>
+                              {/* Telesales Lead Manager */}
+                              <li
+                                onClick={() => {
+                                  handleSalesLeadSelect("sales-lead-table");
+                                }}
+                                className="px-3 py-2.5 md:py-2 text-sm transition-all cursor-pointer flex items-center gap-2 text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 hover:pl-4"
+                              >
+                                <span className="w-1 h-1 rounded-full bg-emerald-300"></span>
+                                Telesales Lead Manager
+                              </li>
+                            </ul>
+                          )}
+                        </div>
+                      ) : (
+                        // Non SUPER_ADMIN/MANAGER users: Show simple button
+                        <div className="relative w-full md:w-auto">
+                          <button
+                            type="button"
+                            className="w-full md:w-auto flex items-center justify-center gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200 bg-white text-emerald-700 border-2 border-emerald-300 hover:border-emerald-500 hover:shadow-md hover:scale-[1.02] md:min-w-[100px] md:h-9 md:py-2"
+                            onClick={() => handleLeadSelect("lead-table")}
+                          >
+                            <FileText size={16} className="mr-1.5 flex-shrink-0" />
+                            <span className="truncate">Lead Manager</span>
+                          </button>
+                        </div>
+                      )}
+                    </>
                   )}
 
                 {/* Existing TL Tables button */}

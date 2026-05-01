@@ -26,8 +26,7 @@ interface SidebarProps {
   onPaymentClick?: () => void;
   onAccessClick?: () => void;
   onFeedbackClick?: () => void;
-  onDashboardClick?: () => void;
-  onAdminClick?: () => void;
+  onWebsiteClick?: () => void;
 }
 
 const brandGradientStyle: React.CSSProperties = {
@@ -45,8 +44,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   onPaymentClick,
   onAccessClick,
   onFeedbackClick,
-  onDashboardClick,
-  onAdminClick,
+  onWebsiteClick,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -171,33 +169,20 @@ const Sidebar: React.FC<SidebarProps> = ({
           color="red"
         />
 
-        {/* Admin - Only for admin role */}
-        {userRole?.toLowerCase() === "admin" && (
+{/* Website - Hide for Travel Advisor */}
+        {userRole?.toLowerCase() !== "travel advisor" &&
+          userRole?.toLowerCase() !== "travel" &&
+          !userRole?.toLowerCase().includes("advisor") && (
           <MenuItem
-            icon={<Shield size={isExpanded ? 26 : iconSize} />}
-            label="Admin"
-            description="User management"
+            icon={<MessageSquare size={isExpanded ? 26 : iconSize} />}
+            label="Website"
+            description="Manage website content"
             isExpanded={isExpanded}
-            isActive={activeItem === "admin"}
-            onClick={onAdminClick}
-            color="indigo"
-          />
-        )}
-
-        {/* Dashboard - Only for Admin */}
-        {userRole === "admin" && (
-          <MenuItem
-            icon={<Monitor size={isExpanded ? 26 : iconSize} />}
-            label="DASHBOARD"
-            description="Role-specific dashboard"
-            isExpanded={isExpanded}
-            isActive={activeItem === "dashboard"}
-            onClick={onDashboardClick}
+            isActive={activeItem === "website"}
+            onClick={onWebsiteClick}
             color="red"
           />
         )}
-
-       
       </div>
 
       {/* Collapse indicator - small chevron */}

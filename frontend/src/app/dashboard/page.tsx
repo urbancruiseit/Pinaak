@@ -5,7 +5,6 @@ import { useEffect, useMemo, useState } from "react";
 import type { ComponentType } from "react";
 import Navbar from "../components/ui/navbar";
 import Sidebar from "../components/ui/sidebar";
-import { Admin } from "../components/admin";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../redux/store";
 import { currentUserThunk } from "../features/user/userSlice";
@@ -19,8 +18,7 @@ type SidebarSection =
   | "payment"
   | "feedback"
   | "dashboard"
-  | "access"
-  | "admin";
+  | "website";
 
 type MasterKey =
   | "vendor"
@@ -117,7 +115,6 @@ const CityManagerDashboardModule = dynamic(
   { ssr: false, loading: LoadingPanel },
 );
 
-
 const RateQuotationTableModule = dynamic(
   () => import("../components/pages/ratequation/list/ratequotationtable"),
   { ssr: false, loading: LoadingPanel },
@@ -128,9 +125,18 @@ const MonthlyEnquiryModule = dynamic(
   { ssr: false, loading: LoadingPanel },
 );
 
-// ✅ FIX: LeadDistribution module imported at top level
 const LeadDistributionModule = dynamic(
   () => import("../components/pages/leads/Reports/leadDistribution"),
+  { ssr: false, loading: LoadingPanel },
+);
+
+const GACForm = dynamic(
+  () => import("../components/pages/Website/list/gacTable"),
+  { ssr: false, loading: LoadingPanel },
+);
+
+const GAQTable = dynamic(
+  () => import("../components/pages/Website/list/gaqTable"),
   { ssr: false, loading: LoadingPanel },
 );
 
@@ -278,11 +284,15 @@ export default function DashboardPage() {
   const [selectedLeadForRateQuotation, setSelectedLeadForRateQuotation] =
     useState<LeadRecord | null>(null);
 
+  // ✅ Website view state
+  const [activeWebsiteView, setActiveWebsiteView] = useState<"gac" | "gaq">(
+    "gac",
+  );
+
   const [showMonthlyEnquiry, setShowMonthlyEnquiry] = useState<boolean>(false);
   const [showMonthlyDistribution, setShowMonthlyDistribution] =
     useState<boolean>(false);
 
-  // ✅ FIX: resetAllReportStates now resets BOTH states — removed separate resetAllReportStatesDis
   const resetAllReportStates = () => {
     setShowMonthlyEnquiry(false);
     setShowMonthlyDistribution(false);
@@ -306,95 +316,85 @@ export default function DashboardPage() {
     }
   }, []);
 
-   useEffect(() => {
-     if (currentUser) {
-       const userAny = currentUser as any;
-       const role = userAny.role || userAny.role_name || "user";
-       const subDepartment_name =
-         userAny.subDepartment_name ||
-         userAny.subdepartname_name ||
-         userAny.department ||
-         "";
-       const departmentName =
-         userAny.department_name || userAny.departmentname || "";
+  useEffect(() => {
+    if (currentUser) {
+      const userAny = currentUser as any;
+      const role = userAny.role || userAny.role_name || "user";
+      const subDepartment_name =
+        userAny.subDepartment_name ||
+        userAny.subdepartname_name ||
+        userAny.department ||
+        "";
+      const departmentName =
+        userAny.department_name || userAny.departmentname || "";
 
-       setUserRole(role);
-       setUserName(currentUser.fullName || "User");
-       setUserEmail(currentUser.email || ""); // Fixed: use email instead of role
-       setUserSubDepartment(subDepartment_name);
-       setUserDepartment(departmentName);
+      setUserRole(role);
+      setUserName(currentUser.fullName || "User");
+      setUserEmail(currentUser.email || "");
+      setUserSubDepartment(subDepartment_name);
+      setUserDepartment(departmentName);
 
-       // Handle superadmin case first - full access
-       if (role?.toLowerCase() === "superadmin") {
-         // Superadmin gets full access - default to leads dashboard
-         setActiveSection("leads");
-         setActiveLeadView("dashboard");
-         setActiveDashboardView("leads-dashboard");
-       } 
-       // Handle Manager, Team Leader, Employee roles
-       else if (
-         role?.toLowerCase() === "manager" ||
-         role?.toLowerCase() === "team leader" ||
-         role?.toLowerCase() === "employee"
-       ) {
-         // Check for sales department roles
-         const isSalesDepartment = departmentName?.toLowerCase() === "sales";
-         const isPreSalesSubDepartment = subDepartment_name?.toLowerCase() === "pre-sales";
-         
-         // Pre-Sales specific roles
-         if (isSalesDepartment && isPreSalesSubDepartment) {
-           const roleLower = role?.toLowerCase() || "";
-           if (roleLower.includes("team leader")) {
-             setActiveSection("dashboard");
-             setActiveDashboardView("teamleader-dashboard");
-           } else if (roleLower.includes("manager")) {
-             setActiveSection("dashboard");
-             setActiveDashboardView("presales-dashboard");
-           } else {
-             // Pre-Sales Executive or other pre-sales roles
-             setActiveSection("dashboard");
-             setActiveDashboardView("presales-dashboard");
-           }
-         } 
-         // Other department roles - default to leads
-         else {
-           setActiveSection("leads");
-           setActiveLeadView("dashboard");
-           setActiveDashboardView("leads-dashboard");
-         }
-       }
-       // Handle existing tele-sales logic
-       else {
-         const isTelesales = subDepartment_name?.toLowerCase() === "tele-sales";
-         const isPresales = subDepartment_name?.toLowerCase() === "pre-sales";
-         const isTeamLeaderSales =
-           isTelesales && role?.toLowerCase().includes("team leader");
-         const isCityManager =
-           isTelesales && role?.toLowerCase().includes("city manager");
+      if (role?.toLowerCase() === "superadmin") {
+        setActiveSection("leads");
+        setActiveLeadView("dashboard");
+        setActiveDashboardView("leads-dashboard");
+      } else if (
+        role?.toLowerCase() === "manager" ||
+        role?.toLowerCase() === "team leader" ||
+        role?.toLowerCase() === "employee"
+      ) {
+        const isSalesDepartment = departmentName?.toLowerCase() === "sales";
+        const isPreSalesSubDepartment =
+          subDepartment_name?.toLowerCase() === "pre-sales";
 
-         if (isTeamLeaderSales) {
-           setActiveSection("dashboard");
-           setActiveDashboardView("teamleader-dashboard");
-         } else if (isCityManager) {
-           setActiveSection("dashboard");
-           setActiveDashboardView("citymanager-dashboard");
-         } else if (isTelesales) {
-           setActiveSection("dashboard");
-           setActiveDashboardView("telesales-dashboard");
-         } else if (isPresales) {
-           setActiveSection("dashboard");
-           setActiveDashboardView("presales-dashboard");
-         } else {
-           setActiveSection("leads");
-           setActiveLeadView("dashboard");
-           setActiveDashboardView("leads-dashboard");
-         }
-       }
+        if (isSalesDepartment && isPreSalesSubDepartment) {
+          const roleLower = role?.toLowerCase() || "";
+          if (roleLower.includes("team leader")) {
+            setActiveSection("dashboard");
+            setActiveDashboardView("teamleader-dashboard");
+          } else if (roleLower.includes("manager")) {
+            setActiveSection("dashboard");
+            setActiveDashboardView("presales-dashboard");
+          } else {
+            setActiveSection("dashboard");
+            setActiveDashboardView("presales-dashboard");
+          }
+        } else {
+          setActiveSection("leads");
+          setActiveLeadView("dashboard");
+          setActiveDashboardView("leads-dashboard");
+        }
+      } else {
+        const isTelesales = subDepartment_name?.toLowerCase() === "tele-sales";
+        const isPresales = subDepartment_name?.toLowerCase() === "pre-sales";
+        const isTeamLeaderSales =
+          isTelesales && role?.toLowerCase().includes("team leader");
+        const isCityManager =
+          isTelesales && role?.toLowerCase().includes("city manager");
 
-       setPendingModuleKey(null);
-       resetAllReportStates();
-     }
-   }, [currentUser]);
+        if (isTeamLeaderSales) {
+          setActiveSection("dashboard");
+          setActiveDashboardView("teamleader-dashboard");
+        } else if (isCityManager) {
+          setActiveSection("dashboard");
+          setActiveDashboardView("citymanager-dashboard");
+        } else if (isTelesales) {
+          setActiveSection("dashboard");
+          setActiveDashboardView("telesales-dashboard");
+        } else if (isPresales) {
+          setActiveSection("dashboard");
+          setActiveDashboardView("presales-dashboard");
+        } else {
+          setActiveSection("leads");
+          setActiveLeadView("dashboard");
+          setActiveDashboardView("leads-dashboard");
+        }
+      }
+
+      setPendingModuleKey(null);
+      resetAllReportStates();
+    }
+  }, [currentUser]);
 
   useEffect(() => {
     const handleViewLead = (event: CustomEvent<LeadRecord>) => {
@@ -516,12 +516,19 @@ export default function DashboardPage() {
     setActiveLeadView("dashboard");
   };
 
-  // ✅ FIX: handleMonthlyDistribution correctly sets showMonthlyDistribution
   const handleMonthlyDistribution = () => {
     resetAllReportStates();
     setShowMonthlyDistribution(true);
     setActiveSection("leads");
     setActiveLeadView("dashboard");
+  };
+
+  // ✅ Website menu handler
+  const handleWebsiteMenuSelect = (key: string) => {
+    setActiveSection("website");
+    setActiveWebsiteView(key as "gac" | "gaq");
+    setPendingModuleKey(null);
+    resetAllReportStates();
   };
 
   const ActiveMasterComponent = useMemo(() => {
@@ -561,7 +568,6 @@ export default function DashboardPage() {
     }
 
     if (activeSection === "leads") {
-      // ✅ showMonthlyEnquiry — highest priority check
       if (showMonthlyEnquiry) {
         return (
           <div className="space-y-6">
@@ -569,8 +575,6 @@ export default function DashboardPage() {
           </div>
         );
       }
-
-      // ✅ FIX: showMonthlyDistribution check — renders LeadDistributionModule
       if (showMonthlyDistribution) {
         return (
           <div className="space-y-6">
@@ -578,7 +582,6 @@ export default function DashboardPage() {
           </div>
         );
       }
-
       if (activeLeadView === "lead-form") {
         return (
           <div className="space-y-6">
@@ -586,7 +589,6 @@ export default function DashboardPage() {
           </div>
         );
       }
-
       if (activeLeadView === "lead-table") {
         return (
           <div className="space-y-6">
@@ -597,7 +599,6 @@ export default function DashboardPage() {
           </div>
         );
       }
-
       if (activeLeadView === "sale-lead-table") {
         return (
           <div className="space-y-6">
@@ -605,7 +606,6 @@ export default function DashboardPage() {
           </div>
         );
       }
-
       if (activeLeadView === "sales-edit-form") {
         if (!selectedLeadForEdit) {
           return renderFallback(
@@ -629,18 +629,9 @@ export default function DashboardPage() {
           </div>
         );
       }
-
       return (
         <div className="space-y-6">
           <LeadsOverviewModule />
-        </div>
-      );
-    }
-
-    if (activeSection === "admin") {
-      return (
-        <div className="space-y-6">
-          <Admin />
         </div>
       );
     }
@@ -689,6 +680,15 @@ export default function DashboardPage() {
       );
     }
 
+    // ✅ Website section — GAC ya GAQ based on activeWebsiteView
+    if (activeSection === "website") {
+      return (
+        <div className="space-y-6">
+          {activeWebsiteView === "gac" ? <GACForm /> : <GAQTable />}
+        </div>
+      );
+    }
+
     return null;
   })();
 
@@ -696,13 +696,16 @@ export default function DashboardPage() {
     <div className="flex flex-col h-screen overflow-hidden bg-slate-100 text-slate-900">
       <Navbar
         showSalesMenu={true}
-        showAccess={activeSection === "access"}
         showMaster={activeSection === "master"}
         showLeadsMenu={activeSection === "leads"}
         showDashboardMenu={
           activeSection === "dashboard" && userRole?.toLowerCase() === "admin"
         }
         showYearMenu={activeSection === "leads"}
+        // ✅ Website menu props — yahi 3 lines missing thi
+        showWebsiteMenu={activeSection === "website"}
+        activeWebsiteKey={activeWebsiteView}
+        onWebsiteMenuSelect={handleWebsiteMenuSelect}
         activeSection={activeSection}
         activeMasterKey={activeMaster}
         activeLeadKey={activeLeadView === "dashboard" ? null : activeLeadView}
@@ -752,16 +755,6 @@ export default function DashboardPage() {
         <Sidebar
           activeItem={activeSection}
           userRole={userRole}
-          onAccessClick={() => {
-            setActiveSection("access");
-            setPendingModuleKey(null);
-            resetAllReportStates();
-          }}
-          onAdminClick={() => {
-            setActiveSection("admin");
-            setPendingModuleKey(null);
-            resetAllReportStates();
-          }}
           onMasterClick={() => {
             setActiveSection("master");
             setPendingModuleKey(null);
@@ -800,8 +793,9 @@ export default function DashboardPage() {
             setPendingModuleKey(null);
             resetAllReportStates();
           }}
-          onDashboardClick={() => {
-            setActiveSection("dashboard");
+          onWebsiteClick={() => {
+            setActiveSection("website");
+            setActiveWebsiteView("gac"); // ✅ default GAC
             setPendingModuleKey(null);
             resetAllReportStates();
           }}

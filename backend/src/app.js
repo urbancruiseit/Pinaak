@@ -4,11 +4,11 @@ import cors from "cors";
 import helmet from "helmet";
 import cookieParser from "cookie-parser";
 import { errorMiddleware } from "./middlewares/error.middleware.js";
-import userRouter from "../src/module/user/user.route.js";
-import leadRouter from "../src/module/Leads/lead.route.js";
-import countryRoutes from "../src/module/countrycode/country.route.js";
-import vehicaleCodeRouter from "../src/module/vehiclemaster/vehiclemaster.route.js";
-import travelcityRouter from "../src/module/travelCitys/travelCity.route.js";
+import userRouter from "./module/user/user.route.js";
+import leadRouter from "./module/Leads/lead.route.js";
+import countryRoutes from "./module/countrycode/country.route.js";
+import vehicaleCodeRouter from "./module/vehiclemaster/vehiclemaster.route.js";
+import travelcityRouter from "./module/travelCitys/travelCity.route.js";
 import reportsRouter from "./module/Reports/report.route.js";
 import firebaseRoutes from "./module/Leads/firebase.route.js";
 import annualReportRoutes from "./module/AnnualReport/annualReport.route.js";
@@ -18,7 +18,7 @@ import AssignRoutes from "./module/Assign/assign.route.js";
 import NewCustomerRouter from "./module/NewCustomer/newCustomer.route.js";
 import vendorRouter from "./module/Vendors/vendor.route.js";
 import driverRouter from "./module/Driver/driver.route.js";
-
+import websiteGacRoutes from "./module/Website/website.route.js";
 dotenv.config();
 const app = express();
 
@@ -64,5 +64,6 @@ app.use("/api/v1/assign", AssignRoutes);
 app.use("/api/v1/newcustomer", NewCustomerRouter);
 app.use("/api/v1/vendor", vendorRouter);
 app.use("/api/v1/driver", driverRouter);
+app.use("/api/v1/website-gac", websiteGacRoutes);
 
 export { app };

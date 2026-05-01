@@ -5,7 +5,7 @@ import { useDispatch, useSelector } from "react-redux";
 import type { RootState, AppDispatch } from "@/app/redux/store";
 import { fetchMyAssignedLeads } from "@/app/features/access/accessSlice";
 import type { LeadRecord } from "@/types/types";
-import { X, Bell, CalendarRange, Clock, User, Phone, Mail } from "lucide-react";
+import { X, Bell, CalendarRange, Clock, Phone, Mail } from "lucide-react";
 
 const IST_TIMEZONE = "Asia/Kolkata";
 
@@ -60,6 +60,8 @@ export default function GlobalLeadPopup() {
   );
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const isTravelAdvisor = currentUser?.role_name === "travel_advisor";
+
   // ─── Cleanup on unmount ───────────────────────────────────────────────────
   useEffect(() => {
     return () => {
@@ -105,17 +107,17 @@ export default function GlobalLeadPopup() {
     [showLead],
   );
 
-  // ─── Close button — 10 sec baad wapas ────────────────────────────────────
+  // ─── Close button — 15 min baad wapas ────────────────────────────────────
   const handleClose = useCallback(() => {
     const closedId = currentLeadIdRef.current;
     closePopup(() => {
       if (closedId && activeLeadsMapRef.current.has(closedId)) {
-        scheduleReshow(closedId, 15 * 60 * 1000); // 15 minutes
+        scheduleReshow(closedId, 15 * 60 * 1000);
       }
     });
   }, [closePopup, scheduleReshow]);
 
-  // ─── Snooze button — 5 min baad wapas ────────────────────────────────────
+  // ─── Snooze button — 60 min baad wapas ───────────────────────────────────
   const handleSnooze = useCallback(() => {
     const snoozedId = currentLeadIdRef.current;
     closePopup(() => {
@@ -125,14 +127,12 @@ export default function GlobalLeadPopup() {
     });
   }, [closePopup, scheduleReshow]);
 
-  // ─── Polling — socket ki jagah har 15 sec mein fetch ─────────────────────
+  // ─── Polling — sirf Travel Advisor ke liye ───────────────────────────────
   useEffect(() => {
-    if (!currentUser) return;
+    if (!currentUser || !isTravelAdvisor) return;
 
-    // Pehli baar turant fetch karo
     dispatch(fetchMyAssignedLeads(1));
 
-    // Phir har 15 sec pe
     pollIntervalRef.current = setInterval(() => {
       dispatch(fetchMyAssignedLeads(1));
     }, POLL_INTERVAL_MS);
@@ -143,13 +143,13 @@ export default function GlobalLeadPopup() {
         pollIntervalRef.current = null;
       }
     };
-  }, [currentUser, dispatch]);
+  }, [currentUser, isTravelAdvisor, dispatch]);
 
-  // ─── Process leads from Redux ─────────────────────────────────────────────
+  // ─── Process leads from Redux — sirf Travel Advisor ke liye ──────────────
   useEffect(() => {
-    if (!currentUser || !leads || leads.length === 0) return;
+    if (!currentUser || !isTravelAdvisor || !leads || leads.length === 0)
+      return;
 
-    // Pehli baar — baseline set karo, popup mat dikhaao
     if (initialSeenRef.current === null) {
       const baseline = new Set<string>();
       leads.forEach((l) => {
@@ -163,13 +163,11 @@ export default function GlobalLeadPopup() {
       return;
     }
 
-    // Subsequent polls
     leads.forEach((l) => {
       const id = String(l.id);
       const isNew = isNewStatus(l.status);
 
       if (!isNew) {
-        // Status change ho gaya — remove karo
         activeLeadsMapRef.current.delete(id);
         if (currentLeadIdRef.current === id) {
           closePopup();
@@ -190,11 +188,11 @@ export default function GlobalLeadPopup() {
         showLead(l);
       }
     });
-  }, [leads, currentUser]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [leads, currentUser, isTravelAdvisor]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ─── Logout reset ─────────────────────────────────────────────────────────
+  // ─── Logout / role change reset ───────────────────────────────────────────
   useEffect(() => {
-    if (!currentUser) {
+    if (!currentUser || !isTravelAdvisor) {
       setLead(null);
       currentLeadIdRef.current = null;
       activeLeadsMapRef.current.clear();
@@ -206,10 +204,10 @@ export default function GlobalLeadPopup() {
         pollIntervalRef.current = null;
       }
     }
-  }, [currentUser]);
+  }, [currentUser, isTravelAdvisor]);
 
-  // ─── Render ───────────────────────────────────────────────────────────────
-  if (!lead || !currentUser) return null;
+  // ─── Render — sirf Travel Advisor ko popup dikhao ────────────────────────
+  if (!lead || !currentUser || !isTravelAdvisor) return null;
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
@@ -244,7 +242,6 @@ export default function GlobalLeadPopup() {
                   🚀 New Lead Arrived!
                 </h2>
               </div>
-              {/* Cross button - red bg, white icon */}
               <button
                 onClick={handleClose}
                 className="w-8 h-8 flex items-center justify-center rounded-full transition-all duration-200"
@@ -285,7 +282,7 @@ export default function GlobalLeadPopup() {
                   </span>
                 </div>
 
-                {/* Customer Name - green card style */}
+                {/* Customer Name */}
                 <div
                   className="rounded-xl p-3 flex items-center gap-3"
                   style={{
@@ -317,7 +314,7 @@ export default function GlobalLeadPopup() {
                   </div>
                 </div>
 
-                {/* Phone & Email - green card style */}
+                {/* Phone & Email */}
                 {(lead.customerEmail || lead.customerPhone) && (
                   <div
                     className="rounded-xl p-3 flex items-center gap-5"

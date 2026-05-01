@@ -954,7 +954,7 @@ const EditLeadForm: React.FC<{
                     
                      
                     {/* Pickup Address */}
-                    <div className="w-full md:w-[50%]">
+                    <div className="w-full md:w-[30%]">
                       <label className="block mb-1 font-extrabold text-gray-700 text-md">
                         Pickup Address <span className="text-red-500">*</span>
                       </label>

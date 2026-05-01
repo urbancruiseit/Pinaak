@@ -75,8 +75,8 @@ export const getLeadCountByDateForYear = async (
   }
 };
 
-export const getPreSalesLeadAssignmentReport = async (req, month, year) => {
-  const preSalesUser = req.user;
+export const getPreSalesLeadAssignmentReport = async (cityIds, month, year) => {
+ 
 
   month = month || new Date().getMonth() + 1;
   year = year || new Date().getFullYear();
@@ -84,7 +84,7 @@ export const getPreSalesLeadAssignmentReport = async (req, month, year) => {
   const totalDaysInMonth = new Date(year, month, 0).getDate();
 
   // Step 1 — City IDs directly req.user se
-  const cityIds = preSalesUser.city_ids;
+  
 
   if (!cityIds || cityIds.length === 0) {
     return { success: false, message: "No cities assigned to this user" };

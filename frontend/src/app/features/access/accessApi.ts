@@ -94,6 +94,11 @@ export interface MonthlyStats {
   leadCount: number;
 }
 
+export interface ZoneAdvisor{
+  name:string,
+  id:number
+}
+
 export interface StatusCounts {
   NEW: number;
   RFQ: number;
@@ -116,8 +121,8 @@ export interface AssignedLeadsResponse {
   totalLeads: number;
   leads: LeadRecord[];
   monthlyStats: MonthlyStats[];
+  zoneAdvisors: ZoneAdvisor[];  // ✅ fixed
 }
-
 export const getMyAssignedLeadsApi = async (
   page: number = 1,
   filters?: {
@@ -125,6 +130,7 @@ export const getMyAssignedLeadsApi = async (
     search?: string;
     month?: number | null;
     year?: number | null;
+    advisorId?: number | null;  // ✅ add karo
   }
 ): Promise<AssignedLeadsResponse> => {
   try {
@@ -142,6 +148,9 @@ export const getMyAssignedLeadsApi = async (
     }
     if (filters?.year != null) {
       params.append("year", String(filters.year));
+    }
+    if (filters?.advisorId != null) {
+      params.append("advisorId", String(filters.advisorId));  // ✅ add karo
     }
 
     const response = await axiosInstance.get(`/assign/myleads?${params.toString()}`);

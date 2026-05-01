@@ -56,6 +56,7 @@ export default function LeadsTable() {
   const [cityFilter, setCityFilter] = useState<"All" | (typeof CITY_OPTIONS)[number]>("All");
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const [yearFilter, setYearFilter] = useState<(typeof YEAR_OPTIONS)[number]>("All");
+  const [selectedAdvisorId, setSelectedAdvisorId] = useState<number | null>(null); // ✅ new
 
   // ─── Client-side only filter state ────────────────────────────────────────
   const [statusFilter, setStatusFilter] = useState<"All" | LeadRecord["status"]>("All");
@@ -99,6 +100,7 @@ export default function LeadsTable() {
     totalLeads,
     statusCounts,
     monthlyStats,
+    zonesAdvisors,
   } = assignedLeads;
 
   // ─── Search debounce (400ms) ───────────────────────────────────────────────
@@ -110,7 +112,7 @@ export default function LeadsTable() {
   // ─── Reset to page 1 on any server-side filter change ─────────────────────
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearch, cityFilter, selectedMonth, yearFilter]);
+  }, [debouncedSearch, cityFilter, selectedMonth, yearFilter, selectedAdvisorId]); // ✅
 
   // ─── Build fetch args ──────────────────────────────────────────────────────
   const buildFetchArgs = (page: number) => ({
@@ -122,12 +124,13 @@ export default function LeadsTable() {
         : undefined,
     month: selectedMonth ? parseInt(selectedMonth) : null,
     year: yearFilter !== "All" ? parseInt(yearFilter) : null,
+    advisorId: selectedAdvisorId ?? undefined, // ✅
   });
 
   // ─── Main fetch (fires on filter/page change) ──────────────────────────────
   useEffect(() => {
     dispatch(fetchMyAssignedLeads(buildFetchArgs(currentPage)));
-  }, [dispatch, currentPage, debouncedSearch, cityFilter, selectedMonth, yearFilter]);
+  }, [dispatch, currentPage, debouncedSearch, cityFilter, selectedMonth, yearFilter, selectedAdvisorId]); // ✅
 
   // ─── Polling every 10s ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -135,7 +138,7 @@ export default function LeadsTable() {
       dispatch(fetchMyAssignedLeads(buildFetchArgs(currentPage)));
     }, 15000);
     return () => clearInterval(interval);
-  }, [dispatch, currentPage, debouncedSearch, cityFilter, selectedMonth, yearFilter]);
+  }, [dispatch, currentPage, debouncedSearch, cityFilter, selectedMonth, yearFilter, selectedAdvisorId]); // ✅
 
   // ─── Re-fetch after lead submitted event ──────────────────────────────────
   useEffect(() => {
@@ -287,7 +290,6 @@ export default function LeadsTable() {
   const cityOptions: ("All" | (typeof CITY_OPTIONS)[number])[] = ["All", ...CITY_OPTIONS];
 
   // ─── Client-side only filters (status, date range, pax, days) ─────────────
-  // search / city / month / year are handled server-side via fetchMyAssignedLeads
   const filteredLeads = useMemo(() => {
     const startDate = startMonth ? new Date(startMonth) : null;
     const endDate = endMonth ? new Date(`${endMonth}T23:59:59`) : null;
@@ -351,7 +353,7 @@ export default function LeadsTable() {
   const leftBannerGroups = useMemo(() => getBannerGroups(frozenColumns), [frozenColumns]);
   const rightBannerGroups = useMemo(() => getBannerGroups(scrollableColumns), [scrollableColumns]);
 
-  // ─── Stats — from assignedLeads.statusCounts & totalLeads ─────────────────
+  // ─── Stats ────────────────────────────────────────────────────────────────
   const totalLeadsCount = total || 0;
   const newLeads  = Number(statusCounts?.NEW       ?? 0);
   const kycLeads  = Number(statusCounts?.KYC       ?? 0);
@@ -679,7 +681,7 @@ export default function LeadsTable() {
               </select>
             </div>
 
-            {/* Month + Year + Date range row */}
+            {/* Month + Year + Zone Advisor + Date range row */}
             <div className="flex flex-col md:flex-row items-start md:items-center gap-4 lg:col-span-6 mt-2">
 
               {/* Month buttons — server-side */}
@@ -687,7 +689,6 @@ export default function LeadsTable() {
                 {MONTH_OPTIONS.map((month) => {
                   const isActive = selectedMonth === month.value;
 
-                  // Sum leadCount from monthlyStats for this month, filtered by year
                   const monthLeadCount = monthlyStats
                     .filter((stat) => {
                       const [statYear, statMonth] = stat.month.split("-");
@@ -720,23 +721,40 @@ export default function LeadsTable() {
                 })}
               </div>
 
-              {/* Year buttons — server-side */}
-              <div className="flex gap-2 flex-shrink-0">
-                {YEAR_OPTIONS.map((yr) => (
-                  <button
-                    key={yr}
-                    type="button"
-                    onClick={() => setYearFilter(yr)}
-                    className={`text-sm font-bold rounded-lg px-3 h-9 transition-all shadow-sm border ${
-                      yearFilter === yr
-                        ? "bg-orange-600 text-white border-orange-700"
-                        : "bg-slate-100 text-slate-700 border-slate-300 hover:bg-slate-200"
-                    }`}
-                  >
-                    {yr}
-                  </button>
-                ))}
+              {/* Year — server-side dropdown ✅ */}
+              <div className="flex-shrink-0">
+                <select
+                  value={yearFilter}
+                  onChange={(e) => setYearFilter(e.target.value as typeof yearFilter)}
+                  className="px-3 py-2 h-9 text-sm font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                >
+                  {YEAR_OPTIONS.map((yr) => (
+                    <option key={yr} value={yr}>{yr}</option>
+                  ))}
+                </select>
               </div>
+
+              {/* Zone Advisor dropdown — sirf city manager ke liye ✅ */}
+              {zonesAdvisors && zonesAdvisors.length > 0 && (
+                <div className="flex-shrink-0">
+                  <select
+                    value={selectedAdvisorId ?? ""}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setSelectedAdvisorId(val ? Number(val) : null);
+                      setCurrentPage(1);
+                    }}
+                    className="px-3 py-2 h-9 text-sm font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  >
+                    <option value="">All Advisors</option>
+                    {zonesAdvisors.map((advisor) => (
+                      <option key={advisor.id} value={advisor.id}>
+                        {advisor.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {/* Date range — client-side */}
               <div className="flex gap-4 w-full md:w-auto">

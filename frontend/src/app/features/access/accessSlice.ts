@@ -6,6 +6,7 @@ import {
   getMyLeadStatusCountApi,
   getPresalesLeadStatusCountApi,
   getTravelAdvisorsByCityApi,
+  ZoneAdvisor,
 } from "./accessApi";
 import type { LeadRecord } from "@/types/types";
 
@@ -43,6 +44,7 @@ interface AssignedLeadsState {
     year: number;
     leadCount: number;
   }[];
+  zonesAdvisors:ZoneAdvisor[];
 }
 
 interface LeadStatusState {
@@ -100,6 +102,7 @@ const initialState: TravelAdvisorState = {
     },
     totalLeads: 0,
     monthlyStats: [],
+    zonesAdvisors:[]
   },
 
   leadStatus: {
@@ -160,9 +163,9 @@ export const fetchMyAssignedLeads = createAsyncThunk<
   { rejectValue: string }
 >(
   "access/fetchMyAssignedLeads",
-  async ({ page = 1, cityIds, search, month, year }, { rejectWithValue }) => {
+  async ({ page = 1, cityIds, search, month, year, advisorId }, { rejectWithValue }) => {
     try {
-      return await getMyAssignedLeadsApi(page, { cityIds, search, month, year });
+      return await getMyAssignedLeadsApi(page, { cityIds, search, month, year, advisorId });
     } catch (error: any) {
       return rejectWithValue(error.message);
     }
@@ -251,6 +254,7 @@ const travelAdvisorSlice = createSlice({
       })
       .addCase(fetchMyAssignedLeads.fulfilled, (state, action) => {
         const p = action.payload;
+       
         state.assignedLeads.loading   = false;
         state.assignedLeads.leads     = p.leads;
         state.assignedLeads.page      = p.page;
@@ -262,6 +266,9 @@ const travelAdvisorSlice = createSlice({
         state.assignedLeads.statusCounts  = p.statusCounts;
         state.assignedLeads.totalLeads    = p.totalLeads;
         state.assignedLeads.monthlyStats  = p.monthlyStats ?? [];
+        state.assignedLeads.zonesAdvisors = p.zoneAdvisors ?? [];
+
+       
       })
       .addCase(fetchMyAssignedLeads.rejected, (state, action) => {
         state.assignedLeads.loading = false;

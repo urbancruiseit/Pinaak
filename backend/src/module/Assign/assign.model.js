@@ -71,22 +71,37 @@ export const getLeadsByAdvisorId = async (
     const offset = (pageNumber - 1) * limitNumber;
 
     const now = new Date();
-    const selectedMonth = month ? parseInt(month, 10) : null; // ✅ null by default
-    const selectedYear = year ? parseInt(year, 10) : now.getFullYear();
+    const selectedMonth = month ? parseInt(month, 10) : null;
+    const selectedYear = year ? parseInt(year, 10) : now.getFullYear(); // ✅ default current year
 
     let whereClause = `WHERE (l.unwanted_status IS NULL OR l.unwanted_status != 'unwanted')`;
     let values = [];
 
     // ── Advisor filter ────────────────────────────────────────────────────
-    if (advisorId) {
+    if (Array.isArray(advisorId)) {
+      if (advisorId.length > 0) {
+        const placeholders = advisorId.map(() => "?").join(",");
+        whereClause += ` AND l.advisor_id IN (${placeholders})`;
+        values.push(...advisorId);
+      } else {
+        whereClause += ` AND 1 = 0`;
+      }
+    } else if (advisorId) {
       whereClause += ` AND l.advisor_id = ?`;
       values.push(Number(advisorId));
+    } else {
+      whereClause += ` AND l.advisor_id IS NOT NULL`;
     }
 
-    // ✅ Month filter — sirf tab jab month pass ho, by default sab data
+    // ── Year filter (ALWAYS apply) ─────────────────────────────────────── ✅ NEW
     if (selectedMonth) {
+      // Month + Year dono filter
       whereClause += ` AND MONTH(l.pickupDateTime) = ? AND YEAR(l.pickupDateTime) = ?`;
       values.push(selectedMonth, selectedYear);
+    } else {
+      // Sirf Year filter (default current year)
+      whereClause += ` AND YEAR(l.pickupDateTime) = ?`;
+      values.push(selectedYear);
     }
 
     // ── City filter ───────────────────────────────────────────────────────
@@ -140,7 +155,6 @@ export const getLeadsByAdvisorId = async (
 
     const [leads] = await pool.query(query, [...values, limitNumber, offset]);
 
-    // ── Total count ───────────────────────────────────────────────────────
     const countQuery = `
       SELECT COUNT(*) as total
       FROM leads l
@@ -163,7 +177,6 @@ export const getLeadsByAdvisorId = async (
 
     const statusCounts = {};
     statusList.forEach((s) => { statusCounts[s] = 0; });
-
     statusResult.forEach((s) => {
       const key = (s.status || "").toUpperCase();
       if (statusCounts.hasOwnProperty(key)) {
@@ -173,15 +186,29 @@ export const getLeadsByAdvisorId = async (
 
     const totalLeads = Object.values(statusCounts).reduce((a, b) => a + b, 0);
 
-    // ── Monthly stats ─────────────────────────────────────────────────────
+    // ── Monthly stats (year filter lagao yahan bhi) ───────────────────── ✅ FIXED
     let monthlyStatsWhereClause = `WHERE pickupDateTime IS NOT NULL
       AND (unwanted_status IS NULL OR unwanted_status != 'unwanted')`;
     let monthlyStatsValues = [];
 
-    if (advisorId) {
+    if (Array.isArray(advisorId)) {
+      if (advisorId.length > 0) {
+        const placeholders = advisorId.map(() => "?").join(",");
+        monthlyStatsWhereClause += ` AND advisor_id IN (${placeholders})`;
+        monthlyStatsValues.push(...advisorId);
+      } else {
+        monthlyStatsWhereClause += ` AND 1 = 0`;
+      }
+    } else if (advisorId) {
       monthlyStatsWhereClause += ` AND advisor_id = ?`;
       monthlyStatsValues.push(Number(advisorId));
+    } else {
+      monthlyStatsWhereClause += ` AND advisor_id IS NOT NULL`;
     }
+
+    // ✅ Monthly stats mein bhi selected year ka filter
+    monthlyStatsWhereClause += ` AND YEAR(pickupDateTime) = ?`;
+    monthlyStatsValues.push(selectedYear);
 
     const [monthlyStats] = await pool.query(
       `
@@ -193,20 +220,14 @@ export const getLeadsByAdvisorId = async (
       FROM leads
       ${monthlyStatsWhereClause}
       GROUP BY DATE_FORMAT(pickupDateTime, '%Y-%m'), MONTHNAME(pickupDateTime), YEAR(pickupDateTime)
-      ORDER BY month DESC
+      ORDER BY month ASC
       `,
       monthlyStatsValues
     );
 
     // ── Advisor + Presales names ──────────────────────────────────────────
-    const advisorIds = leads
-      .map((l) => l.advisor_id)
-      .filter((id) => id !== null && id !== undefined);
-
-    const presalesIds = leads
-      .map((l) => l.presales_id)
-      .filter((id) => id !== null && id !== undefined);
-
+    const advisorIds = leads.map((l) => l.advisor_id).filter((id) => id != null);
+    const presalesIds = leads.map((l) => l.presales_id).filter((id) => id != null);
     const allUserIds = [...new Set([...advisorIds, ...presalesIds])];
     let userMap = {};
 
@@ -214,9 +235,7 @@ export const getLeadsByAdvisorId = async (
       try {
         const placeholders = allUserIds.map(() => "?").join(",");
         const [users] = await hrmsPool.query(
-          `SELECT id, aliasName, firstName, middleName, lastName
-           FROM users
-           WHERE id IN (${placeholders})`,
+          `SELECT id, aliasName, firstName, middleName, lastName FROM users WHERE id IN (${placeholders})`,
           allUserIds
         );
         users.forEach((u) => { userMap[u.id] = u; });
@@ -244,7 +263,7 @@ export const getLeadsByAdvisorId = async (
       page: pageNumber,
       totalPages: Math.ceil(countResult[0].total / limitNumber),
       hasNextPage: pageNumber < Math.ceil(countResult[0].total / limitNumber),
-      selectedMonth,  // ✅ null aayega jab koi month select na ho
+      selectedMonth,
       selectedYear,
       statusCounts,
       totalLeads,

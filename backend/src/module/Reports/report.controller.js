@@ -6,6 +6,7 @@ import {
 import { ApiError } from "../../utils/ApiError.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
+import { hrmsPool } from "../../config/mySqlDB.js";
 
 export const monthlyEnquiryReport = async (req, res) => {
   try {
@@ -53,14 +54,53 @@ export const getLeadCountByDateForYearController = asyncHandler(
 export const getLeadCountByAdviserForMonthController = asyncHandler(
   async (req, res) => {
     const { month, year } = req.query;
+    const preSalesUser = req.user;
 
-    // Pass req directly — service reads req.user internally
+    let cityIds = [];
+
+    if (
+      preSalesUser.subDepartment === "Tele-Sales" &&
+      preSalesUser.role === "City Manager"  // ✅ FIXED
+    ) {
+      const zoneIds = preSalesUser.zone_ids ?? [];
+
+  
+
+      if (zoneIds.length === 0) {
+        return res
+          .status(400)
+          .json(new ApiResponse(400, null, "Zone IDs not found for this user"));
+      }
+
+      const placeholders = zoneIds.map(() => "?").join(",");
+      const [cities] = await hrmsPool.query(
+        `SELECT id FROM city WHERE zone_id IN (${placeholders})`,
+        zoneIds
+      );
+
+      cityIds = cities.map((c) => c.id);
+
+ 
+
+      if (cityIds.length === 0) {
+        return res
+          .status(200)
+          .json(new ApiResponse(200, [], "No cities found in these zones"));
+      }
+    } else {
+      cityIds = preSalesUser.city_ids ?? [];
+    }
+
+
+
     const data = await getPreSalesLeadAssignmentReport(
-     req,
+      cityIds,
       month ? Number(month) : undefined,
       year ? Number(year) : undefined,
     );
-console.log("distribution leads ", data)
+
+   
+
     return res.status(200).json(new ApiResponse(200, data, "Success"));
   },
 );

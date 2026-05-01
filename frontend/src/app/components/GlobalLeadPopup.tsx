@@ -60,7 +60,7 @@ export default function GlobalLeadPopup() {
   );
   const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const isTravelAdvisor = currentUser?.role_name === "travel_advisor";
+  const isTravelAdvisor = currentUser?.role_name === "Travel Advisor";
 
   // ─── Cleanup on unmount ───────────────────────────────────────────────────
   useEffect(() => {

@@ -979,27 +979,7 @@ const EditLeadForm: React.FC<{
                         </p>
                       )}
                     </div>
-                     <div className="w-full md:w-[20%]">
-                      <label className="block mb-1 font-extrabold text-gray-700 text-md">
-                        Multiple Pickup  
-                      </label>
-                      <div className="relative">
-                        <input
-                          {...register("multiplepickup")}
-                          className="w-full py-2 pl-10 pr-3 border border-gray-300 rounded-md"
-                          placeholder="Enter Multiple Pickup"
-                        />
-                        <MapPin
-                          className="absolute text-purple-600 -translate-y-1/2 left-3 top-1/2"
-                          size={20}
-                        />
-                      </div>
-                      {errors.multiplepickup && (
-                        <p className="mt-1 text-sm text-red-500">
-                          {errors.multiplepickup.message}
-                        </p>
-                      )}
-                    </div>
+                     
 
                     {/* Pickup Address */}
                     <div className="w-full md:w-[30%]">
@@ -1020,6 +1000,28 @@ const EditLeadForm: React.FC<{
                       {errors.pickupAddress && (
                         <p className="mt-1 text-sm text-red-500">
                           {errors.pickupAddress.message}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="w-full md:w-[20%]">
+                      <label className="block mb-1 font-extrabold text-gray-700 text-md">
+                        Additional Pickup Addresses  
+                      </label>
+                      <div className="relative">
+                        <input
+                          {...register("multiplepickup")}
+                          className="w-full py-2 pl-10 pr-3 border border-gray-300 rounded-md"
+                          placeholder="Enter Multiple Pickup"
+                        />
+                        <MapPin
+                          className="absolute text-purple-600 -translate-y-1/2 left-3 top-1/2"
+                          size={20}
+                        />
+                      </div>
+                      {errors.multiplepickup && (
+                        <p className="mt-1 text-sm text-red-500">
+                          {errors.multiplepickup.message}
                         </p>
                       )}
                     </div>
@@ -1106,9 +1108,22 @@ const EditLeadForm: React.FC<{
                       )}
                     </div>
 
+                    
+                    {/* Drop Address */}
+                    <div className="w-full md:w-[30%]">
+                      <label className="block mb-1 font-extrabold text-gray-700 text-md">
+                        Drop Address
+                      </label>
+                      <input
+                        {...register("dropAddress")}
+                        className="w-full py-2 px-3 border border-gray-300 rounded-md"
+                        placeholder="Address"
+                      />
+                    </div>
+
                     <div className="w-full md:w-[20%]">
                       <label className="block mb-1 font-extrabold text-gray-700 text-md">
-                        Multiple Drop  
+                        Additional Drop Addresses 
                       </label>
                       <div className="relative">
                         <input
@@ -1128,17 +1143,6 @@ const EditLeadForm: React.FC<{
                       )}
                     </div>
 
-                    {/* Drop Address */}
-                    <div className="w-full md:w-[30%]">
-                      <label className="block mb-1 font-extrabold text-gray-700 text-md">
-                        Drop Address
-                      </label>
-                      <input
-                        {...register("dropAddress")}
-                        className="w-full py-2 px-3 border border-gray-300 rounded-md"
-                        placeholder="Address"
-                      />
-                    </div>
 
                     
 

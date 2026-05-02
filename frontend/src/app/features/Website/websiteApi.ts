@@ -34,6 +34,7 @@ export interface TripBookingRecord {
   baggageTotal: number;
   vehicle_model: string;
   city: string;
+   vehicle_category: string;
   created_at: string;
 }
 

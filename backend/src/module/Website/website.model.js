@@ -61,13 +61,11 @@ export const getWebsiteGacById = async (id) => {
   }
 };
 
-
-// ─── GET All Trip Bookings ─────────────────────────────────────────────
 export const getAllTripBookings = async () => {
   try {
-    // Check if table exists
-    const [tables] = await pool.query("SHOW TABLES LIKE 'trip_booking'");
+    const [tables] = await pool.query("SHOW TABLES LIKE 'trip_bookings'"); // ✅ s added
     if (tables.length === 0) {
+      console.error("❌ Table 'trip_bookings' does not exist");
       return [];
     }
 
@@ -88,16 +86,16 @@ export const getAllTripBookings = async () => {
         itinerary,
         passengerTotal,
         baggageTotal,
+        vehicle_category,
         vehicle_model,
         city,
         created_at
-      FROM trip_booking
-      ORDER BY created_at DESC`,
+      FROM trip_bookings
+      ORDER BY created_at DESC`  // ✅ s added
     );
 
-    if (rows.length > 0) {
-      console.log("📝 Sample record:", rows[0]);
-    }
+    console.log("📊 Total rows fetched:", rows.length);
+    if (rows.length > 0) console.log("📝 Sample record:", rows[0]);
 
     return rows;
   } catch (error) {
@@ -106,7 +104,6 @@ export const getAllTripBookings = async () => {
   }
 };
 
-// ─── GET Single Trip Booking By ID ─────────────────────────────────────
 export const getTripBookingById = async (id) => {
   try {
     const [rows] = await pool.execute(
@@ -126,18 +123,16 @@ export const getTripBookingById = async (id) => {
         itinerary,
         passengerTotal,
         baggageTotal,
+        vehicle_category,
         vehicle_model,
         city,
         created_at
-      FROM trip_booking
-      WHERE id = ?`,
-      [id],
+      FROM trip_bookings
+      WHERE id = ?`,  // ✅ s added
+      [id]
     );
 
-    if (rows.length === 0) {
-      return null;
-    }
-
+    if (rows.length === 0) return null;
     return rows[0];
   } catch (error) {
     console.error("❌ Model Error (getTripBookingById):", error.message);

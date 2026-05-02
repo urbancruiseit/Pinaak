@@ -126,8 +126,9 @@ export interface LeadRecord {
   followUp?: string;
   customerCity?: string;
   customerAddress?: string;
-  address?:string;
-
+  address?: string;
+  multiplepickup?: string;
+  multipledrop?: string;
   customerState?: string;
   vehicle3Quantity?: number;
   vehicle2Quantity?: number;

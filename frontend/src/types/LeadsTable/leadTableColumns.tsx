@@ -448,17 +448,19 @@ export const useLeadColumns = ({
           return highlightItineraryIfKeyword(itineraryText);
         }
 
-        // ✅ Customer Name Column — rowIndex se direction decide hoga
         if (col.key === "fullName") {
-          // Pehli 3 rows → card niche (top-full), baaki → upar (bottom-full)
           const showBelow = (rowIndex ?? 0) < 3;
-          const positionClass = showBelow ? "top-full mt-1" : "bottom-full mb-1";
+          const positionClass = showBelow
+            ? "top-full mt-1"
+            : "bottom-full mb-1";
           return (
             <div className="relative group cursor-pointer">
               <span className="font-semibold text-slate-800 hover:text-blue-600 transition-colors">
                 {String(val)}
               </span>
-              <div className={`absolute left-0 ${positionClass} hidden group-hover:block z-[9999] w-auto bg-slate-800 text-white rounded-lg shadow-xl p-3 whitespace-nowrap`}>
+              <div
+                className={`absolute left-0 ${positionClass} hidden group-hover:block z-[9999] w-auto bg-slate-800 text-white rounded-lg shadow-xl p-3 whitespace-nowrap`}
+              >
                 <div className="font-semibold mb-1 border-b border-slate-600 pb-1">
                   {String(val)}
                 </div>
@@ -601,15 +603,62 @@ export const useLeadColumns = ({
         if (col.key === "pickupAddress") {
           const addressText =
             val !== undefined && val !== null && val !== "" ? String(val) : "—";
-          return highlightAddressIfKeyword(addressText);
+
+          return (
+            <div className="relative group cursor-pointer">
+              <span className="font-semibold text-slate-800 hover:text-blue-600 transition-colors">
+                {highlightAddressIfKeyword(addressText)}
+              </span>
+
+              {/* Hover tooltip - upar dikhega */}
+              <div className="absolute left-0 bottom-full mb-1 hidden group-hover:block z-[9999] w-48 bg-slate-800 text-white rounded-lg shadow-xl p-3">
+                <div className="font-semibold mb-1 border-b border-slate-600 pb-1">
+                  {addressText}
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-slate-400">Multiple Pickup -</span>
+                    <span className="truncate">
+                      {lead.multiplepickup || "-"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
         }
+
+        // if (col.key === "dropAddress") {
+        //   const addressText =
+        //     val !== undefined && val !== null && val !== "" ? String(val) : "—";
+        //   return highlightAddressIfKeyword(addressText);
+        // }
 
         if (col.key === "dropAddress") {
           const addressText =
             val !== undefined && val !== null && val !== "" ? String(val) : "—";
-          return highlightAddressIfKeyword(addressText);
-        }
 
+          return (
+            <div className="relative group cursor-pointer">
+              <span className="font-semibold text-slate-800 hover:text-blue-600 transition-colors">
+                {highlightAddressIfKeyword(addressText)}
+              </span>
+
+              {/* Hover tooltip - upar dikhega */}
+              <div className="absolute left-0 bottom-full mb-1 hidden group-hover:block z-[9999] w-48 bg-slate-800 text-white rounded-lg shadow-xl p-3">
+                <div className="font-semibold mb-1 border-b border-slate-600 pb-1">
+                  {addressText}
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-slate-400">Multiple Drop -</span>
+                    <span className="truncate">{lead.multipledrop || "-"}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        }
         return val !== undefined && val !== null && val !== ""
           ? String(val)
           : "—";

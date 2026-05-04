@@ -11,7 +11,6 @@ import {
   selectError,
 } from "../../../../features/Website/WebsiteSlice";
 
-// ─── Types ─────────────────────────────────────────────
 interface TripBooking {
   id: number;
   firstName: string;
@@ -34,7 +33,6 @@ interface TripBooking {
   created_at: string;
 }
 
-// ─── Component ─────────────────────────────────────────
 const TripBookingsTable: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
 
@@ -44,14 +42,13 @@ const TripBookingsTable: React.FC = () => {
 
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [expandedRow, setExpandedRow] = useState<number | null>(null);
+
   const rowsPerPage = 10;
 
   useEffect(() => {
     dispatch(getTripBookingsThunk());
   }, [dispatch]);
 
-  // ─── Filter ─────────────────────────────────────────
   const filtered = list.filter((item) => {
     const q = search.toLowerCase();
     return (
@@ -59,266 +56,188 @@ const TripBookingsTable: React.FC = () => {
       item.lastName?.toLowerCase().includes(q) ||
       item.customerPhone?.toLowerCase().includes(q) ||
       item.customerEmail?.toLowerCase().includes(q) ||
-      item.city?.toLowerCase().includes(q) ||
-      item.vehicle_model?.toLowerCase().includes(q) ||
-      item.vehicle_category?.toLowerCase().includes(q) ||
-      item.pickupAddress?.toLowerCase().includes(q) ||
-      item.dropAddress?.toLowerCase().includes(q)
+      item.city?.toLowerCase().includes(q)
     );
   });
 
-  // ─── Pagination ─────────────────────────────────────
   const totalPages = Math.max(1, Math.ceil(filtered.length / rowsPerPage));
 
   const paginated = filtered.slice(
     (currentPage - 1) * rowsPerPage,
-    currentPage * rowsPerPage
+    currentPage * rowsPerPage,
   );
 
-  // ─── Format Date ────────────────────────────────────
-  const formatDate = (dateStr: string) => {
-    if (!dateStr) return "—";
-    return new Date(dateStr).toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    });
-  };
-
+  // ✅ Date + Time Format
   const formatDateTime = (dateStr: string) => {
     if (!dateStr) return "—";
-    return new Date(dateStr).toLocaleString("en-IN");
+
+    const d = new Date(dateStr);
+
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+
+    let hours = d.getHours();
+    const minutes = String(d.getMinutes()).padStart(2, "0");
+
+    const ampm = hours >= 12 ? "PM" : "AM";
+    hours = hours % 12 || 12;
+
+    return `${day}/${month}/${year}, ${hours}:${minutes} ${ampm}`;
   };
 
   return (
-    <div className="p-4 space-y-4 w-full">
-      {/* Header */}
-      <div className="flex justify-between items-center flex-wrap gap-3">
-        <div>
-          <h2 className="text-xl font-bold">Trip Bookings</h2>
-          <p className="text-sm text-gray-500">
-            Total: {filtered.length} record{filtered.length !== 1 ? "s" : ""}
-          </p>
+    <div className="w-auto p-6">
+      <div className="bg-white rounded-2xl  overflow-hidden">
+        <div className="sticky top-0 z-30 bg-orange-100 p-3 rounded-md">
+          <div className="flex justify-between items-center">
+            <div className="pl-4 border-l-8 border-orange-500 bg-white px-3 rounded-md shadow-md">
+              <h2 className="text-4xl font-bold text-left py-4 text-orange-600">
+                Website GAC Entries
+              </h2>
+            </div>
+          </div>
         </div>
 
-        <input
-          type="text"
-          placeholder="Search by name, phone, city, vehicle..."
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setCurrentPage(1);
-          }}
-          className="border px-3 py-2 rounded w-72 text-sm"
-        />
-      </div>
+        {/* ERROR */}
+        {error && (
+          <div className="m-4 p-3 bg-red-50 border border-red-200 text-red-600 text-sm rounded">
+            {error}
+          </div>
+        )}
 
-      {/* Error */}
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded text-sm">
-          {error}
-        </div>
-      )}
-
-      {/* Table */}
-      <div className="border rounded overflow-auto shadow-sm">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-100 text-left text-xs uppercase tracking-wide text-gray-600">
-            <tr>
-              <th className="p-3 whitespace-nowrap">#</th>
-              <th className="p-3 whitespace-nowrap">Customer</th>
-              <th className="p-3 whitespace-nowrap">Phone</th>
-              <th className="p-3 whitespace-nowrap">City</th>
-              <th className="p-3 whitespace-nowrap">Pickup</th>
-              <th className="p-3 whitespace-nowrap">Drop</th>
-              <th className="p-3 whitespace-nowrap">Vehicle Category</th>
-              <th className="p-3 whitespace-nowrap">Vehicle Model</th>
-              <th className="p-3 whitespace-nowrap">Pax / Bags</th>
-              <th className="p-3 whitespace-nowrap">Booked On</th>
-              <th className="p-3 whitespace-nowrap">Details</th>
-            </tr>
-          </thead>
-
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={11} className="text-center p-8 text-gray-500">
-                  <div className="flex items-center justify-center gap-2">
-                    <svg className="animate-spin h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
-                    </svg>
-                    Loading bookings...
-                  </div>
-                </td>
+        {/* TABLE */}
+        <div className="overflow-auto mt-4">
+          <table className="w-full text-sm border border-blue-100">
+            {/* TABLE HEADER */}
+            <thead>
+              <tr className="bg-blue-950 text-white uppercase text-xs font-bold">
+                <th className="p-3 border border-blue-200">No</th>
+                <th className="p-3 border border-blue-200">Customer</th>
+                <th className="p-3 border border-blue-200">Phone</th>
+                <th className="p-3 border border-blue-200">Email</th>
+                <th className="p-3 border border-blue-200">City</th>
+                <th className="p-3 border border-blue-200">Pickup Address</th>
+                <th className="p-3 border border-blue-200">Pickup Date</th>
+                <th className="p-3 border border-blue-200">Drop Address</th>
+                <th className="p-3 border border-blue-200">Drop Date</th>
+                <th className="p-3 border border-blue-200">Vehicle Category</th>
+                <th className="p-3 border border-blue-200">Vehicle Model</th>
+                <th className="p-3 border border-blue-200">Passengers</th>
+                <th className="p-3 border border-blue-200">Baggage</th>
+                <th className="p-3 border border-blue-200">Itinerary</th>
+                <th className="p-3 border border-blue-200">Message</th>
+                <th className="p-3 border border-blue-200">Created</th>
               </tr>
-            ) : paginated.length === 0 ? (
-              <tr>
-                <td colSpan={11} className="text-center p-8 text-gray-400">
-                  {search ? `No results found for "${search}"` : "No bookings yet"}
-                </td>
-              </tr>
-            ) : (
-              paginated.map((item, idx) => (
-                <React.Fragment key={item.id}>
-                  <tr className="border-t hover:bg-gray-50 transition-colors">
-                    {/* # */}
-                    <td className="p-3 text-gray-500">
+            </thead>
+
+            {/* TABLE BODY */}
+            <tbody className="bg-blue-100">
+              {loading ? (
+                <tr>
+                  <td colSpan={10} className="text-center p-10 text-gray-400">
+                    Loading...
+                  </td>
+                </tr>
+              ) : paginated.length === 0 ? (
+                <tr>
+                  <td colSpan={10} className="text-center p-10 text-gray-400">
+                    No data found
+                  </td>
+                </tr>
+              ) : (
+                paginated.map((item, idx) => (
+                  <tr key={item.id} className="hover:bg-blue-50 transition">
+                    <td className="p-3 border border-blue-100 text-gray-500">
                       {(currentPage - 1) * rowsPerPage + idx + 1}
                     </td>
 
-                    {/* Customer */}
-                    <td className="p-3">
-                      <div className="font-medium">
-                        {[item.firstName, item.middleName, item.lastName]
-                          .filter(Boolean)
-                          .join(" ")}
+                    <td className="p-3 border border-blue-100">
+                      <div className="font-semibold text-gray-800">
+                        {[item.firstName, item.lastName].join(" ")}
                       </div>
-                      {item.customerEmail && (
-                        <div className="text-xs text-gray-400">{item.customerEmail}</div>
-                      )}
                     </td>
 
-                    {/* Phone */}
-                    <td className="p-3 whitespace-nowrap">
+                    <td className="p-3 border border-blue-100">
                       {item.country_code} {item.customerPhone}
                     </td>
 
-                    {/* City */}
-                    <td className="p-3">{item.city || "—"}</td>
-
-                    {/* Pickup */}
-                    <td className="p-3">
-                      <div className="max-w-[160px] truncate" title={item.pickupAddress}>
-                        {item.pickupAddress}
-                      </div>
-                      <div className="text-xs text-gray-400">
-                        {formatDate(item.pickup_date)}
-                      </div>
+                    <td className="p-3 border border-blue-100">
+                      {item.customerEmail}
                     </td>
 
-                    {/* Drop */}
-                    <td className="p-3">
-                      <div className="max-w-[160px] truncate" title={item.dropAddress}>
-                        {item.dropAddress}
-                      </div>
-                      <div className="text-xs text-gray-400">
-                        {formatDate(item.drop_date)}
-                      </div>
+                    <td className="p-3 border border-blue-100">{item.city}</td>
+
+                    {/* PICKUP */}
+                    <td className="p-3 border border-blue-100 text-xs">
+                      {item.pickupAddress}
+                    </td>
+                    <td className="p-3 border border-blue-100">
+                      {formatDateTime(item.pickup_date)}
+                    </td>
+                    {/* DROP */}
+                    <td className="p-3 border border-blue-100 text-xs">
+                      {item.dropAddress}
+                    </td>
+                    <td className="p-3 border border-blue-100">
+                      {formatDateTime(item.drop_date)}
+                    </td>
+                    {/* VEHICLE */}
+                    <td className="p-3 border border-blue-100">
+                      {item.vehicle_category}
+                    </td>
+                    <td className="p-3 border border-blue-100">
+                      {item.vehicle_model}
+                    </td>
+                    {/* PASSENGER */}
+                    <td className="p-3 border border-blue-100 text-xs">
+                      {item.passengerTotal}
+                    </td>
+                    <td className="p-3 border border-blue-100 text-xs">
+                      {item.baggageTotal}
+                    </td>
+                    <td className="p-3 border border-blue-100 text-xs text-gray-600">
+                      {item.itinerary}
+                    </td>
+                    <td className="p-3 border border-blue-100 text-xs text-gray-600">
+                      {item.message}
                     </td>
 
-                    {/* Vehicle Category */}
-                    <td className="p-3">
-                      {item.vehicle_category ? (
-                        <span className="inline-block bg-green-100 text-green-700 text-xs font-semibold px-2 py-0.5 rounded-full">
-                          {item.vehicle_category}
-                        </span>
-                      ) : "—"}
-                    </td>
-
-                    {/* Vehicle Model */}
-                    <td className="p-3 font-medium">{item.vehicle_model || "—"}</td>
-
-                    {/* Pax / Bags */}
-                    <td className="p-3 whitespace-nowrap">
-                      <span title="Passengers">🧍 {item.passengerTotal}</span>
-                      {" / "}
-                      <span title="Baggages">🧳 {item.baggageTotal}</span>
-                    </td>
-
-                    {/* Booked On */}
-                    <td className="p-3 text-gray-500 whitespace-nowrap text-xs">
+                    {/* CREATED */}
+                    <td className="p-3 border border-blue-100 text-xs text-gray-600">
                       {formatDateTime(item.created_at)}
                     </td>
-
-                    {/* Expand */}
-                    <td className="p-3">
-                      <button
-                        onClick={() =>
-                          setExpandedRow(expandedRow === item.id ? null : item.id)
-                        }
-                        className="text-xs border px-2 py-1 rounded hover:bg-gray-100 transition-colors"
-                      >
-                        {expandedRow === item.id ? "Hide" : "More"}
-                      </button>
-                    </td>
                   </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
 
-                  {/* Expanded Row — Itinerary + Message */}
-                  {expandedRow === item.id && (
-                    <tr className="bg-blue-50 border-t">
-                      <td colSpan={11} className="p-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <p className="font-semibold text-gray-700 mb-1">
-                              🗺 Travel Itinerary
-                            </p>
-                            <p className="text-gray-600 whitespace-pre-wrap">
-                              {item.itinerary || "—"}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="font-semibold text-gray-700 mb-1">
-                              💬 Message
-                            </p>
-                            <p className="text-gray-600 whitespace-pre-wrap">
-                              {item.message || "—"}
-                            </p>
-                          </div>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </React.Fragment>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+        {/* PAGINATION */}
+        <div className="flex justify-between items-center p-4">
+          <span className="text-sm text-blue-600">
+            Page {currentPage} of {totalPages}
+          </span>
 
-      {/* Pagination */}
-      <div className="flex gap-2 items-center justify-between flex-wrap">
-        <p className="text-sm text-gray-500">
-          Showing {paginated.length} of {filtered.length} entries
-        </p>
-
-        {totalPages > 1 && (
-          <div className="flex gap-2 items-center">
-            <button
-              onClick={() => setCurrentPage(1)}
-              disabled={currentPage === 1}
-              className="border px-3 py-1 rounded text-sm disabled:opacity-40 hover:bg-gray-100"
-            >
-              «
-            </button>
+          <div className="flex gap-2">
             <button
               onClick={() => setCurrentPage((p) => p - 1)}
               disabled={currentPage === 1}
-              className="border px-3 py-1 rounded text-sm disabled:opacity-40 hover:bg-gray-100"
+              className="border px-3 py-1 rounded disabled:opacity-40"
             >
               Prev
             </button>
 
-            <span className="text-sm">
-              Page {currentPage} of {totalPages}
-            </span>
-
             <button
               onClick={() => setCurrentPage((p) => p + 1)}
               disabled={currentPage === totalPages}
-              className="border px-3 py-1 rounded text-sm disabled:opacity-40 hover:bg-gray-100"
+              className="border px-3 py-1 rounded disabled:opacity-40"
             >
               Next
             </button>
-            <button
-              onClick={() => setCurrentPage(totalPages)}
-              disabled={currentPage === totalPages}
-              className="border px-3 py-1 rounded text-sm disabled:opacity-40 hover:bg-gray-100"
-            >
-              »
-            </button>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

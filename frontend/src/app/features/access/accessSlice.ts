@@ -36,6 +36,7 @@ interface AssignedLeadsState {
   hasNextPage: boolean;
   selectedMonth: number;
   selectedYear: number;
+   selectedStatus: string | null;
   statusCounts: StatusCounts;
   totalLeads: number;
   monthlyStats: {
@@ -71,6 +72,7 @@ interface FetchMyAssignedLeadsArgs {
   search?: string;
   month?: number | null;
   year?: number | null;
+   status?: string | null; 
 }
 
 // 🔹 Initial State
@@ -91,6 +93,7 @@ const initialState: TravelAdvisorState = {
     hasNextPage: false,
     selectedMonth: new Date().getMonth() + 1,
     selectedYear: new Date().getFullYear(),
+    selectedStatus: null, 
     statusCounts: {
       NEW: 0,
       KYC: 0,
@@ -163,9 +166,9 @@ export const fetchMyAssignedLeads = createAsyncThunk<
   { rejectValue: string }
 >(
   "access/fetchMyAssignedLeads",
-  async ({ page = 1, cityIds, search, month, year, advisorId }, { rejectWithValue }) => {
+  async ({ page = 1, cityIds, search, month, year, advisorId, status }, { rejectWithValue }) => {  // ✅ status add kiya
     try {
-      return await getMyAssignedLeadsApi(page, { cityIds, search, month, year, advisorId });
+      return await getMyAssignedLeadsApi(page, { cityIds, search, month, year, advisorId, status });  // ✅ status pass kiya
     } catch (error: any) {
       return rejectWithValue(error.message);
     }
@@ -215,6 +218,10 @@ const travelAdvisorSlice = createSlice({
     resetAssignState: (state) => {
       state.assignSuccess = false;
     },
+    setAssignedStatus: (state, action) => {  // ✅ add kiya
+      state.assignedLeads.selectedStatus = action.payload;
+      state.assignedLeads.page = 1;  // ✅ status change pe page reset
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -263,6 +270,7 @@ const travelAdvisorSlice = createSlice({
         state.assignedLeads.hasNextPage  = p.hasNextPage;
         state.assignedLeads.selectedMonth = p.selectedMonth;
         state.assignedLeads.selectedYear  = p.selectedYear;
+        state.assignedLeads.selectedStatus = p.selectedStatus ?? null; 
         state.assignedLeads.statusCounts  = p.statusCounts;
         state.assignedLeads.totalLeads    = p.totalLeads;
         state.assignedLeads.monthlyStats  = p.monthlyStats ?? [];
@@ -307,5 +315,5 @@ const travelAdvisorSlice = createSlice({
   },
 });
 
-export const { resetAssignState } = travelAdvisorSlice.actions;
+export const { resetAssignState, setAssignedStatus  } = travelAdvisorSlice.actions;
 export default travelAdvisorSlice.reducer;

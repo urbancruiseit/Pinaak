@@ -56,13 +56,13 @@ const getMyAssignedLeads = asyncHandler(async (req, res) => {
   const search = req.query.search || "";
   const month = req.query.month || null;
   const year = req.query.year || null;
+  const status = req.query.status || null;  // ✅ already tha
 
   const roleName = req.user.role_name?.toLowerCase();
   let advisorId = null;
-  let zoneAdvisors = []; // ── advisor id + name list for response
+  let zoneAdvisors = [];
 
   if (roleName === "travel advisor") {
-    // ── Travel Advisor: sirf apne leads ──────────────────────────────────
     advisorId = req.user.id;
 
   } else if (roleName === "city manager") {
@@ -70,15 +70,13 @@ const getMyAssignedLeads = asyncHandler(async (req, res) => {
       ? parseInt(req.query.advisorId, 10)
       : null;
 
-    // ── Step 1: Zone ke saare advisors nikalo (har case me) ───────────────
-    const zoneIds = req.user.zone_ids; // e.g. [1, 2, 3]
+    const zoneIds = req.user.zone_ids;
     let zoneAdvisorIds = [];
 
     if (zoneIds && zoneIds.length > 0) {
       try {
         const placeholders = zoneIds.map(() => "?").join(",");
 
-        // zone_ids se access_control_ids nikalo
         const [acRows] = await hrmsPool.query(
           `SELECT DISTINCT access_control_id
            FROM access_control_zones
@@ -91,7 +89,6 @@ const getMyAssignedLeads = asyncHandler(async (req, res) => {
         if (accessControlIds.length > 0) {
           const acPlaceholders = accessControlIds.map(() => "?").join(",");
 
-          // access_control_ids se sirf Travel Advisor (role_id = 34) wale employee_ids nikalo
           const [empRows] = await hrmsPool.query(
             `SELECT DISTINCT ac.employee_id
              FROM access_control ac
@@ -104,7 +101,6 @@ const getMyAssignedLeads = asyncHandler(async (req, res) => {
           zoneAdvisorIds = empRows.map((r) => r.employee_id);
         }
 
-        // ── Step 2: Advisor names nikalo HRMS se ─────────────────────────
         if (zoneAdvisorIds.length > 0) {
           const namePlaceholders = zoneAdvisorIds.map(() => "?").join(",");
           const [advisorUsers] = await hrmsPool.query(
@@ -127,17 +123,15 @@ const getMyAssignedLeads = asyncHandler(async (req, res) => {
       }
     }
 
-    // ── Step 3: advisorId set karo ────────────────────────────────────────
     if (paramAdvisorId) {
-      // Verify: param wala advisor city manager ke zone me hai?
       if (!zoneAdvisorIds.includes(paramAdvisorId)) {
         return res.status(403).json(
           new ApiResponse(403, null, "Access denied: Advisor is not in your zone")
         );
       }
-      advisorId = paramAdvisorId; // specific advisor ke leads
+      advisorId = paramAdvisorId;
     } else {
-      advisorId = zoneAdvisorIds; // zone ke saare advisors ke leads
+      advisorId = zoneAdvisorIds;
     }
   }
 
@@ -147,10 +141,11 @@ const getMyAssignedLeads = asyncHandler(async (req, res) => {
     totalPages,
     selectedMonth,
     selectedYear,
+    selectedStatus,  // ✅ add kiya
     statusCounts,
     totalLeads,
     monthlyStats,
-  } = await getLeadsByAdvisorId(advisorId, page, limit, cityIds, search, month, year);
+  } = await getLeadsByAdvisorId(advisorId, page, limit, cityIds, search, month, year, status);  // ✅ status pass kiya
 
   return res.status(200).json(
     new ApiResponse(
@@ -163,11 +158,12 @@ const getMyAssignedLeads = asyncHandler(async (req, res) => {
         hasNextPage: page < totalPages,
         selectedMonth,
         selectedYear,
+        selectedStatus,  // ✅ add kiya
         statusCounts,
         totalLeads,
         leads,
         monthlyStats,
-        zoneAdvisors, // [{id, name}, ...] — city manager ke liye, travel advisor ke liye []
+        zoneAdvisors,
       },
       leads.length
         ? "Assigned leads fetched successfully"

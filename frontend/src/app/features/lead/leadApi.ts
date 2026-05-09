@@ -63,6 +63,7 @@ export interface PaginatedLeadsResponse {
   totalPages: number;
   selectedMonth: number;
   selectedYear: number;
+  selectedStatus?: string | null;
   statusCounts: StatusCounts;
   totalLeads: number;
 }
@@ -72,6 +73,7 @@ export const getLeadApi = async (
   search: string = "",
   month?: number,
   year?: number,
+  status?: string,  // ✅
 ): Promise<PaginatedLeadsResponse> => {
   try {
     const response = await axiosInstance.get("/lead", {
@@ -80,6 +82,7 @@ export const getLeadApi = async (
         ...(search && { search }),
         ...(month && { month }),
         ...(year && { year }),
+        ...(status && { status }),  // ✅
       },
     });
 
@@ -93,6 +96,7 @@ export const getLeadApi = async (
       totalPages: data.totalPages || 1,
       selectedMonth: data.selectedMonth,
       selectedYear: data.selectedYear,
+      selectedStatus: data.selectedStatus || null,  // ✅
       statusCounts: data.statusCounts || {
         NEW: 0,
         RFQ: 0,

@@ -328,142 +328,27 @@ export const findLeadByUUID = async (uuid) => {
 
 
 
-// export const getLeads = async (page, limit, cityIds) => {
-//   const pageNumber = parseInt(page, 10);
-//   const limitNumber = parseInt(limit, 10);
-//   const offset = (pageNumber - 1) * limitNumber;
 
-//   let whereClause = `WHERE (l.unwanted_status IS NULL OR l.unwanted_status != 'unwanted')`;
-//   let cityValues = [];
 
-//   if (cityIds && cityIds.length > 0) {
-//     const placeholders = cityIds.map(() => "?").join(",");
-//     whereClause += ` AND l.city_id IN (${placeholders})`;
-//     cityValues = [...cityIds];
-//   }
-
-//   const query = `
-//     SELECT 
-//       l.*,
-//       c.uuid AS customer_uuid,
-//       CONCAT_WS(' ', c.firstName, c.middleName, c.lastName) AS fullName,
-//       c.firstName,
-//       c.middleName,
-//       c.lastName,
-//       c.customerPhone,
-//       c.customerEmail,
-//       c.companyName,
-//       c.customerType,
-//       c.customerCategoryType,
-//       c.alternatePhone,
-//       c.countryName,
-//       c.customerCity,
-//       c.address,
-//       c.date_of_birth,
-//       c.anniversary,
-//       c.gender,
-//       c.state,
-//       c.pincode
-//     FROM leads l
-//     LEFT JOIN customers c ON l.customer_id = c.id
-//     ${whereClause}
-//     ORDER BY l.created_at DESC
-//     LIMIT ? OFFSET ?
-//   `;
-
-//   const queryValues = [...cityValues, limitNumber, offset];
-//   const [leads] = await pool.query(query, queryValues);
-
-//   const countQuery = `
-//     SELECT COUNT(*) as total 
-//     FROM leads l
-//     LEFT JOIN customers c ON l.customer_id = c.id
-//     ${whereClause}
-//   `;
-//   const [countResult] = await pool.query(countQuery, cityValues);
-
-//   // ── Advisor + Presales IDs collect karo ──────────────────────────────────
-//   const advisorIds = leads
-//     .map((l) => l.advisor_id)
-//     .filter((id) => id !== null && id !== undefined);
-
-//   const presalesIds = leads
-//     .map((l) => l.presales_id)
-//     .filter((id) => id !== null && id !== undefined);
-
-//   const allUserIds = [...new Set([...advisorIds, ...presalesIds])];
-
-//   let userMap = {}; // { [user_id]: { id, aliasName, firstName, middleName, lastName } }
-
-//   if (allUserIds.length > 0) {
-//     try {
-//       const placeholders = allUserIds.map(() => "?").join(",");
-//       const [users] = await hrmsPool.query(
-//         `SELECT id, aliasName, firstName, middleName, lastName
-//          FROM users
-//          WHERE id IN (${placeholders})`,
-//         allUserIds,
-//       );
-
-//       users.forEach((u) => {
-//         userMap[u.id] = u; // pura object store karo
-//       });
-//     } catch (err) {
-//       console.error("hrmsPool user fetch failed:", err.message);
-//     }
-//   }
-
-//   // ── Name helper ───────────────────────────────────────────────────────────
-//   const getName = (userId, type) => {
-//     const user = userMap[userId];
-//     if (!user) return null;
-
-//     const first =
-//       type === "advisor"
-//         ? user.aliasName || "" // advisor → aliasName
-//         : user.firstName || ""; // presales → firstName
-
-//     return (
-//       `${first} ${user.middleName || ""} ${user.lastName || ""}`.trim() || null
-//     );
-//   };
-
-//   // ── Leads mein names attach karo ──────────────────────────────────────────
-//   const leadsWithNames = leads.map((lead) => ({
-//     ...lead,
-//     advisorFullName: getName(lead.advisor_id, "advisor"),
-//     presalesFullName: getName(lead.presales_id, "presales"),
-//   }));
-
-//   return {
-//     leads: leadsWithNames,
-//     total: countResult[0].total,
-//     page: pageNumber,
-//     totalPages: Math.ceil(countResult[0].total / limitNumber),
-//   };
-// };
-
-export const getLeads = async (page, limit, cityIds, search, presalesId, month, year) => {
+export const getLeads = async (page, limit, cityIds, search, presalesId, month, year, status) => {
   const pageNumber = parseInt(page, 10);
   const limitNumber = parseInt(limit, 10);
   const offset = (pageNumber - 1) * limitNumber;
 
   const now = new Date();
-  const selectedMonth = month ? parseInt(month, 10) : null; // ✅ null by default
+  const selectedMonth = month ? parseInt(month, 10) : null;
   const selectedYear = year ? parseInt(year, 10) : now.getFullYear();
 
   let whereClause = `WHERE (l.unwanted_status IS NULL OR l.unwanted_status != 'unwanted')`;
   let values = [];
 
   // ── Presales filter ───────────────────────────────────────────────────────
-  // ✅ Fix — sirf valid numeric id ho tab filter lagao
   if (presalesId && Number(presalesId) > 0) {
     whereClause += ` AND l.presales_id = ?`;
     values.push(presalesId);
   }
 
   // ── Month + Year filter ───────────────────────────────────────────────────
-  // ✅ Fix — sirf tab lagao jab month explicitly select ho
   if (selectedMonth) {
     whereClause += ` AND MONTH(l.created_at) = ? AND YEAR(l.created_at) = ?`;
     values.push(selectedMonth, selectedYear);
@@ -486,6 +371,12 @@ export const getLeads = async (page, limit, cityIds, search, presalesId, month, 
       OR c.alternatePhone LIKE ?
     )`;
     values.push(like, like, like, like);
+  }
+
+  // ── Status filter ─────────────────────────────────────────────────────────
+  if (status && status.trim()) {
+    whereClause += ` AND UPPER(l.status) = ?`;
+    values.push(status.trim().toUpperCase());
   }
 
   const query = `
@@ -529,16 +420,22 @@ export const getLeads = async (page, limit, cityIds, search, presalesId, month, 
   const [countResult] = await pool.query(countQuery, values);
 
   // ── Status wise count ─────────────────────────────────────────────────────
+  // ✅ Status counts hamesha BINA status filter ke aayenge (pure counts)
   const statusList = ["NEW", "RFQ", "KYC", "HOT", "VEH-N", "LOST", "BOOK"];
+
+  const statusCountWhereClause = whereClause.replace(/ AND UPPER\(l\.status\) = \?/, "");
+  const statusCountValues = status && status.trim()
+    ? values.slice(0, -1)  // status value hata do
+    : values;
 
   const statusQuery = `
     SELECT l.status, COUNT(*) as count
     FROM leads l
     LEFT JOIN customers c ON l.customer_id = c.id
-    ${whereClause}
+    ${statusCountWhereClause}
     GROUP BY l.status
   `;
-  const [statusResult] = await pool.query(statusQuery, values);
+  const [statusResult] = await pool.query(statusQuery, statusCountValues);
 
   const statusCounts = {};
   statusList.forEach((s) => { statusCounts[s] = 0; });
@@ -568,7 +465,7 @@ export const getLeads = async (page, limit, cityIds, search, presalesId, month, 
     try {
       const placeholders = allUserIds.map(() => "?").join(",");
       const [users] = await hrmsPool.query(
-        `SELECT id, aliasName, firstName, middleName, lastName
+        `SELECT id, aliasName, firstName, middleName, lastName, shortName
          FROM users
          WHERE id IN (${placeholders})`,
         allUserIds
@@ -582,8 +479,8 @@ export const getLeads = async (page, limit, cityIds, search, presalesId, month, 
   const getName = (userId, type) => {
     const user = userMap[userId];
     if (!user) return null;
-    const first = type === "advisor" ? user.aliasName || "" : user.firstName || "";
-    return `${first} ${user.middleName || ""} ${user.lastName || ""}`.trim() || null;
+    const first = type === "advisor" ? user.aliasName || "" : user.shortName || "";
+    return `${first} `.trim() || null;
   };
 
   const leadsWithNames = leads.map((lead) => ({
@@ -597,8 +494,9 @@ export const getLeads = async (page, limit, cityIds, search, presalesId, month, 
     total: countResult[0].total,
     page: pageNumber,
     totalPages: Math.ceil(countResult[0].total / limitNumber),
-    selectedMonth,  // ✅ null aayega jab koi month select na ho
+    selectedMonth,
     selectedYear,
+    selectedStatus: status ? status.trim().toUpperCase() : null,  // ✅ response mein bhi bhejo
     statusCounts,
     totalLeads,
   };

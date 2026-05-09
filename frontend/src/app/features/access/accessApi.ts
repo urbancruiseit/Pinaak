@@ -117,6 +117,7 @@ export interface AssignedLeadsResponse {
   hasNextPage: boolean;
   selectedMonth: number;
   selectedYear: number;
+  selectedStatus: string | null;
   statusCounts: StatusCounts;
   totalLeads: number;
   leads: LeadRecord[];
@@ -130,7 +131,8 @@ export const getMyAssignedLeadsApi = async (
     search?: string;
     month?: number | null;
     year?: number | null;
-    advisorId?: number | null;  // ✅ add karo
+    advisorId?: number | null;
+    status?: string | null;  // ✅ add kiya
   }
 ): Promise<AssignedLeadsResponse> => {
   try {
@@ -150,7 +152,10 @@ export const getMyAssignedLeadsApi = async (
       params.append("year", String(filters.year));
     }
     if (filters?.advisorId != null) {
-      params.append("advisorId", String(filters.advisorId));  // ✅ add karo
+      params.append("advisorId", String(filters.advisorId));
+    }
+    if (filters?.status != null) {
+      params.append("status", filters.status);  // ✅ add kiya
     }
 
     const response = await axiosInstance.get(`/assign/myleads?${params.toString()}`);

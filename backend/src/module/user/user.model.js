@@ -234,7 +234,7 @@ export const findUserById = async (id) => {
       department: user.department_name || null,
       subDepartment: user.subDepartment_name || null,
 
-      fullName: [user.firstName, user.middleName, user.lastName]
+      fullName: [user.shortName, ]
         .filter(Boolean)
         .join(" "),
 

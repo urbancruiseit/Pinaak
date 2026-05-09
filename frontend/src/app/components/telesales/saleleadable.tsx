@@ -17,7 +17,7 @@ import {
   LEAD_STATUS_OPTIONS,
   MONTH_OPTIONS,
 } from "../../../types/LeadsTable/leadstabledata";
-import { fetchMyAssignedLeads } from "@/app/features/access/accessSlice";
+import { fetchMyAssignedLeads, setAssignedStatus } from "@/app/features/access/accessSlice";
 
 import { Eye, Edit } from "lucide-react";
 import {
@@ -56,10 +56,10 @@ export default function LeadsTable() {
   const [cityFilter, setCityFilter] = useState<"All" | (typeof CITY_OPTIONS)[number]>("All");
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const [yearFilter, setYearFilter] = useState<(typeof YEAR_OPTIONS)[number]>("All");
-  const [selectedAdvisorId, setSelectedAdvisorId] = useState<number | null>(null); // ✅ new
+  const [selectedAdvisorId, setSelectedAdvisorId] = useState<number | null>(null);
+  const [statusFilter, setStatusFilter] = useState<"All" | LeadRecord["status"]>("All"); // ✅ moved to server-side
 
   // ─── Client-side only filter state ────────────────────────────────────────
-  const [statusFilter, setStatusFilter] = useState<"All" | LeadRecord["status"]>("All");
   const [startMonth, setStartMonth] = useState("");
   const [endMonth, setEndMonth] = useState("");
   const [startType, setStartType] = useState("text");
@@ -103,6 +103,7 @@ export default function LeadsTable() {
     zonesAdvisors,
   } = assignedLeads;
 
+
   // ─── Search debounce (400ms) ───────────────────────────────────────────────
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchTerm), 400);
@@ -112,7 +113,7 @@ export default function LeadsTable() {
   // ─── Reset to page 1 on any server-side filter change ─────────────────────
   useEffect(() => {
     setCurrentPage(1);
-  }, [debouncedSearch, cityFilter, selectedMonth, yearFilter, selectedAdvisorId]); // ✅
+  }, [debouncedSearch, cityFilter, selectedMonth, yearFilter, selectedAdvisorId, statusFilter]); // ✅ statusFilter added
 
   // ─── Build fetch args ──────────────────────────────────────────────────────
   const buildFetchArgs = (page: number) => ({
@@ -124,21 +125,22 @@ export default function LeadsTable() {
         : undefined,
     month: selectedMonth ? parseInt(selectedMonth) : null,
     year: yearFilter !== "All" ? parseInt(yearFilter) : null,
-    advisorId: selectedAdvisorId ?? undefined, // ✅
+    advisorId: selectedAdvisorId ?? undefined,
+    status: statusFilter !== "All" ? statusFilter : undefined, // ✅ status server-side
   });
 
   // ─── Main fetch (fires on filter/page change) ──────────────────────────────
   useEffect(() => {
     dispatch(fetchMyAssignedLeads(buildFetchArgs(currentPage)));
-  }, [dispatch, currentPage, debouncedSearch, cityFilter, selectedMonth, yearFilter, selectedAdvisorId]); // ✅
+  }, [dispatch, currentPage, debouncedSearch, cityFilter, selectedMonth, yearFilter, selectedAdvisorId, statusFilter]); // ✅
 
-  // ─── Polling every 10s ─────────────────────────────────────────────────────
+  // ─── Polling every 15s ─────────────────────────────────────────────────────
   useEffect(() => {
     const interval = setInterval(() => {
       dispatch(fetchMyAssignedLeads(buildFetchArgs(currentPage)));
     }, 15000);
     return () => clearInterval(interval);
-  }, [dispatch, currentPage, debouncedSearch, cityFilter, selectedMonth, yearFilter, selectedAdvisorId]); // ✅
+  }, [dispatch, currentPage, debouncedSearch, cityFilter, selectedMonth, yearFilter, selectedAdvisorId, statusFilter]); // ✅
 
   // ─── Re-fetch after lead submitted event ──────────────────────────────────
   useEffect(() => {
@@ -151,6 +153,13 @@ export default function LeadsTable() {
 
   // ─── Handlers ─────────────────────────────────────────────────────────────
   const handlePageChange = (page: number) => setCurrentPage(page);
+
+  // ✅ Unified status change handler (used by both dropdown & stat cards)
+  const handleStatusChange = (val: "All" | LeadRecord["status"]) => {
+    setStatusFilter(val);
+    dispatch(setAssignedStatus(val));
+    setCurrentPage(1);
+  };
 
   const togglePax = () => {
     if (!paxOpen) {
@@ -289,14 +298,13 @@ export default function LeadsTable() {
   const statusOptions: ("All" | LeadRecord["status"])[] = ["All", ...LEAD_STATUS_OPTIONS];
   const cityOptions: ("All" | (typeof CITY_OPTIONS)[number])[] = ["All", ...CITY_OPTIONS];
 
-  // ─── Client-side only filters (status, date range, pax, days) ─────────────
+  // ─── Client-side only filters (date range, pax, days) ─────────────────────
+  // ✅ statusFilter removed from here — now handled server-side
   const filteredLeads = useMemo(() => {
     const startDate = startMonth ? new Date(startMonth) : null;
     const endDate = endMonth ? new Date(`${endMonth}T23:59:59`) : null;
 
     return leads.filter((lead) => {
-      if (statusFilter !== "All" && lead.status !== statusFilter) return false;
-
       if (startDate || endDate) {
         if (!lead.pickupDateTime) return false;
         const pickupDate = new Date(lead.pickupDateTime);
@@ -312,7 +320,7 @@ export default function LeadsTable() {
 
       return true;
     });
-  }, [leads, statusFilter, startMonth, endMonth, selectedPax, selectedDays]);
+  }, [leads, startMonth, endMonth, selectedPax, selectedDays]); // ✅ statusFilter dependency removed
 
   // ─── Frozen / scrollable columns ──────────────────────────────────────────
   const frozenColumns = useMemo(
@@ -506,31 +514,45 @@ export default function LeadsTable() {
             </div>
 
             <div className="grid grid-cols-4 md:grid-cols-8 gap-2 w-full md:w-auto items-center mr-28">
-              {/* Total */}
-              <div className="flex flex-col items-center justify-center bg-black px-2 py-2 mr-6 rounded-lg shadow-md border border-white min-w-[80px] h-20">
+
+              {/* Total — click to reset status filter */}
+              <div
+                onClick={() => handleStatusChange("All")}
+                className={`flex flex-col items-center justify-center bg-black px-2 py-2 mr-6 rounded-lg shadow-md border min-w-[80px] h-20 cursor-pointer transition-all hover:scale-105 hover:shadow-lg
+                  ${statusFilter === "All" ? "ring-4 ring-offset-2 ring-orange-400 scale-105 border-orange-400" : "border-white"}`}
+              >
                 <div className="font-extrabold text-sm text-white">Total Leads</div>
                 <div className="text-lg font-extrabold text-white">{totalLeadsCount}</div>
                 <div className="text-md text-white">(100.0%)</div>
               </div>
 
+              {/* ✅ Status stat cards — clickable, server-side filter trigger */}
               {[
-                { label: "NEW",   count: newLeads,  p: pct(newLeads),  bg: "bg-blue-200",   border: "border-sky-800",    text: "text-black" },
-                { label: "KYC",   count: kycLeads,  p: pct(kycLeads),  bg: "bg-orange-200", border: "border-orange-800", text: "text-orange-950" },
-                { label: "RFQ",   count: rfqLeads,  p: pct(rfqLeads),  bg: "bg-blue-300",   border: "border-blue-800",   text: "text-blue-950" },
-                { label: "HOT",   count: hotLeads,  p: pct(hotLeads),  bg: "bg-purple-200", border: "border-purple-800", text: "text-purple-950" },
-                { label: "VEH-N", count: vehnLeads, p: pct(vehnLeads), bg: "bg-pink-200",   border: "border-pink-900",   text: "text-pink-950" },
-                { label: "LOST",  count: lostLeads, p: pct(lostLeads), bg: "bg-red-500",    border: "border-red-600",    text: "text-white" },
-                { label: "BOOK",  count: bookLeads, p: pct(bookLeads), bg: "bg-green-800",  border: "border-green-800",  text: "text-white" },
-              ].map(({ label, count, p, bg, border, text }) => (
-                <div
-                  key={label}
-                  className={`flex flex-col items-center justify-center ${bg} px-2 py-2 rounded-lg shadow-md border ${border} min-w-[80px] h-20`}
-                >
-                  <div className={`font-extrabold text-xl ${text}`}>{label}</div>
-                  <div className={`font-extrabold ${text}`}>{count}</div>
-                  <div className={`text-md ${text}`}>{p}%</div>
-                </div>
-              ))}
+                { label: "NEW",   count: newLeads,  p: pct(newLeads),  bg: "bg-blue-200",   border: "border-sky-800",    text: "text-black",       ring: "ring-sky-500" },
+                { label: "KYC",   count: kycLeads,  p: pct(kycLeads),  bg: "bg-orange-200", border: "border-orange-800", text: "text-orange-950",  ring: "ring-orange-500" },
+                { label: "RFQ",   count: rfqLeads,  p: pct(rfqLeads),  bg: "bg-blue-300",   border: "border-blue-800",   text: "text-blue-950",    ring: "ring-blue-600" },
+                { label: "HOT",   count: hotLeads,  p: pct(hotLeads),  bg: "bg-purple-200", border: "border-purple-800", text: "text-purple-950",  ring: "ring-purple-500" },
+                { label: "VEH-N", count: vehnLeads, p: pct(vehnLeads), bg: "bg-pink-200",   border: "border-pink-900",   text: "text-pink-950",    ring: "ring-pink-500" },
+                { label: "LOST",  count: lostLeads, p: pct(lostLeads), bg: "bg-red-500",    border: "border-red-600",    text: "text-white",       ring: "ring-red-300" },
+                { label: "BOOK",  count: bookLeads, p: pct(bookLeads), bg: "bg-green-800",  border: "border-green-800",  text: "text-white",       ring: "ring-green-400" },
+              ].map(({ label, count, p, bg, border, text, ring }) => {
+                const isActive = statusFilter === label;
+                return (
+                  <div
+                    key={label}
+                    onClick={() => handleStatusChange(isActive ? "All" : label as LeadRecord["status"])}
+                    className={`flex flex-col items-center justify-center ${bg} px-2 py-2 rounded-lg shadow-md border ${border} min-w-[80px] h-20 cursor-pointer transition-all
+                      ${isActive
+                        ? `ring-4 ring-offset-2 ${ring} scale-105 shadow-xl`
+                        : "hover:scale-105 hover:shadow-lg"
+                      }`}
+                  >
+                    <div className={`font-extrabold text-xl ${text}`}>{label}</div>
+                    <div className={`font-extrabold ${text}`}>{count}</div>
+                    <div className={`text-md ${text}`}>{p}%</div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
@@ -549,11 +571,11 @@ export default function LeadsTable() {
               />
             </div>
 
-            {/* Status — client-side */}
+            {/* ✅ Status — now server-side via handleStatusChange */}
             <div className="flex flex-col gap-1">
               <select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+                onChange={(e) => handleStatusChange(e.target.value as typeof statusFilter)}
                 className="w-full px-3 py-2 text-sm font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
               >
                 <option value="All">All Statuses</option>
@@ -721,7 +743,7 @@ export default function LeadsTable() {
                 })}
               </div>
 
-              {/* Year — server-side dropdown ✅ */}
+              {/* Year — server-side dropdown */}
               <div className="flex-shrink-0">
                 <select
                   value={yearFilter}
@@ -734,7 +756,7 @@ export default function LeadsTable() {
                 </select>
               </div>
 
-              {/* Zone Advisor dropdown — sirf city manager ke liye ✅ */}
+              {/* Zone Advisor dropdown — sirf city manager ke liye */}
               {zonesAdvisors && zonesAdvisors.length > 0 && (
                 <div className="flex-shrink-0">
                   <select

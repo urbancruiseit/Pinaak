@@ -4,8 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { LeadRecord } from "../../../../../types/types";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/app/redux/store";
-// ✅ fetchLeads import — setMonthYear action bhi add kiya
-import { fetchLeads,} from "@/app/features/lead/leadSlice";
+import { fetchLeads, setStatus} from "@/app/features/lead/leadSlice"; // ✅ setStatus add kiya
 import LeadDetailsModel from "../../../DetailModel/LeadModel/leadTabledetailsmodel";
 import UnwantedModal from "../../../DetailModel/LeadModel/UnwantedModal";
 import Pagination from "../../../ui/pagination";
@@ -34,8 +33,6 @@ import {
   type LeadStatusCounts,
   type LeadStatusPercentages,
 } from "../../../../../types/LeadsTable/leadstatus";
-
-// ✅ fetchPresalesLeadStatusCount hataya — ab Redux lead state se data aayega
 
 const BANNER_GROUP_LIGHT_BG_CLASS: Record<string, string> = {
   STATUS: "bg-blue-200",
@@ -66,11 +63,11 @@ const BANNER_GROUP_BG_CLASS: Record<string, string> = {
 };
 
 export default function LeadsTable() {
-  const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<"All" | LeadRecord["status"]>("All");
   const [cityFilter, setCityFilter] = useState<"All" | (typeof CITY_OPTIONS)[number]>("All");
   const [yearFilter, setYearFilter] = useState<"All" | "2025" | "2026">("All");
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
   const [startMonth, setStartMonth] = useState("");
   const [endMonth, setEndMonth] = useState("");
   const [startType, setStartType] = useState("text");
@@ -98,40 +95,37 @@ export default function LeadsTable() {
 
   const dispatch = useDispatch<AppDispatch>();
 
-  // ✅ Redux lead state se saara data le rahe hain
-  // selectedMonth, selectedYear, statusCounts, totalLeads ab yahan se aayenge
   const {
     leads,
     loading,
     error,
     totalPages,
     total,
-    selectedMonth: reduxMonth,   // ✅ Redux se current month
-    selectedYear: reduxYear,     // ✅ Redux se current year
-    statusCounts,                // ✅ Redux se status counts
-    totalLeads,                  // ✅ Redux se total leads
+    selectedMonth: reduxMonth,
+    selectedYear: reduxYear,
+    selectedStatus: reduxStatus,  // ✅ add kiya
+    statusCounts,
+    totalLeads,
   } = useSelector((state: RootState) => state.lead);
 
-  // ✅ fetchPresalesLeadStatusCount wala useEffect hataya
-  // Ab lead fetch hone pe automatically statusCounts aayega
+ 
 
-  // ✅ page + reduxMonth + reduxYear change hone pe fetch karo
+  // ✅ reduxStatus dependency add kiya
   useEffect(() => {
     dispatch(fetchLeads({
       page:  currentPage,
       month: reduxMonth,
       year:  reduxYear,
+      status: reduxStatus ?? undefined,  // ✅ add kiya
     }));
-  }, [dispatch, currentPage, reduxMonth, reduxYear]);
+  }, [dispatch, currentPage, reduxMonth, reduxYear, reduxStatus]);  // ✅ reduxStatus add
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
 
-  // ✅ Month/Year filter change hone pe Redux state update karo
-  // Ye action leadSlice me already hai — setMonthYear
   const handleMonthYearChange = (month: number, year: number) => {
-    setCurrentPage(1); // page reset karo
+    setCurrentPage(1);
     dispatch(setMonthYear({ month, year }));
   };
 
@@ -167,6 +161,7 @@ export default function LeadsTable() {
     setEditLead,
   });
 
+  // ✅ reduxStatus dependency add kiya
   useEffect(() => {
     const handleLeadSubmitted = () => {
       setEditLead(null);
@@ -175,11 +170,12 @@ export default function LeadsTable() {
         page:  currentPage,
         month: reduxMonth,
         year:  reduxYear,
+        status: reduxStatus ?? undefined,  // ✅ add kiya
       }));
     };
     window.addEventListener("leadSubmitted", handleLeadSubmitted);
     return () => window.removeEventListener("leadSubmitted", handleLeadSubmitted);
-  }, [dispatch, currentPage, reduxMonth, reduxYear]);
+  }, [dispatch, currentPage, reduxMonth, reduxYear, reduxStatus]);  // ✅ reduxStatus add
 
   useEffect(() => {
     const handleAssignLead = (event: Event) => {
@@ -287,7 +283,7 @@ export default function LeadsTable() {
     const endDate = endMonth ? new Date(`${endMonth}T23:59:59`) : null;
 
     return leads.filter((lead) => {
-      if (statusFilter !== "All" && lead.status !== statusFilter) return false;
+      // ✅ statusFilter frontend filter hata diya — backend se filtered leads aa rahe hain
       if (cityFilter !== "All" && lead.city !== cityFilter) return false;
       if (yearFilter !== "All") {
         const leadYear = new Date(lead.date).getFullYear().toString();
@@ -323,7 +319,8 @@ export default function LeadsTable() {
       if (selectedDays.length > 0 && !selectedDays.includes(Number(lead.days))) return false;
       return true;
     });
-  }, [leads, statusFilter, cityFilter, yearFilter, selectedMonth, searchTerm, startMonth, endMonth, selectedPax, selectedDays]);
+  }, [leads, cityFilter, yearFilter, selectedMonth, searchTerm, startMonth, endMonth, selectedPax, selectedDays]);
+  // ✅ statusFilter dependency bhi hataya
 
   const frozenColumns = useMemo(() => bannerColumnsMeta.slice(0, freezeIndex + 1), [bannerColumnsMeta, freezeIndex]);
   const scrollableColumns = useMemo(() => bannerColumnsMeta.slice(freezeIndex + 1), [bannerColumnsMeta, freezeIndex]);
@@ -350,7 +347,6 @@ export default function LeadsTable() {
   const leftBannerGroups = useMemo(() => getBannerGroups(frozenColumns), [frozenColumns]);
   const rightBannerGroups = useMemo(() => getBannerGroups(scrollableColumns), [scrollableColumns]);
 
-  // ✅ statusCounts se percentages calculate karo
   const statusPercentages: LeadStatusPercentages = useMemo(
     () => calculateLeadStatusPercentages(statusCounts),
     [statusCounts],
@@ -431,7 +427,15 @@ export default function LeadsTable() {
         <div className="mb-4"></div>
         <EditLeadForm
           initialData={editLead}
-          onSuccess={() => { setEditLead(null); dispatch(fetchLeads({ page: currentPage, month: reduxMonth, year: reduxYear })); }}
+          onSuccess={() => {
+            setEditLead(null);
+            dispatch(fetchLeads({
+              page: currentPage,
+              month: reduxMonth,
+              year: reduxYear,
+              status: reduxStatus ?? undefined,  // ✅ add kiya
+            }));
+          }}
           onCancel={() => setEditLead(null)}
         />
       </div>
@@ -454,7 +458,6 @@ export default function LeadsTable() {
 
             <div className="flex flex-wrap items-center gap-1">
               <div className="flex flex-wrap items-center gap-2 ml-10">
-                {/* ✅ leadStatus hataya — ab Redux statusCounts + totalLeads use ho raha hai */}
                 <LeadStatusBadge type="total" label="TOTAL" value={total}            percentage={statusPercentages.totalPercentage} />
                 <LeadStatusBadge type="new"   label="NEW"   value={statusCounts.NEW}      percentage={statusPercentages.newPercentage} />
                 <LeadStatusBadge type="rfq"   label="RFQ"   value={statusCounts.RFQ}      percentage={statusPercentages.rfqPercentage} />
@@ -476,7 +479,6 @@ export default function LeadsTable() {
                       month={month}
                       count={monthPickupCount}
                       isCurrentMonth={isCurrentMonth}
-                      // ✅ Month click hone pe Redux update karo
                       onClick={() => handleMonthYearChange(Number(month.value), reduxYear)}
                     />
                   );
@@ -491,7 +493,11 @@ export default function LeadsTable() {
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
             statusFilter={statusFilter}
-            onStatusChange={(value) => setStatusFilter(value as typeof statusFilter)}
+            onStatusChange={(value) => {
+              setStatusFilter(value as typeof statusFilter);
+              setCurrentPage(1);  // ✅ page reset
+              dispatch(setStatus(value === "All" ? null : value as string));  // ✅ backend filter
+            }}
             statusOptions={statusOptions}
             cityFilter={cityFilter}
             onCityChange={(value) => setCityFilter(value as typeof cityFilter)}

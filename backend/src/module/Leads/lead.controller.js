@@ -107,6 +107,7 @@ const listLeads = asyncHandler(async (req, res) => {
   const search = req.query.search || "";
   const month = req.query.month || null;
   const year = req.query.year || null;
+  const status = req.query.status || "";
 
   const leadsData = await getLeads(
     page,
@@ -115,7 +116,8 @@ const listLeads = asyncHandler(async (req, res) => {
     search,
     presalesId,
     month,
-    year
+    year, 
+    status
   );
 
  

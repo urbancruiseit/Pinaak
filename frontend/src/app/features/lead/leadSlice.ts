@@ -20,6 +20,7 @@ interface LeadState {
 
   selectedMonth: number;
   selectedYear: number;
+   selectedStatus: string | null;  // ✅
   statusCounts: StatusCounts;
   totalLeads: number;
   search: string;
@@ -42,6 +43,7 @@ const initialState: LeadState = {
 
   selectedMonth: now.getMonth() + 1,
   selectedYear: now.getFullYear(),
+  selectedStatus: null,  // ✅
   statusCounts: {
     NEW: 0,
     RFQ: 0,
@@ -69,16 +71,18 @@ export const fetchLeads = createAsyncThunk(
       search = "",
       month,
       year,
+      status,
     }: {
       page?: number;
       search?: string;
       month?: number;
       year?: number;
+      status?: string;
     },
     { rejectWithValue },
   ) => {
     try {
-      return await getLeadApi(page, search, month, year);
+      return await getLeadApi(page, search, month, year, status);
     } catch (error: any) {
       return rejectWithValue(error.message);
     }
@@ -163,11 +167,16 @@ const leadSlice = createSlice({
       state.selectedYear = action.payload.year;
       state.page = 1; // ← month change hone pe page reset
     },
+    setStatus(state, action) {  // ✅
+      state.selectedStatus = action.payload;
+      state.page = 1;
+    },
     resetLeads(state) {
       state.leads = [];
       state.page = 1;
       state.total = 0;
       state.search = "";
+      state.selectedStatus = null;  // ✅
     },
   },
   extraReducers: (builder) => {
@@ -187,6 +196,7 @@ const leadSlice = createSlice({
         state.totalPages = action.payload.totalPages || 1;
         state.selectedMonth = action.payload.selectedMonth;
         state.selectedYear = action.payload.selectedYear;
+        state.selectedStatus = action.payload.selectedStatus ?? null;  // ✅
         state.statusCounts = action.payload.statusCounts;
         state.totalLeads = action.payload.totalLeads;
       })
@@ -266,6 +276,6 @@ const leadSlice = createSlice({
   },
 });
 
-export const { setPage, setLimit, resetLeads } = leadSlice.actions;
+export const { setPage, setLimit, resetLeads, setStatus } = leadSlice.actions;
 
 export default leadSlice.reducer;

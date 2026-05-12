@@ -10,17 +10,17 @@ export type BannerColumn = {
 };
 
 export const BANNER_GROUP_LIGHT_BG_CLASS: Record<string, string> = {
-  STATUS: "bg-blue-200",
-  ENQUIRY: "bg-pink-200",
-  CUSTOMER: "bg-emerald-200",
-  TRAVEL: "bg-purple-200",
+  STATUS: "bg-blue-100",
+  ENQUIRY: "bg-pink-100",
+  CUSTOMER: "bg-emerald-100",
+  TRAVEL: "bg-purple-100",
   VEHICLE: "bg-blue-100",
-  BAGGAGE: "bg-amber-200",
-  TS_REPORT: "bg-rose-200",
-  ACTION: "bg-lime-200",
-  ITINERARY: "bg-cyan-200",
-  PASSANGER: "bg-emerald-200",
-  "Travel Req.": "bg-rose-200",
+  BAGGAGE: "bg-amber-100",
+  TS_REPORT: "bg-rose-100",
+  ACTION: "bg-lime-100",
+  ITINERARY: "bg-cyan-100",
+  PASSANGER: "bg-emerald-100",
+  "Travel Req.": "bg-rose-100",
 };
 
 export const BANNER_GROUP_BG_CLASS: Record<string, string> = {
@@ -49,13 +49,13 @@ export const SERVICE_TYPE_COLOR_MAP: Record<string, string> = {
   "Round Trip Drop": "text-green-600 font-bold",
 };
 export const statusClassMap: Record<LeadRecord["status"], string> = {
-  New: "bg-blue-100 text-blue-600",
-  KYC: "bg-amber-100 text-amber-600",
-  RFQ: "bg-red-100 text-red-800",
-  HOT: "bg-pink-100 text-pink-600",
+  New: "bg-blue-600 text-white",
+  KYC: "bg-cyan-800 text-white font-bold",
+  RFQ: "bg-amber-600 text-white font-bold",
+  HOT: "bg-pink-600 text-white font-bold",
   Book: "bg-green-600 text-white font-bold",
-  "Veh-n": "bg-purple-100 text-purple-600",
-  Lost: "bg-black text-white font-bold",
+  "Veh-n": "bg-[#2c1332] text-white font-bold",
+  Lost: "bg-red-600 text-white font-bold",
   Blank: "bg-gray-100 text-gray-600",
 };
 
@@ -160,24 +160,7 @@ export const TABLE_BANNER_COLUMNS: BannerColumn[] = [
     minWidthClass: "min-w-[150px]",
     minWidthPx: 150,
   },
-  {
-    key: "customerCategoryType",
-    label: "TYPE",
-    groupLabel: "CUSTOMER",
-    groupClass: "text-white",
-    labelClass: "text-white font-black",
-    minWidthClass: "min-w-[120px]",
-    minWidthPx: 120,
-  },
-  {
-    key: "customerType",
-    label: "Category",
-    groupLabel: "CUSTOMER",
-    groupClass: "text-white",
-    labelClass: "text-white font-semibold",
-    minWidthClass: "min-w-[120px]",
-    minWidthPx: 120,
-  },
+
   {
     key: "pickupDateTime",
     label: "PICKUP DATE",
@@ -268,7 +251,7 @@ export const TABLE_BANNER_COLUMNS: BannerColumn[] = [
     minWidthClass: "min-w-[60px]",
     minWidthPx: 60,
   },
-    {
+  {
     key: "multipledrop",
     label: "Multiple Drop",
     groupLabel: "ITINERARY",

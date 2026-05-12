@@ -103,7 +103,7 @@ const listLeads = asyncHandler(async (req, res) => {
   const presalesId = user.role_name === "Pre-Sales Executive" ? user.id : null;
 
   const page = parseInt(req.query.page) || 1;
-  const limit = 14;
+  const limit = 50;
   const search = req.query.search || "";
   const month = req.query.month || null;
   const year = req.query.year || null;
@@ -116,11 +116,10 @@ const listLeads = asyncHandler(async (req, res) => {
     search,
     presalesId,
     month,
-    year, 
-    status
+    year,
+    status,
   );
 
- 
   res
     .status(200)
     .json(new ApiResponse(200, leadsData, "Leads fetched successfully"));

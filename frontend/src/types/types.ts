@@ -144,6 +144,7 @@ export interface LeadRecord {
   customerCountry?: string;
   createdAt?: string;
   presales_id?: string | number;
+  
 }
 export type UserRole =
   | "user"

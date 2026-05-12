@@ -320,8 +320,9 @@ export const useLeadColumns = ({
             <div className="relative group cursor-pointer">
               <span
                 className={`px-2 py-1 rounded transition-colors
-                  ${isNightTime ? "bg-red-900 text-white font-semibold" : ""}
-                  ${isNearbyDate ? "text-red-900 font-bold" : "text-slate-800"}`}
+    ${isNearbyDate ? "bg-red-900 text-white font-bold" : ""}
+    ${isNightTime && !isNearbyDate ? "text-blue-500 font-semibold" : ""}
+    ${!isNightTime && !isNearbyDate ? "text-slate-800" : ""}`}
               >
                 {dateTimeStr}
               </span>
@@ -480,6 +481,37 @@ export const useLeadColumns = ({
                   <div className="flex items-center gap-2">
                     <span className="text-slate-400">✉️</span>
                     <span>{lead.customerEmail || "-"}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        if (col.key === "companyName") {
+          const showBelow = (rowIndex ?? 0) < 3;
+          const positionClass = showBelow
+            ? "top-full mt-1"
+            : "bottom-full mb-1";
+          return (
+            <div className="relative group cursor-pointer">
+              <span className="font-semibold text-slate-800 hover:text-blue-600 transition-colors">
+                {String(val)}
+              </span>
+              <div
+                className={`absolute left-0 ${positionClass} hidden group-hover:block z-[9999] w-auto bg-slate-800 text-white rounded-lg shadow-xl p-3 whitespace-nowrap`}
+              >
+                <div className="font-semibold mb-1 border-b border-slate-600 pb-1">
+                  {String(val)}
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 font-extrabold text-xl">
+                    <span className="text-slate-400">📞</span>
+                    <span>{lead.customerCategoryType || "-"}</span>
+                  </div>
+                  <div className="flex items-center gap-2 font-extrabold text-xl">
+                    <span className="text-slate-400">📞</span>
+                    <span>{lead.customerType || "-"}</span>
                   </div>
                 </div>
               </div>

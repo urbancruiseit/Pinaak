@@ -6,7 +6,6 @@ import {
   assignTravelAdvisorToLead,
   findTravelAdvisorsByCityId,
   getLeadsByAdvisorId,
-
   getLeadStatusCountByPresalesId,
 } from "./assign.model.js";
 
@@ -48,7 +47,7 @@ const assignTravelAdvisor = asyncHandler(async (req, res) => {
 
 const getMyAssignedLeads = asyncHandler(async (req, res) => {
   const page = Math.max(1, parseInt(req.query.page) || 1);
-  const limit = 13;
+  const limit = 50;
 
   const cityIds = req.query.cityIds
     ? req.query.cityIds.split(",").map(Number)
@@ -56,7 +55,7 @@ const getMyAssignedLeads = asyncHandler(async (req, res) => {
   const search = req.query.search || "";
   const month = req.query.month || null;
   const year = req.query.year || null;
-  const status = req.query.status || null;  // ✅ already tha
+  const status = req.query.status || null; // ✅ already tha
 
   const roleName = req.user.role_name?.toLowerCase();
   let advisorId = null;
@@ -64,7 +63,6 @@ const getMyAssignedLeads = asyncHandler(async (req, res) => {
 
   if (roleName === "travel advisor") {
     advisorId = req.user.id;
-
   } else if (roleName === "city manager") {
     const paramAdvisorId = req.query.advisorId
       ? parseInt(req.query.advisorId, 10)
@@ -81,7 +79,7 @@ const getMyAssignedLeads = asyncHandler(async (req, res) => {
           `SELECT DISTINCT access_control_id
            FROM access_control_zones
            WHERE zone_id IN (${placeholders})`,
-          zoneIds
+          zoneIds,
         );
 
         const accessControlIds = acRows.map((r) => r.access_control_id);
@@ -95,7 +93,7 @@ const getMyAssignedLeads = asyncHandler(async (req, res) => {
              INNER JOIN users u ON u.id = ac.employee_id
              WHERE ac.id IN (${acPlaceholders})
                AND u.role_id = 34`,
-            accessControlIds
+            accessControlIds,
           );
 
           zoneAdvisorIds = empRows.map((r) => r.employee_id);
@@ -108,14 +106,12 @@ const getMyAssignedLeads = asyncHandler(async (req, res) => {
              FROM users
              WHERE id IN (${namePlaceholders})
                AND role_id = 34`,
-            zoneAdvisorIds
+            zoneAdvisorIds,
           );
 
           zoneAdvisors = advisorUsers.map((u) => ({
             id: u.id,
-            name: (
-              `${u.aliasName || u.firstName || ""} ${u.middleName || ""} ${u.lastName || ""}`
-            ).trim(),
+            name: `${u.aliasName || u.firstName || ""} ${u.middleName || ""} ${u.lastName || ""}`.trim(),
           }));
         }
       } catch (err) {
@@ -125,9 +121,15 @@ const getMyAssignedLeads = asyncHandler(async (req, res) => {
 
     if (paramAdvisorId) {
       if (!zoneAdvisorIds.includes(paramAdvisorId)) {
-        return res.status(403).json(
-          new ApiResponse(403, null, "Access denied: Advisor is not in your zone")
-        );
+        return res
+          .status(403)
+          .json(
+            new ApiResponse(
+              403,
+              null,
+              "Access denied: Advisor is not in your zone",
+            ),
+          );
       }
       advisorId = paramAdvisorId;
     } else {
@@ -141,11 +143,20 @@ const getMyAssignedLeads = asyncHandler(async (req, res) => {
     totalPages,
     selectedMonth,
     selectedYear,
-    selectedStatus,  // ✅ add kiya
+    selectedStatus, // ✅ add kiya
     statusCounts,
     totalLeads,
     monthlyStats,
-  } = await getLeadsByAdvisorId(advisorId, page, limit, cityIds, search, month, year, status);  // ✅ status pass kiya
+  } = await getLeadsByAdvisorId(
+    advisorId,
+    page,
+    limit,
+    cityIds,
+    search,
+    month,
+    year,
+    status,
+  ); // ✅ status pass kiya
 
   return res.status(200).json(
     new ApiResponse(
@@ -158,7 +169,7 @@ const getMyAssignedLeads = asyncHandler(async (req, res) => {
         hasNextPage: page < totalPages,
         selectedMonth,
         selectedYear,
-        selectedStatus,  // ✅ add kiya
+        selectedStatus, // ✅ add kiya
         statusCounts,
         totalLeads,
         leads,
@@ -171,8 +182,6 @@ const getMyAssignedLeads = asyncHandler(async (req, res) => {
     ),
   );
 });
-
-
 
 const LeadStatusCountByPresalesId = asyncHandler(async (req, res) => {
   const presaleId = req.user.id;
@@ -193,6 +202,5 @@ export {
   getTravelAdvisorsByCityId,
   assignTravelAdvisor,
   getMyAssignedLeads,
-  
   LeadStatusCountByPresalesId,
 };

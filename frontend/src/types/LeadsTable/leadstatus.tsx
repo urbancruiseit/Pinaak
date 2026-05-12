@@ -98,10 +98,10 @@ export const STATUS_BADGE_STYLES = {
     percentage: "text-md font-bold text-purple-700",
   },
   vehn: {
-    container: `${BASE_CONTAINER} bg-pink-200 border-pink-900`,
-    label: "font-extrabold text-md text-pink-950",
-    value: "font-extrabold text-md text-pink-900",
-    percentage: "text-md font-bold text-pink-700",
+    container: `${BASE_CONTAINER} bg-[#2c1332] border-pink-900`,
+    label: "font-extrabold text-md text-white",
+    value: "font-extrabold text-md text-white",
+    percentage: "text-md font-bold text-white",
   },
   lost: {
     container: `${BASE_CONTAINER} bg-red-500 border-red-600`,

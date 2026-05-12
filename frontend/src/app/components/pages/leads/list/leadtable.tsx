@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { LeadRecord } from "../../../../../types/types";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/app/redux/store";
-import { fetchLeads, setStatus} from "@/app/features/lead/leadSlice"; // ✅ setStatus add kiya
+import { fetchLeads, setStatus } from "@/app/features/lead/leadSlice";
 import LeadDetailsModel from "../../../DetailModel/LeadModel/leadTabledetailsmodel";
 import UnwantedModal from "../../../DetailModel/LeadModel/UnwantedModal";
 import Pagination from "../../../ui/pagination";
@@ -63,8 +63,12 @@ const BANNER_GROUP_BG_CLASS: Record<string, string> = {
 };
 
 export default function LeadsTable() {
-  const [statusFilter, setStatusFilter] = useState<"All" | LeadRecord["status"]>("All");
-  const [cityFilter, setCityFilter] = useState<"All" | (typeof CITY_OPTIONS)[number]>("All");
+  const [statusFilter, setStatusFilter] = useState<
+    "All" | LeadRecord["status"]
+  >("All");
+  const [cityFilter, setCityFilter] = useState<
+    "All" | (typeof CITY_OPTIONS)[number]
+  >("All");
   const [yearFilter, setYearFilter] = useState<"All" | "2025" | "2026">("All");
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -82,16 +86,20 @@ export default function LeadsTable() {
   const paxBtnRef = useRef<HTMLButtonElement>(null);
   const daysBtnRef = useRef<HTMLButtonElement>(null);
   const [daysOpen, setDaysOpen] = useState(false);
-  const [paxDropdownStyle, setPaxDropdownStyle] = useState<React.CSSProperties>({});
-  const [daysDropdownStyle, setDaysDropdownStyle] = useState<React.CSSProperties>({});
+  const [paxDropdownStyle, setPaxDropdownStyle] = useState<React.CSSProperties>(
+    {},
+  );
+  const [daysDropdownStyle, setDaysDropdownStyle] =
+    useState<React.CSSProperties>({});
   const paxDropdownRef = useRef<HTMLDivElement>(null);
   const daysDropdownRef = useRef<HTMLDivElement>(null);
   const [unwantedModalOpen, setUnwantedModalOpen] = useState(false);
-  const [selectedUnwantedLead, setSelectedUnwantedLead] = useState<LeadRecord | null>(null);
+  const [selectedUnwantedLead, setSelectedUnwantedLead] =
+    useState<LeadRecord | null>(null);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState<LeadRecord | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = 14;
+  const rowsPerPage = 50;
 
   const dispatch = useDispatch<AppDispatch>();
 
@@ -103,22 +111,21 @@ export default function LeadsTable() {
     total,
     selectedMonth: reduxMonth,
     selectedYear: reduxYear,
-    selectedStatus: reduxStatus,  // ✅ add kiya
+    selectedStatus: reduxStatus,
     statusCounts,
     totalLeads,
   } = useSelector((state: RootState) => state.lead);
 
- 
-
-  // ✅ reduxStatus dependency add kiya
   useEffect(() => {
-    dispatch(fetchLeads({
-      page:  currentPage,
-      month: reduxMonth,
-      year:  reduxYear,
-      status: reduxStatus ?? undefined,  // ✅ add kiya
-    }));
-  }, [dispatch, currentPage, reduxMonth, reduxYear, reduxStatus]);  // ✅ reduxStatus add
+    dispatch(
+      fetchLeads({
+        page: currentPage,
+        month: reduxMonth,
+        year: reduxYear,
+        status: reduxStatus ?? undefined,
+      }),
+    );
+  }, [dispatch, currentPage, reduxMonth, reduxYear, reduxStatus]);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -161,21 +168,23 @@ export default function LeadsTable() {
     setEditLead,
   });
 
-  // ✅ reduxStatus dependency add kiya
   useEffect(() => {
     const handleLeadSubmitted = () => {
       setEditLead(null);
       setDetailLead(null);
-      dispatch(fetchLeads({
-        page:  currentPage,
-        month: reduxMonth,
-        year:  reduxYear,
-        status: reduxStatus ?? undefined,  // ✅ add kiya
-      }));
+      dispatch(
+        fetchLeads({
+          page: currentPage,
+          month: reduxMonth,
+          year: reduxYear,
+          status: reduxStatus ?? undefined,
+        }),
+      );
     };
     window.addEventListener("leadSubmitted", handleLeadSubmitted);
-    return () => window.removeEventListener("leadSubmitted", handleLeadSubmitted);
-  }, [dispatch, currentPage, reduxMonth, reduxYear, reduxStatus]);  // ✅ reduxStatus add
+    return () =>
+      window.removeEventListener("leadSubmitted", handleLeadSubmitted);
+  }, [dispatch, currentPage, reduxMonth, reduxYear, reduxStatus]);
 
   useEffect(() => {
     const handleAssignLead = (event: Event) => {
@@ -249,7 +258,9 @@ export default function LeadsTable() {
   const bannerColumnsMeta = useMemo(() => {
     const meta = columns
       .map((column, index) => {
-        const bannerCol = TABLE_BANNER_COLUMNS.find((c) => c.key === column.key);
+        const bannerCol = TABLE_BANNER_COLUMNS.find(
+          (c) => c.key === column.key,
+        );
         const groupLabel = bannerCol?.groupLabel;
         const headerBgClass = groupLabel
           ? (BANNER_GROUP_LIGHT_BG_CLASS[groupLabel] ?? "bg-slate-50")
@@ -274,8 +285,14 @@ export default function LeadsTable() {
     if (freezeIndex === -1) setFreezeKey(null);
   }, [freezeIndex, freezeKey]);
 
-  const statusOptions: ("All" | LeadRecord["status"])[] = ["All", ...LEAD_STATUS_OPTIONS];
-  const cityOptions: ("All" | (typeof CITY_OPTIONS)[number])[] = ["All", ...CITY_OPTIONS];
+  const statusOptions: ("All" | LeadRecord["status"])[] = [
+    "All",
+    ...LEAD_STATUS_OPTIONS,
+  ];
+  const cityOptions: ("All" | (typeof CITY_OPTIONS)[number])[] = [
+    "All",
+    ...CITY_OPTIONS,
+  ];
 
   const filteredLeads = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
@@ -283,7 +300,6 @@ export default function LeadsTable() {
     const endDate = endMonth ? new Date(`${endMonth}T23:59:59`) : null;
 
     return leads.filter((lead) => {
-      // ✅ statusFilter frontend filter hata diya — backend se filtered leads aa rahe hain
       if (cityFilter !== "All" && lead.city !== cityFilter) return false;
       if (yearFilter !== "All") {
         const leadYear = new Date(lead.date).getFullYear().toString();
@@ -297,45 +313,91 @@ export default function LeadsTable() {
       }
       if (term) {
         const haystack = [
-          lead.fullName, lead.companyName, lead.city, lead.source,
-          lead.tripType, lead.customerType, lead.customerCategoryType,
-          lead.serviceType, lead.occasion, lead.vehicle2, lead.vehicle3,
-          lead.requirementVehicle, lead.vehicles, lead.customerEmail,
-          lead.customerPhone, lead.telecaller, lead.petsNames ?? "",
-          lead.pickupAddress, lead.dropAddress, lead.remarks,
+          lead.fullName,
+          lead.companyName,
+          lead.city,
+          lead.source,
+          lead.tripType,
+          lead.customerType,
+          lead.customerCategoryType,
+          lead.serviceType,
+          lead.occasion,
+          lead.vehicle2,
+          lead.vehicle3,
+          lead.requirementVehicle,
+          lead.vehicles,
+          lead.customerEmail,
+          lead.customerPhone,
+          lead.telecaller,
+          lead.petsNames ?? "",
+          lead.pickupAddress,
+          lead.dropAddress,
+          lead.remarks,
           lead.km ? String(Number(lead.km).toFixed(0)) : "",
           lead.days ? String(lead.days) : "",
           lead.passengerTotal ? String(lead.passengerTotal) : "",
           lead.totalBaggage ? String(lead.totalBaggage) : "",
         ];
-        if (!haystack.some((v) => v && v.toLowerCase().includes(term))) return false;
+        if (!haystack.some((v) => v && v.toLowerCase().includes(term)))
+          return false;
       }
       if (startDate || endDate) {
         const leadDate = new Date(`${lead.date}T00:00`);
         if (startDate && leadDate < startDate) return false;
         if (endDate && leadDate > endDate) return false;
       }
-      if (selectedPax.length > 0 && !selectedPax.includes(Number(lead.passengerTotal))) return false;
-      if (selectedDays.length > 0 && !selectedDays.includes(Number(lead.days))) return false;
+      if (
+        selectedPax.length > 0 &&
+        !selectedPax.includes(Number(lead.passengerTotal))
+      )
+        return false;
+      if (selectedDays.length > 0 && !selectedDays.includes(Number(lead.days)))
+        return false;
       return true;
     });
-  }, [leads, cityFilter, yearFilter, selectedMonth, searchTerm, startMonth, endMonth, selectedPax, selectedDays]);
-  // ✅ statusFilter dependency bhi hataya
+  }, [
+    leads,
+    cityFilter,
+    yearFilter,
+    selectedMonth,
+    searchTerm,
+    startMonth,
+    endMonth,
+    selectedPax,
+    selectedDays,
+  ]);
 
-  const frozenColumns = useMemo(() => bannerColumnsMeta.slice(0, freezeIndex + 1), [bannerColumnsMeta, freezeIndex]);
-  const scrollableColumns = useMemo(() => bannerColumnsMeta.slice(freezeIndex + 1), [bannerColumnsMeta, freezeIndex]);
+  const frozenColumns = useMemo(
+    () => bannerColumnsMeta.slice(0, freezeIndex + 1),
+    [bannerColumnsMeta, freezeIndex],
+  );
+  const scrollableColumns = useMemo(
+    () => bannerColumnsMeta.slice(freezeIndex + 1),
+    [bannerColumnsMeta, freezeIndex],
+  );
 
   const getBannerGroups = (cols: typeof bannerColumnsMeta) => {
     const groups: Array<{ id: string; label: string; colSpan: number }> = [];
-    let currentGroup: { id: string; label: string; colSpan: number } | null = null;
+    let currentGroup: { id: string; label: string; colSpan: number } | null =
+      null;
     const finishGroup = () => {
-      if (currentGroup) { groups.push(currentGroup); currentGroup = null; }
+      if (currentGroup) {
+        groups.push(currentGroup);
+        currentGroup = null;
+      }
     };
     cols.forEach((column) => {
-      if (!column.groupLabel) { finishGroup(); return; }
+      if (!column.groupLabel) {
+        finishGroup();
+        return;
+      }
       if (!currentGroup || currentGroup.label !== column.groupLabel) {
         finishGroup();
-        currentGroup = { id: `${column.groupLabel}-${column.index}`, label: column.groupLabel, colSpan: 1 };
+        currentGroup = {
+          id: `${column.groupLabel}-${column.index}`,
+          label: column.groupLabel,
+          colSpan: 1,
+        };
       } else {
         currentGroup.colSpan += 1;
       }
@@ -344,27 +406,44 @@ export default function LeadsTable() {
     return groups;
   };
 
-  const leftBannerGroups = useMemo(() => getBannerGroups(frozenColumns), [frozenColumns]);
-  const rightBannerGroups = useMemo(() => getBannerGroups(scrollableColumns), [scrollableColumns]);
+  const leftBannerGroups = useMemo(
+    () => getBannerGroups(frozenColumns),
+    [frozenColumns],
+  );
+  const rightBannerGroups = useMemo(
+    () => getBannerGroups(scrollableColumns),
+    [scrollableColumns],
+  );
 
   const statusPercentages: LeadStatusPercentages = useMemo(
     () => calculateLeadStatusPercentages(statusCounts),
     [statusCounts],
   );
 
+  // ✅ UPDATED: Sirf table rows scroll hongi, header fixed rahega
   const renderTableSection = (
     cols: typeof bannerColumnsMeta,
     banners: typeof leftBannerGroups,
     isLeft: boolean,
   ) => (
-    <div className={`overflow-x-auto custom-scrollbar ${isLeft ? "border-r border-white" : ""}`} style={{ maxWidth: "100%" }}>
-      <table className="min-w-full text-xs border border-collapse border-white sm:text-sm">
-        <thead>
+    <div
+      className={`overflow-x-auto custom-scrollbar ${isLeft ? "border-r border-white" : ""}`}
+      style={{ maxWidth: "100%" }}
+    >
+      <table className="min-w-full text-xs border-collapse border border-white sm:text-sm">
+        {/* ✅ thead sticky — scroll ke saath upar fixed rahega */}
+        <thead className="sticky top-0 z-20">
           <tr>
             {banners.map((group) => {
-              const groupBgClass = group.label ? (BANNER_GROUP_BG_CLASS[group.label] ?? "bg-slate-900") : "bg-white border-b-0";
+              const groupBgClass = group.label
+                ? (BANNER_GROUP_BG_CLASS[group.label] ?? "bg-slate-900")
+                : "bg-white border-b-0";
               return (
-                <th key={group.id} colSpan={group.colSpan} className={`p-1 sticky top-0 z-30 ${group.label ? "border border-white" : ""} ${groupBgClass}`}>
+                <th
+                  key={group.id}
+                  colSpan={group.colSpan}
+                  className={`p-1 z-30 ${group.label ? "border border-white" : ""} ${groupBgClass}`}
+                >
                   {group.label && (
                     <div className="px-2 py-1 text-[18px] font-black uppercase tracking-[0.35em] text-white min-w-max">
                       {group.label}
@@ -376,11 +455,19 @@ export default function LeadsTable() {
           </tr>
           <tr>
             {cols.map((column) => {
-              const bannerCol = TABLE_BANNER_COLUMNS.find((c) => c.key === column.key);
+              const bannerCol = TABLE_BANNER_COLUMNS.find(
+                (c) => c.key === column.key,
+              );
               const groupLabel = bannerCol?.groupLabel;
-              const headerBgClass = groupLabel ? (BANNER_GROUP_BG_CLASS[groupLabel] ?? "bg-slate-900") : "bg-slate-900";
+              const headerBgClass = groupLabel
+                ? (BANNER_GROUP_BG_CLASS[groupLabel] ?? "bg-slate-900")
+                : "bg-slate-900";
               return (
-                <th key={column.key} scope="col" className={`sticky top-[30px] border border-white ${headerBgClass} px-1 text-left text-[11px] font-bold uppercase tracking-wide text-white sm:text-xs z-20`}>
+                <th
+                  key={column.key}
+                  scope="col"
+                  className={`border border-white ${headerBgClass} px-1 text-left text-[11px] font-bold uppercase tracking-wide text-white sm:text-xs z-20`}
+                >
                   <div className="relative flex items-center justify-between w-full">
                     <span className="text-center w-full">{column.label}</span>
                   </div>
@@ -389,26 +476,47 @@ export default function LeadsTable() {
             })}
           </tr>
         </thead>
+
+        {/* ✅ tbody — yahi scroll hoga */}
         <tbody>
           {loading ? (
             <tr>
-              <td className="text-sm font-semibold text-center border border-white text-slate-500" colSpan={cols.length}>
+              <td
+                className="text-sm font-semibold text-center border border-white text-slate-500 py-8"
+                colSpan={cols.length}
+              >
                 Loading...
               </td>
             </tr>
           ) : filteredLeads.length === 0 ? (
             <tr>
-              <td className="px-4 text-sm font-semibold text-center border border-white text-slate-500" colSpan={cols.length}>
+              <td
+                className="px-4 text-sm font-semibold text-center border border-white text-slate-500 py-8"
+                colSpan={cols.length}
+              >
                 No leads.
               </td>
             </tr>
           ) : (
             filteredLeads.map((lead, rowIndex) => (
-              <tr key={lead.id} className={rowIndex % 2 === 0 ? "bg-white" : "bg-slate-50"}>
+              <tr
+                key={lead.id}
+                className={rowIndex % 2 === 0 ? "bg-white" : "bg-slate-50"}
+              >
                 {cols.map((column) => {
-                  const isAddress = column.key === "pickupAddress" || column.key === "dropAddress" || column.key === "itinerary";
+                  const isAddress =
+                    column.key === "pickupAddress" ||
+                    column.key === "dropAddress" ||
+                    column.key === "itinerary";
                   return (
-                    <td key={column.key} className={`whitespace-nowrap border border-white text-slate-800 p-[3px_6px] ${isAddress ? "text-[12px] !font-normal" : "text-sm font-extrabold"} ${column.headerBgClass}`}>
+                    <td
+                      key={column.key}
+                      className={`whitespace-nowrap border border-white text-slate-800 p-[3px_6px] ${
+                        isAddress
+                          ? "text-[12px] !font-normal"
+                          : "text-sm font-extrabold"
+                      } ${column.headerBgClass}`}
+                    >
                       {column.render(lead, rowIndex)}
                     </td>
                   );
@@ -429,12 +537,14 @@ export default function LeadsTable() {
           initialData={editLead}
           onSuccess={() => {
             setEditLead(null);
-            dispatch(fetchLeads({
-              page: currentPage,
-              month: reduxMonth,
-              year: reduxYear,
-              status: reduxStatus ?? undefined,  // ✅ add kiya
-            }));
+            dispatch(
+              fetchLeads({
+                page: currentPage,
+                month: reduxMonth,
+                year: reduxYear,
+                status: reduxStatus ?? undefined,
+              }),
+            );
           }}
           onCancel={() => setEditLead(null)}
         />
@@ -445,6 +555,7 @@ export default function LeadsTable() {
   return (
     <>
       <div className="w-full">
+        {/* ─── Top Banner ─── */}
         <div className="p-3 bg-orange-100 rounded-md mb-1">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="border-l-8 border rounded-lg border-orange-500 bg-white px-3">
@@ -458,28 +569,73 @@ export default function LeadsTable() {
 
             <div className="flex flex-wrap items-center gap-1">
               <div className="flex flex-wrap items-center gap-2 ml-10">
-                <LeadStatusBadge type="total" label="TOTAL" value={total}            percentage={statusPercentages.totalPercentage} />
-                <LeadStatusBadge type="new"   label="NEW"   value={statusCounts.NEW}      percentage={statusPercentages.newPercentage} />
-                <LeadStatusBadge type="rfq"   label="RFQ"   value={statusCounts.RFQ}      percentage={statusPercentages.rfqPercentage} />
-                <LeadStatusBadge type="kyc"   label="KYC"   value={statusCounts.KYC}      percentage={statusPercentages.kycPercentage} />
-                <LeadStatusBadge type="hot"   label="HOT"   value={statusCounts.HOT}      percentage={statusPercentages.hotPercentage} />
-                <LeadStatusBadge type="vehn"  label="VEH-N" value={statusCounts["VEH-N"]} percentage={statusPercentages.vehnPercentage} />
-                <LeadStatusBadge type="lost"  label="LOST"  value={statusCounts.LOST}     percentage={statusPercentages.lostPercentage} />
-                <LeadStatusBadge type="book"  label="BOOK"  value={statusCounts.BOOK}     percentage={statusPercentages.bookPercentage} />
+                <LeadStatusBadge
+                  type="total"
+                  label="TOTAL"
+                  value={total}
+                  percentage={statusPercentages.totalPercentage}
+                />
+                <LeadStatusBadge
+                  type="new"
+                  label="NEW"
+                  value={statusCounts.NEW}
+                  percentage={statusPercentages.newPercentage}
+                />
+                <LeadStatusBadge
+                  type="rfq"
+                  label="RFQ"
+                  value={statusCounts.RFQ}
+                  percentage={statusPercentages.rfqPercentage}
+                />
+                <LeadStatusBadge
+                  type="kyc"
+                  label="KYC"
+                  value={statusCounts.KYC}
+                  percentage={statusPercentages.kycPercentage}
+                />
+                <LeadStatusBadge
+                  type="hot"
+                  label="HOT"
+                  value={statusCounts.HOT}
+                  percentage={statusPercentages.hotPercentage}
+                />
+                <LeadStatusBadge
+                  type="vehn"
+                  label="VEH-N"
+                  value={statusCounts["VEH-N"]}
+                  percentage={statusPercentages.vehnPercentage}
+                />
+                <LeadStatusBadge
+                  type="lost"
+                  label="LOST"
+                  value={statusCounts.LOST}
+                  percentage={statusPercentages.lostPercentage}
+                />
+                <LeadStatusBadge
+                  type="book"
+                  label="BOOK"
+                  value={statusCounts.BOOK}
+                  percentage={statusPercentages.bookPercentage}
+                />
               </div>
 
               <div className="flex flex-wrap items-center gap-2 ml-10">
                 {MONTH_OPTIONS.map((month) => {
                   const currentMonth = new Date().getMonth() + 1;
                   const isCurrentMonth = Number(month.value) === currentMonth;
-                  const monthPickupCount = calculateMonthPickupCounts(filteredLeads, month.value);
+                  const monthPickupCount = calculateMonthPickupCounts(
+                    filteredLeads,
+                    month.value,
+                  );
                   return (
                     <MonthPickupBadge
                       key={month.value}
                       month={month}
                       count={monthPickupCount}
                       isCurrentMonth={isCurrentMonth}
-                      onClick={() => handleMonthYearChange(Number(month.value), reduxYear)}
+                      onClick={() =>
+                        handleMonthYearChange(Number(month.value), reduxYear)
+                      }
                     />
                   );
                 })}
@@ -488,15 +644,16 @@ export default function LeadsTable() {
           </div>
         </div>
 
-        <div className="sticky md:top-28 z-3 bg-white shadow-sm rounded-2xl">
+        {/* ─── Search / Filter Bar — sticky ─── */}
+        <div className="sticky md:top-28 z-30 bg-white shadow-sm rounded-2xl">
           <LeadSearchFilters
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
             statusFilter={statusFilter}
             onStatusChange={(value) => {
               setStatusFilter(value as typeof statusFilter);
-              setCurrentPage(1);  // ✅ page reset
-              dispatch(setStatus(value === "All" ? null : value as string));  // ✅ backend filter
+              setCurrentPage(1);
+              dispatch(setStatus(value === "All" ? null : (value as string)));
             }}
             statusOptions={statusOptions}
             cityFilter={cityFilter}
@@ -532,20 +689,41 @@ export default function LeadsTable() {
           />
         </div>
 
-        <div className="mt-1 bg-white border shadow-sm rounded-3xl border-white w-full">
-          <div className="border border-white rounded-2xl overflow-x-auto">
-            <div className="flex overflow-x-auto">
+        {/* ─── Table Container ─── */}
+        <div className="mt-1 bg-white border shadow-sm rounded-3xl border-white w-full flex flex-col">
+          {/* ✅ KEY CHANGE: is div pe fixed height + overflow-y-auto lagaya
+               Sirf table rows yahan scroll hongi.
+               calc mein adjust karo agar layout shift ho:
+               - 280px = top banner (~160px) + filter bar (~60px) + pagination (~60px)
+          */}
+          <div
+            className="border border-white rounded-2xl overflow-hidden"
+            style={{
+              maxHeight: "calc(100vh - 310px)",
+              overflowY: "auto",
+              overflowX: "hidden",
+            }}
+          >
+            <div className="flex">
+              {/* ─── Frozen / Left columns ─── */}
               {frozenColumns.length > 0 && (
-                <div className="sticky left-0 z-30 bg-white flex flex-col border-r border-white">
+                <div className="sticky left-0 z-30 bg-white flex flex-col border-r border-white flex-shrink-0">
                   {renderTableSection(frozenColumns, leftBannerGroups, true)}
                 </div>
               )}
-              <div className="flex-1 min-w-0 bg-white">
-                {renderTableSection(scrollableColumns, rightBannerGroups, false)}
+
+              {/* ─── Scrollable / Right columns ─── */}
+              <div className="flex-1 min-w-0 bg-white overflow-x-auto custom-scrollbar">
+                {renderTableSection(
+                  scrollableColumns,
+                  rightBannerGroups,
+                  false,
+                )}
               </div>
             </div>
           </div>
 
+          {/* ─── Pagination — always visible at bottom ─── */}
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages || 1}
@@ -560,7 +738,10 @@ export default function LeadsTable() {
         <LeadDetailsModel
           lead={detailLead}
           isOpen={isDetailModalOpen}
-          onClose={() => { setIsDetailModalOpen(false); setTimeout(() => setDetailLead(null), 300); }}
+          onClose={() => {
+            setIsDetailModalOpen(false);
+            setTimeout(() => setDetailLead(null), 300);
+          }}
         />
       )}
 

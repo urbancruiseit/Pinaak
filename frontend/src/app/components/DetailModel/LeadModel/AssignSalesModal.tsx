@@ -1,36 +1,53 @@
 // AssignSalesModal.tsx
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import type { RootState, AppDispatch } from "@/app/redux/store";
 import { toast } from "react-toastify";
-
 import {
   fetchTravelAdvisors,
   assignTravelAdvisor,
 } from "@/app/features/access/accessSlice";
+import { X, UserCheck, ChevronDown, Check } from "lucide-react";
 
 const AssignSalesModal = ({ isOpen, onClose, leadId, cityId }: any) => {
   const dispatch = useDispatch<AppDispatch>();
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
 
   const { advisors, loading, assignLoading } = useSelector(
     (state: RootState) => state.travelAdvisor,
   );
+
   const [selectedAdvisorId, setSelectedAdvisorId] = useState<number | null>(
     null,
   );
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
-  // 🔥 Fetch advisors by city
   useEffect(() => {
     if (isOpen && cityId) {
       dispatch(fetchTravelAdvisors(cityId));
     }
   }, [isOpen, cityId, dispatch]);
 
-  // 🔥 Assign Handler
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const handleAssign = async () => {
     if (!selectedAdvisorId) {
-      toast.warning("Please select advisor first ⚠️");
+      toast.warning("Please select an advisor first ⚠️");
       return;
     }
 
@@ -42,90 +59,174 @@ const AssignSalesModal = ({ isOpen, onClose, leadId, cityId }: any) => {
         }),
       ).unwrap();
 
-      toast.success("Assigned Successfully ✅");
+      toast.success("Assigned successfully ✅");
       onClose();
+      setSelectedAdvisorId(null);
+      setIsDropdownOpen(false);
     } catch (err) {
       console.error(err);
       toast.error("Assignment failed ❌");
     }
   };
+
+  const selectedAdvisor = advisors.find((a: any) => a.id === selectedAdvisorId);
+
   if (!isOpen) return null;
 
   return (
-    // 🔥 Overlay
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
       onClick={onClose}
     >
-      {/* 🔥 Modal */}
+      {/* Modal - Auto height with max height */}
       <div
-        className="w-full max-w-md p-6 bg-white rounded-2xl shadow-xl animate-fadeIn"
+        ref={modalRef}
         onClick={(e) => e.stopPropagation()}
+        className="relative w-full max-w-md rounded-2xl bg-white shadow-xl overflow-hidden"
+        style={{ maxHeight: "90vh" }}
       >
-        {/* Header */}
-        <h2 className="text-lg font-semibold text-gray-800 mb-4">
-          Assign Travel Advisor
-        </h2>
+        {/* Header - Fixed */}
+        <div className="border-b border-gray-100 px-6 py-5 bg-white sticky top-0 z-10">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">
+                Assign Travel Advisor
+              </h2>
+              <p className="text-sm text-gray-500 mt-1">
+                Select an advisor for this lead
+              </p>
+            </div>
 
-        {/* Loading */}
-        {loading && (
-          <p className="text-sm text-gray-500">Loading advisors...</p>
-        )}
-
-        {/* Empty */}
-        {!loading && advisors.length === 0 && (
-          <p className="text-sm text-red-500">No advisors found</p>
-        )}
-
-        {/* Advisors List */}
-        <div className="max-h-60 overflow-y-auto space-y-2">
-          {advisors.map((advisor: any) => (
-            <label
-              key={advisor.id}
-              className={`flex items-center gap-3 p-3 border rounded-lg cursor-pointer transition
-                ${
-                  selectedAdvisorId === advisor.id
-                    ? "border-blue-500 bg-blue-50"
-                    : "hover:bg-gray-50"
-                }`}
+            <button
+              onClick={onClose}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition"
             >
-              <input
-                type="radio"
-                name="advisor"
-                value={advisor.id}
-                checked={selectedAdvisorId === advisor.id}
-                onChange={() => setSelectedAdvisorId(advisor.id)}
-                className="accent-blue-600"
-              />
-
-              <span className="text-sm font-medium text-gray-700">
-                {advisor.fullName || advisor.name}
-              </span>
-            </label>
-          ))}
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
-        {/* Buttons */}
-        <div className="flex justify-end gap-2 mt-5">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-sm text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200"
-          >
-            Cancel
-          </button>
+        {/* Body - Scrollable */}
+        <div
+          className="overflow-y-auto flex-1"
+          style={{ maxHeight: "calc(90vh - 140px)" }}
+        >
+          <div className="p-6">
+            {/* Loading */}
+            {loading && (
+              <div className="flex items-center gap-3 text-sm text-gray-500">
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent"></div>
+                Loading advisors...
+              </div>
+            )}
 
-          <button
-            onClick={handleAssign}
-            disabled={!selectedAdvisorId || assignLoading}
-            className={`px-4 py-2 text-sm text-white rounded-lg transition
-              ${
-                !selectedAdvisorId || assignLoading
-                  ? "bg-gray-400 cursor-not-allowed"
-                  : "bg-blue-600 hover:bg-blue-700"
+            {/* Empty */}
+            {!loading && advisors.length === 0 && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
+                No advisors found for this city
+              </div>
+            )}
+
+            {/* Custom Dropdown */}
+            {!loading && advisors.length > 0 && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">
+                  Choose Advisor
+                </label>
+
+                <div className="relative" ref={dropdownRef}>
+                  {/* Dropdown Button */}
+                  <button
+                    type="button"
+                    onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                    className="w-full flex items-center justify-between rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-700 hover:border-gray-300 transition"
+                  >
+                    <div className="flex items-center gap-2">
+                      <UserCheck size={18} className="text-gray-400" />
+                      <span
+                        className={
+                          selectedAdvisorId ? "text-gray-900" : "text-gray-500"
+                        }
+                      >
+                        {selectedAdvisorId && selectedAdvisor
+                          ? selectedAdvisor.fullName || selectedAdvisor.name
+                          : "Select a travel advisor"}
+                      </span>
+                    </div>
+                    <ChevronDown
+                      size={18}
+                      className={`text-gray-400 transition-transform ${
+                        isDropdownOpen ? "rotate-180" : ""
+                      }`}
+                    />
+                  </button>
+
+                  {/* Dropdown Menu - Using relative positioning that pushes content down */}
+                  <div
+                    className={`transition-all duration-200 overflow-hidden ${
+                      isDropdownOpen
+                        ? "max-h-60 opacity-100 mt-1"
+                        : "max-h-0 opacity-0"
+                    }`}
+                  >
+                    <div className="border border-gray-200 rounded-lg bg-white shadow-lg overflow-hidden">
+                      <div className="max-h-48 overflow-y-auto">
+                        {advisors.map((advisor: any) => (
+                          <button
+                            key={advisor.id}
+                            onClick={() => {
+                              setSelectedAdvisorId(advisor.id);
+                              setIsDropdownOpen(false);
+                            }}
+                            className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition"
+                          >
+                            <span>{advisor.fullName || advisor.name}</span>
+                            {selectedAdvisorId === advisor.id && (
+                              <Check size={16} className="text-blue-600" />
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Buttons - These will naturally move down when dropdown expands */}
+            <div
+              className={`mt-8 flex items-center justify-end gap-3 transition-all duration-200 ${
+                isDropdownOpen ? "mt-6" : "mt-8"
               }`}
-          >
-            {assignLoading ? "Assigning..." : "Assign"}
-          </button>
+            >
+              <button
+                onClick={onClose}
+                className="rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-600 transition hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={handleAssign}
+                disabled={!selectedAdvisorId || assignLoading}
+                className={`rounded-lg px-5 py-2.5 text-sm font-semibold text-white transition-all duration-200
+                  ${
+                    !selectedAdvisorId || assignLoading
+                      ? "cursor-not-allowed bg-gray-300"
+                      : "bg-blue-600 hover:bg-blue-700 active:scale-[0.98]"
+                  }`}
+              >
+                {assignLoading ? (
+                  <span className="flex items-center gap-2">
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                    Assigning...
+                  </span>
+                ) : (
+                  "Assign Advisor"
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

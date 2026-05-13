@@ -160,12 +160,12 @@ const leadSlice = createSlice({
     },
     setSearch(state, action) {
       state.search = action.payload;
-      state.page = 1; // ← search change hone pe page reset
+      state.page = 1;
     },
     setMonthYear(state, action) {
       state.selectedMonth = action.payload.month;
       state.selectedYear = action.payload.year;
-      state.page = 1; // ← month change hone pe page reset
+      state.page = 1; 
     },
     setStatus(state, action) {  // ✅
       state.selectedStatus = action.payload;

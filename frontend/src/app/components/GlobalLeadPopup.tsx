@@ -40,7 +40,7 @@ const isNewStatus = (status?: string) => {
   return s === "-" || s === "NEW";
 };
 
-const POLL_INTERVAL_MS = 15 * 60 * 1000;
+const POLL_INTERVAL_MS = 60 * 60 * 1000;
 
 export default function GlobalLeadPopup() {
   const dispatch = useDispatch<AppDispatch>();

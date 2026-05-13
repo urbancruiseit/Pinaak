@@ -143,8 +143,9 @@ export interface LeadRecord {
   fullName?: string;
   customerCountry?: string;
   createdAt?: string;
+  updatedAt?: string;
   presales_id?: string | number;
-  
+  leadId?: string | number;
 }
 export type UserRole =
   | "user"

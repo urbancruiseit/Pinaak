@@ -326,11 +326,16 @@ export const findLeadByUUID = async (uuid) => {
   }
 };
 
-
-
-
-
-export const getLeads = async (page, limit, cityIds, search, presalesId, month, year, status) => {
+export const getLeads = async (
+  page,
+  limit,
+  cityIds,
+  search,
+  presalesId,
+  month,
+  year,
+  status,
+) => {
   const pageNumber = parseInt(page, 10);
   const limitNumber = parseInt(limit, 10);
   const offset = (pageNumber - 1) * limitNumber;
@@ -423,10 +428,14 @@ export const getLeads = async (page, limit, cityIds, search, presalesId, month, 
   // ✅ Status counts hamesha BINA status filter ke aayenge (pure counts)
   const statusList = ["NEW", "RFQ", "KYC", "HOT", "VEH-N", "LOST", "BOOK"];
 
-  const statusCountWhereClause = whereClause.replace(/ AND UPPER\(l\.status\) = \?/, "");
-  const statusCountValues = status && status.trim()
-    ? values.slice(0, -1)  // status value hata do
-    : values;
+  const statusCountWhereClause = whereClause.replace(
+    / AND UPPER\(l\.status\) = \?/,
+    "",
+  );
+  const statusCountValues =
+    status && status.trim()
+      ? values.slice(0, -1) // status value hata do
+      : values;
 
   const statusQuery = `
     SELECT l.status, COUNT(*) as count
@@ -438,7 +447,9 @@ export const getLeads = async (page, limit, cityIds, search, presalesId, month, 
   const [statusResult] = await pool.query(statusQuery, statusCountValues);
 
   const statusCounts = {};
-  statusList.forEach((s) => { statusCounts[s] = 0; });
+  statusList.forEach((s) => {
+    statusCounts[s] = 0;
+  });
 
   statusResult.forEach((s) => {
     const key = (s.status || "").toUpperCase();
@@ -468,9 +479,11 @@ export const getLeads = async (page, limit, cityIds, search, presalesId, month, 
         `SELECT id, aliasName, firstName, middleName, lastName, shortName
          FROM users
          WHERE id IN (${placeholders})`,
-        allUserIds
+        allUserIds,
       );
-      users.forEach((u) => { userMap[u.id] = u; });
+      users.forEach((u) => {
+        userMap[u.id] = u;
+      });
     } catch (err) {
       console.error("hrmsPool user fetch failed:", err.message);
     }
@@ -479,7 +492,8 @@ export const getLeads = async (page, limit, cityIds, search, presalesId, month, 
   const getName = (userId, type) => {
     const user = userMap[userId];
     if (!user) return null;
-    const first = type === "advisor" ? user.aliasName || "" : user.shortName || "";
+    const first =
+      type === "advisor" ? user.aliasName || "" : user.shortName || "";
     return `${first} `.trim() || null;
   };
 
@@ -496,12 +510,11 @@ export const getLeads = async (page, limit, cityIds, search, presalesId, month, 
     totalPages: Math.ceil(countResult[0].total / limitNumber),
     selectedMonth,
     selectedYear,
-    selectedStatus: status ? status.trim().toUpperCase() : null,  // ✅ response mein bhi bhejo
+    selectedStatus: status ? status.trim().toUpperCase() : null, // ✅ response mein bhi bhejo
     statusCounts,
     totalLeads,
   };
 };
-
 
 export const updateLeadUnwantedStatus = async (leadId, status) => {
   try {
@@ -532,21 +545,27 @@ export const getAllUnwantedLeadsModel = async () => {
   try {
     const [rows] = await pool.execute(`
       SELECT 
-        l.id AS leadId,
-        l.unwanted_status,
-        l.updated_at,
+        l.*,
 
-        c.id AS customerId,
-
-        -- ✅ Full Name add kiya
+        c.uuid AS customer_uuid,
         TRIM(CONCAT_WS(' ', c.firstName, c.middleName, c.lastName)) AS fullName,
-
         c.firstName,
         c.middleName,
         c.lastName,
-
         c.customerPhone,
-        c.customerCity
+        c.customerEmail,
+        c.companyName,
+        c.customerType,
+        c.customerCategoryType,
+        c.alternatePhone,
+        c.countryName,
+        c.customerCity,
+        c.address,
+        c.date_of_birth,
+        c.anniversary,
+        c.gender,
+        c.state,
+        c.pincode
 
       FROM leads l
       LEFT JOIN customers c 

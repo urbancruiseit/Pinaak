@@ -130,6 +130,11 @@ const LeadDistributionModule = dynamic(
   { ssr: false, loading: LoadingPanel },
 );
 
+const UnwantedLeadsModule = dynamic(
+  () => import("../components/pages/leads/Reports/UnwantedLead"),
+  { ssr: false, loading: LoadingPanel },
+);
+
 const GACForm = dynamic(
   () => import("../components/pages/Website/list/gacTable"),
   { ssr: false, loading: LoadingPanel },
@@ -292,10 +297,11 @@ export default function DashboardPage() {
   const [showMonthlyEnquiry, setShowMonthlyEnquiry] = useState<boolean>(false);
   const [showMonthlyDistribution, setShowMonthlyDistribution] =
     useState<boolean>(false);
-
+  const [showUnwantedLeads, setShowUnwantedLeads] = useState<boolean>(false);
   const resetAllReportStates = () => {
     setShowMonthlyEnquiry(false);
     setShowMonthlyDistribution(false);
+    setShowUnwantedLeads(false);
   };
 
   const dispatch = useDispatch<AppDispatch>();
@@ -523,6 +529,13 @@ export default function DashboardPage() {
     setActiveLeadView("dashboard");
   };
 
+  const handleUnwantedLeads = () => {
+    resetAllReportStates();
+    setShowUnwantedLeads(true);
+    setActiveSection("leads");
+    setActiveLeadView("dashboard");
+    // You can set a specific state here to show unwanted leads if needed
+  };
   // ✅ Website menu handler
   const handleWebsiteMenuSelect = (key: string) => {
     setActiveSection("website");
@@ -582,6 +595,14 @@ export default function DashboardPage() {
           </div>
         );
       }
+      if (showUnwantedLeads) {
+        return (
+          <div className="space-y-6">
+            <UnwantedLeadsModule />
+          </div>
+        );
+      }
+
       if (activeLeadView === "lead-form") {
         return (
           <div className="space-y-6">
@@ -723,6 +744,7 @@ export default function DashboardPage() {
         onSalesEditFormSelect={handleSalesEditFormSelect}
         onMonthlyEnquiry={handleMonthlyEnquiry}
         onMonthlyDistribution={handleMonthlyDistribution}
+        onUnwantedLeads={handleUnwantedLeads}
         onMasterSelect={(key) => {
           const targeted = permittedMasterTabs.find((tab) => tab.key === key);
           setActiveSection("master");

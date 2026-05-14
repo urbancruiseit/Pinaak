@@ -216,6 +216,7 @@ interface NavbarProps {
   onTlTablesSelect?: (key: string) => void;
   onYearSelect?: (key: string) => void;
   onAccessSelect?: (key: string) => void;
+  onDsrSelect?: (key: string) => void;
   permittedMasterKeys?: string[] | null;
   selectedRegion?: string;
   selectedCity?: string;
@@ -282,6 +283,7 @@ export function Navbar({
   onTlTablesSelect,
   onYearSelect,
   onAccessSelect,
+  onDsrSelect,
   permittedMasterKeys,
   selectedRegion = "",
   selectedCity = "",
@@ -430,6 +432,12 @@ export function Navbar({
     setMobileOpen(false);
   };
 
+const handleDsrSelect = (value: string) => {
+  onDsrSelect?.(value);
+  setOpenMenu(null);
+  setMobileOpen(false);
+};
+
   const handleSalesEditFormSelect = (value: string) => {
     onSalesEditFormSelect?.(value);
     setOpenMenu(null);
@@ -463,8 +471,6 @@ export function Navbar({
     setOpenMenu(null);
     setMobileOpen(false);
   };
-
-
 
   const handleLogout = async () => {
     try {
@@ -718,13 +724,14 @@ export function Navbar({
                 )}
 
                 {/* Existing Sales Lead Manager button */}
+             
                 {(userRole?.toLowerCase() === "sales" ||
                   userRole?.toLowerCase() === "admin" ||
                   userRole?.toLowerCase() === "travel advisor" ||
                   userRole?.toLowerCase() === "travel" ||
                   roleLabel?.toLowerCase().includes("travel") ||
                   roleLabel?.toLowerCase().includes("advisor")) && (
-                  <div className="relative w-full md:w-auto">
+                  <div className="relative flex flex-col md:flex-row gap-3 w-full md:w-auto">
                     <button
                       type="button"
                       className="w-full md:w-auto flex items-center justify-center gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200 bg-white text-emerald-700 border-2 border-emerald-300 hover:border-emerald-500 hover:shadow-md hover:scale-[1.02] md:min-w-[100px] md:h-9 md:py-2"
@@ -732,6 +739,15 @@ export function Navbar({
                     >
                       <FileText size={16} className="mr-1.5 flex-shrink-0" />
                       <span className="truncate">Sales Lead Manager</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      className="w-full md:w-auto flex items-center justify-center gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200 bg-white text-emerald-700 border-2 border-emerald-300 hover:border-emerald-500 hover:shadow-md hover:scale-[1.02] md:min-w-[100px] md:h-9 md:py-2"
+                      onClick={() => onDsrSelect?.("dsr-lead-table")}
+                    >
+                      <FileText size={16} className="mr-1.5 flex-shrink-0" />
+                      <span className="truncate">DSR Lead Manager</span>
                     </button>
                   </div>
                 )}
@@ -801,7 +817,7 @@ export function Navbar({
                                   <span className="w-1 h-1 rounded-full bg-green-300"></span>
                                   Lead Distribution (LDR)
                                 </li>
-                                  <li
+                                <li
                                   onClick={() => {
                                     onUnwantedLeads?.();
                                     setOpenMenu(null);
@@ -810,7 +826,7 @@ export function Navbar({
                                   className="px-3 py-2.5 md:py-2 text-sm transition-all hover:bg-green-50 hover:text-green-700 hover:pl-4 cursor-pointer text-gray-700 flex items-center gap-2"
                                 >
                                   <span className="w-1 h-1 rounded-full bg-green-300"></span>
-                                 Unwanted Leads (ULR)
+                                  Unwanted Leads (ULR)
                                 </li>
                               </ul>
                             )}

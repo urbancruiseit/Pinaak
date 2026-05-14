@@ -40,7 +40,7 @@ const isNewStatus = (status?: string) => {
   return s === "-" || s === "NEW";
 };
 
-const POLL_INTERVAL_MS = 60 * 60 * 1000;
+const POLL_INTERVAL_MS = 60 * 1000;
 
 export default function GlobalLeadPopup() {
   const dispatch = useDispatch<AppDispatch>();
@@ -81,14 +81,23 @@ export default function GlobalLeadPopup() {
     }, 300);
   }, []);
 
-  const showLead = useCallback((l: LeadRecord) => {
-    if (!isNewStatus(l.status)) return;
-    if (currentLeadIdRef.current !== null) return;
-    currentLeadIdRef.current = String(l.id);
-    setLead(l);
-    setIsAnimatingOut(false);
-  }, []);
+  // ─── Show lead — advisor match check ─────────────────────────────────────
+  const showLead = useCallback(
+    (l: LeadRecord) => {
+      if (!isNewStatus(l.status)) return;
+      if (currentLeadIdRef.current !== null) return;
 
+      // ─── Current user aur lead ka advisor_id match check ──────────
+      if (String(l.advisor_id) !== String(currentUser?.id)) return;
+
+      currentLeadIdRef.current = String(l.id);
+      setLead(l);
+      setIsAnimatingOut(false);
+    },
+    [currentUser],
+  );
+
+  // ─── Schedule reshow ──────────────────────────────────────────────────────
   const scheduleReshow = useCallback(
     (leadId: string, delayMs: number) => {
       const existing = timersRef.current.get(leadId);
@@ -97,14 +106,20 @@ export default function GlobalLeadPopup() {
       const timer = setTimeout(() => {
         timersRef.current.delete(leadId);
         const latestLead = activeLeadsMapRef.current.get(leadId);
-        if (latestLead && isNewStatus(latestLead.status)) {
+
+        // ─── Reshow ke waqt bhi advisor match check ───────────────
+        if (
+          latestLead &&
+          isNewStatus(latestLead.status) &&
+          String(latestLead.advisor_id) === String(currentUser?.id)
+        ) {
           showLead(latestLead);
         }
       }, delayMs);
 
       timersRef.current.set(leadId, timer);
     },
-    [showLead],
+    [showLead, currentUser],
   );
 
   // ─── Close button — 15 min baad wapas ────────────────────────────────────
@@ -155,7 +170,12 @@ export default function GlobalLeadPopup() {
       leads.forEach((l) => {
         const id = String(l.id);
         baseline.add(id);
-        if (isNewStatus(l.status)) {
+
+        // ─── Sirf apne leads activeMap mein rakho ─────────────────
+        if (
+          isNewStatus(l.status) &&
+          String(l.advisor_id) === String(currentUser.id)
+        ) {
           activeLeadsMapRef.current.set(id, l);
         }
       });
@@ -166,6 +186,12 @@ export default function GlobalLeadPopup() {
     leads.forEach((l) => {
       const id = String(l.id);
       const isNew = isNewStatus(l.status);
+
+      // ─── Advisor match nahi to skip ───────────────────────────────
+      if (String(l.advisor_id) !== String(currentUser.id)) {
+        activeLeadsMapRef.current.delete(id);
+        return;
+      }
 
       if (!isNew) {
         activeLeadsMapRef.current.delete(id);

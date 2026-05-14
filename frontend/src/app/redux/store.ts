@@ -11,6 +11,7 @@ import vendorReducer from "../features/vendor/vendorSlice";
 import driverReducer from "../features/Driver/driverSlice";
 import monthlyReducer from "../features/Reports/monthlyReport/monthlyReportSlice";
 import websiteGacReducer from "../features/Website/WebsiteSlice";
+import dsrReducer from "../features/Dsr/dsrSlice";
 
 export const store = configureStore({
   reducer: {
@@ -26,6 +27,7 @@ export const store = configureStore({
     driver: driverReducer,
     report: monthlyReducer,
     websiteGac: websiteGacReducer,
+    dsr: dsrReducer,
   },
 });
 

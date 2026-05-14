@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentType } from "react";
 import Navbar from "../components/ui/navbar";
 import Sidebar from "../components/ui/sidebar";
@@ -14,6 +14,7 @@ type SidebarSection =
   | "leads"
   | "master"
   | "rate-quotation"
+  | "dsr-form"
   | "booking-trip"
   | "payment"
   | "feedback"
@@ -37,6 +38,7 @@ type MasterKey =
   | "customer-personal"
   | "customer-table"
   | "rate-quotation"
+  | "dsr-form"
   | "card-reel"
   | "quotation-pdf"
   | "country-code"
@@ -49,6 +51,7 @@ type LeadView =
   | "lead-form"
   | "lead-table"
   | "sale-lead-table"
+  | "dsr-lead-table"
   | "sales-edit-form";
 
 type DashboardView =
@@ -94,6 +97,16 @@ const EditLeadFormModule = dynamic(
   () => import("../components/pages/leads/list/EditForm/editleadform"),
   { ssr: false, loading: LoadingPanel },
 );
+
+const DsrTableModule = dynamic(
+  () => import("../components/telesales/DSR/DsrTable"),
+  { ssr: false, loading: LoadingPanel },
+);
+
+const DsrFormModule = dynamic(
+  () => import("../components/telesales/DSR/DsrForm"),
+  { ssr: false, loading: LoadingPanel },
+) as React.ComponentType<{ leadData?: LeadRecord | null }>;
 
 const PresalesDashboardModule = dynamic(
   () => import("../components/presalesteam/dashboardpresales"),
@@ -289,7 +302,11 @@ export default function DashboardPage() {
   const [selectedLeadForRateQuotation, setSelectedLeadForRateQuotation] =
     useState<LeadRecord | null>(null);
 
-  // ✅ Website view state
+  // DSR lead data state
+  const [selectedLeadForDsr, setSelectedLeadForDsr] =
+    useState<LeadRecord | null>(null);
+
+  // Website view state
   const [activeWebsiteView, setActiveWebsiteView] = useState<"gac" | "gaq">(
     "gac",
   );
@@ -298,6 +315,7 @@ export default function DashboardPage() {
   const [showMonthlyDistribution, setShowMonthlyDistribution] =
     useState<boolean>(false);
   const [showUnwantedLeads, setShowUnwantedLeads] = useState<boolean>(false);
+
   const resetAllReportStates = () => {
     setShowMonthlyEnquiry(false);
     setShowMonthlyDistribution(false);
@@ -452,6 +470,25 @@ export default function DashboardPage() {
       );
   }, []);
 
+  // DSR event handler — lead data store karo
+  useEffect(() => {
+    const handleDsrForm = (
+      event: CustomEvent<{ lead: LeadRecord; action: string }>,
+    ) => {
+      const { lead } = event.detail;
+      if (lead) {
+        setSelectedLeadForDsr(lead);
+      }
+      setActiveSection("dsr-form");
+      setPendingModuleKey(null);
+      resetAllReportStates();
+    };
+    window.addEventListener("dsr-form", handleDsrForm as EventListener);
+    return () => {
+      window.removeEventListener("dsr-form", handleDsrForm as EventListener);
+    };
+  }, []);
+
   const handleLogout = () => {
     localStorage.removeItem("user");
     window.location.href = "/";
@@ -506,6 +543,16 @@ export default function DashboardPage() {
     }
   };
 
+  // ✅ FIX: DSR Lead Manager handler — wires Navbar's onDsrSelect to show DsrTableModule
+  const handleDsrLeadSelect = (key: string) => {
+    if (key === "dsr-lead-table") {
+      setPendingModuleKey(null);
+      setActiveSection("leads");
+      setActiveLeadView("dsr-lead-table");
+      resetAllReportStates();
+    }
+  };
+
   const handleSalesEditFormSelect = (key: string) => {
     if (key === "sales-edit-form") {
       setPendingModuleKey(null);
@@ -534,9 +581,9 @@ export default function DashboardPage() {
     setShowUnwantedLeads(true);
     setActiveSection("leads");
     setActiveLeadView("dashboard");
-    // You can set a specific state here to show unwanted leads if needed
   };
-  // ✅ Website menu handler
+
+  // Website menu handler
   const handleWebsiteMenuSelect = (key: string) => {
     setActiveSection("website");
     setActiveWebsiteView(key as "gac" | "gaq");
@@ -610,6 +657,7 @@ export default function DashboardPage() {
           </div>
         );
       }
+
       if (activeLeadView === "lead-table") {
         return (
           <div className="space-y-6">
@@ -620,6 +668,7 @@ export default function DashboardPage() {
           </div>
         );
       }
+
       if (activeLeadView === "sale-lead-table") {
         return (
           <div className="space-y-6">
@@ -627,6 +676,16 @@ export default function DashboardPage() {
           </div>
         );
       }
+
+      // ✅ FIX: DSR Lead Table now renders DsrTableModule (not LeadSaleTableModule with isDsr prop)
+      if (activeLeadView === "dsr-lead-table") {
+        return (
+          <div className="space-y-6">
+            <DsrTableModule />
+          </div>
+        );
+      }
+
       if (activeLeadView === "sales-edit-form") {
         if (!selectedLeadForEdit) {
           return renderFallback(
@@ -650,6 +709,7 @@ export default function DashboardPage() {
           </div>
         );
       }
+
       return (
         <div className="space-y-6">
           <LeadsOverviewModule />
@@ -701,7 +761,16 @@ export default function DashboardPage() {
       );
     }
 
-    // ✅ Website section — GAC ya GAQ based on activeWebsiteView
+    // DSR Form — lead data pass karo
+    if (activeSection === "dsr-form") {
+      return (
+        <div className="space-y-6">
+          <DsrFormModule leadData={selectedLeadForDsr} />
+        </div>
+      );
+    }
+
+    // Website section
     if (activeSection === "website") {
       return (
         <div className="space-y-6">
@@ -723,7 +792,6 @@ export default function DashboardPage() {
           activeSection === "dashboard" && userRole?.toLowerCase() === "admin"
         }
         showYearMenu={activeSection === "leads"}
-        // ✅ Website menu props — yahi 3 lines missing thi
         showWebsiteMenu={activeSection === "website"}
         activeWebsiteKey={activeWebsiteView}
         onWebsiteMenuSelect={handleWebsiteMenuSelect}
@@ -745,6 +813,8 @@ export default function DashboardPage() {
         onMonthlyEnquiry={handleMonthlyEnquiry}
         onMonthlyDistribution={handleMonthlyDistribution}
         onUnwantedLeads={handleUnwantedLeads}
+        // ✅ FIX: onDsrSelect now wired to handleDsrLeadSelect
+        onDsrSelect={handleDsrLeadSelect}
         onMasterSelect={(key) => {
           const targeted = permittedMasterTabs.find((tab) => tab.key === key);
           setActiveSection("master");
@@ -817,7 +887,7 @@ export default function DashboardPage() {
           }}
           onWebsiteClick={() => {
             setActiveSection("website");
-            setActiveWebsiteView("gac"); // ✅ default GAC
+            setActiveWebsiteView("gac");
             setPendingModuleKey(null);
             resetAllReportStates();
           }}

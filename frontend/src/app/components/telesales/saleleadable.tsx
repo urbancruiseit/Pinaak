@@ -22,7 +22,7 @@ import {
   setAssignedStatus,
 } from "@/app/features/access/accessSlice";
 
-import { Eye, Edit } from "lucide-react";
+import { Eye, Edit, UserRoundPlus } from "lucide-react";
 import {
   useLeadColumns,
   type LeadColumn,
@@ -276,6 +276,21 @@ export default function LeadsTable() {
           title="Add Rate Quotation"
         >
           💰
+        </button>
+
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            window.dispatchEvent(
+              new CustomEvent("dsr-form", {
+                detail: { lead, action: "navigate" },
+              }),
+            );
+          }}
+          className="px-2 py-1 text-xs font-semibold text-white bg-orange-600 rounded hover:bg-orange-700 flex items-center justify-center"
+          title="Add DSR"
+        >
+          <UserRoundPlus size={20} />
         </button>
         <button
           onClick={(e) => {

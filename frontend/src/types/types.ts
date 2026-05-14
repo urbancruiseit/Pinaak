@@ -146,6 +146,8 @@ export interface LeadRecord {
   updatedAt?: string;
   presales_id?: string | number;
   leadId?: string | number;
+  advisor_id?: string | number;
+  
 }
 export type UserRole =
   | "user"
@@ -164,6 +166,7 @@ export interface User {
   role: UserRole;
   data?: any;
   uuid: string;
+  role_name: string;
 }
 // types/types.ts
 export interface User {
@@ -231,4 +234,54 @@ export interface SaleUser {
   id: number;
   name: string;
   role: string;
+}
+
+export interface DsrRecord {
+  id: string;
+ lead_id: string;
+  customer_id: string;
+  advisor_id: string;
+
+  dsr_date: string;
+  full_name: string;
+
+  booking_id: string;
+  dsr_vehicles: string;
+  dsr_category: string;
+  veh_no: string;
+  driver: string;
+  vendor_name: string;
+
+  customer_rate: string;
+  customer_toll: string;
+  park_tax: string;
+  gst_amt: string;
+  total: string;
+
+  booking_amount: string;
+  other_amount: string;
+  bank_name: string;
+  amount_received: string;
+  tds: string;
+  remaining_amount: string;
+
+  vendor_rate: string;
+  vendor_toll: string;
+  vendor_park_tax: string;
+  customer_to_vendor: string;
+  outstanding: string;
+
+  payment_status: string;
+
+  balance_amount: string;
+  rate: string;
+  pay: string;
+  final_balance: string;
+
+  before_amt: string;
+  final_amt: string;
+  gst: string;
+
+  remarks_ts: string;
+  remarks_mis: string;
 }

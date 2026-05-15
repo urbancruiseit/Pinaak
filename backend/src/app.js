@@ -19,7 +19,7 @@ import NewCustomerRouter from "./module/NewCustomer/newCustomer.route.js";
 import vendorRouter from "./module/Vendors/vendor.route.js";
 import driverRouter from "./module/Driver/driver.route.js";
 import websiteGacRoutes from "./module/Website/website.route.js";
-import dsrRouter from "./module/Dsr/dsr.route.js";
+import dsrRouter from "./module/DSR/dsr.route.js";
 
 dotenv.config();
 const app = express();

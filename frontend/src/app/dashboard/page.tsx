@@ -787,7 +787,9 @@ export default function DashboardPage() {
       <Navbar
         showSalesMenu={true}
         showMaster={activeSection === "master"}
-        showLeadsMenu={activeSection === "leads"}
+        showLeadsMenu={
+          activeSection === "leads" || activeSection === "dsr-form"
+        }
         showDashboardMenu={
           activeSection === "dashboard" && userRole?.toLowerCase() === "admin"
         }

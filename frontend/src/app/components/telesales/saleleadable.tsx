@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { createPortal } from "react-dom";
 import SalesEditLeadForm from "../telesales/salesEditLeadForm";
@@ -40,13 +40,26 @@ const CITY_OPTIONS = [
 
 const YEAR_OPTIONS = ["All", "2025", "2026", "2027", "2028"] as const;
 
-// Map city name → backend ID (adjust to match your backend)
 const CITY_ID_MAP: Record<string, number> = {
   Delhi: 1,
   Mumbai: 2,
   Chandigarh: 3,
   Varanasi: 4,
   Prayagraj: 5,
+};
+
+// ─── Tailwind bg class → CSS hex (mirrors BANNER_GROUP_LIGHT_BG_CLASS) ────────
+const BG_CLASS_TO_HEX: Record<string, string> = {
+  "bg-blue-200": "#bfdbfe",
+  "bg-pink-200": "#fbcfe8",
+  "bg-emerald-200": "#a7f3d0",
+  "bg-purple-200": "#e9d5ff",
+  "bg-blue-100": "#dbeafe",
+  "bg-amber-200": "#fde68a",
+  "bg-rose-200": "#fecdd3",
+  "bg-lime-200": "#d9f99d",
+  "bg-cyan-200": "#a5f3fc",
+  "bg-slate-50": "#f8fafc",
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -135,49 +148,42 @@ export default function LeadsTable() {
   ]);
 
   // ─── Build fetch args ──────────────────────────────────────────────────────
-  const buildFetchArgs = (page: number) => ({
-    page,
-    search: debouncedSearch.trim() || undefined,
-    cityIds:
-      cityFilter !== "All" && CITY_ID_MAP[cityFilter]
-        ? [CITY_ID_MAP[cityFilter]]
-        : undefined,
-    month: selectedMonth ? parseInt(selectedMonth) : null,
-    year: yearFilter !== "All" ? parseInt(yearFilter) : null,
-    advisorId: selectedAdvisorId ?? undefined,
-    status: statusFilter !== "All" ? statusFilter : undefined,
-  });
 
-  // ─── Main fetch ────────────────────────────────────────────────────────────
+  const buildFetchArgs = useCallback(
+    (page: number) => ({
+      page,
+      search: debouncedSearch.trim() || undefined,
+      cityIds:
+        cityFilter !== "All" && CITY_ID_MAP[cityFilter]
+          ? [CITY_ID_MAP[cityFilter]]
+          : undefined,
+      month: selectedMonth ? parseInt(selectedMonth) : null,
+      year: yearFilter !== "All" ? parseInt(yearFilter) : null,
+      advisorId: selectedAdvisorId ?? undefined,
+      status: statusFilter !== "All" ? statusFilter : undefined,
+    }),
+    [
+      debouncedSearch,
+      cityFilter,
+      selectedMonth,
+      yearFilter,
+      selectedAdvisorId,
+      statusFilter,
+    ],
+  );
+
+  // ─── Main fetch ─────────────────────────────────────────────────────────────
   useEffect(() => {
     dispatch(fetchMyAssignedLeads(buildFetchArgs(currentPage)));
-  }, [
-    dispatch,
-    currentPage,
-    debouncedSearch,
-    cityFilter,
-    selectedMonth,
-    yearFilter,
-    selectedAdvisorId,
-    statusFilter,
-  ]);
+  }, [dispatch, currentPage, buildFetchArgs]);
 
-  // ─── Polling every 15s ─────────────────────────────────────────────────────
+  // ─── Polling every 60s ──────────────────────────────────────────────────────
   useEffect(() => {
     const interval = setInterval(() => {
       dispatch(fetchMyAssignedLeads(buildFetchArgs(currentPage)));
-    }, 15000);
+    }, 60000);
     return () => clearInterval(interval);
-  }, [
-    dispatch,
-    currentPage,
-    debouncedSearch,
-    cityFilter,
-    selectedMonth,
-    yearFilter,
-    selectedAdvisorId,
-    statusFilter,
-  ]);
+  }, [dispatch, currentPage, buildFetchArgs]);
 
   // ─── Re-fetch after lead submitted event ──────────────────────────────────
   useEffect(() => {
@@ -278,7 +284,7 @@ export default function LeadsTable() {
           💰
         </button>
 
-        <button
+            <button
           onClick={(e) => {
             e.stopPropagation();
             window.dispatchEvent(
@@ -292,6 +298,7 @@ export default function LeadsTable() {
         >
           <UserRoundPlus size={20} />
         </button>
+
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -327,7 +334,7 @@ export default function LeadsTable() {
 
   // ─── Banner columns meta ───────────────────────────────────────────────────
   const bannerColumnsMeta = useMemo(() => {
-    const meta = columns
+    return columns
       .map((column, index) => {
         const bannerCol = TABLE_BANNER_COLUMNS.find(
           (c) => c.key === column.key,
@@ -338,25 +345,105 @@ export default function LeadsTable() {
           : "bg-slate-50";
         return { ...column, index, headerBgClass, groupLabel };
       })
-      .filter(Boolean) as (LeadColumn & {
+      .filter(Boolean)
+      .sort((a, b) => a.index - b.index) as (LeadColumn & {
       index: number;
       headerBgClass: string;
       groupLabel?: string;
     })[];
-    return meta.sort((a, b) => a.index - b.index);
   }, [columns]);
 
-  // ─── Freeze logic ──────────────────────────────────────────────────────────
+  // ─── Freeze index ──────────────────────────────────────────────────────────
   const freezeIndex = useMemo(() => {
     if (!freezeKey) return -1;
-    return columns.findIndex((column) => column.key === freezeKey);
-  }, [columns, freezeKey]);
+    return bannerColumnsMeta.findIndex((col) => col.key === freezeKey);
+  }, [bannerColumnsMeta, freezeKey]);
 
   useEffect(() => {
     if (!freezeKey) return;
     if (freezeIndex === -1) setFreezeKey(null);
   }, [freezeIndex, freezeKey]);
 
+  // ─── DOM-measured column widths (for accurate sticky left offsets) ─────────
+  const theadRef = useRef<HTMLTableSectionElement>(null);
+  const [colWidths, setColWidths] = useState<number[]>([]);
+
+  useEffect(() => {
+    const measure = () => {
+      if (!theadRef.current) return;
+      // Second <tr> has the per-column <th> cells
+      const headerRow = theadRef.current.querySelectorAll("tr")[1];
+      if (!headerRow) return;
+      const ths = Array.from(headerRow.querySelectorAll("th"));
+      setColWidths(ths.map((th) => th.getBoundingClientRect().width));
+    };
+
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [bannerColumnsMeta, freezeIndex]);
+
+  const calcStickyLeft = useCallback(
+    (colIndex: number): number => {
+      if (colWidths.length === 0) return colIndex * 120; // fallback before first paint
+      return colWidths.slice(0, colIndex).reduce((acc, w) => acc + w, 0);
+    },
+    [colWidths],
+  );
+
+  // ─── Banner group builder (flat list) ─────────────────────────────────────
+  const buildBannerGroups = (
+    cols: typeof bannerColumnsMeta,
+  ): Array<{
+    id: string;
+    label: string;
+    colSpan: number;
+    startIndex: number;
+  }> => {
+    const groups: Array<{
+      id: string;
+      label: string;
+      colSpan: number;
+      startIndex: number;
+    }> = [];
+    let current: (typeof groups)[0] | null = null;
+
+    cols.forEach((col, i) => {
+      if (!col.groupLabel) {
+        if (current) {
+          groups.push(current);
+          current = null;
+        }
+        groups.push({
+          id: `ungrouped-${col.key}`,
+          label: "",
+          colSpan: 1,
+          startIndex: i,
+        });
+        return;
+      }
+      if (!current || current.label !== col.groupLabel) {
+        if (current) groups.push(current);
+        current = {
+          id: `${col.groupLabel}-${col.index}`,
+          label: col.groupLabel,
+          colSpan: 1,
+          startIndex: i,
+        };
+      } else {
+        current.colSpan += 1;
+      }
+    });
+    if (current) groups.push(current);
+    return groups;
+  };
+
+  const bannerGroups = useMemo(
+    () => buildBannerGroups(bannerColumnsMeta),
+    [bannerColumnsMeta],
+  );
+
+  // ─── Filter options ────────────────────────────────────────────────────────
   const statusOptions: ("All" | LeadRecord["status"])[] = [
     "All",
     ...LEAD_STATUS_OPTIONS,
@@ -378,72 +465,16 @@ export default function LeadsTable() {
         if (startDate && pickupDate < startDate) return false;
         if (endDate && pickupDate > endDate) return false;
       }
-
       if (
         selectedPax.length > 0 &&
         !selectedPax.includes(Number(lead.passengerTotal))
       )
         return false;
-
       if (selectedDays.length > 0 && !selectedDays.includes(Number(lead.days)))
         return false;
-
       return true;
     });
   }, [leads, startMonth, endMonth, selectedPax, selectedDays]);
-
-  // ─── Frozen / scrollable columns ──────────────────────────────────────────
-  const frozenColumns = useMemo(
-    () => bannerColumnsMeta.slice(0, freezeIndex + 1),
-    [bannerColumnsMeta, freezeIndex],
-  );
-  const scrollableColumns = useMemo(
-    () => bannerColumnsMeta.slice(freezeIndex + 1),
-    [bannerColumnsMeta, freezeIndex],
-  );
-
-  // ─── Banner groups ─────────────────────────────────────────────────────────
-  const getBannerGroups = (cols: typeof bannerColumnsMeta) => {
-    const groups: Array<{ id: string; label: string; colSpan: number }> = [];
-    let currentGroup: { id: string; label: string; colSpan: number } | null =
-      null;
-
-    const finishGroup = () => {
-      if (currentGroup) {
-        groups.push(currentGroup);
-        currentGroup = null;
-      }
-    };
-
-    cols.forEach((column) => {
-      if (!column.groupLabel) {
-        finishGroup();
-        groups.push({ id: `empty-${column.key}`, label: "", colSpan: 1 });
-        return;
-      }
-      if (!currentGroup || currentGroup.label !== column.groupLabel) {
-        finishGroup();
-        currentGroup = {
-          id: `${column.groupLabel}-${column.index}`,
-          label: column.groupLabel,
-          colSpan: 1,
-        };
-      } else {
-        currentGroup.colSpan += 1;
-      }
-    });
-    finishGroup();
-    return groups;
-  };
-
-  const leftBannerGroups = useMemo(
-    () => getBannerGroups(frozenColumns),
-    [frozenColumns],
-  );
-  const rightBannerGroups = useMemo(
-    () => getBannerGroups(scrollableColumns),
-    [scrollableColumns],
-  );
 
   // ─── Stats ────────────────────────────────────────────────────────────────
   const totalLeadsCount = total || 0;
@@ -457,124 +488,6 @@ export default function LeadsTable() {
 
   const pct = (n: number) =>
     totalLeadsCount > 0 ? ((n / totalLeadsCount) * 100).toFixed(1) : "0.0";
-
-  // ─── ✅ UPDATED: Table section renderer — sticky thead, rows scroll ────────
-  const renderTableSection = (
-    cols: typeof bannerColumnsMeta,
-    banners: typeof leftBannerGroups,
-    isLeft: boolean,
-  ) => (
-    <div
-      className={`overflow-x-auto custom-scrollbar ${isLeft ? "border-r border-white" : ""}`}
-      style={{ maxWidth: "100%" }}
-    >
-      <table className="min-w-full text-xs border border-collapse border-white sm:text-sm">
-        {/* ✅ thead sticky — scroll ke saath upar fixed rahega */}
-        <thead className="sticky top-0 z-20">
-          <tr>
-            {banners.map((group) => {
-              const groupBgClass = group.label
-                ? (BANNER_GROUP_BG_CLASS[group.label] ?? "bg-slate-900")
-                : "bg-white border-b-0";
-              return (
-                <th
-                  key={group.id}
-                  colSpan={group.colSpan}
-                  className={`p-1 z-30 ${group.label ? "border border-white" : ""} ${groupBgClass}`}
-                >
-                  {group.label && (
-                    <div className="px-2 py-1 text-[18px] font-black uppercase tracking-[0.35em] text-white">
-                      {group.label}
-                    </div>
-                  )}
-                </th>
-              );
-            })}
-          </tr>
-          <tr>
-            {cols.map((column) => {
-              const bannerCol = TABLE_BANNER_COLUMNS.find(
-                (c) => c.key === column.key,
-              );
-              const groupLabel = bannerCol?.groupLabel;
-              const headerBgClass = groupLabel
-                ? (BANNER_GROUP_BG_CLASS[groupLabel] ?? "bg-slate-900")
-                : "bg-slate-900";
-              return (
-                <th
-                  key={column.key}
-                  scope="col"
-                  className={`border border-white ${headerBgClass} px-1 text-left text-[11px] font-bold uppercase tracking-wide text-white sm:text-xs z-20`}
-                >
-                  <div className="relative flex items-center justify-between w-full">
-                    <span className="text-center w-full">{column.label}</span>
-                  </div>
-                </th>
-              );
-            })}
-          </tr>
-        </thead>
-
-        {/* ✅ tbody — yahi scroll hoga */}
-        <tbody>
-          {loading ? (
-            <tr>
-              <td
-                className="text-sm font-semibold text-center border border-white text-slate-500 py-8"
-                colSpan={cols.length}
-              >
-                Loading...
-              </td>
-            </tr>
-          ) : error ? (
-            <tr>
-              <td
-                className="px-4 text-sm font-semibold text-center border border-white text-rose-500 py-8"
-                colSpan={cols.length}
-              >
-                Error: {error}
-              </td>
-            </tr>
-          ) : filteredLeads.length === 0 ? (
-            <tr>
-              <td
-                className="px-4 text-sm font-semibold text-center border border-white text-slate-500 py-8"
-                colSpan={cols.length}
-              >
-                No leads.
-              </td>
-            </tr>
-          ) : (
-            filteredLeads.map((lead, rowIndex) => (
-              <tr
-                key={lead.id}
-                className={rowIndex % 2 === 0 ? "bg-white" : "bg-slate-50"}
-              >
-                {cols.map((column) => {
-                  const isAddress =
-                    column.key === "pickupAddress" ||
-                    column.key === "dropAddress" ||
-                    column.key === "itinerary";
-                  return (
-                    <td
-                      key={column.key}
-                      className={`
-                        whitespace-nowrap border border-white text-slate-800 md:px-2 md:py-1
-                        ${isAddress ? "text-[12px] !font-normal" : "text-sm font-extrabold"}
-                        ${column.headerBgClass}
-                      `.trim()}
-                    >
-                      {column.render(lead, rowIndex)}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
-    </div>
-  );
 
   // ─── Edit mode ─────────────────────────────────────────────────────────────
   if (detailLead && isEditMode) {
@@ -629,7 +542,6 @@ export default function LeadsTable() {
                 <div className="text-md text-white">(100.0%)</div>
               </div>
 
-              {/* Status stat cards */}
               {[
                 {
                   label: "NEW",
@@ -1039,34 +951,170 @@ export default function LeadsTable() {
           </div>
         </div>
 
-        {/* ── ✅ UPDATED Table Container — sticky header + scrollable rows ── */}
+        {/* ── Table Container ── */}
         <div className="mt-2 bg-white border shadow-sm rounded-3xl border-white w-full flex flex-col">
-          {/* ✅ Fixed height container — sirf rows scroll hongi, header fixed rahega */}
           <div
-            className="border border-white rounded-2xl overflow-hidden"
+            className="border border-white rounded-2xl"
             style={{
               maxHeight: "calc(100vh - 320px)",
               overflowY: "auto",
-              overflowX: "hidden",
+              overflowX: "auto",
             }}
           >
-            <div className="flex">
-              {/* Frozen / Left columns */}
-              {frozenColumns.length > 0 && (
-                <div className="sticky left-0 z-30 bg-white flex flex-col border-r border-white flex-shrink-0">
-                  {renderTableSection(frozenColumns, leftBannerGroups, true)}
-                </div>
-              )}
+            <table className="min-w-full text-xs border-collapse border border-white sm:text-sm">
+              {/* ── Single thead — sticky top:0 ── */}
+              <thead
+                ref={theadRef}
+                style={{ position: "sticky", top: 0, zIndex: 20 }}
+              >
+                {/* Banner / group header row */}
+                <tr>
+                  {bannerGroups.map((group) => {
+                    const bgClass = group.label
+                      ? (BANNER_GROUP_BG_CLASS[group.label] ?? "bg-slate-900")
+                      : "bg-white";
 
-              {/* Scrollable / Right columns */}
-              <div className="flex-1 min-w-0 bg-white overflow-x-auto custom-scrollbar">
-                {renderTableSection(
-                  scrollableColumns,
-                  rightBannerGroups,
-                  false,
+                    const isFrozenBanner =
+                      freezeIndex >= 0 && group.startIndex <= freezeIndex;
+
+                    return (
+                      <th
+                        key={group.id}
+                        colSpan={group.colSpan}
+                        className={`p-1 ${group.label ? "border border-white" : ""} ${bgClass}`}
+                        style={
+                          isFrozenBanner
+                            ? {
+                                position: "sticky",
+                                left: calcStickyLeft(group.startIndex),
+                                zIndex: 40,
+                              }
+                            : {}
+                        }
+                      >
+                        {group.label && (
+                          <div className="px-2 py-1 text-[18px] font-black uppercase tracking-[0.35em] text-white">
+                            {group.label}
+                          </div>
+                        )}
+                      </th>
+                    );
+                  })}
+                </tr>
+
+                {/* Column label row */}
+                <tr>
+                  {bannerColumnsMeta.map((column, i) => {
+                    const isFrozen = freezeIndex >= 0 && i <= freezeIndex;
+                    const bgClass = column.groupLabel
+                      ? (BANNER_GROUP_BG_CLASS[column.groupLabel] ??
+                        "bg-slate-900")
+                      : "bg-slate-900";
+
+                    return (
+                      <th
+                        key={column.key}
+                        scope="col"
+                        className={`border border-white ${bgClass} px-1 text-left text-[11px] font-bold uppercase tracking-wide text-white sm:text-xs`}
+                        style={
+                          isFrozen
+                            ? {
+                                position: "sticky",
+                                left: calcStickyLeft(i),
+                                zIndex: 30,
+                              }
+                            : {}
+                        }
+                      >
+                        <div className="relative flex items-center justify-between w-full">
+                          <span className="text-center w-full">
+                            {column.label}
+                          </span>
+                        </div>
+                      </th>
+                    );
+                  })}
+                </tr>
+              </thead>
+
+              {/* ── Single tbody — this scrolls ── */}
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td
+                      className="text-sm font-semibold text-center border border-white text-slate-500 py-8"
+                      colSpan={bannerColumnsMeta.length}
+                    >
+                      Loading...
+                    </td>
+                  </tr>
+                ) : error ? (
+                  <tr>
+                    <td
+                      className="px-4 text-sm font-semibold text-center border border-white text-rose-500 py-8"
+                      colSpan={bannerColumnsMeta.length}
+                    >
+                      Error: {error}
+                    </td>
+                  </tr>
+                ) : filteredLeads.length === 0 ? (
+                  <tr>
+                    <td
+                      className="px-4 text-sm font-semibold text-center border border-white text-slate-500 py-8"
+                      colSpan={bannerColumnsMeta.length}
+                    >
+                      No leads.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredLeads.map((lead, rowIndex) => {
+                    const rowBaseHex =
+                      rowIndex % 2 === 0 ? "#ffffff" : "#f8fafc";
+
+                    return (
+                      <tr key={lead.id}>
+                        {bannerColumnsMeta.map((column, i) => {
+                          const isFrozen = freezeIndex >= 0 && i <= freezeIndex;
+                          const isAddress =
+                            column.key === "pickupAddress" ||
+                            column.key === "dropAddress" ||
+                            column.key === "itinerary";
+
+                          // Frozen cells: use actual column bg color (not white)
+                          const frozenBgColor = isFrozen
+                            ? (BG_CLASS_TO_HEX[column.headerBgClass] ??
+                              rowBaseHex)
+                            : undefined;
+
+                          return (
+                            <td
+                              key={column.key}
+                              className={`whitespace-nowrap border border-white text-slate-800 md:px-2 md:py-1 ${
+                                isAddress
+                                  ? "text-[12px] !font-normal"
+                                  : "text-sm font-extrabold"
+                              } ${isFrozen ? "" : column.headerBgClass}`}
+                              style={
+                                isFrozen
+                                  ? {
+                                      position: "sticky",
+                                      left: calcStickyLeft(i),
+                                      zIndex: 10,
+                                      backgroundColor: frozenBgColor,
+                                    }
+                                  : {}
+                              }
+                            >
+                              {column.render(lead, rowIndex)}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })
                 )}
-              </div>
-            </div>
+              </tbody>
+            </table>
           </div>
 
           {/* Pagination */}

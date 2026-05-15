@@ -7,7 +7,7 @@ interface ApiResponse<T> {
 }
 
 // ─── CREATE DSR ───────────────────────────────────────────────────────────────
-// form aur backend dono camelCase — direct bhejo, no mapping
+
 export const createDsrApi = async (dsrData: Record<string, any>) => {
   try {
     console.log("Create DSR Payload:", dsrData);
@@ -50,6 +50,47 @@ export const updateDsrApi = async (
         apiError?.details ||
         error.message ||
         "Failed to update DSR",
+    );
+  }
+};
+
+// ─── GET DSR BY ID ───────────────────────────────────────────────────────────────
+export const getDsrByIdApi = async (id: string) => {
+  try {
+    const response = await axiosInstance.get<ApiResponse<any>>(`/dsr/${id}`);
+    return response.data.data;
+  } catch (error: any) {
+    console.error(
+      "Get DSR By ID Error:",
+      error.response?.data || error.message,
+    );
+    const apiError = error.response?.data;
+    throw new Error(
+      apiError?.error ||
+        apiError?.message ||
+        apiError?.details ||
+        error.message ||
+        "Failed to fetch DSR details",
+    );
+  }
+};
+
+// ─── GET ALL DSR ───────────────────────────────────────────────────────────────
+export const getAllDsrApi = async (params: Record<string, any>) => {
+  try {
+    const response = await axiosInstance.get<ApiResponse<any>>("/dsr/getAll", {
+      params,
+    });
+    return response.data.data;
+  } catch (error: any) {
+    console.error("Get All DSR Error:", error.response?.data || error.message);
+    const apiError = error.response?.data;
+    throw new Error(
+      apiError?.error ||
+        apiError?.message ||
+        apiError?.details ||
+        error.message ||
+        "Failed to fetch DSR list",
     );
   }
 };

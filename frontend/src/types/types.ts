@@ -238,50 +238,47 @@ export interface SaleUser {
 
 export interface DsrRecord {
   id: string;
- lead_id: string;
-  customer_id: string;
-  advisor_id: string;
-
-  dsr_date: string;
-  full_name: string;
-
-  booking_id: string;
-  dsr_vehicles: string;
-  dsr_category: string;
-  veh_no: string;
-  driver: string;
-  vendor_name: string;
-
-  customer_rate: string;
-  customer_toll: string;
-  park_tax: string;
-  gst_amt: string;
-  total: string;
-
-  booking_amount: string;
-  other_amount: string;
-  bank_name: string;
-  amount_received: string;
-  tds: string;
-  remaining_amount: string;
-
-  vendor_rate: string;
-  vendor_toll: string;
-  vendor_park_tax: string;
-  customer_to_vendor: string;
-  outstanding: string;
-
-  payment_status: string;
-
-  balance_amount: string;
-  rate: string;
-  pay: string;
-  final_balance: string;
-
-  before_amt: string;
-  final_amt: string;
-  gst: string;
-
-  remarks_ts: string;
-  remarks_mis: string;
+  status?: string;
+  aged?: number;
+  liveorexpiry?: string;
+  dsrDate?: string;
+  source?: string;
+  presales?: string;
+  telesales?: string;
+  fullName?: string;
+  leadId?: string;
+  customerId?: string;
+  advisorId?: string;
+  bookingId?: string;
+  dsrVehicles?: string;
+  dsrCategory?: string;
+  vehNo?: string;
+  driver?: string;
+  vendorName?: string;
+  customerRate?: string | number;
+  customerToll?: string | number;
+  parkTax?: string | number;
+  gstAmt?: string | number;
+  total?: string | number;
+  bookingAmount?: string | number;
+  otherAmount?: string | number;
+  bankName?: string;
+  amountReceived?: string | number;
+  tds?: string | number;
+  remainingAmount?: string | number;
+  vendorRate?: string | number;
+  vendorToll?: string | number;
+  vendorParkTax?: string | number;
+  customerToVendor?: string | number;
+  outstanding?: string | number;
+  paymentStatus?: string;
+  balanceAmount?: string | number;
+  rate?: string | number;
+  pay?: string | number;
+  finalBalance?: string | number;
+  before?: string | number;
+  final?: string | number;
+  gst?: string | number;
+  remarksTS?: string;
+  remarksMIS?: string;
 }

@@ -4,7 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { LeadRecord } from "../../../../../types/types";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/app/redux/store";
-import { fetchLeads, setStatus } from "@/app/features/lead/leadSlice";
+import {
+  fetchLeads,
+  setStatus,
+} from "@/app/features/lead/leadSlice";
 import LeadDetailsModel from "../../../DetailModel/LeadModel/leadTabledetailsmodel";
 import UnwantedModal from "../../../DetailModel/LeadModel/UnwantedModal";
 import Pagination from "../../../ui/pagination";
@@ -33,6 +36,10 @@ import {
   type LeadStatusCounts,
   type LeadStatusPercentages,
 } from "../../../../../types/LeadsTable/leadstatus";
+import {
+  listenToLeadUpdates,
+  removeLeadListeners,
+} from "@/app/socket/leadsocket";
 
 const BANNER_GROUP_LIGHT_BG_CLASS: Record<string, string> = {
   STATUS: "bg-blue-200",
@@ -126,6 +133,8 @@ export default function LeadsTable() {
       }),
     );
   }, [dispatch, currentPage, reduxMonth, reduxYear, reduxStatus]);
+
+ 
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -255,8 +264,9 @@ export default function LeadsTable() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [daysOpen]);
 
+  // ─── Column meta (sorted by index) ───────────────────────────────────────
   const bannerColumnsMeta = useMemo(() => {
-    const meta = columns
+    return columns
       .map((column, index) => {
         const bannerCol = TABLE_BANNER_COLUMNS.find(
           (c) => c.key === column.key,
@@ -267,24 +277,125 @@ export default function LeadsTable() {
           : "bg-slate-50";
         return { ...column, index, headerBgClass, groupLabel };
       })
-      .filter(Boolean) as (LeadColumn & {
+      .sort((a, b) => a.index - b.index) as (LeadColumn & {
       index: number;
       headerBgClass: string;
       groupLabel?: string;
     })[];
-    return meta.sort((a, b) => a.index - b.index);
   }, [columns]);
 
+  // ─── Freeze index ─────────────────────────────────────────────────────────
   const freezeIndex = useMemo(() => {
     if (!freezeKey) return -1;
-    return columns.findIndex((column) => column.key === freezeKey);
-  }, [columns, freezeKey]);
+    return bannerColumnsMeta.findIndex((col) => col.key === freezeKey);
+  }, [bannerColumnsMeta, freezeKey]);
 
   useEffect(() => {
     if (!freezeKey) return;
     if (freezeIndex === -1) setFreezeKey(null);
   }, [freezeIndex, freezeKey]);
 
+  // ─── DOM-measured column widths for accurate sticky left offsets ─────────
+  // We measure actual <th> widths after render so frozen cells sit flush
+  // against each other with no gap.
+  const theadRef = useRef<HTMLTableSectionElement>(null);
+  const [colWidths, setColWidths] = useState<number[]>([]);
+
+  useEffect(() => {
+    const measure = () => {
+      if (!theadRef.current) return;
+      // Second <tr> has the per-column <th> cells
+      const headerRow = theadRef.current.querySelectorAll("tr")[1];
+      if (!headerRow) return;
+      const ths = Array.from(headerRow.querySelectorAll("th"));
+      setColWidths(ths.map((th) => th.getBoundingClientRect().width));
+    };
+
+    measure();
+    // Re-measure on window resize (e.g. zoom change)
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, [bannerColumnsMeta, freezeIndex]);
+
+  const calcStickyLeft = useCallback(
+    (colIndex: number): number => {
+      if (colWidths.length === 0) return colIndex * 120; // fallback before first paint
+      return colWidths.slice(0, colIndex).reduce((acc, w) => acc + w, 0);
+    },
+    [colWidths],
+  );
+
+  // ─── Tailwind bg → CSS hex map for frozen td background ──────────────────
+  // We need real CSS color values (not class names) to set backgroundColor
+  // on sticky <td>s so they don't become transparent over scrolled content.
+  // This map must mirror BANNER_GROUP_LIGHT_BG_CLASS.
+  const BG_CLASS_TO_HEX: Record<string, string> = {
+    "bg-blue-200": "#bfdbfe",
+    "bg-pink-200": "#fbcfe8",
+    "bg-emerald-200": "#a7f3d0",
+    "bg-purple-200": "#e9d5ff",
+    "bg-blue-100": "#dbeafe",
+    "bg-amber-200": "#fde68a",
+    "bg-rose-200": "#fecdd3",
+    "bg-lime-200": "#d9f99d",
+    "bg-cyan-200": "#a5f3fc",
+    "bg-slate-50": "#f8fafc",
+  };
+
+  // ─── Banner group builder (for a flat list of columns) ───────────────────
+  const buildBannerGroups = (
+    cols: typeof bannerColumnsMeta,
+  ): Array<{
+    id: string;
+    label: string;
+    colSpan: number;
+    startIndex: number;
+  }> => {
+    const groups: Array<{
+      id: string;
+      label: string;
+      colSpan: number;
+      startIndex: number;
+    }> = [];
+    let current: (typeof groups)[0] | null = null;
+
+    cols.forEach((col, i) => {
+      if (!col.groupLabel) {
+        if (current) {
+          groups.push(current);
+          current = null;
+        }
+        // Ungrouped column — push a single empty-label group
+        groups.push({
+          id: `ungrouped-${col.key}`,
+          label: "",
+          colSpan: 1,
+          startIndex: i,
+        });
+        return;
+      }
+      if (!current || current.label !== col.groupLabel) {
+        if (current) groups.push(current);
+        current = {
+          id: `${col.groupLabel}-${col.index}`,
+          label: col.groupLabel,
+          colSpan: 1,
+          startIndex: i,
+        };
+      } else {
+        current.colSpan += 1;
+      }
+    });
+    if (current) groups.push(current);
+    return groups;
+  };
+
+  const bannerGroups = useMemo(
+    () => buildBannerGroups(bannerColumnsMeta),
+    [bannerColumnsMeta],
+  );
+
+  // ─── Filters ──────────────────────────────────────────────────────────────
   const statusOptions: ("All" | LeadRecord["status"])[] = [
     "All",
     ...LEAD_STATUS_OPTIONS,
@@ -367,168 +478,12 @@ export default function LeadsTable() {
     selectedDays,
   ]);
 
-  const frozenColumns = useMemo(
-    () => bannerColumnsMeta.slice(0, freezeIndex + 1),
-    [bannerColumnsMeta, freezeIndex],
-  );
-  const scrollableColumns = useMemo(
-    () => bannerColumnsMeta.slice(freezeIndex + 1),
-    [bannerColumnsMeta, freezeIndex],
-  );
-
-  const getBannerGroups = (cols: typeof bannerColumnsMeta) => {
-    const groups: Array<{ id: string; label: string; colSpan: number }> = [];
-    let currentGroup: { id: string; label: string; colSpan: number } | null =
-      null;
-    const finishGroup = () => {
-      if (currentGroup) {
-        groups.push(currentGroup);
-        currentGroup = null;
-      }
-    };
-    cols.forEach((column) => {
-      if (!column.groupLabel) {
-        finishGroup();
-        return;
-      }
-      if (!currentGroup || currentGroup.label !== column.groupLabel) {
-        finishGroup();
-        currentGroup = {
-          id: `${column.groupLabel}-${column.index}`,
-          label: column.groupLabel,
-          colSpan: 1,
-        };
-      } else {
-        currentGroup.colSpan += 1;
-      }
-    });
-    finishGroup();
-    return groups;
-  };
-
-  const leftBannerGroups = useMemo(
-    () => getBannerGroups(frozenColumns),
-    [frozenColumns],
-  );
-  const rightBannerGroups = useMemo(
-    () => getBannerGroups(scrollableColumns),
-    [scrollableColumns],
-  );
-
   const statusPercentages: LeadStatusPercentages = useMemo(
     () => calculateLeadStatusPercentages(statusCounts),
     [statusCounts],
   );
 
-  // ✅ UPDATED: Sirf table rows scroll hongi, header fixed rahega
-  const renderTableSection = (
-    cols: typeof bannerColumnsMeta,
-    banners: typeof leftBannerGroups,
-    isLeft: boolean,
-  ) => (
-    <div
-      className={`overflow-x-auto custom-scrollbar ${isLeft ? "border-r border-white" : ""}`}
-      style={{ maxWidth: "100%" }}
-    >
-      <table className="min-w-full text-xs border-collapse border border-white sm:text-sm">
-        {/* ✅ thead sticky — scroll ke saath upar fixed rahega */}
-        <thead className="sticky top-0 z-20">
-          <tr>
-            {banners.map((group) => {
-              const groupBgClass = group.label
-                ? (BANNER_GROUP_BG_CLASS[group.label] ?? "bg-slate-900")
-                : "bg-white border-b-0";
-              return (
-                <th
-                  key={group.id}
-                  colSpan={group.colSpan}
-                  className={`p-1 z-30 ${group.label ? "border border-white" : ""} ${groupBgClass}`}
-                >
-                  {group.label && (
-                    <div className="px-2 py-1 text-[18px] font-black uppercase tracking-[0.35em] text-white min-w-max">
-                      {group.label}
-                    </div>
-                  )}
-                </th>
-              );
-            })}
-          </tr>
-          <tr>
-            {cols.map((column) => {
-              const bannerCol = TABLE_BANNER_COLUMNS.find(
-                (c) => c.key === column.key,
-              );
-              const groupLabel = bannerCol?.groupLabel;
-              const headerBgClass = groupLabel
-                ? (BANNER_GROUP_BG_CLASS[groupLabel] ?? "bg-slate-900")
-                : "bg-slate-900";
-              return (
-                <th
-                  key={column.key}
-                  scope="col"
-                  className={`border border-white ${headerBgClass} px-1 text-left text-[11px] font-bold uppercase tracking-wide text-white sm:text-xs z-20`}
-                >
-                  <div className="relative flex items-center justify-between w-full">
-                    <span className="text-center w-full">{column.label}</span>
-                  </div>
-                </th>
-              );
-            })}
-          </tr>
-        </thead>
-
-        {/* ✅ tbody — yahi scroll hoga */}
-        <tbody>
-          {loading ? (
-            <tr>
-              <td
-                className="text-sm font-semibold text-center border border-white text-slate-500 py-8"
-                colSpan={cols.length}
-              >
-                Loading...
-              </td>
-            </tr>
-          ) : filteredLeads.length === 0 ? (
-            <tr>
-              <td
-                className="px-4 text-sm font-semibold text-center border border-white text-slate-500 py-8"
-                colSpan={cols.length}
-              >
-                No leads.
-              </td>
-            </tr>
-          ) : (
-            filteredLeads.map((lead, rowIndex) => (
-              <tr
-                key={lead.id}
-                className={rowIndex % 2 === 0 ? "bg-white" : "bg-slate-50"}
-              >
-                {cols.map((column) => {
-                  const isAddress =
-                    column.key === "pickupAddress" ||
-                    column.key === "dropAddress" ||
-                    column.key === "itinerary";
-                  return (
-                    <td
-                      key={column.key}
-                      className={`whitespace-nowrap border border-white text-slate-800 p-[3px_6px] ${
-                        isAddress
-                          ? "text-[12px] !font-normal"
-                          : "text-sm font-extrabold"
-                      } ${column.headerBgClass}`}
-                    >
-                      {column.render(lead, rowIndex)}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))
-          )}
-        </tbody>
-      </table>
-    </div>
-  );
-
+  // ─── Edit view ────────────────────────────────────────────────────────────
   if (editLead) {
     return (
       <div className="w-full">
@@ -552,6 +507,7 @@ export default function LeadsTable() {
     );
   }
 
+  // ─── Main render ──────────────────────────────────────────────────────────
   return (
     <>
       <div className="w-full">
@@ -691,36 +647,172 @@ export default function LeadsTable() {
 
         {/* ─── Table Container ─── */}
         <div className="mt-1 bg-white border shadow-sm rounded-3xl border-white w-full flex flex-col">
-          {/* ✅ KEY CHANGE: is div pe fixed height + overflow-y-auto lagaya
-               Sirf table rows yahan scroll hongi.
-               calc mein adjust karo agar layout shift ho:
-               - 280px = top banner (~160px) + filter bar (~60px) + pagination (~60px)
-          */}
+          {/*
+           * KEY FIX: Single scroll container + single <table>
+           * - overflowY: auto  → vertical scroll (rows scroll, thead stays fixed)
+           * - overflowX: auto  → horizontal scroll (sticky columns stay on left)
+           * Both scroll axes share one context so frozen columns and thead
+           * are always in sync.
+           */}
           <div
-            className="border border-white rounded-2xl overflow-hidden"
+            className="border border-white rounded-2xl"
             style={{
               maxHeight: "calc(100vh - 310px)",
               overflowY: "auto",
-              overflowX: "hidden",
+              overflowX: "auto",
             }}
           >
-            <div className="flex">
-              {/* ─── Frozen / Left columns ─── */}
-              {frozenColumns.length > 0 && (
-                <div className="sticky left-0 z-30 bg-white flex flex-col border-r border-white flex-shrink-0">
-                  {renderTableSection(frozenColumns, leftBannerGroups, true)}
-                </div>
-              )}
+            <table className="min-w-full text-xs border-collapse border border-white sm:text-sm">
+              {/* ── Single thead — sticky top:0 ── */}
+              <thead
+                ref={theadRef}
+                style={{ position: "sticky", top: 0, zIndex: 20 }}
+              >
+                {/* Banner / group header row */}
+                <tr>
+                  {bannerGroups.map((group, gi) => {
+                    const bgClass = group.label
+                      ? (BANNER_GROUP_BG_CLASS[group.label] ?? "bg-slate-900")
+                      : "bg-white";
 
-              {/* ─── Scrollable / Right columns ─── */}
-              <div className="flex-1 min-w-0 bg-white overflow-x-auto custom-scrollbar">
-                {renderTableSection(
-                  scrollableColumns,
-                  rightBannerGroups,
-                  false,
+                    // For frozen banner cells, we need sticky left too.
+                    // Find the absolute column index where this group starts.
+                    const absoluteStartIndex = group.startIndex;
+                    const isFrozenBanner =
+                      freezeIndex >= 0 && absoluteStartIndex <= freezeIndex;
+
+                    return (
+                      <th
+                        key={group.id}
+                        colSpan={group.colSpan}
+                        className={`p-1 ${group.label ? "border border-white" : ""} ${bgClass}`}
+                        style={{
+                          ...(isFrozenBanner
+                            ? {
+                                position: "sticky",
+                                left: calcStickyLeft(absoluteStartIndex),
+                                zIndex: 40,
+                              }
+                            : {}),
+                        }}
+                      >
+                        {group.label && (
+                          <div className="px-2 py-1 text-[18px] font-black uppercase tracking-[0.35em] text-white min-w-max">
+                            {group.label}
+                          </div>
+                        )}
+                      </th>
+                    );
+                  })}
+                </tr>
+
+                {/* Column label row */}
+                <tr>
+                  {bannerColumnsMeta.map((column, i) => {
+                    const isFrozen = freezeIndex >= 0 && i <= freezeIndex;
+                    const bgClass = column.groupLabel
+                      ? (BANNER_GROUP_BG_CLASS[column.groupLabel] ??
+                        "bg-slate-900")
+                      : "bg-slate-900";
+
+                    return (
+                      <th
+                        key={column.key}
+                        scope="col"
+                        className={`border border-white ${bgClass} px-1 text-left text-[11px] font-bold uppercase tracking-wide text-white sm:text-xs`}
+                        style={{
+                          ...(isFrozen
+                            ? {
+                                position: "sticky",
+                                left: calcStickyLeft(i),
+                                zIndex: 30,
+                              }
+                            : {}),
+                        }}
+                      >
+                        <div className="relative flex items-center justify-between w-full">
+                          <span className="text-center w-full">
+                            {column.label}
+                          </span>
+                        </div>
+                      </th>
+                    );
+                  })}
+                </tr>
+              </thead>
+
+              {/* ── Single tbody — this scrolls ── */}
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td
+                      className="text-sm font-semibold text-center border border-white text-slate-500 py-8"
+                      colSpan={bannerColumnsMeta.length}
+                    >
+                      Loading...
+                    </td>
+                  </tr>
+                ) : filteredLeads.length === 0 ? (
+                  <tr>
+                    <td
+                      className="px-4 text-sm font-semibold text-center border border-white text-slate-500 py-8"
+                      colSpan={bannerColumnsMeta.length}
+                    >
+                      No leads.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredLeads.map((lead, rowIndex) => {
+                    // Alternating row base colors (even=white, odd=slate-50)
+                    const rowBaseHex =
+                      rowIndex % 2 === 0 ? "#ffffff" : "#f8fafc";
+
+                    return (
+                      <tr key={lead.id}>
+                        {bannerColumnsMeta.map((column, i) => {
+                          const isFrozen = freezeIndex >= 0 && i <= freezeIndex;
+                          const isAddress =
+                            column.key === "pickupAddress" ||
+                            column.key === "dropAddress" ||
+                            column.key === "itinerary";
+
+                          // For frozen cells: use the column's actual bg color
+                          // (from BANNER_GROUP_LIGHT_BG_CLASS) so color is preserved.
+                          // Fall back to row stripe color for ungrouped columns.
+                          const frozenBgColor = isFrozen
+                            ? (BG_CLASS_TO_HEX[column.headerBgClass] ??
+                              rowBaseHex)
+                            : undefined;
+
+                          return (
+                            <td
+                              key={column.key}
+                              className={`whitespace-nowrap border border-white text-slate-800 p-[3px_6px] ${
+                                isAddress
+                                  ? "text-[12px] !font-normal"
+                                  : "text-sm font-extrabold"
+                              } ${isFrozen ? "" : column.headerBgClass}`}
+                              style={{
+                                ...(isFrozen
+                                  ? {
+                                      position: "sticky",
+                                      left: calcStickyLeft(i),
+                                      zIndex: 10,
+                                      backgroundColor: frozenBgColor,
+                                    }
+                                  : {}),
+                              }}
+                            >
+                              {column.render(lead, rowIndex)}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  })
                 )}
-              </div>
-            </div>
+              </tbody>
+            </table>
           </div>
 
           {/* ─── Pagination — always visible at bottom ─── */}

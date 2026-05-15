@@ -18,6 +18,9 @@ import {
   Loader2,
   CheckCircle,
   XCircle,
+  MessageCircle,
+  Plus,
+  Trash2,
 } from "lucide-react";
 import type { LeadRecord } from "@/types/types";
 import { AppDispatch, RootState } from "../../../redux/store";
@@ -29,7 +32,26 @@ import {
   clearCurrentDsr,
 } from "../../../features/Dsr/dsrSlice";
 
-// ─── camelCase — backend ke saath exact match ─────────────────────────────────
+// ─── Amount Received Row interface ───────────────────────────────────────────
+interface AmountReceivedRow {
+  amountReceivedDate: string;
+  ucBankName: string;
+  customerBankName: string;
+  transactionId: string;
+  remarksAmountReceived: string;
+  enteredBy: string;
+}
+
+const emptyAmountRow = (): AmountReceivedRow => ({
+  amountReceivedDate: "",
+  ucBankName: "",
+  customerBankName: "",
+  transactionId: "",
+  remarksAmountReceived: "",
+  enteredBy: "",
+});
+
+// ─── Main DSR Form Data interface ────────────────────────────────────────────
 interface DsrFormData {
   id: string;
   leadId: string;
@@ -70,6 +92,14 @@ interface DsrFormData {
   gst: string;
   remarksTS: string;
   remarksMIS: string;
+  remarksbyAccounts: string;
+  refundCancelShare: string;
+  feedbackByOfcs?: string;
+  feedbackByCustomer?: string;
+  googleRating?: string;
+  mobileAppRating?: string;
+  amountReceivedRows?: AmountReceivedRow[];
+  vendorAmountReceivedRows?: AmountReceivedRow[];
 }
 
 const initialFormData: DsrFormData = {
@@ -112,6 +142,14 @@ const initialFormData: DsrFormData = {
   gst: "",
   remarksTS: "",
   remarksMIS: "",
+  remarksbyAccounts: "",
+  refundCancelShare: "",
+  feedbackByOfcs: "",
+  feedbackByCustomer: "",
+  googleRating: "",
+  mobileAppRating: "",
+  amountReceivedRows: [emptyAmountRow()],
+  vendorAmountReceivedRows: [emptyAmountRow()],
 };
 
 interface DsrFormProps {
@@ -130,11 +168,19 @@ export default function DsrForm({ leadData }: DsrFormProps) {
   } = useSelector((state: RootState) => state.dsr);
 
   const [formData, setFormData] = useState<DsrFormData>(initialFormData);
+  const [amountRows, setAmountRows] = useState<AmountReceivedRow[]>([
+    emptyAmountRow(),
+  ]);
+  const [vendorAmountRows, setVendorAmountRows] = useState<AmountReceivedRow[]>(
+    [emptyAmountRow()],
+  );
   const [showSuccess, setShowSuccess] = useState(false);
   const [showError, setShowError] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
-  // ✅ leadData se naam + IDs pre-fill
+  const MAX_ROWS = 5;
+
+  // ─── leadData se naam + IDs pre-fill ────────────────────────────────────
   useEffect(() => {
     if (leadData) {
       const l = leadData as any;
@@ -158,7 +204,7 @@ export default function DsrForm({ leadData }: DsrFormProps) {
       }, 3000);
       handleReset();
     }
-  }, [createSuccess, updateSuccess]);
+  }, [createSuccess, updateSuccess, dispatch]);
 
   useEffect(() => {
     const err = createError || updateError;
@@ -171,8 +217,9 @@ export default function DsrForm({ leadData }: DsrFormProps) {
         dispatch(resetUpdateState());
       }, 5000);
     }
-  }, [createError, updateError]);
+  }, [createError, updateError, dispatch]);
 
+  // ─── Main form field change ───────────────────────────────────────────────
   const handleFieldChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
@@ -182,7 +229,57 @@ export default function DsrForm({ leadData }: DsrFormProps) {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // ✅ Directly camelCase payload bhejo — no mapping needed
+  // ─── Amount Received Row handlers ────────────────────────────────────────
+  const handleRowChange = (
+    index: number,
+    fieldName: keyof AmountReceivedRow,
+    value: string,
+  ) => {
+    setAmountRows((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [fieldName]: value };
+      return updated;
+    });
+  };
+
+  const handleAddRow = () => {
+    if (amountRows.length < MAX_ROWS) {
+      setAmountRows((prev) => [...prev, emptyAmountRow()]);
+    }
+  };
+
+  const handleRemoveRow = (index: number) => {
+    if (amountRows.length > 1) {
+      setAmountRows((prev) => prev.filter((_, i) => i !== index));
+    }
+  };
+
+  // ─── Vendor Amount Received Row handlers ─────────────────────────────────
+  const handleVendorRowChange = (
+    index: number,
+    fieldName: keyof AmountReceivedRow,
+    value: string,
+  ) => {
+    setVendorAmountRows((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [fieldName]: value };
+      return updated;
+    });
+  };
+
+  const handleVendorAddRow = () => {
+    if (vendorAmountRows.length < MAX_ROWS) {
+      setVendorAmountRows((prev) => [...prev, emptyAmountRow()]);
+    }
+  };
+
+  const handleVendorRemoveRow = (index: number) => {
+    if (vendorAmountRows.length > 1) {
+      setVendorAmountRows((prev) => prev.filter((_, i) => i !== index));
+    }
+  };
+
+  // ─── Submit ───────────────────────────────────────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.fullName) {
@@ -194,7 +291,7 @@ export default function DsrForm({ leadData }: DsrFormProps) {
       return;
     }
     if (!formData.customerId) {
-      alert("Customer ID's is required");
+      alert("Customer ID is required");
       return;
     }
     if (!formData.dsrDate) {
@@ -202,11 +299,17 @@ export default function DsrForm({ leadData }: DsrFormProps) {
       return;
     }
 
+    const payload = {
+      ...formData,
+      amountReceivedRows: amountRows,
+      vendorAmountReceivedRows: vendorAmountRows,
+    };
+
     try {
       if (formData.id) {
-        await dispatch(updateDsr({ id: formData.id, data: formData })).unwrap();
+        await dispatch(updateDsr({ id: formData.id, data: payload })).unwrap();
       } else {
-        await dispatch(createDsr(formData)).unwrap();
+        await dispatch(createDsr(payload)).unwrap();
       }
     } catch (err) {
       console.error("Submit error:", err);
@@ -215,12 +318,14 @@ export default function DsrForm({ leadData }: DsrFormProps) {
 
   const handleReset = () => {
     setFormData(initialFormData);
+    setAmountRows([emptyAmountRow()]);
+    setVendorAmountRows([emptyAmountRow()]);
     dispatch(clearCurrentDsr());
   };
 
   const isLoading = createLoading || updateLoading;
 
-  // ─── Renderers ────────────────────────────────────────────────────────────
+  // ─── Field Renderers ──────────────────────────────────────────────────────
   const field = (
     name: keyof DsrFormData,
     label: string,
@@ -242,7 +347,7 @@ export default function DsrForm({ leadData }: DsrFormProps) {
         <input
           name={name}
           type={type}
-          value={formData[name] || ""}
+          value={(formData[name] as string) || ""}
           onChange={handleFieldChange}
           className="w-full py-2 border bg-white pl-10 pr-3 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           placeholder={placeholder}
@@ -269,7 +374,7 @@ export default function DsrForm({ leadData }: DsrFormProps) {
       </label>
       <select
         name={name}
-        value={formData[name] || ""}
+        value={(formData[name] as string) || ""}
         onChange={handleFieldChange}
         className="w-full py-2 border bg-white px-3 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         required={required}
@@ -298,7 +403,7 @@ export default function DsrForm({ leadData }: DsrFormProps) {
         <div className="relative">
           <input
             type="text"
-            value={formData[name]}
+            value={formData[name] as string}
             readOnly
             className="w-full py-2 border bg-gray-50 pl-10 pr-3 border-gray-300 rounded-md"
           />
@@ -309,9 +414,67 @@ export default function DsrForm({ leadData }: DsrFormProps) {
       </div>
     ) : null;
 
+  // ─── Row field renderer for Amount Received rows ─────────────────────────
+  const rowField = (
+    index: number,
+    name: keyof AmountReceivedRow,
+    label: string,
+    placeholder: string,
+    icon: React.ReactNode,
+    type = "text",
+  ) => (
+    <div className="w-full">
+      <label className="block text-sm font-bold text-gray-700 mb-1">
+        {label}
+      </label>
+      <div className="relative">
+        <input
+          type={type}
+          value={amountRows[index][name]}
+          onChange={(e) => handleRowChange(index, name, e.target.value)}
+          placeholder={placeholder}
+          disabled={isLoading}
+          className="w-full py-2 border bg-white pl-10 pr-3 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500 text-sm"
+        />
+        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-yellow-600">
+          {icon}
+        </div>
+      </div>
+    </div>
+  );
+
+  // ─── Row field renderer for Vendor Amount Received rows ──────────────────
+  const vendorRowField = (
+    index: number,
+    name: keyof AmountReceivedRow,
+    label: string,
+    placeholder: string,
+    icon: React.ReactNode,
+    type = "text",
+  ) => (
+    <div className="w-full">
+      <label className="block text-sm font-bold text-gray-700 mb-1">
+        {label}
+      </label>
+      <div className="relative">
+        <input
+          type={type}
+          value={vendorAmountRows[index][name]}
+          onChange={(e) => handleVendorRowChange(index, name, e.target.value)}
+          placeholder={placeholder}
+          disabled={isLoading}
+          className="w-full py-2 border bg-white pl-10 pr-3 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500 text-sm"
+        />
+        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-yellow-600">
+          {icon}
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="w-full bg-white rounded-xl shadow-lg overflow-hidden relative">
-      {/* Loading */}
+      {/* Loading Overlay */}
       {isLoading && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 flex flex-col items-center gap-3">
@@ -372,7 +535,7 @@ export default function DsrForm({ leadData }: DsrFormProps) {
 
       <form onSubmit={handleSubmit}>
         <div className="p-6 space-y-8">
-          {/* 1 — Enquiry Information */}
+          {/* ── 1 — Enquiry Information ─────────────────────────────────── */}
           <div className="border rounded-xl p-6 bg-blue-50">
             <h3 className="text-xl font-semibold text-blue-800 mb-6 pb-3 border-b">
               <span className="bg-blue-600 text-white px-3 py-1 rounded-md mr-2">
@@ -407,7 +570,7 @@ export default function DsrForm({ leadData }: DsrFormProps) {
             </div>
           </div>
 
-          {/* 2 — Vehicle Information */}
+          {/* ── 2 — Vehicle Information ─────────────────────────────────── */}
           <div className="border rounded-xl p-6 bg-green-50">
             <h3 className="text-xl font-semibold text-green-800 mb-6 pb-3 border-b">
               <span className="bg-green-600 text-white px-3 py-1 rounded-md mr-2">
@@ -444,7 +607,7 @@ export default function DsrForm({ leadData }: DsrFormProps) {
             </div>
           </div>
 
-          {/* 3 — Customer Financial Details */}
+          {/* ── 3 — Customer Financial Details ──────────────────────────── */}
           <div className="border rounded-xl p-6 bg-purple-50">
             <h3 className="text-xl font-semibold text-purple-800 mb-6 pb-3 border-b">
               <span className="bg-purple-600 text-white px-3 py-1 rounded-md mr-2">
@@ -452,7 +615,7 @@ export default function DsrForm({ leadData }: DsrFormProps) {
               </span>
               Customer Financial Details
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
               {field(
                 "customerRate",
                 "Customer Rate",
@@ -501,12 +664,6 @@ export default function DsrForm({ leadData }: DsrFormProps) {
                 "Bank name",
                 <Building size={20} />,
               )}
-              {field(
-                "amountReceived",
-                "Amount Received",
-                "Received amount",
-                <DollarSign size={20} />,
-              )}
               {field("tds", "TDS", "TDS", <DollarSign size={20} />)}
               {field(
                 "remainingAmount",
@@ -517,10 +674,136 @@ export default function DsrForm({ leadData }: DsrFormProps) {
             </div>
           </div>
 
-          {/* 4 — Vendor Financial Details */}
+          {/* ── 3A — Amount Received (Dynamic Rows) ─────────────────────── */}
           <div className="border rounded-xl p-6 bg-yellow-50">
-            <h3 className="text-xl font-semibold text-yellow-800 mb-6 pb-3 border-b">
-              <span className="bg-yellow-600 text-white px-3 py-1 rounded-md mr-2">
+            {/* Section Header */}
+            <div className="flex items-center justify-between mb-6 pb-3 border-b border-yellow-200">
+              <h3 className="text-xl font-semibold text-yellow-800">
+                <span className="bg-yellow-600 text-white px-3 py-1 rounded-md mr-2">
+                  3 A
+                </span>
+                Amount Received
+              </h3>
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-yellow-700 font-medium bg-yellow-100 px-3 py-1 rounded-full border border-yellow-300">
+                  {amountRows.length} / {MAX_ROWS} rows
+                </span>
+                <button
+                  type="button"
+                  onClick={handleAddRow}
+                  disabled={amountRows.length >= MAX_ROWS || isLoading}
+                  className="flex items-center gap-2 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-semibold shadow-sm"
+                >
+                  <Plus size={16} />
+                  Add Row
+                </button>
+              </div>
+            </div>
+
+            {/* Dynamic Rows */}
+            <div className="space-y-4">
+              {amountRows.map((row, index) => (
+                <div
+                  key={index}
+                  className="border border-yellow-200 rounded-xl p-4 bg-white shadow-sm transition-all"
+                >
+                  {/* Row Header */}
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <span className="w-7 h-7 flex items-center justify-center bg-yellow-600 text-white text-xs font-bold rounded-full">
+                        {index + 1}
+                      </span>
+                      <span className="text-sm font-semibold text-yellow-700">
+                        Row {index + 1}
+                      </span>
+                    </div>
+                    {amountRows.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveRow(index)}
+                        disabled={isLoading}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-red-600 hover:text-red-700 hover:bg-red-50 border border-red-200 hover:border-red-300 rounded-lg transition-colors text-sm font-medium"
+                      >
+                        <Trash2 size={14} />
+                        Remove
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Row Fields */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {rowField(
+                      index,
+                      "amountReceivedDate",
+                      "Amount Received Date",
+                      "Date of amount received",
+                      <Calendar size={16} />,
+                      "date",
+                    )}
+                    {rowField(
+                      index,
+                      "ucBankName",
+                      "UC Bank Name",
+                      "UC Bank name",
+                      <Building size={16} />,
+                    )}
+                    {rowField(
+                      index,
+                      "customerBankName",
+                      "Customer Bank Name",
+                      "Customer Bank name",
+                      <Building size={16} />,
+                    )}
+                    {rowField(
+                      index,
+                      "transactionId",
+                      "Transaction ID",
+                      "Transaction ID",
+                      <CreditCard size={16} />,
+                    )}
+                    {rowField(
+                      index,
+                      "remarksAmountReceived",
+                      "Remarks - Amount Received",
+                      "Remarks for amount received",
+                      <MessageCircle size={16} />,
+                    )}
+                    {rowField(
+                      index,
+                      "enteredBy",
+                      "Entered By",
+                      "Person who entered the details",
+                      <User size={16} />,
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Bottom Add Row Button (dashed) */}
+            {amountRows.length < MAX_ROWS && (
+              <button
+                type="button"
+                onClick={handleAddRow}
+                disabled={isLoading}
+                className="mt-4 w-full py-3 border-2 border-dashed border-yellow-400 text-yellow-700 hover:text-yellow-800 hover:bg-yellow-100 rounded-xl transition-colors text-sm font-semibold flex items-center justify-center gap-2"
+              >
+                <Plus size={16} />
+                Add Another Row ({amountRows.length}/{MAX_ROWS})
+              </button>
+            )}
+
+            {amountRows.length >= MAX_ROWS && (
+              <p className="mt-3 text-center text-sm text-yellow-600 font-medium">
+                Maximum {MAX_ROWS} rows reached
+              </p>
+            )}
+          </div>
+
+          {/* ── 4 — Vendor Financial Details ────────────────────────────── */}
+          <div className="border rounded-xl p-6 bg-cyan-50">
+            <h3 className="text-xl font-semibold text-cyan-800 mb-6 pb-3 border-b">
+              <span className="bg-cyan-600 text-white px-3 py-1 rounded-md mr-2">
                 4
               </span>
               Vendor Financial Details
@@ -559,7 +842,133 @@ export default function DsrForm({ leadData }: DsrFormProps) {
             </div>
           </div>
 
-          {/* 5 — Payment & Balance */}
+          {/* ── 4A — Vendor Amount Received (Dynamic Rows) ─────────────────────── */}
+          <div className="border rounded-xl p-6 bg-yellow-50">
+            {/* Section Header */}
+            <div className="flex items-center justify-between mb-6 pb-3 border-b border-yellow-200">
+              <h3 className="text-xl font-semibold text-yellow-800">
+                <span className="bg-yellow-600 text-white px-3 py-1 rounded-md mr-2">
+                  4 A
+                </span>
+                Vendor Amount Received
+              </h3>
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-yellow-700 font-medium bg-yellow-100 px-3 py-1 rounded-full border border-yellow-300">
+                  {vendorAmountRows.length} / {MAX_ROWS} rows
+                </span>
+                <button
+                  type="button"
+                  onClick={handleVendorAddRow}
+                  disabled={vendorAmountRows.length >= MAX_ROWS || isLoading}
+                  className="flex items-center gap-2 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-semibold shadow-sm"
+                >
+                  <Plus size={16} />
+                  Add Row
+                </button>
+              </div>
+            </div>
+
+            {/* Dynamic Rows */}
+            <div className="space-y-4">
+              {vendorAmountRows.map((row, index) => (
+                <div
+                  key={index}
+                  className="border border-yellow-200 rounded-xl p-4 bg-white shadow-sm transition-all"
+                >
+                  {/* Row Header */}
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <span className="w-7 h-7 flex items-center justify-center bg-yellow-600 text-white text-xs font-bold rounded-full">
+                        {index + 1}
+                      </span>
+                      <span className="text-sm font-semibold text-yellow-700">
+                        Row {index + 1}
+                      </span>
+                    </div>
+                    {vendorAmountRows.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => handleVendorRemoveRow(index)}
+                        disabled={isLoading}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-red-600 hover:text-red-700 hover:bg-red-50 border border-red-200 hover:border-red-300 rounded-lg transition-colors text-sm font-medium"
+                      >
+                        <Trash2 size={14} />
+                        Remove
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Row Fields */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {vendorRowField(
+                      index,
+                      "amountReceivedDate",
+                      "Vendor Amount Received Date",
+                      "Date of vendor amount received",
+                      <Calendar size={16} />,
+                      "date",
+                    )}
+                    {vendorRowField(
+                      index,
+                      "ucBankName",
+                      "UC Bank Name",
+                      "UC Bank name",
+                      <Building size={16} />,
+                    )}
+                    {vendorRowField(
+                      index,
+                      "customerBankName",
+                      "Vendor Bank Name",
+                      "Vendor Bank name",
+                      <Building size={16} />,
+                    )}
+                    {vendorRowField(
+                      index,
+                      "transactionId",
+                      "Transaction ID",
+                      "Transaction ID",
+                      <CreditCard size={16} />,
+                    )}
+                    {vendorRowField(
+                      index,
+                      "remarksAmountReceived",
+                      "Remarks - Amount Received",
+                      "Remarks for amount received",
+                      <MessageCircle size={16} />,
+                    )}
+                    {vendorRowField(
+                      index,
+                      "enteredBy",
+                      "Entered By",
+                      "Person who entered the details",
+                      <User size={16} />,
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Bottom Add Row Button (dashed) */}
+            {vendorAmountRows.length < MAX_ROWS && (
+              <button
+                type="button"
+                onClick={handleVendorAddRow}
+                disabled={isLoading}
+                className="mt-4 w-full py-3 border-2 border-dashed border-yellow-400 text-yellow-700 hover:text-yellow-800 hover:bg-yellow-100 rounded-xl transition-colors text-sm font-semibold flex items-center justify-center gap-2"
+              >
+                <Plus size={16} />
+                Add Another Row ({vendorAmountRows.length}/{MAX_ROWS})
+              </button>
+            )}
+
+            {vendorAmountRows.length >= MAX_ROWS && (
+              <p className="mt-3 text-center text-sm text-yellow-600 font-medium">
+                Maximum {MAX_ROWS} rows reached
+              </p>
+            )}
+          </div>
+
+          {/* ── 5 — Payment & Balance ────────────────────────────────────── */}
           <div className="border rounded-xl p-6 bg-pink-50">
             <h3 className="text-xl font-semibold text-pink-800 mb-6 pb-3 border-b">
               <span className="bg-pink-600 text-white px-3 py-1 rounded-md mr-2">
@@ -603,7 +1012,7 @@ export default function DsrForm({ leadData }: DsrFormProps) {
             </div>
           </div>
 
-          {/* 6 — Remarks */}
+          {/* ── 6 — Remarks ──────────────────────────────────────────────── */}
           <div className="border rounded-xl p-6 bg-indigo-50">
             <h3 className="text-xl font-semibold text-indigo-800 mb-6 pb-3 border-b">
               <span className="bg-indigo-600 text-white px-3 py-1 rounded-md mr-2">
@@ -642,9 +1051,117 @@ export default function DsrForm({ leadData }: DsrFormProps) {
               </div>
             </div>
           </div>
+
+          {/* ── 7 — Account Remarks ───────────────────────────────────────── */}
+          <div className="border rounded-xl p-6 bg-yellow-50">
+            <h3 className="text-xl font-semibold text-yellow-800 mb-6 pb-3 border-b">
+              <span className="bg-yellow-600 text-white px-3 py-1 rounded-md mr-2">
+                7
+              </span>
+              Account Remarks
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-md font-bold text-gray-700 mb-1">
+                  Remarks by Accounts
+                </label>
+                <textarea
+                  name="remarksbyAccounts"
+                  value={formData.remarksbyAccounts}
+                  onChange={handleFieldChange}
+                  rows={3}
+                  placeholder="Remarks by Accounts"
+                  disabled={isLoading}
+                  className="w-full py-2 px-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-md font-bold text-gray-700 mb-1">
+                  Refund / Cancel / Share
+                </label>
+                <textarea
+                  name="refundCancelShare"
+                  value={formData.refundCancelShare}
+                  onChange={handleFieldChange}
+                  rows={3}
+                  placeholder="Refund / Cancel / Share"
+                  disabled={isLoading}
+                  className="w-full py-2 px-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* ── 8 — OFS Feedback ─────────────────────────────────────────── */}
+          <div className="border rounded-xl p-6 bg-blue-50">
+            <h3 className="text-xl font-semibold text-blue-800 mb-6 pb-3 border-b">
+              <span className="bg-blue-600 text-white px-3 py-1 rounded-md mr-2">
+                8
+              </span>
+              Ofs Feedback
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-md font-bold text-gray-700 mb-1">
+                  Feedback by ofcs
+                </label>
+                <textarea
+                  name="feedbackByOfcs"
+                  value={formData.feedbackByOfcs}
+                  onChange={handleFieldChange}
+                  rows={3}
+                  placeholder="Feedback by ofcs"
+                  disabled={isLoading}
+                  className="w-full py-2 px-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-md font-bold text-gray-700 mb-1">
+                  Feedback by Customer
+                </label>
+                <textarea
+                  name="feedbackByCustomer"
+                  value={formData.feedbackByCustomer}
+                  onChange={handleFieldChange}
+                  rows={3}
+                  placeholder="Feedback by Customer"
+                  disabled={isLoading}
+                  className="w-full py-2 px-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-md font-bold text-gray-700 mb-1">
+                  Google Rating
+                </label>
+                <textarea
+                  name="googleRating"
+                  value={formData.googleRating}
+                  onChange={handleFieldChange}
+                  rows={3}
+                  placeholder="Google Rating"
+                  disabled={isLoading}
+                  className="w-full py-2 px-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-md font-bold text-gray-700 mb-1">
+                  Mobile App Rating
+                </label>
+                <textarea
+                  name="mobileAppRating"
+                  value={formData.mobileAppRating}
+                  onChange={handleFieldChange}
+                  rows={3}
+                  placeholder="Mobile App Rating"
+                  disabled={isLoading}
+                  className="w-full py-2 px-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+          </div>
         </div>
 
-        {/* Footer */}
+        {/* ── Footer Buttons ────────────────────────────────────────────── */}
         <div className="bg-gray-50 px-6 py-4 flex justify-end gap-3 border-t border-gray-200">
           <button
             type="button"

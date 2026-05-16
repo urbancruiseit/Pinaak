@@ -21,6 +21,7 @@ import {
   MessageCircle,
   Plus,
   Trash2,
+  Edit3,
 } from "lucide-react";
 import type { LeadRecord } from "@/types/types";
 import { AppDispatch, RootState } from "../../../redux/store";
@@ -32,23 +33,50 @@ import {
   clearCurrentDsr,
 } from "../../../features/Dsr/dsrSlice";
 
-// ─── Amount Received Row interface ───────────────────────────────────────────
-interface AmountReceivedRow {
-  amountReceivedDate: string;
-  ucBankName: string;
+// ─── Customer Amount Received Row interface ───────────────────────────────────
+interface CustomerAmountReceivedRow {
+  customerAmountReceivedDate: string;
+  cusomerUcBankName: string;
   customerBankName: string;
-  transactionId: string;
-  remarksAmountReceived: string;
-  enteredBy: string;
+  customerTransactionId: string;
+  customerAmount_received: string;
+  customerAtherAmount: string;
+  customerRemarksAmountReceived: string;
+  customerEnteredBy: string;
 }
 
-const emptyAmountRow = (): AmountReceivedRow => ({
-  amountReceivedDate: "",
-  ucBankName: "",
+// ─── Vendor Amount Received Row interface ─────────────────────────────────────
+interface VendorAmountReceivedRow {
+  vendorAmountReceivedDate: string;
+  vendorUcBankName: string;
+  vendorCustomerBankName: string;
+  vendorTransactionId: string;
+  vendorBookingAmount: string;
+  vendorOtherAmount: string;
+  vendorRemarksAmountReceived: string;
+  vendorEnteredBy: string;
+}
+
+const emptyCustomerRow = (): CustomerAmountReceivedRow => ({
+  customerAmountReceivedDate: "",
+  cusomerUcBankName: "",
   customerBankName: "",
-  transactionId: "",
-  remarksAmountReceived: "",
-  enteredBy: "",
+  customerTransactionId: "",
+  customerAmount_received: "",
+  customerAtherAmount: "",
+  customerRemarksAmountReceived: "",
+  customerEnteredBy: "",
+});
+
+const emptyVendorRow = (): VendorAmountReceivedRow => ({
+  vendorAmountReceivedDate: "",
+  vendorUcBankName: "",
+  vendorCustomerBankName: "",
+  vendorTransactionId: "",
+  vendorBookingAmount: "",
+  vendorOtherAmount: "",
+  vendorRemarksAmountReceived: "",
+  vendorEnteredBy: "",
 });
 
 // ─── Main DSR Form Data interface ────────────────────────────────────────────
@@ -72,6 +100,7 @@ interface DsrFormData {
   gstAmt: string;
   total: string;
   bookingAmount: string;
+  amount_received: string;
   otherAmount: string;
   bankName: string;
   amountReceived: string;
@@ -98,8 +127,9 @@ interface DsrFormData {
   feedbackByCustomer?: string;
   googleRating?: string;
   mobileAppRating?: string;
-  amountReceivedRows?: AmountReceivedRow[];
-  vendorAmountReceivedRows?: AmountReceivedRow[];
+  // ✅ Backend ke liye sahi field names
+  customer_amount?: string;
+  vendor_amount?: string;
 }
 
 const initialFormData: DsrFormData = {
@@ -122,6 +152,7 @@ const initialFormData: DsrFormData = {
   gstAmt: "",
   total: "",
   bookingAmount: "",
+  amount_received: "",
   otherAmount: "",
   bankName: "",
   amountReceived: "",
@@ -148,15 +179,19 @@ const initialFormData: DsrFormData = {
   feedbackByCustomer: "",
   googleRating: "",
   mobileAppRating: "",
-  amountReceivedRows: [emptyAmountRow()],
-  vendorAmountReceivedRows: [emptyAmountRow()],
 };
 
 interface DsrFormProps {
   leadData?: LeadRecord | null;
+  editData?: any | null;
+  onEditComplete?: () => void;
 }
 
-export default function DsrForm({ leadData }: DsrFormProps) {
+export default function DsrForm({
+  leadData,
+  editData,
+  onEditComplete,
+}: DsrFormProps) {
   const dispatch = useDispatch<AppDispatch>();
   const {
     createLoading,
@@ -168,21 +203,123 @@ export default function DsrForm({ leadData }: DsrFormProps) {
   } = useSelector((state: RootState) => state.dsr);
 
   const [formData, setFormData] = useState<DsrFormData>(initialFormData);
-  const [amountRows, setAmountRows] = useState<AmountReceivedRow[]>([
-    emptyAmountRow(),
+  const [amountRows, setAmountRows] = useState<CustomerAmountReceivedRow[]>([
+    emptyCustomerRow(),
   ]);
-  const [vendorAmountRows, setVendorAmountRows] = useState<AmountReceivedRow[]>(
-    [emptyAmountRow()],
-  );
+  const [vendorAmountRows, setVendorAmountRows] = useState<
+    VendorAmountReceivedRow[]
+  >([emptyVendorRow()]);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showError, setShowError] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const isEditMode = Boolean(formData.id);
 
   const MAX_ROWS = 5;
 
+  // ─── Helper to parse JSON data from backend ───────────────────────────
+  const parseJsonArray = (data: any, defaultValue: any[]): any[] => {
+    if (Array.isArray(data)) return data;
+    if (typeof data === "string" && data) {
+      try {
+        const parsed = JSON.parse(data);
+        return Array.isArray(parsed) ? parsed : defaultValue;
+      } catch (e) {
+        console.error("Failed to parse JSON:", e);
+        return defaultValue;
+      }
+    }
+    return defaultValue;
+  };
+
+  // ─── Edit Mode: editData se form pre-fill karo ───────────────────────────
+  useEffect(() => {
+    if (editData) {
+      // Handle both old and new field names from backend
+      const customerData =
+        editData.customer_amount || editData.amountReceivedRows;
+      const vendorData =
+        editData.vendor_amount || editData.vendorAmountReceivedRows;
+
+      const parsedCustomerRows = parseJsonArray(customerData, [
+        emptyCustomerRow(),
+      ]);
+      const parsedVendorRows = parseJsonArray(vendorData, [emptyVendorRow()]);
+
+      setFormData({
+        ...initialFormData,
+        id: editData.id || "",
+        leadId: editData.leadId || editData.lead_id || "",
+        customerId: editData.customerId || editData.customer_id || "",
+        advisorId: editData.advisorId || editData.advisor_id || "",
+        telesales: editData.telesales || "",
+        dsrDate:
+          editData.dsrDate ||
+          editData.dsr_date ||
+          new Date().toISOString().split("T")[0],
+        fullName: editData.fullName || editData.full_name || "",
+        bookingId: editData.bookingId || editData.booking_id || "",
+        dsrVehicles: editData.dsrVehicles || editData.dsr_vehicles || "",
+        dsrCategory: editData.dsrCategory || editData.dsr_category || "",
+        vehNo: editData.vehNo || editData.veh_no || "",
+        driver: editData.driver || "",
+        vendorName: editData.vendorName || editData.vendor_name || "",
+        customerRate: editData.customerRate || editData.customer_rate || "",
+        customerToll: editData.customerToll || editData.customer_toll || "",
+        parkTax: editData.parkTax || editData.park_tax || "",
+        gstAmt: editData.gstAmt || editData.gst_amt || "",
+        total: editData.total || "",
+        bookingAmount: editData.bookingAmount || editData.booking_amount || "",
+        amount_received: editData.amount_received || "",
+        otherAmount: editData.otherAmount || editData.other_amount || "",
+        bankName: editData.bankName || editData.bank_name || "",
+        amountReceived:
+          editData.amountReceived || editData.amount_received || "",
+        tds: editData.tds || "",
+        remainingAmount:
+          editData.remainingAmount || editData.remaining_amount || "",
+        vendorRate: editData.vendorRate || editData.vendor_rate || "",
+        vendorToll: editData.vendorToll || editData.vendor_toll || "",
+        vendorParkTax: editData.vendorParkTax || editData.vendor_park_tax || "",
+        customerToVendor:
+          editData.customerToVendor || editData.customer_to_vendor || "",
+        outstanding: editData.outstanding || "",
+        paymentStatus: editData.paymentStatus || editData.payment_status || "",
+        balanceAmount: editData.balanceAmount || editData.balance_amount || "",
+        rate: editData.rate || "",
+        pay: editData.pay || "",
+        finalBalance: editData.finalBalance || editData.final_balance || "",
+        before: editData.before || "",
+        final: editData.final || "",
+        gst: editData.gst || "",
+        remarksTS: editData.remarksTS || editData.remarks_ts || "",
+        remarksMIS: editData.remarksMIS || editData.remarks_mis || "",
+        remarksbyAccounts:
+          editData.remarksbyAccounts || editData.remarks_by_accounts || "",
+        refundCancelShare:
+          editData.refundCancelShare || editData.refund_cancel_share || "",
+        feedbackByOfcs:
+          editData.feedbackByOfcs || editData.feedback_by_ofcs || "",
+        feedbackByCustomer:
+          editData.feedbackByCustomer || editData.feedback_by_customer || "",
+        googleRating: editData.googleRating || editData.google_rating || "",
+        mobileAppRating:
+          editData.mobileAppRating || editData.mobile_app_rating || "",
+      });
+
+      setAmountRows(
+        parsedCustomerRows.length > 0
+          ? parsedCustomerRows
+          : [emptyCustomerRow()],
+      );
+      setVendorAmountRows(
+        parsedVendorRows.length > 0 ? parsedVendorRows : [emptyVendorRow()],
+      );
+    }
+  }, [editData]);
+
   // ─── leadData se naam + IDs pre-fill ────────────────────────────────────
   useEffect(() => {
-    if (leadData) {
+    if (leadData && !editData) {
       const l = leadData as any;
       setFormData((prev) => ({
         ...prev,
@@ -192,7 +329,7 @@ export default function DsrForm({ leadData }: DsrFormProps) {
         fullName: l.fullName || l.full_name || "",
       }));
     }
-  }, [leadData]);
+  }, [leadData, editData]);
 
   useEffect(() => {
     if (createSuccess || updateSuccess) {
@@ -201,10 +338,11 @@ export default function DsrForm({ leadData }: DsrFormProps) {
         setShowSuccess(false);
         dispatch(resetCreateState());
         dispatch(resetUpdateState());
+        if (updateSuccess && onEditComplete) onEditComplete();
       }, 3000);
-      handleReset();
+      if (!updateSuccess) handleReset();
     }
-  }, [createSuccess, updateSuccess, dispatch]);
+  }, [createSuccess, updateSuccess, dispatch, onEditComplete]);
 
   useEffect(() => {
     const err = createError || updateError;
@@ -229,10 +367,10 @@ export default function DsrForm({ leadData }: DsrFormProps) {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // ─── Amount Received Row handlers ────────────────────────────────────────
-  const handleRowChange = (
+  // ─── Customer Amount Row handlers ─────────────────────────────────────────
+  const handleCustomerRowChange = (
     index: number,
-    fieldName: keyof AmountReceivedRow,
+    fieldName: keyof CustomerAmountReceivedRow,
     value: string,
   ) => {
     setAmountRows((prev) => {
@@ -242,22 +380,22 @@ export default function DsrForm({ leadData }: DsrFormProps) {
     });
   };
 
-  const handleAddRow = () => {
+  const handleAddCustomerRow = () => {
     if (amountRows.length < MAX_ROWS) {
-      setAmountRows((prev) => [...prev, emptyAmountRow()]);
+      setAmountRows((prev) => [...prev, emptyCustomerRow()]);
     }
   };
 
-  const handleRemoveRow = (index: number) => {
+  const handleRemoveCustomerRow = (index: number) => {
     if (amountRows.length > 1) {
       setAmountRows((prev) => prev.filter((_, i) => i !== index));
     }
   };
 
-  // ─── Vendor Amount Received Row handlers ─────────────────────────────────
+  // ─── Vendor Amount Row handlers ───────────────────────────────────────────
   const handleVendorRowChange = (
     index: number,
-    fieldName: keyof AmountReceivedRow,
+    fieldName: keyof VendorAmountReceivedRow,
     value: string,
   ) => {
     setVendorAmountRows((prev) => {
@@ -269,7 +407,7 @@ export default function DsrForm({ leadData }: DsrFormProps) {
 
   const handleVendorAddRow = () => {
     if (vendorAmountRows.length < MAX_ROWS) {
-      setVendorAmountRows((prev) => [...prev, emptyAmountRow()]);
+      setVendorAmountRows((prev) => [...prev, emptyVendorRow()]);
     }
   };
 
@@ -279,9 +417,10 @@ export default function DsrForm({ leadData }: DsrFormProps) {
     }
   };
 
-  // ─── Submit ───────────────────────────────────────────────────────────────
+  // ─── Submit - Convert rows to JSON strings ───────────────────────────────
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     if (!formData.fullName) {
       alert("Please fill Customer Name");
       return;
@@ -299,11 +438,45 @@ export default function DsrForm({ leadData }: DsrFormProps) {
       return;
     }
 
+    // Filter out empty rows
+    const filteredCustomerRows = amountRows.filter(
+      (row) =>
+        row.customerAmountReceivedDate ||
+        row.cusomerUcBankName ||
+        row.customerBankName ||
+        row.customerTransactionId ||
+        row.customerAmount_received ||
+        row.customerAtherAmount ||
+        row.customerRemarksAmountReceived ||
+        row.customerEnteredBy,
+    );
+
+    const filteredVendorRows = vendorAmountRows.filter(
+      (row) =>
+        row.vendorAmountReceivedDate ||
+        row.vendorUcBankName ||
+        row.vendorCustomerBankName ||
+        row.vendorTransactionId ||
+        row.vendorBookingAmount ||
+        row.vendorOtherAmount ||
+        row.vendorRemarksAmountReceived ||
+        row.vendorEnteredBy,
+    );
+
+    // ✅ IMPORTANT: Backend ke liye sahi field names bhejo
     const payload = {
       ...formData,
-      amountReceivedRows: amountRows,
-      vendorAmountReceivedRows: vendorAmountRows,
+      customer_amount:
+        filteredCustomerRows.length > 0
+          ? JSON.stringify(filteredCustomerRows)
+          : "[]",
+      vendor_amount:
+        filteredVendorRows.length > 0
+          ? JSON.stringify(filteredVendorRows)
+          : "[]",
     };
+
+    console.log("📤 Sending payload to backend:", payload);
 
     try {
       if (formData.id) {
@@ -318,8 +491,8 @@ export default function DsrForm({ leadData }: DsrFormProps) {
 
   const handleReset = () => {
     setFormData(initialFormData);
-    setAmountRows([emptyAmountRow()]);
-    setVendorAmountRows([emptyAmountRow()]);
+    setAmountRows([emptyCustomerRow()]);
+    setVendorAmountRows([emptyVendorRow()]);
     dispatch(clearCurrentDsr());
   };
 
@@ -390,34 +563,10 @@ export default function DsrForm({ leadData }: DsrFormProps) {
     </div>
   );
 
-  const readOnly = (
-    name: keyof DsrFormData,
-    label: string,
-    icon: React.ReactNode,
-  ) =>
-    formData[name] ? (
-      <div className="w-full">
-        <label className="block text-md font-bold text-gray-700 mb-1">
-          {label}
-        </label>
-        <div className="relative">
-          <input
-            type="text"
-            value={formData[name] as string}
-            readOnly
-            className="w-full py-2 border bg-gray-50 pl-10 pr-3 border-gray-300 rounded-md"
-          />
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600">
-            {icon}
-          </div>
-        </div>
-      </div>
-    ) : null;
-
-  // ─── Row field renderer for Amount Received rows ─────────────────────────
-  const rowField = (
+  // ─── Customer Row Field Renderer ──────────────────────────────────────────
+  const customerRowField = (
     index: number,
-    name: keyof AmountReceivedRow,
+    name: keyof CustomerAmountReceivedRow,
     label: string,
     placeholder: string,
     icon: React.ReactNode,
@@ -431,7 +580,7 @@ export default function DsrForm({ leadData }: DsrFormProps) {
         <input
           type={type}
           value={amountRows[index][name]}
-          onChange={(e) => handleRowChange(index, name, e.target.value)}
+          onChange={(e) => handleCustomerRowChange(index, name, e.target.value)}
           placeholder={placeholder}
           disabled={isLoading}
           className="w-full py-2 border bg-white pl-10 pr-3 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500 text-sm"
@@ -443,10 +592,10 @@ export default function DsrForm({ leadData }: DsrFormProps) {
     </div>
   );
 
-  // ─── Row field renderer for Vendor Amount Received rows ──────────────────
+  // ─── Vendor Row Field Renderer ────────────────────────────────────────────
   const vendorRowField = (
     index: number,
-    name: keyof AmountReceivedRow,
+    name: keyof VendorAmountReceivedRow,
     label: string,
     placeholder: string,
     icon: React.ReactNode,
@@ -463,9 +612,9 @@ export default function DsrForm({ leadData }: DsrFormProps) {
           onChange={(e) => handleVendorRowChange(index, name, e.target.value)}
           placeholder={placeholder}
           disabled={isLoading}
-          className="w-full py-2 border bg-white pl-10 pr-3 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500 text-sm"
+          className="w-full py-2 border bg-white pl-10 pr-3 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
         />
-        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-yellow-600">
+        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600">
           {icon}
         </div>
       </div>
@@ -517,10 +666,16 @@ export default function DsrForm({ leadData }: DsrFormProps) {
       {/* Header */}
       <div className="sticky top-0 z-30 bg-orange-100 p-3 rounded-md">
         <div className="flex justify-between items-center">
-          <div className="pl-4 border-l-8 border-orange-500 bg-white px-3 rounded-md shadow-md">
+          <div className="pl-4 border-l-8 border-orange-500 bg-white px-3 rounded-md shadow-md flex items-center gap-3">
             <h2 className="text-4xl font-bold text-left py-4 text-orange-600">
               DSR Form
             </h2>
+            {isEditMode && (
+              <span className="flex items-center gap-1.5 bg-blue-100 text-blue-700 border border-blue-300 px-3 py-1 rounded-full text-sm font-semibold">
+                <Edit3 size={14} />
+                Edit Mode
+              </span>
+            )}
           </div>
           {formData.fullName && (
             <div className="bg-white border border-orange-300 rounded-lg px-4 py-2 shadow-sm">
@@ -544,8 +699,6 @@ export default function DsrForm({ leadData }: DsrFormProps) {
               Enquiry Information
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {readOnly("leadId", "Lead ID", <FileText size={20} />)}
-              {readOnly("customerId", "Customer ID", <User size={20} />)}
               {field(
                 "dsrDate",
                 "Date",
@@ -646,24 +799,6 @@ export default function DsrForm({ leadData }: DsrFormProps) {
                 "Total amount",
                 <DollarSign size={20} />,
               )}
-              {field(
-                "bookingAmount",
-                "Booking Amount",
-                "Booking amount",
-                <CreditCard size={20} />,
-              )}
-              {field(
-                "otherAmount",
-                "Other Amount",
-                "Other amount",
-                <DollarSign size={20} />,
-              )}
-              {field(
-                "bankName",
-                "Bank Name",
-                "Bank name",
-                <Building size={20} />,
-              )}
               {field("tds", "TDS", "TDS", <DollarSign size={20} />)}
               {field(
                 "remainingAmount",
@@ -674,15 +809,14 @@ export default function DsrForm({ leadData }: DsrFormProps) {
             </div>
           </div>
 
-          {/* ── 3A — Amount Received (Dynamic Rows) ─────────────────────── */}
+          {/* ── 3A — Customer Amount Received (Dynamic Rows) ─────────────── */}
           <div className="border rounded-xl p-6 bg-yellow-50">
-            {/* Section Header */}
             <div className="flex items-center justify-between mb-6 pb-3 border-b border-yellow-200">
               <h3 className="text-xl font-semibold text-yellow-800">
                 <span className="bg-yellow-600 text-white px-3 py-1 rounded-md mr-2">
                   3 A
                 </span>
-                Amount Received
+                Customer Amount Received
               </h3>
               <div className="flex items-center gap-3">
                 <span className="text-sm text-yellow-700 font-medium bg-yellow-100 px-3 py-1 rounded-full border border-yellow-300">
@@ -690,7 +824,7 @@ export default function DsrForm({ leadData }: DsrFormProps) {
                 </span>
                 <button
                   type="button"
-                  onClick={handleAddRow}
+                  onClick={handleAddCustomerRow}
                   disabled={amountRows.length >= MAX_ROWS || isLoading}
                   className="flex items-center gap-2 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-semibold shadow-sm"
                 >
@@ -700,14 +834,12 @@ export default function DsrForm({ leadData }: DsrFormProps) {
               </div>
             </div>
 
-            {/* Dynamic Rows */}
             <div className="space-y-4">
               {amountRows.map((row, index) => (
                 <div
                   key={index}
-                  className="border border-yellow-200 rounded-xl p-4 bg-white shadow-sm transition-all"
+                  className="border border-yellow-200 rounded-xl p-4 bg-white shadow-sm"
                 >
-                  {/* Row Header */}
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
                       <span className="w-7 h-7 flex items-center justify-center bg-yellow-600 text-white text-xs font-bold rounded-full">
@@ -720,7 +852,7 @@ export default function DsrForm({ leadData }: DsrFormProps) {
                     {amountRows.length > 1 && (
                       <button
                         type="button"
-                        onClick={() => handleRemoveRow(index)}
+                        onClick={() => handleRemoveCustomerRow(index)}
                         disabled={isLoading}
                         className="flex items-center gap-1.5 px-3 py-1.5 text-red-600 hover:text-red-700 hover:bg-red-50 border border-red-200 hover:border-red-300 rounded-lg transition-colors text-sm font-medium"
                       >
@@ -730,47 +862,60 @@ export default function DsrForm({ leadData }: DsrFormProps) {
                     )}
                   </div>
 
-                  {/* Row Fields */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {rowField(
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {customerRowField(
                       index,
-                      "amountReceivedDate",
+                      "customerAmountReceivedDate",
                       "Amount Received Date",
                       "Date of amount received",
                       <Calendar size={16} />,
                       "date",
                     )}
-                    {rowField(
+                    {customerRowField(
                       index,
-                      "ucBankName",
+                      "cusomerUcBankName",
                       "UC Bank Name",
                       "UC Bank name",
                       <Building size={16} />,
                     )}
-                    {rowField(
+                    {customerRowField(
                       index,
                       "customerBankName",
                       "Customer Bank Name",
                       "Customer Bank name",
                       <Building size={16} />,
                     )}
-                    {rowField(
+                    {customerRowField(
                       index,
-                      "transactionId",
+                      "customerTransactionId",
                       "Transaction ID",
                       "Transaction ID",
                       <CreditCard size={16} />,
                     )}
-                    {rowField(
+                    {customerRowField(
                       index,
-                      "remarksAmountReceived",
+                      "customerAmount_received",
+                      "Amount Received - Booking",
+                      "Booking amount",
+                      <CreditCard size={16} />,
+                    )}
+                    {customerRowField(
+                      index,
+                      "customerAtherAmount",
+                      "Other Amount",
+                      "Other amount",
+                      <DollarSign size={16} />,
+                    )}
+                    {customerRowField(
+                      index,
+                      "customerRemarksAmountReceived",
                       "Remarks - Amount Received",
                       "Remarks for amount received",
                       <MessageCircle size={16} />,
                     )}
-                    {rowField(
+                    {customerRowField(
                       index,
-                      "enteredBy",
+                      "customerEnteredBy",
                       "Entered By",
                       "Person who entered the details",
                       <User size={16} />,
@@ -779,25 +924,6 @@ export default function DsrForm({ leadData }: DsrFormProps) {
                 </div>
               ))}
             </div>
-
-            {/* Bottom Add Row Button (dashed) */}
-            {amountRows.length < MAX_ROWS && (
-              <button
-                type="button"
-                onClick={handleAddRow}
-                disabled={isLoading}
-                className="mt-4 w-full py-3 border-2 border-dashed border-yellow-400 text-yellow-700 hover:text-yellow-800 hover:bg-yellow-100 rounded-xl transition-colors text-sm font-semibold flex items-center justify-center gap-2"
-              >
-                <Plus size={16} />
-                Add Another Row ({amountRows.length}/{MAX_ROWS})
-              </button>
-            )}
-
-            {amountRows.length >= MAX_ROWS && (
-              <p className="mt-3 text-center text-sm text-yellow-600 font-medium">
-                Maximum {MAX_ROWS} rows reached
-              </p>
-            )}
           </div>
 
           {/* ── 4 — Vendor Financial Details ────────────────────────────── */}
@@ -842,25 +968,24 @@ export default function DsrForm({ leadData }: DsrFormProps) {
             </div>
           </div>
 
-          {/* ── 4A — Vendor Amount Received (Dynamic Rows) ─────────────────────── */}
-          <div className="border rounded-xl p-6 bg-yellow-50">
-            {/* Section Header */}
-            <div className="flex items-center justify-between mb-6 pb-3 border-b border-yellow-200">
-              <h3 className="text-xl font-semibold text-yellow-800">
-                <span className="bg-yellow-600 text-white px-3 py-1 rounded-md mr-2">
+          {/* ── 4A — Vendor Amount Received (Dynamic Rows) ───────────────── */}
+          <div className="border rounded-xl p-6 bg-green-50">
+            <div className="flex items-center justify-between mb-6 pb-3 border-b border-green-200">
+              <h3 className="text-xl font-semibold text-green-800">
+                <span className="bg-green-600 text-white px-3 py-1 rounded-md mr-2">
                   4 A
                 </span>
                 Vendor Amount Received
               </h3>
               <div className="flex items-center gap-3">
-                <span className="text-sm text-yellow-700 font-medium bg-yellow-100 px-3 py-1 rounded-full border border-yellow-300">
+                <span className="text-sm text-green-700 font-medium bg-green-100 px-3 py-1 rounded-full border border-green-300">
                   {vendorAmountRows.length} / {MAX_ROWS} rows
                 </span>
                 <button
                   type="button"
                   onClick={handleVendorAddRow}
                   disabled={vendorAmountRows.length >= MAX_ROWS || isLoading}
-                  className="flex items-center gap-2 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-semibold shadow-sm"
+                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors text-sm font-semibold shadow-sm"
                 >
                   <Plus size={16} />
                   Add Row
@@ -868,20 +993,18 @@ export default function DsrForm({ leadData }: DsrFormProps) {
               </div>
             </div>
 
-            {/* Dynamic Rows */}
             <div className="space-y-4">
               {vendorAmountRows.map((row, index) => (
                 <div
                   key={index}
-                  className="border border-yellow-200 rounded-xl p-4 bg-white shadow-sm transition-all"
+                  className="border border-green-200 rounded-xl p-4 bg-white shadow-sm"
                 >
-                  {/* Row Header */}
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
-                      <span className="w-7 h-7 flex items-center justify-center bg-yellow-600 text-white text-xs font-bold rounded-full">
+                      <span className="w-7 h-7 flex items-center justify-center bg-green-600 text-white text-xs font-bold rounded-full">
                         {index + 1}
                       </span>
-                      <span className="text-sm font-semibold text-yellow-700">
+                      <span className="text-sm font-semibold text-green-700">
                         Row {index + 1}
                       </span>
                     </div>
@@ -898,11 +1021,10 @@ export default function DsrForm({ leadData }: DsrFormProps) {
                     )}
                   </div>
 
-                  {/* Row Fields */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     {vendorRowField(
                       index,
-                      "amountReceivedDate",
+                      "vendorAmountReceivedDate",
                       "Vendor Amount Received Date",
                       "Date of vendor amount received",
                       <Calendar size={16} />,
@@ -910,35 +1032,49 @@ export default function DsrForm({ leadData }: DsrFormProps) {
                     )}
                     {vendorRowField(
                       index,
-                      "ucBankName",
+                      "vendorUcBankName",
                       "UC Bank Name",
                       "UC Bank name",
                       <Building size={16} />,
                     )}
                     {vendorRowField(
                       index,
-                      "customerBankName",
+                      "vendorCustomerBankName",
                       "Vendor Bank Name",
                       "Vendor Bank name",
                       <Building size={16} />,
                     )}
                     {vendorRowField(
                       index,
-                      "transactionId",
+                      "vendorTransactionId",
                       "Transaction ID",
                       "Transaction ID",
                       <CreditCard size={16} />,
                     )}
                     {vendorRowField(
                       index,
-                      "remarksAmountReceived",
+                      "vendorBookingAmount",
+                      "Booking Amount",
+                      "Booking amount",
+                      <CreditCard size={16} />,
+                    )}
+                    {vendorRowField(
+                      index,
+                      "vendorOtherAmount",
+                      "Other Amount",
+                      "Other amount",
+                      <DollarSign size={16} />,
+                    )}
+                    {vendorRowField(
+                      index,
+                      "vendorRemarksAmountReceived",
                       "Remarks - Amount Received",
                       "Remarks for amount received",
                       <MessageCircle size={16} />,
                     )}
                     {vendorRowField(
                       index,
-                      "enteredBy",
+                      "vendorEnteredBy",
                       "Entered By",
                       "Person who entered the details",
                       <User size={16} />,
@@ -947,25 +1083,6 @@ export default function DsrForm({ leadData }: DsrFormProps) {
                 </div>
               ))}
             </div>
-
-            {/* Bottom Add Row Button (dashed) */}
-            {vendorAmountRows.length < MAX_ROWS && (
-              <button
-                type="button"
-                onClick={handleVendorAddRow}
-                disabled={isLoading}
-                className="mt-4 w-full py-3 border-2 border-dashed border-yellow-400 text-yellow-700 hover:text-yellow-800 hover:bg-yellow-100 rounded-xl transition-colors text-sm font-semibold flex items-center justify-center gap-2"
-              >
-                <Plus size={16} />
-                Add Another Row ({vendorAmountRows.length}/{MAX_ROWS})
-              </button>
-            )}
-
-            {vendorAmountRows.length >= MAX_ROWS && (
-              <p className="mt-3 text-center text-sm text-yellow-600 font-medium">
-                Maximum {MAX_ROWS} rows reached
-              </p>
-            )}
           </div>
 
           {/* ── 5 — Payment & Balance ────────────────────────────────────── */}
@@ -1103,7 +1220,7 @@ export default function DsrForm({ leadData }: DsrFormProps) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-md font-bold text-gray-700 mb-1">
-                  Feedback by ofcs
+                  Feedback by Ofcs
                 </label>
                 <textarea
                   name="feedbackByOfcs"
@@ -1161,8 +1278,21 @@ export default function DsrForm({ leadData }: DsrFormProps) {
           </div>
         </div>
 
-        {/* ── Footer Buttons ────────────────────────────────────────────── */}
+        {/* ── Footer Buttons ─────────────────────────────────────────────── */}
         <div className="bg-gray-50 px-6 py-4 flex justify-end gap-3 border-t border-gray-200">
+          {isEditMode && onEditComplete && (
+            <button
+              type="button"
+              onClick={() => {
+                handleReset();
+                onEditComplete();
+              }}
+              disabled={isLoading}
+              className="px-5 py-2 text-blue-700 bg-blue-50 border border-blue-300 rounded-lg hover:bg-blue-100 transition-colors font-medium"
+            >
+              Cancel Edit
+            </button>
+          )}
           <button
             type="button"
             onClick={handleReset}
@@ -1181,10 +1311,15 @@ export default function DsrForm({ leadData }: DsrFormProps) {
                 <Loader2 size={18} className="animate-spin" />
                 {updateLoading ? "Updating..." : "Saving..."}
               </>
+            ) : isEditMode ? (
+              <>
+                <Edit3 size={18} />
+                Update DSR Form
+              </>
             ) : (
               <>
                 <FileSpreadsheet size={18} />
-                {formData.id ? "Update DSR" : "Save DSR"}
+                Submit DSR Form
               </>
             )}
           </button>

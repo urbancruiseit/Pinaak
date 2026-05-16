@@ -16,7 +16,6 @@ export const GROUP_COLORS: Record<
   { dark: string; light: string; text: string }
 > = {
   ACTION: { dark: "bg-rose-600", light: "bg-rose-50", text: "text-rose-700" },
-  STATUS: { dark: "bg-blue-600", light: "bg-blue-50", text: "text-blue-700" },
   BOOKING: {
     dark: "bg-fuchsia-600",
     light: "bg-fuchsia-50",
@@ -48,11 +47,18 @@ export const GROUP_COLORS: Record<
     light: "bg-yellow-50",
     text: "text-yellow-700",
   },
-  "VENDOR RATE & PAYMENT": {
+
+  "VENDOR RATE": {
     dark: "bg-indigo-600",
     light: "bg-indigo-50",
     text: "text-indigo-700",
   },
+  "VENDOR PAYMENT": {
+    dark: "bg-teal-600",
+    light: "bg-teal-50",
+    text: "text-teal-700",
+  },
+
   "PAYMENT & BALANCE": {
     dark: "bg-teal-600",
     light: "bg-teal-50",
@@ -89,7 +95,7 @@ export const DSR_TABLE_BANNER: BannerColumn[] = [
   },
   {
     key: "dsr_date",
-    label: "DSR DATE",
+    label: "DATE",
     groupLabel: "BOOKING",
     minWidthClass: "min-w-[110px]",
     minWidthPx: 110,
@@ -97,6 +103,13 @@ export const DSR_TABLE_BANNER: BannerColumn[] = [
   {
     key: "telesales",
     label: "TELE SALES",
+    groupLabel: "BOOKING",
+    minWidthClass: "min-w-[110px]",
+    minWidthPx: 110,
+  },
+  {
+    key: "bookingId",
+    label: "BOOKING ID",
     groupLabel: "BOOKING",
     minWidthClass: "min-w-[110px]",
     minWidthPx: 110,
@@ -109,13 +122,7 @@ export const DSR_TABLE_BANNER: BannerColumn[] = [
     minWidthClass: "min-w-[140px]",
     minWidthPx: 140,
   },
-  {
-    key: "customerPhone",
-    label: "PHONE",
-    groupLabel: "CUSTOMER",
-    minWidthClass: "min-w-[140px]",
-    minWidthPx: 140,
-  },
+
   {
     key: "companyName",
     label: "COMPANY NAME",
@@ -270,13 +277,14 @@ export const DSR_TABLE_BANNER: BannerColumn[] = [
     align: "right",
   },
   {
-    key: "booking_amount",
-    label: "BOOKING AMOUNT",
+    key: "customerAmountReceivedDate",
+    label: "AMT RCD DATE",
     groupLabel: "CUSTOMER PAYMENT",
     minWidthClass: "min-w-[130px]",
     minWidthPx: 130,
     align: "right",
   },
+
   {
     key: "other_amount",
     label: "OTHER AMOUNT",
@@ -286,19 +294,45 @@ export const DSR_TABLE_BANNER: BannerColumn[] = [
     align: "right",
   },
   {
-    key: "bank_name",
-    label: "BANK NAME",
+    key: "cusomerUcBankName",
+    label: "UC BANK NAME",
     groupLabel: "CUSTOMER PAYMENT",
     minWidthClass: "min-w-[120px]",
     minWidthPx: 120,
   },
+
   {
-    key: "amount_received",
-    label: "AMOUNT RECEIVED",
+    key: "customerBankName",
+    label: "CUSTOMER BANK NAME",
+    groupLabel: "CUSTOMER PAYMENT",
+    minWidthClass: "min-w-[120px]",
+    minWidthPx: 120,
+  },
+
+  {
+    key: "customerAmount_received",
+    label: "BOOKING AMOUNT",
     groupLabel: "CUSTOMER PAYMENT",
     minWidthClass: "min-w-[130px]",
     minWidthPx: 130,
     align: "right",
+  },
+
+  {
+    key: "customerAtherAmount",
+    label: "CUS OTHER AMT",
+    groupLabel: "CUSTOMER PAYMENT",
+    minWidthClass: "min-w-[130px]",
+    minWidthPx: 130,
+    align: "right",
+  },
+
+  {
+    key: "customerTransactionId",
+    label: "TRANSACTION ID",
+    groupLabel: "CUSTOMER PAYMENT",
+    minWidthClass: "min-w-[120px]",
+    minWidthPx: 120,
   },
   {
     key: "tds",
@@ -316,11 +350,27 @@ export const DSR_TABLE_BANNER: BannerColumn[] = [
     minWidthPx: 140,
     align: "right",
   },
+  {
+    key: "customerRemarksAmountReceived",
+    label: "CUS RMK BY",
+    groupLabel: "CUSTOMER PAYMENT",
+    minWidthClass: "min-w-[140px]",
+    minWidthPx: 140,
+    align: "right",
+  },
+  {
+    key: "customerEnteredBy",
+    label: "ENTER BY",
+    groupLabel: "CUSTOMER PAYMENT",
+    minWidthClass: "min-w-[140px]",
+    minWidthPx: 140,
+    align: "right",
+  },
   // VENDOR RATE & PAYMENT GROUP
   {
     key: "vendor_rate",
     label: "VENDOR RATE",
-    groupLabel: "VENDOR RATE & PAYMENT",
+    groupLabel: "VENDOR RATE",
     minWidthClass: "min-w-[110px]",
     minWidthPx: 110,
     align: "right",
@@ -328,7 +378,7 @@ export const DSR_TABLE_BANNER: BannerColumn[] = [
   {
     key: "vendor_toll",
     label: "VENDOR TOLL",
-    groupLabel: "VENDOR RATE & PAYMENT",
+    groupLabel: "VENDOR RATE",
     minWidthClass: "min-w-[110px]",
     minWidthPx: 110,
     align: "right",
@@ -336,7 +386,7 @@ export const DSR_TABLE_BANNER: BannerColumn[] = [
   {
     key: "vendor_park_tax",
     label: "VENDOR PARK TAX",
-    groupLabel: "VENDOR RATE & PAYMENT",
+    groupLabel: "VENDOR RATE",
     minWidthClass: "min-w-[130px]",
     minWidthPx: 130,
     align: "right",
@@ -344,7 +394,7 @@ export const DSR_TABLE_BANNER: BannerColumn[] = [
   {
     key: "customer_to_vendor",
     label: "CUST TO VENDOR",
-    groupLabel: "VENDOR RATE & PAYMENT",
+    groupLabel: "VENDOR RATE",
     minWidthClass: "min-w-[140px]",
     minWidthPx: 140,
     align: "right",
@@ -352,7 +402,7 @@ export const DSR_TABLE_BANNER: BannerColumn[] = [
   {
     key: "outstanding",
     label: "OUTSTANDING",
-    groupLabel: "VENDOR RATE & PAYMENT",
+    groupLabel: "VENDOR RATE",
     minWidthClass: "min-w-[110px]",
     minWidthPx: 110,
     align: "right",
@@ -360,17 +410,77 @@ export const DSR_TABLE_BANNER: BannerColumn[] = [
   {
     key: "payment_status",
     label: "PAYMENT STATUS",
-    groupLabel: "VENDOR RATE & PAYMENT",
+    groupLabel: "VENDOR RATE",
     minWidthClass: "min-w-[120px]",
     minWidthPx: 120,
   },
   {
     key: "balance_amount",
     label: "BALANCE",
-    groupLabel: "VENDOR RATE & PAYMENT",
+    groupLabel: "VENDOR RATE",
     minWidthClass: "min-w-[120px]",
     minWidthPx: 120,
     align: "right",
+  },
+
+  {
+    key: "vendorAmountReceivedDate",
+    label: "VDR AMT RCD DATE",
+    groupLabel: "VENDOR PAYMENT",
+    minWidthClass: "min-w-[120px]",
+    minWidthPx: 120,
+    align: "right",
+  },
+
+  {
+    key: "vendorUcBankName",
+    label: "UC BANK NAME",
+    groupLabel: "VENDOR PAYMENT",
+    minWidthClass: "min-w-[120px]",
+    minWidthPx: 120,
+  },
+  {
+    key: "vendorCustomerBankName",
+    label: "VENDOR BANK NAME",
+    groupLabel: "VENDOR PAYMENT",
+    minWidthClass: "min-w-[120px]",
+    minWidthPx: 120,
+  },
+
+  {
+    key: "vendorTransactionId",
+    label: "VDR TRANSACTION ID",
+    groupLabel: "VENDOR PAYMENT",
+    minWidthClass: "min-w-[120px]",
+    minWidthPx: 120,
+  },
+  {
+    key: "vendorBookingAmount",
+    label: "VDR Amt RCD",
+    groupLabel: "VENDOR PAYMENT",
+    minWidthClass: "min-w-[120px]",
+    minWidthPx: 120,
+  },
+  {
+    key: "vendorOtherAmount",
+    label: "VDR OTHER Amt ",
+    groupLabel: "VENDOR PAYMENT",
+    minWidthClass: "min-w-[120px]",
+    minWidthPx: 120,
+  },
+  {
+    key: "vendorRemarksAmountReceived",
+    label: "VDR RMK AMT",
+    groupLabel: "VENDOR PAYMENT",
+    minWidthClass: "min-w-[120px]",
+    minWidthPx: 120,
+  },
+  {
+    key: "vendorEnteredBy",
+    label: "Enter BY",
+    groupLabel: "VENDOR PAYMENT",
+    minWidthClass: "min-w-[120px]",
+    minWidthPx: 120,
   },
   {
     key: "rate",
@@ -440,14 +550,15 @@ export const DSR_TABLE_BANNER: BannerColumn[] = [
     label: "REMARKS BY ACCOUNTS",
     groupLabel: "ACCOUNTS REMARKS",
     minWidthClass: "min-w-[200px]",
-    minWidthPx: 200,  },
+    minWidthPx: 200,
+  },
   {
     key: "refundCancelShare",
     label: "REFUND/CANCEL SHARE",
     groupLabel: "ACCOUNTS REMARKS",
     minWidthClass: "min-w-[150px]",
     minWidthPx: 150,
-   },
+  },
   {
     key: "feedbackByOfcs",
     label: "FEEDBACK BY OFCS",
@@ -478,6 +589,4 @@ export const DSR_TABLE_BANNER: BannerColumn[] = [
     minWidthPx: 150,
     align: "right",
   },
-
-
 ];

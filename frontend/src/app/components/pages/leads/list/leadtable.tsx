@@ -763,7 +763,6 @@ export default function LeadsTable() {
                   </tr>
                 ) : (
                   filteredLeads.map((lead, rowIndex) => {
-                    // Alternating row base colors (even=white, odd=slate-50)
                     const rowBaseHex =
                       rowIndex % 2 === 0 ? "#ffffff" : "#f8fafc";
 
@@ -776,9 +775,7 @@ export default function LeadsTable() {
                             column.key === "dropAddress" ||
                             column.key === "itinerary";
 
-                          // For frozen cells: use the column's actual bg color
-                          // (from BANNER_GROUP_LIGHT_BG_CLASS) so color is preserved.
-                          // Fall back to row stripe color for ungrouped columns.
+                        
                           const frozenBgColor = isFrozen
                             ? (BG_CLASS_TO_HEX[column.headerBgClass] ??
                               rowBaseHex)

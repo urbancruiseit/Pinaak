@@ -46,17 +46,32 @@ export const createDsr = async (payload) => {
     mobileAppRating,
     remarksbyAccounts,
     refundCancelShare,
-    amountReceivedDate,
-    ucBankName,
-    customerBankName,
-    transactionId,
-    remarksAmountReceived,
-    enteredBy,
+    customer_amount,
+    vendor_amount,
   } = payload;
 
   if (!leadId) throw new Error("Lead ID is required");
   if (!customerId) throw new Error("Customer ID is required");
   if (!dsrDate) throw new Error("DSR Date is required");
+
+  let customerAmountValue = "[]";
+  let vendorAmountValue = "[]";
+
+  if (customer_amount) {
+    if (typeof customer_amount === "string") {
+      customerAmountValue = customer_amount;
+    } else {
+      customerAmountValue = JSON.stringify(customer_amount);
+    }
+  }
+
+  if (vendor_amount) {
+    if (typeof vendor_amount === "string") {
+      vendorAmountValue = vendor_amount;
+    } else {
+      vendorAmountValue = JSON.stringify(vendor_amount);
+    }
+  }
 
   try {
     const [result] = await pool.execute(
@@ -68,7 +83,9 @@ export const createDsr = async (payload) => {
         remaining_amount, vendor_rate, vendor_toll, vendor_park_tax,
         customer_to_vendor, outstanding, payment_status, balance_amount,
         rate, pay, final_balance, before_amt, final_amt, gst,
-        remarks_ts, remarks_mis, remarksbyAccounts, refundCancelShare, feedbackByOfcs, feedbackByCustomer, googleRating, mobileAppRating, amountReceivedDate, ucBankName, customerBankName, transactionId, remarksAmountReceived, enteredBy, created_at
+        remarks_ts, remarks_mis, remarksbyAccounts, refundCancelShare, 
+        feedbackByOfcs, feedbackByCustomer, googleRating, mobileAppRating,
+        customer_amount, vendor_amount
       ) VALUES (
         ?, ?, ?, ?, ?, ?,
         ?, ?, ?, ?, ?, ?,
@@ -77,7 +94,7 @@ export const createDsr = async (payload) => {
         ?, ?, ?, ?,
         ?, ?, ?, ?,
         ?, ?, ?, ?, ?, ?,
-        ?, ?, NOW()
+        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
       )`,
       [
         leadId,
@@ -124,12 +141,8 @@ export const createDsr = async (payload) => {
         feedbackByCustomer ?? null,
         googleRating ?? null,
         mobileAppRating ?? null,
-        amountReceivedDate ?? null,
-        ucBankName ?? null,
-        customerBankName ?? null,
-        transactionId ?? null,
-        remarksAmountReceived ?? null,
-        enteredBy ?? null,
+        customerAmountValue,
+        vendorAmountValue,
       ],
     );
 
@@ -137,12 +150,15 @@ export const createDsr = async (payload) => {
       throw new Error("DSR creation failed");
     }
 
+    console.log("✅ DSR created with ID:", result.insertId);
     return { success: true, dsrId: result.insertId };
   } catch (error) {
     console.error("createDsr error:", error);
     throw error;
   }
 };
+
+
 
 export const getDsrByLeadId = async (leadId) => {
   try {

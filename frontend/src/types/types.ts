@@ -147,7 +147,6 @@ export interface LeadRecord {
   presales_id?: string | number;
   leadId?: string | number;
   advisor_id?: string | number;
-  
 }
 export type UserRole =
   | "user"
@@ -239,8 +238,8 @@ export interface SaleUser {
 export interface DsrRecord {
   id: string;
   status?: string;
-  aged?: number;
-  liveorexpiry?: string;
+  customerPhone?: string;
+  customerName?: string;
   dsrDate?: string;
   source?: string;
   presales?: string;
@@ -281,4 +280,10 @@ export interface DsrRecord {
   gst?: string | number;
   remarksTS?: string;
   remarksMIS?: string;
+  enteredBy?: string;
+  amountReceivedDate?: string;
+  ucBankName?: string;
+  customerBankName?: string;
+  transactionId?: string;
+  remarksAmountReceived?: string;
 }

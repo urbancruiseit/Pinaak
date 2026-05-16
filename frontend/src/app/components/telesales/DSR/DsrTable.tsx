@@ -2,14 +2,10 @@
 
 import React, { useState, useEffect } from "react";
 import { DSR_TABLE_BANNER, BannerColumn, GROUP_COLORS } from "./DsrTableHeader";
-
 import { DsrRecord } from "../../../../types/types";
-
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/app/redux/store";
-
 import { fetchAllDsr } from "@/app/features/Dsr/dsrSlice";
-
 import {
   Eye,
   Edit,
@@ -19,7 +15,9 @@ import {
   Search,
   Download,
   RefreshCw,
+  ArrowLeft,
 } from "lucide-react";
+import DsrForm from "./DsrForm";
 
 export default function DsrTable({
   onEdit,
@@ -32,30 +30,21 @@ export default function DsrTable({
 }) {
   const dispatch = useDispatch<AppDispatch>();
 
-  // =========================================================
-  // Redux State
-  // =========================================================
   const { dsrList, listLoading, listError, totalCount } = useSelector(
     (state: RootState) => state.dsr,
   );
-
   const safeDsrList: DsrRecord[] = Array.isArray(dsrList) ? dsrList : [];
 
-  // =========================================================
-  // Local State
-  // =========================================================
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-
   const [searchTerm, setSearchTerm] = useState("");
-
   const [sortField, setSortField] = useState("dsr_date");
-
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
-  // =========================================================
-  // Fetch Data
-  // =========================================================
+  // ✅ State for Edit Mode
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [selectedDsr, setSelectedDsr] = useState<DsrRecord | null>(null);
+
   const fetchData = () => {
     dispatch(
       fetchAllDsr({
@@ -72,9 +61,6 @@ export default function DsrTable({
     fetchData();
   }, [currentPage, pageSize, searchTerm, sortField, sortOrder]);
 
-  // =========================================================
-  // Sorting
-  // =========================================================
   const handleSort = (field: string) => {
     if (sortField === field) {
       setSortOrder(sortOrder === "asc" ? "desc" : "asc");
@@ -84,18 +70,24 @@ export default function DsrTable({
     }
   };
 
-  // =========================================================
-  // Currency Formatter
-  // =========================================================
+  // ✅ Edit Handler - Show Edit Form
+  const handleEditClick = (dsr: DsrRecord) => {
+    setSelectedDsr(dsr);
+    setShowEditForm(true);
+    if (onEdit) onEdit(dsr);
+  };
+
+  // ✅ Back to Table
+  const handleBackToList = () => {
+    setShowEditForm(false);
+    setSelectedDsr(null);
+    fetchData(); // Refresh data
+  };
+
   const formatCurrency = (value: string | number | undefined) => {
-    if (!value || value === "0" || value === 0) {
-      return "₹0";
-    }
-
+    if (!value || value === "0" || value === 0) return "₹0";
     const num = typeof value === "string" ? parseFloat(value) : value;
-
     if (isNaN(num)) return "₹0";
-
     return new Intl.NumberFormat("en-IN", {
       style: "currency",
       currency: "INR",
@@ -104,13 +96,9 @@ export default function DsrTable({
     }).format(num);
   };
 
-  // =========================================================
-  // Render Cell
-  // =========================================================
   const renderCell = (dsr: DsrRecord, column: BannerColumn) => {
     const value = dsr[column.key as keyof DsrRecord];
 
-    // ACTIONS
     if (column.key === "actions") {
       return (
         <div className="flex items-center justify-center gap-1">
@@ -121,15 +109,13 @@ export default function DsrTable({
           >
             <Eye size={15} />
           </button>
-
           <button
-            onClick={() => onEdit?.(dsr)}
+            onClick={() => handleEditClick(dsr)}
             className="p-1 rounded text-orange-500 hover:bg-orange-100"
             title="Edit"
           >
             <Edit size={15} />
           </button>
-
           <button
             onClick={() => {
               if (window.confirm("Delete this DSR?")) {
@@ -144,8 +130,19 @@ export default function DsrTable({
         </div>
       );
     }
+    if (column.key === "fullName") {
+      return (
+        <div className="relative group inline-block w-full">
+          <span className="cursor-default">{String(value ?? "—")}</span>
+          {dsr.customerPhone && (
+            <div className="absolute left-0 top-full mt-1 z-50 hidden group-hover:block bg-gray-900 text-white text-xs px-3 py-1.5 rounded-lg shadow-lg whitespace-nowrap pointer-events-none">
+              📞 Phone: {dsr.customerPhone}
+            </div>
+          )}
+        </div>
+      );
+    }
 
-    // CURRENCY
     if (column.type === "currency") {
       return (
         <span className="font-semibold">
@@ -153,13 +150,9 @@ export default function DsrTable({
         </span>
       );
     }
-
-    // DATE
     if (column.type === "date" && value) {
       return new Date(value as string).toLocaleDateString("en-IN");
     }
-
-    // DEFAULT
     return value !== undefined && value !== null && value !== "" ? (
       String(value)
     ) : (
@@ -167,9 +160,6 @@ export default function DsrTable({
     );
   };
 
-  // =========================================================
-  // Banner Groups
-  // =========================================================
   const getBannerGroups = () => {
     const groups: Array<{
       id: string;
@@ -187,10 +177,8 @@ export default function DsrTable({
 
     DSR_TABLE_BANNER.forEach((col, i) => {
       const colors = GROUP_COLORS[col.groupLabel];
-
       if (!current || current.label !== col.groupLabel) {
         if (current) groups.push(current);
-
         current = {
           id: `${col.groupLabel}-${i}`,
           label: col.groupLabel,
@@ -203,26 +191,40 @@ export default function DsrTable({
     });
 
     if (current) groups.push(current);
-
     return groups;
   };
 
   const bannerGroups = getBannerGroups();
 
-  // =========================================================
-  // Cell Background
-  // =========================================================
   const getCellBgClass = (column: BannerColumn, rowIndex: number) => {
     const colors = GROUP_COLORS[column.groupLabel];
-
     return `${colors.light} ${
       rowIndex % 2 === 0 ? "bg-opacity-100" : "bg-opacity-70"
     }`;
   };
 
-  // =========================================================
-  // JSX
-  // =========================================================
+  // ✅ If Edit Mode is ON, show DsrForm instead of Table
+  if (showEditForm && selectedDsr) {
+    return (
+      <div className="w-full">
+        {/* Back Button */}
+        <div className="mb-4">
+          <button
+            onClick={handleBackToList}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
+          >
+            <ArrowLeft size={18} />
+            Back to DSR List
+          </button>
+        </div>
+
+        {/* DSR Form in Edit Mode */}
+        <DsrForm editData={selectedDsr} onEditComplete={handleBackToList} />
+      </div>
+    );
+  }
+
+  // ✅ Otherwise Show Table
   return (
     <div className="w-full bg-white rounded-xl shadow-lg overflow-hidden">
       {/* HEADER */}
@@ -234,16 +236,13 @@ export default function DsrTable({
         </div>
       </div>
 
-      {/* SEARCH BAR */}
       <div className="p-4 border-b border-gray-200 bg-white">
         <div className="flex flex-wrap gap-3 items-center justify-between">
-          {/* SEARCH INPUT */}
           <div className="relative flex-1 min-w-[250px]">
             <Search
               className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
               size={18}
             />
-
             <input
               type="text"
               placeholder="Search by name, lead ID, booking ID..."
@@ -256,7 +255,6 @@ export default function DsrTable({
             />
           </div>
 
-          {/* ACTIONS */}
           <div className="flex gap-2">
             <select
               value={pageSize}
@@ -289,13 +287,10 @@ export default function DsrTable({
         </div>
       </div>
 
-      {/* ERROR */}
       {listError && (
         <div className="mx-4 mt-3 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm flex items-center gap-2">
           <span className="font-semibold">Error:</span>
-
           {listError}
-
           <button
             onClick={fetchData}
             className="ml-auto text-red-500 underline"
@@ -305,28 +300,18 @@ export default function DsrTable({
         </div>
       )}
 
-      {/* TABLE */}
       <div
         className="overflow-x-auto"
-        style={{
-          maxHeight: "calc(100vh - 300px)",
-        }}
+        style={{ maxHeight: "calc(100vh - 300px)" }}
       >
         <table className="w-full min-w-[2400px] border-collapse">
-          {/* TABLE HEAD */}
           <thead className="sticky top-0 z-20">
-            {/* GROUP HEADER */}
             <tr>
               {bannerGroups.map((group) => (
                 <th
                   key={group.id}
                   colSpan={group.colSpan}
-                  className={`
-                    p-3
-                    border-2
-                    border-white
-                    ${group.darkColor}
-                  `}
+                  className={`p-3 border-2 border-white ${group.darkColor}`}
                 >
                   <div className="text-sm font-black uppercase tracking-wide text-white text-center">
                     {group.label}
@@ -334,34 +319,22 @@ export default function DsrTable({
                 </th>
               ))}
             </tr>
-
-            {/* COLUMN HEADER */}
             <tr>
               {DSR_TABLE_BANNER.map((column) => {
                 const colors = GROUP_COLORS[column.groupLabel];
-
                 return (
                   <th
                     key={column.key}
                     onClick={() => handleSort(column.key)}
                     className={`
-                        ${column.minWidthClass}
-                        px-2
-                        py-3
-                        text-xs
-                        font-semibold
-                        text-white
-                        border
-                        border-white
-                        cursor-pointer
-                        ${colors.dark}
-                        hover:brightness-95
-                        whitespace-nowrap
-                        text-${column.align ?? "left"}
-                      `}
+                      ${column.minWidthClass}
+                      px-2 py-3 text-xs font-semibold text-white
+                      border border-white cursor-pointer ${colors.dark}
+                      hover:brightness-95 whitespace-nowrap
+                      text-${column.align ?? "left"}
+                    `}
                   >
                     {column.label}
-
                     {sortField === column.key &&
                       (sortOrder === "asc" ? " ↑" : " ↓")}
                   </th>
@@ -370,9 +343,7 @@ export default function DsrTable({
             </tr>
           </thead>
 
-          {/* TABLE BODY */}
           <tbody className="divide-y divide-red-500">
-            {/* LOADING */}
             {listLoading ? (
               <tr>
                 <td
@@ -380,23 +351,19 @@ export default function DsrTable({
                   className="text-center py-20 border border-white"
                 >
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto" />
-
                   <p className="text-gray-400 mt-3 text-sm">
                     Loading DSR records...
                   </p>
                 </td>
               </tr>
             ) : safeDsrList.length === 0 ? (
-              /* EMPTY */
               <tr>
                 <td
                   colSpan={DSR_TABLE_BANNER.length}
                   className="text-center py-12 border border-white"
                 >
                   <Search size={32} className="text-gray-400 mx-auto mb-2" />
-
                   <p className="text-gray-500 text-lg">No DSR records found</p>
-
                   {searchTerm && (
                     <p className="text-gray-400 text-sm mt-1">
                       Try changing your search
@@ -405,7 +372,6 @@ export default function DsrTable({
                 </td>
               </tr>
             ) : (
-              /* DATA ROWS */
               safeDsrList.map((dsr, rowIndex) => (
                 <tr
                   key={dsr.id || rowIndex}
@@ -413,26 +379,18 @@ export default function DsrTable({
                 >
                   {DSR_TABLE_BANNER.map((column) => {
                     const colors = GROUP_COLORS[column.groupLabel];
-
                     const cellBgClass = getCellBgClass(column, rowIndex);
-
                     return (
                       <td
                         key={column.key}
                         className={`
-    ${column.minWidthClass}
-    px-2
-    py-2
-    border
-    border-gray-500
-    text-xs
-    whitespace-nowrap
-    ${cellBgClass}
-    text-black
-    ${column.align === "center" ? "text-center" : ""}
-    ${column.align === "right" ? "text-right" : ""}
-    ${column.align === "left" ? "text-left" : ""}
-  `}
+                          ${column.minWidthClass}
+                          px-2 py-2 border border-gray-500 text-xs whitespace-nowrap
+                          ${cellBgClass} text-black
+                          ${column.align === "center" ? "text-center" : ""}
+                          ${column.align === "right" ? "text-right" : ""}
+                          ${column.align === "left" ? "text-left" : ""}
+                        `}
                       >
                         {renderCell(dsr, column)}
                       </td>
@@ -445,7 +403,6 @@ export default function DsrTable({
         </table>
       </div>
 
-      {/* PAGINATION */}
       {totalCount > 0 && (
         <div className="px-4 py-3 border-t border-gray-200 bg-gray-50 flex flex-wrap justify-between items-center gap-3">
           <span className="text-sm text-gray-600">
@@ -453,7 +410,6 @@ export default function DsrTable({
             {Math.min(currentPage * pageSize, totalCount)} of {totalCount}{" "}
             records
           </span>
-
           <div className="flex gap-1 items-center">
             <button
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
@@ -463,11 +419,9 @@ export default function DsrTable({
               <ChevronLeft size={16} />
               Previous
             </button>
-
             <span className="px-3 py-1 text-sm font-medium bg-white border rounded-md">
               Page {currentPage} of {Math.ceil(totalCount / pageSize)}
             </span>
-
             <button
               onClick={() => setCurrentPage((p) => p + 1)}
               disabled={currentPage >= Math.ceil(totalCount / pageSize)}

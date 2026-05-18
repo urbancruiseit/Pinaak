@@ -1,3 +1,5 @@
+import emitToHierarchy from "../../socket/EmitHelpers/socketEmitHelper.js";
+import { getIO } from "../../socket/socket.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
@@ -16,13 +18,11 @@ const createLeads = asyncHandler(async (req, res) => {
   const data = req.body;
   const city = data.city || "Unknown";
 
-  console.log("request body", req.body);
-  // Basic validation
   if (!data.firstName || !data.customerPhone) {
     throw new ApiError(400, "Name, Phone are required");
   }
 
-  // Step 1: Create customer or get existing customer
+  // Step 1: Customer
   const customerResult = await createCustomers({
     firstName: data.firstName,
     middleName: data.middleName,
@@ -47,14 +47,8 @@ const createLeads = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Customer could not be created or fetched");
   }
 
-  // Step 2: Prepare lead data with customer_id
-  const leadData = {
-    ...data,
-    city,
-    customer_id: customerResult.customerId,
-  };
-
-  // Remove customer-only fields before lead insert
+  // Step 2: Lead data prepare
+  const leadData = { ...data, city, customer_id: customerResult.customerId };
   delete leadData.customerName;
   delete leadData.customerPhone;
   delete leadData.customerEmail;
@@ -71,14 +65,28 @@ const createLeads = asyncHandler(async (req, res) => {
   delete leadData.countryName;
   delete leadData.customerCity;
 
-  // Step 3: Insert lead
+  // Step 3: Lead insert
   const newLead = await insertLead(leadData);
+  if (!newLead) throw new ApiError(400, "Lead could not be created");
 
-  if (!newLead) {
-    throw new ApiError(400, "Lead could not be created");
+  // ✅ Step 4: Full lead fetch karo DB se
+  const fullLead = await getLeadById(newLead.id);
+
+  // ✅ Step 5: Full data ke saath socket emit
+  try {
+    const io = getIO();
+    emitToHierarchy({
+      io,
+      eventName: "presalesLeadCreated",
+      lead: fullLead ?? newLead, // fallback
+      userIdKey: "presales_id",
+    });
+    console.log("📡 presalesLeadCreated emitted with full data");
+  } catch (err) {
+    console.error("⚠️ Socket emit failed:", err.message);
   }
 
-  // Step 4: Final response
+  // Step 6: Response
   return res.status(201).json(
     new ApiResponse(
       201,
@@ -95,6 +103,7 @@ const createLeads = asyncHandler(async (req, res) => {
     ),
   );
 });
+
 const listLeads = asyncHandler(async (req, res) => {
   const user = req.user;
   const userCityIds = user.city_ids || [];
@@ -172,15 +181,12 @@ const updateLeadByIdController = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Lead ID is required");
   }
 
-  // Step 1: Get existing lead to find customer_id
   const existingLead = await getLeadById(leadId);
   if (!existingLead) {
     throw new ApiError(404, "Lead not found");
   }
-
   const customerId = existingLead.customer_id;
-
-  // Step 2: Update customer if customer fields provided
+  // Step 2: Customer update
   const customerFields = {
     firstName: data.firstName,
     middleName: data.middleName,
@@ -197,7 +203,6 @@ const updateLeadByIdController = asyncHandler(async (req, res) => {
     customerCity: data.customerCity,
   };
 
-  // Sirf wahi fields bhejo jo actually aaye hain request mein
   const customerUpdateData = Object.fromEntries(
     Object.entries(customerFields).filter(([_, v]) => v !== undefined),
   );
@@ -210,7 +215,7 @@ const updateLeadByIdController = asyncHandler(async (req, res) => {
     }
   }
 
-  // Step 3: Prepare lead update data — customer fields hata do
+  // Step 3: Lead data prepare
   const leadData = { ...data };
   delete leadData.firstName;
   delete leadData.middleName;
@@ -230,13 +235,30 @@ const updateLeadByIdController = asyncHandler(async (req, res) => {
   delete leadData.countryName;
   delete leadData.customerCity;
 
-  // Step 4: Update lead if lead fields provided
+  // Step 4: Lead update
   let updatedLead = null;
   if (Object.keys(leadData).length > 0) {
     updatedLead = await updateLeadById(leadId, leadData);
     if (!updatedLead) {
       throw new ApiError(400, "Lead could not be updated");
     }
+  }
+
+  // ✅ Full lead fetch — customers JOIN + hrmsPool names ke saath
+  const fullLead = await getLeadById(updatedLead?.id ?? leadId);
+
+  // ✅ fullLead emit karo, updatedLead nahi
+  try {
+    const io = getIO();
+    emitToHierarchy({
+      io,
+      eventName: "leadUpdated",
+      lead: fullLead ?? updatedLead, // fallback
+      userIdKey: "presales_id",
+    });
+    console.log("📡 leadUpdated emitted with full data");
+  } catch (err) {
+    console.error("⚠️ Socket emit failed:", err.message);
   }
 
   // Step 5: Response
@@ -251,7 +273,6 @@ const updateLeadByIdController = asyncHandler(async (req, res) => {
     ),
   );
 });
-
 export {
   createLeads,
   listLeads,

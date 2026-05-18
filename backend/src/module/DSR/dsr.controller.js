@@ -47,7 +47,7 @@ const getAllDsr = asyncHandler(async (req, res) => {
   if (roleName === "travel advisor") {
     advisorId = req.user.id;
   } else if (roleName === "city manager") {
-    const paramAdvisorId = req.query.advisorIds
+    const paramAdvisorId = req.query.advisorId
       ? parseInt(req.query.advisorId, 10)
       : null;
 

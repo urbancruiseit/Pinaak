@@ -1,18 +1,19 @@
 const leadSocket = (socket, io) => {
+
+  // ✅ Join PreSales Room
+  socket.on("join_presales_room", (presalesId) => {
+    socket.join(`presales_${presalesId}`);
+    console.log(`Joined Room: presales_${presalesId}`);
+  });
+
+  // ✅ Lead Create - Sender ko bhi dikhega
   socket.on("lead:create", (data) => {
-    // console.log("Lead Created", data);
-    io.emit("leadCreated", data);
+    const presalesId = data.presalesId;
+
+    // ✅ Room ke SABKO emit karega (sender bhi included)
+    io.to(`presales_${presalesId}`).emit("leadCreated", data);
   });
 
-  socket.on("lead:update", (data) => {
-    // console.log("Lead Updated", data);
-    io.emit("leadUpdated", data);
-  });
-
-  socket.on("lead:delete", (data) => {
-    // console.log("Lead Deleted", data);
-    io.emit("leadDeleted", data);
-  });
 };
 
 export default leadSocket;

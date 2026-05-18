@@ -1,7 +1,11 @@
-import leadSocket from "./lead.socket.js";
+import presalesSocket from "./presales.socket.js";
+
+import socketRooms from "./socketRooms.js";
 
 const registerSocketEvents = (socket, io) => {
-  leadSocket(socket, io);
+  socketRooms(socket);
+
+  presalesSocket(socket, io);
 };
 
 export default registerSocketEvents;

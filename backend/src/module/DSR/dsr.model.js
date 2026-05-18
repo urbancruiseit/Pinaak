@@ -77,7 +77,7 @@ export const createDsr = async (payload) => {
     const [result] = await pool.execute(
       `INSERT INTO dsrs (
         lead_id, customer_id, advisor_id, telesales, dsr_date, full_name,
-        booking_id, dsr_vehicles, dsr_category, veh_no, driver, vendor_name,
+        bookingId, dsr_vehicles, dsr_category, veh_no, driver, vendor_name,
         customer_rate, customer_toll, park_tax, gst_amt, total,
         booking_amount, other_amount, bank_name, amount_received, tds,
         remaining_amount, vendor_rate, vendor_toll, vendor_park_tax,

@@ -20,7 +20,7 @@ interface LeadState {
 
   selectedMonth: number;
   selectedYear: number;
-   selectedStatus: string | null;  // ✅
+  selectedStatus: string | null; // ✅
   statusCounts: StatusCounts;
   totalLeads: number;
   search: string;
@@ -43,7 +43,7 @@ const initialState: LeadState = {
 
   selectedMonth: now.getMonth() + 1,
   selectedYear: now.getFullYear(),
-  selectedStatus: null,  // ✅
+  selectedStatus: null, // ✅
   statusCounts: {
     NEW: 0,
     RFQ: 0,
@@ -160,14 +160,15 @@ const leadSlice = createSlice({
     },
     setSearch(state, action) {
       state.search = action.payload;
-      state.page = 1;
+      state.page = 1; // ← search change hone pe page reset
     },
     setMonthYear(state, action) {
       state.selectedMonth = action.payload.month;
       state.selectedYear = action.payload.year;
-      state.page = 1; 
+      state.page = 1; // ← month change hone pe page reset
     },
-    setStatus(state, action) {  // ✅
+    setStatus(state, action) {
+      // ✅
       state.selectedStatus = action.payload;
       state.page = 1;
     },
@@ -176,19 +177,50 @@ const leadSlice = createSlice({
       state.page = 1;
       state.total = 0;
       state.search = "";
-      state.selectedStatus = null;  // ✅
+      state.selectedStatus = null; // ✅
+    },
+    // ================================
+    // REALTIME ADD
+    // ================================
+
+    addRealtimeLead(state, action) {
+      const newLead = action.payload;
+
+      const exists = state.leads.some(
+        (lead) => String(lead.id) === String(newLead.id),
+      );
+
+      if (!exists) {
+        state.leads.unshift(newLead);
+      }
+    },
+
+    // ================================
+    // REALTIME UPDATE
+    // ================================
+
+    updateRealtimeLead(state, action) {
+      const updatedLead = action.payload;
+
+      const index = state.leads.findIndex(
+        (lead) => String(lead.id) === String(updatedLead.id),
+      );
+
+      if (index !== -1) {
+        state.leads[index] = updatedLead;
+      }
     },
   },
   extraReducers: (builder) => {
     builder
 
-     .addCase(fetchLeads.pending, (state) => {
+      .addCase(fetchLeads.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchLeads.fulfilled, (state, action) => {
         state.loading = false;
-        console.log("action paload ", action.payload)
+        console.log("action paload ", action.payload);
         state.leads = action.payload.leads;
         state.total = action.payload.total;
         state.page = action.payload.page;
@@ -196,7 +228,7 @@ const leadSlice = createSlice({
         state.totalPages = action.payload.totalPages || 1;
         state.selectedMonth = action.payload.selectedMonth;
         state.selectedYear = action.payload.selectedYear;
-        state.selectedStatus = action.payload.selectedStatus ?? null;  // ✅
+        state.selectedStatus = action.payload.selectedStatus ?? null; // ✅
         state.statusCounts = action.payload.statusCounts;
         state.totalLeads = action.payload.totalLeads;
       })
@@ -211,8 +243,6 @@ const leadSlice = createSlice({
       })
       .addCase(createLead.fulfilled, (state, action) => {
         state.createLoading = false;
-        state.leads.unshift(action.payload);
-        state.total += 1;
       })
       .addCase(createLead.rejected, (state, action) => {
         state.createLoading = false;
@@ -276,6 +306,13 @@ const leadSlice = createSlice({
   },
 });
 
-export const { setPage, setLimit, resetLeads, setStatus } = leadSlice.actions;
+export const {
+  setPage,
+  setLimit,
+  resetLeads,
+  setStatus,
+  addRealtimeLead,
+  updateRealtimeLead,
+} = leadSlice.actions;
 
 export default leadSlice.reducer;

@@ -59,7 +59,7 @@ const schema = z.object({
   countryName: z.string().min(1, "Country is required"),
   customerCity: z.string().optional(),
   customerState: z.string().optional(),
-  customerAddress: z.string().optional(),
+  address: z.string().optional(),
   serviceType: z.string().optional(),
   tripType: z.string().optional(),
   occasion: z.string().optional(),
@@ -416,7 +416,7 @@ const LeadsForm: React.FC = () => {
       multiplepickup: "",
       multipledrop: "",
       dropAddress: "",
-      customerAddress: "",
+      address: "",
       dropcity: "",
       pickupcity: "",
       passengerTotal: 0,
@@ -454,7 +454,7 @@ const LeadsForm: React.FC = () => {
 
     if (customer.customerCity) setValue("customerCity", customer.customerCity);
     if (customer.state) setValue("customerState", customer.state);
-    if (customer.address) setValue("customerAddress", customer.address);
+    if (customer.address) setValue("address", customer.address);
     if (customer.countryName) setValue("countryName", customer.countryName);
     if (customer.customerType) setValue("customerType", customer.customerType);
     if (customer.customerCategoryType) {
@@ -526,11 +526,11 @@ const LeadsForm: React.FC = () => {
           : null,
         dropDateTime: data.dropDateTime ? `${data.dropDateTime}:00` : null,
         pickupAddress: data.pickupAddress || "",
-       multiplepickup:data.multiplepickup ||"",
-        multipledrop:data.multipledrop ||"",
+        multiplepickup: data.multiplepickup || "",
+        multipledrop: data.multipledrop || "",
 
         dropAddress: data.dropAddress || "",
-        customerAddress: data.customerAddress || "",
+        address: data.address || "",
         pickupcity: data.pickupcity || "",
         dropcity: data.dropcity || "",
         itinerary: itineraryList || [],
@@ -572,7 +572,6 @@ const LeadsForm: React.FC = () => {
       showToastMessage("Lead created successfully!");
       resetFormFields();
 
-      dispatch(fetchLeads(1));
       window.dispatchEvent(new CustomEvent("leadSubmitted"));
       window.dispatchEvent(new CustomEvent("navigateToLeadTable"));
     } catch (error: any) {
@@ -1304,7 +1303,7 @@ const LeadsForm: React.FC = () => {
                   Customer Address
                 </label>
                 <textarea
-                  {...register("customerAddress")}
+                  {...register("address")}
                   className="w-full py-2 px-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Enter complete customer address"
                   rows={2}
@@ -1406,8 +1405,6 @@ const LeadsForm: React.FC = () => {
                       )}
                     </div>
 
-                    
-
                     {/* Pickup Address */}
                     <div className="w-full md:w-[40%]">
                       <label className="block mb-1 font-extrabold text-gray-700 text-md">
@@ -1438,7 +1435,7 @@ const LeadsForm: React.FC = () => {
                     {/* Multiple Pickup City */}
                     <div className="w-full md:w-[30%]">
                       <label className="block mb-1 font-extrabold text-gray-700 text-md">
-                          Additional Pickup Addresses
+                        Additional Pickup Addresses
                       </label>
                       <div className="relative group">
                         <Info
@@ -1568,8 +1565,6 @@ const LeadsForm: React.FC = () => {
                           )}
                         </div>
 
-                       
-
                         <div className="w-full md:w-[30%]">
                           <label className="block mb-1 font-extrabold text-gray-700 text-md">
                             Drop Address
@@ -1581,7 +1576,7 @@ const LeadsForm: React.FC = () => {
                           />
                         </div>
 
-                         {/* Multiple Drop City */}
+                        {/* Multiple Drop City */}
                         <div className="w-full md:w-[30%]">
                           <label className="block mb-1 font-extrabold text-gray-700 text-md">
                             Additional Drop Addresses

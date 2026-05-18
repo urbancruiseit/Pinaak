@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import http from "node:http";
 import { fileURLToPath } from "node:url";
 import { createRequire } from "node:module";
 
@@ -7,6 +8,7 @@ import { app } from "./app.js";
 import { errorMiddleware } from "./middlewares/error.middleware.js";
 import { connectHRMSMySQL, connectMySQL } from "./config/mySqlDB.js";
 import { admin } from "./config/firebase.js";
+import { initSocket } from "./socket/socket.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const frontendDir = path.resolve(__dirname, "../../frontend");
@@ -51,7 +53,12 @@ const start = async () => {
 
   app.use(errorMiddleware);
 
-  app.listen(PORT, "0.0.0.0", () => {
+  // Create HTTP server so Socket.IO can share the same port
+  const server = http.createServer(app);
+  // Initialize Socket.IO
+  initSocket(server);
+
+  server.listen(PORT, "0.0.0.0", () => {
     console.log(`✅ Server running on port ${PORT}`);
     console.log(`   API: http://localhost:${PORT}/api/v1/`);
     if (serveFrontend) {

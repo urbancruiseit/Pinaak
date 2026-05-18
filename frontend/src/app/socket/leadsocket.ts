@@ -1,29 +1,74 @@
+import { LeadRecord } from "@/types/types";
 import { getSocket, connectSocket, disconnectSocket } from "./index";
 
-export const listenToLeadUpdates = (callback: (data: any) => void) => {
+// ================================
+// PRESALES LEAD LISTENERS
+// ================================
+
+export const listenToPresalesLeads = (callback: (data: LeadRecord) => void) => {
   const socket = getSocket();
 
-  socket.on("leadCreated", (data) => {
-    console.log("Lead created via socket:", data);
-    callback(data);
-  });
+  socket.off("presalesLeadCreated");
 
-  socket.on("leadUpdated", (data) => {
-    console.log("Lead updated via socket:", data);
-    callback(data);
-  });
+  socket.on("presalesLeadCreated", (data) => {
+    console.log("📨 Presales Lead Realtime:", data);
 
-  socket.on("leadDeleted", (data) => {
-    console.log("Lead deleted via socket:", data);
     callback(data);
   });
 };
 
+
+export const listenToAdviserLeads = (callback: (data: LeadRecord) => void) => {
+  const socket = getSocket();
+
+  socket.off("adviserLeadAssigned");
+
+  socket.on("adviserLeadAssigned", (data) => {
+    console.log("📨 Adviser Lead Assigned:", data);
+
+    callback(data);
+  });
+};
+
+
+export const listenToLeadUpdated = (callback: (data: LeadRecord) => void) => {
+  const socket = getSocket();
+
+  socket.off("leadUpdated");
+
+  socket.on("leadUpdated", (data) => {
+    console.log("♻️ Lead Updated:", data);
+
+    callback(data);
+  });
+};
+
+
+export const listenToLeadStatusChanged = (
+  callback: (data: LeadRecord) => void,
+) => {
+  const socket = getSocket();
+
+  socket.off("leadStatusChanged");
+
+  socket.on("leadStatusChanged", (data) => {
+    console.log("🔄 Lead Status Changed:", data);
+
+    callback(data);
+  });
+};
+
+
 export const removeLeadListeners = () => {
   const socket = getSocket();
-  socket.off("leadCreated");
+
+  socket.off("presalesLeadCreated");
+
+  socket.off("adviserLeadAssigned");
+
   socket.off("leadUpdated");
-  socket.off("leadDeleted");
+
+  socket.off("leadStatusChanged");
 };
 
 export { connectSocket, disconnectSocket, getSocket };

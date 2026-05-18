@@ -6,8 +6,11 @@ let io;
 export const initSocket = (server) => {
   io = new Server(server, {
     cors: {
-      origin: process.env.CLIENT_URL || "*",
+      origin: (process.env.CORS_ORIGIN || "http://localhost:3000")
+        .split(",")
+        .map((o) => o.trim().replace(/\/$/, "")),
       credentials: true,
+      methods: ["GET", "POST"],
     },
   });
 
@@ -23,8 +26,6 @@ export const initSocket = (server) => {
 };
 
 export const getIO = () => {
-  if (!io) {
-    throw new Error("Socket.io not initialized");
-  }
+  if (!io) throw new Error("Socket.io not initialized");
   return io;
 };

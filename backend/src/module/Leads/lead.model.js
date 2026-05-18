@@ -17,6 +17,7 @@ export const LEAD_COLUMNS = {
   EMAIL: "customerEmail",
   COMPANY_NAME: "companyName",
   SOURCE: "source",
+  ADDRESS: "address",
   PRESALES_ID: "presales_id",
   STATUS: "status",
   CUSTOMER_TYPE: "customerType",
@@ -227,7 +228,7 @@ export const createCustomers = async (data) => {
   try {
     // Dynamic duplicate check
     let checkSql = `
-      SELECT id, uuid, customerPhone, customerEmail
+      SELECT id, uuid, customerPhone, customerEmail, 	address
       FROM customers
       WHERE customerPhone = ?
     `;
@@ -647,8 +648,89 @@ export const updateCustomerById = async (customerId, data) => {
   return rows[0];
 };
 
-// Lead ko id se fetch karo
-export const getLeadById = async (leadId) => {
-  const [rows] = await pool.query(`SELECT * FROM leads WHERE id = ?`, [leadId]);
-  return rows[0];
+export const getLeadById = async (id) => {
+  try {
+    const query = `
+      SELECT 
+        l.*,
+        c.uuid AS customer_uuid,
+        CONCAT_WS(' ', c.firstName, c.middleName, c.lastName) AS fullName,
+        c.firstName,
+        c.middleName,
+        c.lastName,
+        c.customerPhone,
+        c.customerEmail,
+        c.companyName,
+        c.customerType,
+        c.customerCategoryType,
+        c.alternatePhone,
+        c.countryName,
+        c.customerCity,
+        c.address,
+        c.date_of_birth,
+        c.anniversary,
+        c.gender,
+        c.state,
+        c.pincode
+      FROM leads l
+      LEFT JOIN customers c ON l.customer_id = c.id
+      WHERE l.id = ?
+      LIMIT 1
+    `;
+
+    const [rows] = await pool.execute(query, [id]);
+
+    if (!rows || rows.length === 0) return null;
+
+    const lead = rows[0];
+
+    // Itinerary parse
+    if (lead.itinerary && typeof lead.itinerary === "string") {
+      try {
+        lead.itinerary = JSON.parse(lead.itinerary);
+      } catch {
+        lead.itinerary = [];
+      }
+    }
+
+    // ── Presales name fetch (hrmsPool se) ──
+    const userIds = [lead.advisor_id, lead.presales_id].filter(Boolean);
+
+    if (userIds.length > 0) {
+      try {
+        const placeholders = userIds.map(() => "?").join(",");
+        const [users] = await hrmsPool.query(
+          `SELECT id, aliasName, firstName, middleName, lastName, shortName
+           FROM users
+           WHERE id IN (${placeholders})`,
+          userIds,
+        );
+
+        const userMap = {};
+        users.forEach((u) => {
+          userMap[u.id] = u;
+        });
+
+        const getUser = (userId, type) => {
+          const user = userMap[userId];
+          if (!user) return null;
+          return type === "advisor"
+            ? (user.aliasName || "").trim() || null
+            : (user.shortName || "").trim() || null;
+        };
+
+        lead.advisorFullName = getUser(lead.advisor_id, "advisor");
+        lead.presalesFullName = getUser(lead.presales_id, "presales");
+      } catch (err) {
+        console.error("hrmsPool fetch failed in getLeadById:", err.message);
+        lead.advisorFullName = null;
+        lead.presalesFullName = null;
+      }
+    }
+
+    return lead;
+  } catch (error) {
+    console.error("getLeadById Error:", error);
+    return null;
+  }
 };

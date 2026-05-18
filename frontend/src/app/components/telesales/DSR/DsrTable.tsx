@@ -6,12 +6,11 @@ import { DsrRecord } from "../../../../types/types";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/app/redux/store";
 import { fetchAllDsr } from "@/app/features/Dsr/dsrSlice";
+import Pagination from "../../ui/pagination";
 import {
   Eye,
   Edit,
   Trash2,
-  ChevronLeft,
-  ChevronRight,
   Search,
   Download,
   RefreshCw,
@@ -33,17 +32,27 @@ export default function DsrTable({
   const { dsrList, listLoading, listError, totalCount } = useSelector(
     (state: RootState) => state.dsr,
   );
+
   const safeDsrList: DsrRecord[] = Array.isArray(dsrList) ? dsrList : [];
 
+  // ✅ FIX 1: pageSize ab state hai, constant nahi
+  const [pageSize, setPageSize] = useState(50);
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortField, setSortField] = useState("dsr_date");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
-  // ✅ State for Edit Mode
+  // ✅ FIX 2: totalPages aur total properly calculate ho rahe hain
+  const total = totalCount ?? 0;
+  const totalPages = Math.ceil(total / pageSize) || 1;
+
+  // State for Edit Mode
   const [showEditForm, setShowEditForm] = useState(false);
   const [selectedDsr, setSelectedDsr] = useState<DsrRecord | null>(null);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
 
   const fetchData = () => {
     dispatch(
@@ -61,6 +70,12 @@ export default function DsrTable({
     fetchData();
   }, [currentPage, pageSize, searchTerm, sortField, sortOrder]);
 
+  // pageSize change hone par page 1 pe reset
+  const handlePageSizeChange = (newSize: number) => {
+    setPageSize(newSize);
+    setCurrentPage(1);
+  };
+
   const handleSort = (field: string) => {
     if (sortField === field) {
       setSortOrder(sortOrder === "asc" ? "desc" : "asc");
@@ -70,18 +85,18 @@ export default function DsrTable({
     }
   };
 
-  // ✅ Edit Handler - Show Edit Form
+  // Edit Handler
   const handleEditClick = (dsr: DsrRecord) => {
     setSelectedDsr(dsr);
     setShowEditForm(true);
     if (onEdit) onEdit(dsr);
   };
 
-  // ✅ Back to Table
+  // Back to Table
   const handleBackToList = () => {
     setShowEditForm(false);
     setSelectedDsr(null);
-    fetchData(); // Refresh data
+    fetchData();
   };
 
   const formatCurrency = (value: string | number | undefined) => {
@@ -130,6 +145,7 @@ export default function DsrTable({
         </div>
       );
     }
+
     if (column.key === "fullName") {
       return (
         <div className="relative group inline-block w-full">
@@ -150,9 +166,11 @@ export default function DsrTable({
         </span>
       );
     }
+
     if (column.type === "date" && value) {
       return new Date(value as string).toLocaleDateString("en-IN");
     }
+
     return value !== undefined && value !== null && value !== "" ? (
       String(value)
     ) : (
@@ -196,18 +214,15 @@ export default function DsrTable({
 
   const bannerGroups = getBannerGroups();
 
-  const getCellBgClass = (column: BannerColumn, rowIndex: number) => {
+  const getCellBgClass = (column: BannerColumn) => {
     const colors = GROUP_COLORS[column.groupLabel];
-    return `${colors.light} ${
-      rowIndex % 2 === 0 ? "bg-opacity-100" : "bg-opacity-70"
-    }`;
+    return colors.light;
   };
 
-  // ✅ If Edit Mode is ON, show DsrForm instead of Table
+  // Edit Mode ON → DsrForm dikhao
   if (showEditForm && selectedDsr) {
     return (
       <div className="w-full">
-        {/* Back Button */}
         <div className="mb-4">
           <button
             onClick={handleBackToList}
@@ -217,14 +232,12 @@ export default function DsrTable({
             Back to DSR List
           </button>
         </div>
-
-        {/* DSR Form in Edit Mode */}
         <DsrForm editData={selectedDsr} onEditComplete={handleBackToList} />
       </div>
     );
   }
 
-  // ✅ Otherwise Show Table
+  // Main Table
   return (
     <div className="w-full bg-white rounded-xl shadow-lg overflow-hidden">
       {/* HEADER */}
@@ -236,6 +249,7 @@ export default function DsrTable({
         </div>
       </div>
 
+      {/* TOOLBAR */}
       <div className="p-4 border-b border-gray-200 bg-white">
         <div className="flex flex-wrap gap-3 items-center justify-between">
           <div className="relative flex-1 min-w-[250px]">
@@ -256,12 +270,10 @@ export default function DsrTable({
           </div>
 
           <div className="flex gap-2">
+            {/* ✅ FIX 3: pageSize state use ho rahi hai yahan bhi */}
             <select
               value={pageSize}
-              onChange={(e) => {
-                setPageSize(Number(e.target.value));
-                setCurrentPage(1);
-              }}
+              onChange={(e) => handlePageSizeChange(Number(e.target.value))}
               className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
             >
               {[10, 25, 50, 100].map((n) => (
@@ -287,6 +299,7 @@ export default function DsrTable({
         </div>
       </div>
 
+      {/* ERROR BANNER */}
       {listError && (
         <div className="mx-4 mt-3 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm flex items-center gap-2">
           <span className="font-semibold">Error:</span>
@@ -300,6 +313,7 @@ export default function DsrTable({
         </div>
       )}
 
+      {/* TABLE */}
       <div
         className="overflow-x-auto"
         style={{ maxHeight: "calc(100vh - 300px)" }}
@@ -378,8 +392,7 @@ export default function DsrTable({
                   className="hover:shadow-md transition-all duration-200"
                 >
                   {DSR_TABLE_BANNER.map((column) => {
-                    const colors = GROUP_COLORS[column.groupLabel];
-                    const cellBgClass = getCellBgClass(column, rowIndex);
+                    const cellBgClass = getCellBgClass(column);
                     return (
                       <td
                         key={column.key}
@@ -403,36 +416,14 @@ export default function DsrTable({
         </table>
       </div>
 
-      {totalCount > 0 && (
-        <div className="px-4 py-3 border-t border-gray-200 bg-gray-50 flex flex-wrap justify-between items-center gap-3">
-          <span className="text-sm text-gray-600">
-            Showing {(currentPage - 1) * pageSize + 1}–
-            {Math.min(currentPage * pageSize, totalCount)} of {totalCount}{" "}
-            records
-          </span>
-          <div className="flex gap-1 items-center">
-            <button
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              className="px-3 py-1 border rounded-md disabled:opacity-50 hover:bg-white flex items-center gap-1 text-sm"
-            >
-              <ChevronLeft size={16} />
-              Previous
-            </button>
-            <span className="px-3 py-1 text-sm font-medium bg-white border rounded-md">
-              Page {currentPage} of {Math.ceil(totalCount / pageSize)}
-            </span>
-            <button
-              onClick={() => setCurrentPage((p) => p + 1)}
-              disabled={currentPage >= Math.ceil(totalCount / pageSize)}
-              className="px-3 py-1 border rounded-md disabled:opacity-50 hover:bg-white flex items-center gap-1 text-sm"
-            >
-              Next
-              <ChevronRight size={16} />
-            </button>
-          </div>
-        </div>
-      )}
+      {/* ✅ FIX 4: Pagination ko sahi props pass ho rahe hain */}
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        totalItems={total}
+        rowsPerPage={pageSize}
+        onPageChange={handlePageChange}
+      />
     </div>
   );
 }

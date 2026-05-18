@@ -23,7 +23,7 @@ export const leadSchema = z.object({
   countryName: z.string().min(1, "Country is required"),
   customerCity: z.string().optional(),
   customerState: z.string().optional(),
-  customerAddress: z.string().optional(),
+  address: z.string().optional(),
   serviceType: z
     .enum([
       "One Way",

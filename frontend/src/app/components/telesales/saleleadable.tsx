@@ -284,7 +284,7 @@ export default function LeadsTable() {
           💰
         </button>
 
-            <button
+        <button
           onClick={(e) => {
             e.stopPropagation();
             window.dispatchEvent(
@@ -1089,21 +1089,25 @@ export default function LeadsTable() {
                           return (
                             <td
                               key={column.key}
-                              className={`whitespace-nowrap border border-white text-slate-800 md:px-2 md:py-1 ${
-                                isAddress
-                                  ? "text-[12px] !font-normal"
-                                  : "text-sm font-extrabold"
-                              } ${isFrozen ? "" : column.headerBgClass}`}
-                              style={
-                                isFrozen
+                              className={`border border-white text-slate-800 p-[3px_6px]
+    ${
+      column.key === "itinerary"
+        ? "whitespace-normal break-words max-w-[300px]"
+        : "whitespace-nowrap"
+    }
+    ${isAddress ? "text-[12px] !font-normal" : "text-sm font-extrabold"}
+    ${isFrozen ? "" : column.headerBgClass}
+  `}
+                              style={{
+                                ...(isFrozen
                                   ? {
                                       position: "sticky",
                                       left: calcStickyLeft(i),
                                       zIndex: 10,
                                       backgroundColor: frozenBgColor,
                                     }
-                                  : {}
-                              }
+                                  : {}),
+                              }}
                             >
                               {column.render(lead, rowIndex)}
                             </td>

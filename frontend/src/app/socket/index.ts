@@ -1,27 +1,58 @@
 import { io, Socket } from "socket.io-client";
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL || "/api/v1/";
+const SOCKET_URL =
+  process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:4000";
 
-// ✅ Singleton - ek hi instance
 let socket: Socket | null = null;
 
 export const getSocket = (): Socket => {
   if (!socket) {
     socket = io(SOCKET_URL, {
-      transports: ["websocket"],
+      transports: ["websocket", "polling"],
       withCredentials: true,
-      autoConnect: false, // ✅ manually connect karenge
+      autoConnect: false,
+    });
+
+    socket.on("connect_error", (err) => {
+      console.error("⚠️ Socket error:", err.message);
     });
   }
+
   return socket;
 };
 
-export const connectSocket = () => {
+export const connectSocket = (user?: any) => {
+  // ✅ SAFETY
+  if (!user?.id) {
+    console.log("❌ Invalid user for socket");
+
+    return;
+  }
+
   const s = getSocket();
+
+  s.off("connect");
+
+  s.on("connect", () => {
+    console.log("✅ Socket connected:", s.id);
+
+    s.emit("joinRooms", {
+      id: user.id,
+      fullName: user.fullName,
+      role_id: user.role_id,
+
+      region_ids: user.region_ids || [],
+
+      zone_ids: user.zone_ids || [],
+
+      city_ids: user.city_ids || [],
+    });
+
+    console.log("📡 joinRooms emitted");
+  });
+
   if (!s.connected) {
     s.connect();
-    s.on("connect", () => console.log("Socket connected:", s.id));
-    s.on("disconnect", () => console.log("Socket disconnected"));
   }
 };
 

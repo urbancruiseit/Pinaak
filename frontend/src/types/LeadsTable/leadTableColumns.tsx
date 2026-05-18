@@ -446,7 +446,18 @@ export const useLeadColumns = ({
         // Itinerary Column
         if (col.key === "itinerary" && Array.isArray(val)) {
           const itineraryText = val.length > 0 ? val.join(", ") : "—";
-          return highlightItineraryIfKeyword(itineraryText);
+
+          const formattedText =
+            itineraryText.length > 50
+              ? itineraryText.match(/.{1,50}(\s|$)/g)?.join("\n") ||
+                itineraryText
+              : itineraryText;
+
+          return (
+            <div className="whitespace-pre-line break-words max-w-[250px] leading-5">
+              {highlightItineraryIfKeyword(formattedText)}
+            </div>
+          );
         }
 
         if (col.key === "fullName") {
@@ -659,12 +670,6 @@ export const useLeadColumns = ({
             </div>
           );
         }
-
-        // if (col.key === "dropAddress") {
-        //   const addressText =
-        //     val !== undefined && val !== null && val !== "" ? String(val) : "—";
-        //   return highlightAddressIfKeyword(addressText);
-        // }
 
         if (col.key === "dropAddress") {
           const addressText =

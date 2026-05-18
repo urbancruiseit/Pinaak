@@ -5,8 +5,10 @@ import type { LeadRecord } from "../../../../../types/types";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/app/redux/store";
 import {
+  addRealtimeLead,
   fetchLeads,
   setStatus,
+  updateRealtimeLead,
 } from "@/app/features/lead/leadSlice";
 import LeadDetailsModel from "../../../DetailModel/LeadModel/leadTabledetailsmodel";
 import UnwantedModal from "../../../DetailModel/LeadModel/UnwantedModal";
@@ -37,7 +39,9 @@ import {
   type LeadStatusPercentages,
 } from "../../../../../types/LeadsTable/leadstatus";
 import {
-  listenToLeadUpdates,
+  connectSocket,
+  listenToLeadUpdated,
+  listenToPresalesLeads,
   removeLeadListeners,
 } from "@/app/socket/leadsocket";
 
@@ -123,6 +127,8 @@ export default function LeadsTable() {
     totalLeads,
   } = useSelector((state: RootState) => state.lead);
 
+  const { currentUser } = useSelector((state: RootState) => state.user);
+
   useEffect(() => {
     dispatch(
       fetchLeads({
@@ -134,7 +140,23 @@ export default function LeadsTable() {
     );
   }, [dispatch, currentPage, reduxMonth, reduxYear, reduxStatus]);
 
- 
+  useEffect(() => {
+    if (!currentUser) return;
+    connectSocket(currentUser);
+    listenToPresalesLeads((lead) => {
+      dispatch(addRealtimeLead(lead));
+
+      console.log("realtime lead check mismatch", lead);
+    });
+
+    listenToLeadUpdated((updatedLead) => {
+      dispatch(updateRealtimeLead(updatedLead));
+    });
+
+    return () => {
+      removeLeadListeners();
+    };
+  }, [currentUser, dispatch]);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -295,16 +317,12 @@ export default function LeadsTable() {
     if (freezeIndex === -1) setFreezeKey(null);
   }, [freezeIndex, freezeKey]);
 
-  // ─── DOM-measured column widths for accurate sticky left offsets ─────────
-  // We measure actual <th> widths after render so frozen cells sit flush
-  // against each other with no gap.
   const theadRef = useRef<HTMLTableSectionElement>(null);
   const [colWidths, setColWidths] = useState<number[]>([]);
 
   useEffect(() => {
     const measure = () => {
       if (!theadRef.current) return;
-      // Second <tr> has the per-column <th> cells
       const headerRow = theadRef.current.querySelectorAll("tr")[1];
       if (!headerRow) return;
       const ths = Array.from(headerRow.querySelectorAll("th"));
@@ -312,7 +330,6 @@ export default function LeadsTable() {
     };
 
     measure();
-    // Re-measure on window resize (e.g. zoom change)
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
   }, [bannerColumnsMeta, freezeIndex]);
@@ -325,10 +342,6 @@ export default function LeadsTable() {
     [colWidths],
   );
 
-  // ─── Tailwind bg → CSS hex map for frozen td background ──────────────────
-  // We need real CSS color values (not class names) to set backgroundColor
-  // on sticky <td>s so they don't become transparent over scrolled content.
-  // This map must mirror BANNER_GROUP_LIGHT_BG_CLASS.
   const BG_CLASS_TO_HEX: Record<string, string> = {
     "bg-blue-200": "#bfdbfe",
     "bg-pink-200": "#fbcfe8",
@@ -342,7 +355,6 @@ export default function LeadsTable() {
     "bg-slate-50": "#f8fafc",
   };
 
-  // ─── Banner group builder (for a flat list of columns) ───────────────────
   const buildBannerGroups = (
     cols: typeof bannerColumnsMeta,
   ): Array<{
@@ -365,7 +377,6 @@ export default function LeadsTable() {
           groups.push(current);
           current = null;
         }
-        // Ungrouped column — push a single empty-label group
         groups.push({
           id: `ungrouped-${col.key}`,
           label: "",
@@ -389,13 +400,10 @@ export default function LeadsTable() {
     if (current) groups.push(current);
     return groups;
   };
-
   const bannerGroups = useMemo(
     () => buildBannerGroups(bannerColumnsMeta),
     [bannerColumnsMeta],
   );
-
-  // ─── Filters ──────────────────────────────────────────────────────────────
   const statusOptions: ("All" | LeadRecord["status"])[] = [
     "All",
     ...LEAD_STATUS_OPTIONS,
@@ -404,12 +412,10 @@ export default function LeadsTable() {
     "All",
     ...CITY_OPTIONS,
   ];
-
   const filteredLeads = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
     const startDate = startMonth ? new Date(startMonth) : null;
     const endDate = endMonth ? new Date(`${endMonth}T23:59:59`) : null;
-
     return leads.filter((lead) => {
       if (cityFilter !== "All" && lead.city !== cityFilter) return false;
       if (yearFilter !== "All") {
@@ -482,8 +488,6 @@ export default function LeadsTable() {
     () => calculateLeadStatusPercentages(statusCounts),
     [statusCounts],
   );
-
-  // ─── Edit view ────────────────────────────────────────────────────────────
   if (editLead) {
     return (
       <div className="w-full">
@@ -506,12 +510,9 @@ export default function LeadsTable() {
       </div>
     );
   }
-
-  // ─── Main render ──────────────────────────────────────────────────────────
   return (
     <>
       <div className="w-full">
-        {/* ─── Top Banner ─── */}
         <div className="p-3 bg-orange-100 rounded-md mb-1">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="border-l-8 border rounded-lg border-orange-500 bg-white px-3">
@@ -600,7 +601,6 @@ export default function LeadsTable() {
           </div>
         </div>
 
-        {/* ─── Search / Filter Bar — sticky ─── */}
         <div className="sticky md:top-28 z-30 bg-white shadow-sm rounded-2xl">
           <LeadSearchFilters
             searchTerm={searchTerm}
@@ -645,15 +645,7 @@ export default function LeadsTable() {
           />
         </div>
 
-        {/* ─── Table Container ─── */}
         <div className="mt-1 bg-white border shadow-sm rounded-3xl border-white w-full flex flex-col">
-          {/*
-           * KEY FIX: Single scroll container + single <table>
-           * - overflowY: auto  → vertical scroll (rows scroll, thead stays fixed)
-           * - overflowX: auto  → horizontal scroll (sticky columns stay on left)
-           * Both scroll axes share one context so frozen columns and thead
-           * are always in sync.
-           */}
           <div
             className="border border-white rounded-2xl"
             style={{
@@ -663,20 +655,16 @@ export default function LeadsTable() {
             }}
           >
             <table className="min-w-full text-xs border-collapse border border-white sm:text-sm">
-              {/* ── Single thead — sticky top:0 ── */}
               <thead
                 ref={theadRef}
                 style={{ position: "sticky", top: 0, zIndex: 20 }}
               >
-                {/* Banner / group header row */}
                 <tr>
                   {bannerGroups.map((group, gi) => {
                     const bgClass = group.label
                       ? (BANNER_GROUP_BG_CLASS[group.label] ?? "bg-slate-900")
                       : "bg-white";
 
-                    // For frozen banner cells, we need sticky left too.
-                    // Find the absolute column index where this group starts.
                     const absoluteStartIndex = group.startIndex;
                     const isFrozenBanner =
                       freezeIndex >= 0 && absoluteStartIndex <= freezeIndex;
@@ -706,7 +694,6 @@ export default function LeadsTable() {
                   })}
                 </tr>
 
-                {/* Column label row */}
                 <tr>
                   {bannerColumnsMeta.map((column, i) => {
                     const isFrozen = freezeIndex >= 0 && i <= freezeIndex;
@@ -741,7 +728,6 @@ export default function LeadsTable() {
                 </tr>
               </thead>
 
-              {/* ── Single tbody — this scrolls ── */}
               <tbody>
                 {loading ? (
                   <tr>
@@ -775,7 +761,6 @@ export default function LeadsTable() {
                             column.key === "dropAddress" ||
                             column.key === "itinerary";
 
-                        
                           const frozenBgColor = isFrozen
                             ? (BG_CLASS_TO_HEX[column.headerBgClass] ??
                               rowBaseHex)
@@ -784,11 +769,15 @@ export default function LeadsTable() {
                           return (
                             <td
                               key={column.key}
-                              className={`whitespace-nowrap border border-white text-slate-800 p-[3px_6px] ${
-                                isAddress
-                                  ? "text-[12px] !font-normal"
-                                  : "text-sm font-extrabold"
-                              } ${isFrozen ? "" : column.headerBgClass}`}
+                              className={`border border-white text-slate-800 p-[3px_6px]
+    ${
+      column.key === "itinerary"
+        ? "whitespace-normal break-words max-w-[300px]"
+        : "whitespace-nowrap"
+    }
+    ${isAddress ? "text-[12px] !font-normal" : "text-sm font-extrabold"}
+    ${isFrozen ? "" : column.headerBgClass}
+  `}
                               style={{
                                 ...(isFrozen
                                   ? {
@@ -812,7 +801,6 @@ export default function LeadsTable() {
             </table>
           </div>
 
-          {/* ─── Pagination — always visible at bottom ─── */}
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages || 1}

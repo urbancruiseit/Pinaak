@@ -172,8 +172,7 @@ export const prepareLeadPayload = (
     countryName: data.countryName,
     customerCity: data.customerCity || "",
     state: data.state || "",
-    address: data.address || "",
-
+    address: data.address || formData.address || "",
     // Lead
     enquiryTime: data.date ? `${data.date}:00` : new Date().toISOString(),
     source: data.source,
@@ -277,7 +276,7 @@ export const mapInitialDataToForm = (initialData: LeadRecord) => {
       countryName: initialData.countryName || initialData.customerCountry || "",
       customerCity: initialData.customerCity || "",
       customerState: initialData.customerState || "",
-      customerAddress: initialData.customerAddress || "",
+      address: initialData.address || "",
 
       serviceType: initialData.serviceType,
       tripType: initialData.tripType || "",

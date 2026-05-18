@@ -130,37 +130,24 @@ const dsrSlice = createSlice({
   extraReducers: (builder) => {
     builder
       // ── Fetch All ──────────────────────────────────────────────────────────
+      // ─── FETCH ALL ──────────────────────────────────────────────────────────
       .addCase(fetchAllDsr.pending, (state) => {
         state.listLoading = true;
         state.listError = null;
       })
+
       .addCase(fetchAllDsr.fulfilled, (state, action) => {
         state.listLoading = false;
+        state.listError = null;
 
         const payload = action.payload;
 
-        // Debug: log API response keys (remove after confirming correct key)
-        console.log(
-          "DSR API response keys:",
-          payload ? Object.keys(payload) : payload,
-        );
+        console.log("DSR GET ALL RESPONSE:", payload);
 
-        // Safely extract array from any common response shape
-        const list =
-          payload?.records ??
-          payload?.data ??
-          payload?.dsrList ??
-          payload?.items ??
-          payload?.results ??
-          (Array.isArray(payload) ? payload : []);
-
-        state.dsrList = Array.isArray(list) ? list : [];
-        state.totalCount =
-          payload?.totalCount ??
-          payload?.total ??
-          payload?.count ??
-          state.dsrList.length;
+        state.dsrList = payload?.dsrList || [];
+        state.totalCount = payload?.total || 0;
       })
+
       .addCase(fetchAllDsr.rejected, (state, action) => {
         state.listLoading = false;
         state.listError = action.payload as string;

@@ -15,72 +15,72 @@ export const GROUP_COLORS: Record<
   string,
   { dark: string; light: string; text: string }
 > = {
-  ACTION: { dark: "bg-rose-600", light: "bg-rose-50", text: "text-rose-700" },
+  ACTION: { dark: "bg-lime-900", light: "bg-lime-100", text: "text-lime-700" },
   BOOKING: {
-    dark: "bg-fuchsia-600",
-    light: "bg-fuchsia-50",
-    text: "text-fuchsia-700",
+    dark: "bg-pink-900",
+    light: "bg-pink-100",
+    text: "text-pink-700",
   },
   CUSTOMER: {
-    dark: "bg-emerald-600",
-    light: "bg-emerald-50",
+    dark: "bg-emerald-900",
+    light: "bg-emerald-100",
     text: "text-emerald-700",
   },
-  TRIP: { dark: "bg-amber-500", light: "bg-amber-50", text: "text-amber-700" },
+  TRIP: { dark: "bg-amber-900", light: "bg-amber-100", text: "text-amber-700" },
   ITINERARY: {
-    dark: "bg-orange-600",
+    dark: "bg-orange-900",
     light: "bg-orange-50",
     text: "text-orange-700",
   },
   "VEHICLE DETAILS": {
-    dark: "bg-violet-600",
+    dark: "bg-violet-900",
     light: "bg-violet-50",
     text: "text-violet-700",
   },
   "CUSTOMER QUOTE": {
-    dark: "bg-cyan-600",
+    dark: "bg-cyan-900",
     light: "bg-cyan-50",
     text: "text-cyan-700",
   },
   "CUSTOMER PAYMENT": {
-    dark: "bg-yellow-600",
+    dark: "bg-yellow-900",
     light: "bg-yellow-50",
     text: "text-yellow-700",
   },
 
   "VENDOR RATE": {
-    dark: "bg-indigo-600",
+    dark: "bg-indigo-900",
     light: "bg-indigo-50",
     text: "text-indigo-700",
   },
   "VENDOR PAYMENT": {
-    dark: "bg-teal-600",
-    light: "bg-teal-50",
+    dark: "bg-[#2c1332]",
+    light: "bg-[#2c1332]/10",
     text: "text-teal-700",
   },
 
   "PAYMENT & BALANCE": {
-    dark: "bg-teal-600",
+    dark: "bg-teal-900",
     light: "bg-teal-50",
     text: "text-teal-700",
   },
   "TA MARGIN": {
-    dark: "bg-green-600",
+    dark: "bg-green-900",
     light: "bg-green-50",
     text: "text-green-700",
   },
-  "UC MARGIN": { dark: "bg-sky-600", light: "bg-sky-50", text: "text-sky-700" },
-  REMARKS: { dark: "bg-pink-600", light: "bg-pink-50", text: "text-pink-700" },
+  "UC MARGIN": { dark: "bg-sky-900", light: "bg-sky-50", text: "text-sky-700" },
+  REMARKS: { dark: "bg-pink-900", light: "bg-pink-50", text: "text-pink-700" },
 
   "ACCOUNTS REMARKS": {
-    dark: "bg-yellow-600",
-    light: "bg-yellow-50",
-    text: "text-yellow-700",
+    dark: "bg-rose-900",
+    light: "bg-rose-50",
+    text: "text-rose-700",
   },
   "OPS FEEDBACK": {
-    dark: "bg-lime-600",
-    light: "bg-lime-50",
-    text: "text-lime-700",
+    dark: "bg-cyan-900",
+    light: "bg-cyan-50",
+    text: "text-cyan-700",
   },
 };
 

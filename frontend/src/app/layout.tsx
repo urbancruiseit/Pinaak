@@ -6,6 +6,7 @@ import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css"; // Toastify CSS
 import GlobalLeadPopup from "@/app/components/GlobalLeadPopup";
 import AuthInitializer from "./components/AuthInitializer";
+import { SocketProvider } from "./components/SocketProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,9 +35,11 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ReduxProvider>
-           <AuthInitializer />
-          {children}
-          <GlobalLeadPopup />
+          <SocketProvider>
+            <AuthInitializer />
+            {children}
+            <GlobalLeadPopup />
+          </SocketProvider>
 
           <ToastContainer
             position="top-right"

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useDispatch, useSelector } from "react-redux";
@@ -19,7 +19,7 @@ import {
   CheckCircle,
 } from "lucide-react";
 import type { LeadRecord } from "../../../../../../types/types";
-import { updateLead, fetchLeads } from "@/app/features/lead/leadSlice";
+import { updateLead } from "@/app/features/lead/leadSlice";
 import { AppDispatch, RootState } from "@/app/redux/store";
 import { getCountriesThunk } from "@/app/features/countrycode/countrycodeSlice";
 import { fetchVehicles } from "@/app/features/vehicle/vehicleSlice";
@@ -30,11 +30,9 @@ import {
   resetStatesForCity,
 } from "@/app/features/State/stateSlice";
 
-// ── Import from our 4 files ──────────────────────────────────────────────────
 import {
   SOURCE_OPTIONS,
   STATUS_OPTIONS,
-  CITY_OPTIONS,
   SERVICE_TYPE_OPTIONS,
   OCCASION_OPTIONS,
   LOST_REASON_OPTIONS,
@@ -54,7 +52,7 @@ import {
   calculateTotalVehicles,
 } from "../../../../../../types/Editleads/editleadcalculations";
 
-// ────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 const EditLeadForm: React.FC<{
   initialData: LeadRecord;
   onSuccess?: () => void;
@@ -62,7 +60,7 @@ const EditLeadForm: React.FC<{
 }> = ({ initialData, onSuccess, onCancel }) => {
   const dispatch = useDispatch<AppDispatch>();
 
-  // ── Redux state ─────────────────────────────────────────────────────────
+  // ── Redux state ───────────────────────────────────────────────────────────
   const { countries } = useSelector((state: RootState) => state.country);
   const { vehicleCodes } = useSelector((state: RootState) => state.vehicle);
   const { travelcity } = useSelector((state: RootState) => state.travelcity);
@@ -70,7 +68,8 @@ const EditLeadForm: React.FC<{
     (state: RootState) => state.stateCity,
   );
   const { currentUser } = useSelector((state: RootState) => state.user);
-  // ── React Hook Form ──────────────────────────────────────────────────────
+
+  // ── React Hook Form ───────────────────────────────────────────────────────
   const {
     register,
     handleSubmit,
@@ -84,7 +83,7 @@ const EditLeadForm: React.FC<{
     defaultValues: DEFAULT_VALUES as any,
   });
 
-  // ── Local state ──────────────────────────────────────────────────────────
+  // ── Local state ───────────────────────────────────────────────────────────
   const [formData, setFormData] = useState({
     firstName: "",
     middleName: "",
@@ -97,17 +96,27 @@ const EditLeadForm: React.FC<{
 
   const [successMessage, setSuccessMessage] = useState("");
   const [showSuccessToast, setShowSuccessToast] = useState(false);
+  const [toastType, setToastType] = useState<"success" | "error">("success");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentItinerary, setCurrentItinerary] = useState("");
   const [itineraryList, setItineraryList] = useState<string[]>([]);
   const [customerCategoryTypeValue, setCustomerCategoryTypeValue] =
     useState("");
   const [alternateCountryCode, setAlternateCountryCode] = useState("+91");
-
-  // Country / City / State local state
   const [selectedCountry, setSelectedCountry] = useState<string>("");
 
-  // ── Watched form fields ──────────────────────────────────────────────────
+  // ── KEY FIX 1: isInitialized ──────────────────────────────────────────────
+  // Form sirf tab populate hoga jab cities + travelcity dono Redux mein aa jaayein
+  // Jab tak false hai, customerCity watch effect run nahi karega (state reset nahi hogi)
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // ── KEY FIX 2: pendingStateRef ────────────────────────────────────────────
+  // Tumhare stateSlice mein fetchStatesByCity.pending → statesForCity = [] ho jaata hai
+  // Isliye setValue("state", ...) turant nahi kar sakte
+  // Solution: state value yahan store karo, statesForCity array fill hone par set karo
+  const pendingStateRef = useRef<string | null>(null);
+
+  // ── Watched fields ────────────────────────────────────────────────────────
   const pickupDateTime = watch("pickupDateTime");
   const dropDateTime = watch("dropDateTime");
   const smallbaggage = watch("smallbaggage");
@@ -126,15 +135,15 @@ const EditLeadForm: React.FC<{
 
   const isIndia = selectedCountry === "India";
 
-  // ── Fetch Redux data on mount ────────────────────────────────────────────
+  // ── STEP 1: Mount pe saara data fetch karo ────────────────────────────────
   useEffect(() => {
     dispatch(getCountriesThunk());
-    dispatch(fetchAllCities());
+    dispatch(fetchAllCities()); // → cities array (stateSlice) — customerCity dropdown
     dispatch(fetchVehicles());
-    dispatch(getAllCitiesThunk());
+    dispatch(getAllCitiesThunk()); // → travelcity array — pickup/drop city dropdown
   }, [dispatch]);
 
-  // ── Auto-calculate total baggage ─────────────────────────────────────────
+  // ── Auto-calculate baggage ────────────────────────────────────────────────
   useEffect(() => {
     const total = calculateTotalBaggage(
       Number(smallbaggage) || 0,
@@ -145,13 +154,13 @@ const EditLeadForm: React.FC<{
     setValue("totalbaggage", total);
   }, [smallbaggage, mediumbaggage, largebaggage, airportbaggage, setValue]);
 
-  // ── Auto-calculate days ──────────────────────────────────────────────────
+  // ── Auto-calculate days ───────────────────────────────────────────────────
   useEffect(() => {
     const days = calculateDays(serviceType, pickupDateTime, dropDateTime);
     setValue("days", days);
   }, [serviceType, pickupDateTime, dropDateTime, setValue]);
 
-  // ── Auto-calculate total vehicles ────────────────────────────────────────
+  // ── Auto-calculate vehicles ───────────────────────────────────────────────
   useEffect(() => {
     const totalVehicles = calculateTotalVehicles(
       vehicles || "",
@@ -172,16 +181,23 @@ const EditLeadForm: React.FC<{
     setValue,
   ]);
 
-  // ── When city changes → fetch and reset state ───────────────────────────────
+  // ── STEP 2: customerCity change effect (sirf user interaction ke liye) ────
+  // isInitialized = false hone tak yeh BILKUL nahi chalega
+  // Kyunki: initialization mein jab setValue("customerCity", cityValue) hota hai,
+  // to yeh effect bhi trigger hota tha aur setValue("state", "") kar deta tha
   useEffect(() => {
+    if (!isInitialized) return; // ← guard — initialization ke dauran skip karo
+
     if (customerCity) {
-      dispatch(fetchStatesByCity(customerCity));
+      dispatch(fetchStatesByCity(customerCity)); // city name string pass ho raha hai
+      setValue("state", ""); // user ne khud city badli, state reset karo
     } else {
       dispatch(resetStatesForCity());
+      setValue("state", "");
     }
-    setValue("state", "");
-  }, [customerCity, dispatch, setValue]);
+  }, [customerCity, isInitialized, dispatch, setValue]);
 
+  // ── STEP 3: city_id (branch city) set karo ───────────────────────────────
   useEffect(() => {
     if (
       initialData?.city_id &&
@@ -192,9 +208,11 @@ const EditLeadForm: React.FC<{
     }
   }, [initialData, currentUser, setValue]);
 
-  // ── Initialize form with initialData (auto-fetch / edit mode) ────────────
+  // ── STEP 4: MAIN INITIALIZATION — cities + travelcity ready hone ke baad ─
   useEffect(() => {
     if (!initialData) return;
+    if (!cities?.length || !travelcity?.length) return; // dono ready hone tak wait karo
+    if (isInitialized) return; // sirf ek baar chalao
 
     const mapped = mapInitialDataToForm(initialData);
 
@@ -204,30 +222,67 @@ const EditLeadForm: React.FC<{
     setCustomerCategoryTypeValue(mapped.customerCategoryTypeValue ?? "");
     setItineraryList(mapped.itineraryList ?? []);
 
-    // Country — set local state so city/state dropdowns populate
+    // Country
     const country =
       (initialData as any).countryName ??
       (initialData as any).customerCountry ??
       "";
     setSelectedCountry(country);
 
-    // Apply all setValue calls from mapper
+    // Mapper ke saare setValue calls (pickup city, drop city, dates, etc.)
     Object.entries(mapped.setValues).forEach(([key, value]) => {
       setValue(key as keyof LeadFormData, value as any);
     });
 
     if (country) setValue("countryName" as any, country);
-    if ((initialData as any).customerCity)
-      setValue("customerCity", (initialData as any).customerCity);
-    if ((initialData as any).state)
-      setValue("state", (initialData as any).state);
     if ((initialData as any).address)
       setValue("address", (initialData as any).address);
 
-    setTimeout(() => trigger(), 150);
-  }, [initialData, setValue, trigger]);
+    // ── Customer City + State ka sahi flow ───────────────────────────────────
+    // Tumhara stateSlice ka fetchStatesByCity.pending case → statesForCity = []
+    // Isliye yeh order follow karo:
+    // 1. resetStatesForCity() → statesForCity = [] (clean slate, koi race condition nahi)
+    // 2. pendingStateRef.current = stateValue (pehle store karo)
+    // 3. setValue("customerCity", cityValue) (dropdown set karo)
+    // 4. fetchStatesByCity(cityValue) dispatch karo
+    // 5. fulfilled hone par → STEP 5 effect fire hoga → state set hoga
+    const cityValue = (initialData as any).customerCity;
+    const stateValue = (initialData as any).state ?? null;
 
-  // ── Handlers ─────────────────────────────────────────────────────────────
+    if (cityValue) {
+      dispatch(resetStatesForCity()); // purani states clear
+      pendingStateRef.current = stateValue; // pehle store karo (STEP 5 ke liye)
+      setValue("customerCity", cityValue); // city dropdown set karo
+      dispatch(fetchStatesByCity(cityValue)); // ab fetch karo (city name string pass)
+      // Note: STEP 2 effect guard hai (isInitialized=false), isliye state reset nahi hogi
+    }
+
+    setIsInitialized(true); // ab STEP 2 effect active ho jaayega
+    setTimeout(() => trigger(), 150);
+  }, [
+    initialData,
+    cities,
+    travelcity,
+    isInitialized,
+    setValue,
+    trigger,
+    dispatch,
+  ]);
+
+  // ── STEP 5: statesForCity fulfilled hone ke baad pending state set karo ───
+  // Tumhare stateSlice mein:
+  //   fetchStatesByCity.pending   → statesForCity = []  ← yeh effect nahi chalega
+  //   fetchStatesByCity.fulfilled → statesForCity = [Maharashtra, Gujarat...]
+  //                                                  ← yahan yeh effect fire hoga
+  // Tab pendingStateRef.current mein stored value ("Maharashtra") set ho jaayegi
+  useEffect(() => {
+    if (pendingStateRef.current && statesForCity?.length > 0) {
+      setValue("state", pendingStateRef.current);
+      pendingStateRef.current = null; // ek baar set kiya, clear karo
+    }
+  }, [statesForCity, setValue]);
+
+  // ── Handlers ──────────────────────────────────────────────────────────────
   const handleFieldChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
@@ -241,6 +296,7 @@ const EditLeadForm: React.FC<{
     setValue("state", "");
     setValue("countryName" as any, country);
     setValue("customerCountry" as any, country);
+    dispatch(resetStatesForCity());
   };
 
   const addItinerary = () => {
@@ -266,8 +322,6 @@ const EditLeadForm: React.FC<{
     setValue("itinerary", newList);
   };
 
-  const [toastType, setToastType] = useState<"success" | "error">("success");
-
   const showToastMessage = (
     message: string,
     type: "success" | "error" = "success",
@@ -280,14 +334,13 @@ const EditLeadForm: React.FC<{
       setTimeout(() => setSuccessMessage(""), 300);
     }, 3000);
   };
+
   const onSubmit: SubmitHandler<LeadFormData> = async (data) => {
     if (!initialData.id) {
-      showToastMessage("Lead ID not found", "error"); // 🔴
+      showToastMessage("Lead ID not found", "error");
       return;
     }
-
     setIsSubmitting(true);
-
     const payload = prepareLeadPayload(
       data,
       formData,
@@ -295,7 +348,6 @@ const EditLeadForm: React.FC<{
       alternateCountryCode,
       initialData,
     );
-
     try {
       await dispatch(
         updateLead({
@@ -303,22 +355,19 @@ const EditLeadForm: React.FC<{
           data: payload as Partial<LeadRecord>,
         }),
       ).unwrap();
-
-      showToastMessage("Lead updated successfully!", "success"); // 🟢
-
-      await dispatch(fetchLeads(1));
+      showToastMessage("Lead updated successfully!", "success");
       onSuccess?.();
     } catch (error: any) {
       showToastMessage(
         error?.message || "Failed to update lead. Please try again.",
-        "error", // 🔴
+        "error",
       );
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // ── Date helpers ─────────────────────────────────────────────────────────
+  // ── Date helpers ──────────────────────────────────────────────────────────
   const today = new Date();
   const maxDate = new Date(
     today.getFullYear() + 2,
@@ -336,42 +385,34 @@ const EditLeadForm: React.FC<{
       return numA !== numB ? numA - numB : a.code.localeCompare(b.code);
     });
 
-  // ────────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────
   // RENDER
-  // ────────────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────
   return (
     <div>
-      {/* ── Success/Error Toast ─────────────────────────────────────────────────── */}
+      {/* Toast */}
       {showSuccessToast && (
         <div className="fixed right-4 top-4 z-50 animate-slide-in-right">
           <div
-            className={`${
-              toastType === "error"
-                ? "bg-red-50 border-red-500"
-                : "bg-green-50 border-green-500"
-            } border-l-4 rounded-lg shadow-lg p-4 flex items-start gap-3 min-w-[320px]`}
+            className={`${toastType === "error" ? "bg-red-50 border-red-500" : "bg-green-50 border-green-500"} border-l-4 rounded-lg shadow-lg p-4 flex items-start gap-3 min-w-[320px]`}
           >
             <CheckCircle
-              className={`${
-                toastType === "error" ? "text-red-500" : "text-green-500"
-              } w-5 h-5 flex-shrink-0 mt-0.5`}
+              className={`${toastType === "error" ? "text-red-500" : "text-green-500"} w-5 h-5 flex-shrink-0 mt-0.5`}
             />
             <div className="flex-1">
               <p
-                className={`${
-                  toastType === "error" ? "text-red-800" : "text-green-800"
-                } font-medium`}
+                className={`${toastType === "error" ? "text-red-800" : "text-green-800"} font-medium`}
               >
                 {successMessage}
               </p>
             </div>
             <button
               onClick={() => setShowSuccessToast(false)}
-              className={`${
+              className={
                 toastType === "error"
                   ? "text-red-600 hover:text-red-800"
                   : "text-green-600 hover:text-green-800"
-              }`}
+              }
             >
               <X size={18} />
             </button>
@@ -379,7 +420,17 @@ const EditLeadForm: React.FC<{
         </div>
       )}
 
-      {/* ── Header ──────────────────────────────────────────────────────────── */}
+      {/* Loading banner */}
+      {!isInitialized && (
+        <div className="flex items-center justify-center py-4 mb-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-yellow-600 mr-3" />
+          <span className="text-yellow-700 font-medium text-sm">
+            Loading form data, please wait...
+          </span>
+        </div>
+      )}
+
+      {/* Header */}
       <div className="sticky top-0 z-10 bg-orange-100 p-3 rounded-md">
         <div className="flex justify-between items-center">
           <div className="pl-4 border-l-8 border-orange-500 bg-white px-3 rounded-md shadow-md">
@@ -398,12 +449,10 @@ const EditLeadForm: React.FC<{
         </div>
       </div>
 
-      {/* ── Form ────────────────────────────────────────────────────────────── */}
+      {/* Form */}
       <div className="p-6 mx-auto bg-white shadow-xl rounded-lg">
         <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-8">
-          {/* ════════════════════════════════════════════════════════════════
-              SECTION 1 — Enquiry Information
-          ════════════════════════════════════════════════════════════════ */}
+          {/* ════════════════════════ SECTION 1 — Enquiry Information ════════════════════════ */}
           <div className="border rounded-xl p-6 bg-blue-50">
             <h3 className="text-xl font-semibold text-blue-800 mb-6 pb-3 border-b">
               <span className="bg-blue-600 text-white px-3 py-1 rounded-md mr-2">
@@ -425,7 +474,6 @@ const EditLeadForm: React.FC<{
                   <input
                     type="datetime-local"
                     {...register("date")}
-                    
                     className="w-full py-2 border bg-white px-12 border-gray-300 rounded-md"
                   />
                   <Calendar
@@ -488,18 +536,16 @@ const EditLeadForm: React.FC<{
                 </div>
               </div>
 
-              {/* City */}
+              {/* Branch City */}
               <div>
                 <label className="block text-md font-extrabold text-gray-700 mb-1">
                   City
                 </label>
-
                 <div className="relative group">
                   <Info
                     size={15}
                     className="absolute -top-4 right-0 text-blue-500 cursor-help"
                   />
-
                   <select
                     {...register("city_id", {
                       valueAsNumber: true,
@@ -508,7 +554,6 @@ const EditLeadForm: React.FC<{
                     className="w-full py-2 border bg-white px-12 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Select City</option>
-
                     {Array.isArray(currentUser?.city_ids) &&
                     currentUser.city_ids.length > 0 ? (
                       currentUser.city_ids.map((id: number, index: number) => (
@@ -523,13 +568,11 @@ const EditLeadForm: React.FC<{
                       <option disabled>No cities available</option>
                     )}
                   </select>
-
                   <FileText
                     className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-600"
                     size={20}
                   />
                 </div>
-
                 {errors.city_id && (
                   <p className="text-red-500 text-sm mt-1">
                     {errors.city_id.message}
@@ -539,9 +582,7 @@ const EditLeadForm: React.FC<{
             </div>
           </div>
 
-          {/* ════════════════════════════════════════════════════════════════
-              SECTION 2 — Customer Information
-          ════════════════════════════════════════════════════════════════ */}
+          {/* ════════════════════════ SECTION 2 — Customer Information ════════════════════════ */}
           <div className="border rounded-xl p-6 bg-green-50">
             <h3 className="text-xl font-semibold text-green-800 mb-6 pb-3 border-b">
               <span className="bg-green-600 text-white px-3 py-1 rounded-md mr-2">
@@ -704,11 +745,7 @@ const EditLeadForm: React.FC<{
                     onChange={handleFieldChange}
                     placeholder="Enter company name"
                     disabled={customerType === "Personal"}
-                    className={`w-full py-2 border px-12 border-gray-300 rounded-md ${
-                      customerType === "Personal"
-                        ? "bg-gray-100 cursor-not-allowed"
-                        : "bg-white"
-                    }`}
+                    className={`w-full py-2 border px-12 border-gray-300 rounded-md ${customerType === "Personal" ? "bg-gray-100 cursor-not-allowed" : "bg-white"}`}
                   />
                   <FileText
                     className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600"
@@ -731,7 +768,6 @@ const EditLeadForm: React.FC<{
                         setFormData((prev) => ({ ...prev, companyName: "C" }));
                       else if (formData.companyName === "C")
                         setFormData((prev) => ({ ...prev, companyName: "" }));
-                      // reset sub-type
                       setCustomerCategoryTypeValue("");
                       setValue("customerCategoryType", "");
                     }}
@@ -754,7 +790,7 @@ const EditLeadForm: React.FC<{
                 )}
               </div>
 
-              {/* Customer Type (sub-type) */}
+              {/* Customer Sub-type */}
               <div>
                 <label className="block text-md font-extrabold text-gray-700 mb-1">
                   Customer Type
@@ -784,12 +820,12 @@ const EditLeadForm: React.FC<{
                 </div>
               </div>
 
-              {/* ── Customer Country (always visible) ─────────────────────── */}
+              {/* Country */}
               <div>
                 <label className="block text-md font-extrabold text-gray-700 mb-1">
                   Country Name
                 </label>
-                <div className="relative group">
+                <div className="relative">
                   <select
                     {...register("countryName")}
                     value={selectedCountry}
@@ -822,6 +858,10 @@ const EditLeadForm: React.FC<{
                 )}
               </div>
 
+              {/* ── Customer City (India only) ────────────────────────────────────────────
+                  cities → fetchAllCities (stateSlice) se aata hai
+                  value: city.cityName (string) — fetchStatesByCity mein yahi pass hota hai
+              ─────────────────────────────────────────────────────────────────────────── */}
               {isIndia && (
                 <div>
                   <label className="block text-md font-extrabold text-gray-700 mb-1">
@@ -858,6 +898,12 @@ const EditLeadForm: React.FC<{
                 </div>
               )}
 
+              {/* ── Customer State (India only) ───────────────────────────────────────────
+                  statesForCity → fetchStatesByCity (stateSlice) se aata hai
+                  Slice ka pending case: statesForCity = []
+                  Slice ka fulfilled case: statesForCity = [data]
+                  STEP 5 effect fulfilled hone par pendingStateRef ka stored value set karega
+              ─────────────────────────────────────────────────────────────────────────── */}
               {isIndia && (
                 <div>
                   <label className="block text-md font-extrabold text-gray-700 mb-1">
@@ -873,7 +919,9 @@ const EditLeadForm: React.FC<{
                       disabled={!customerCity}
                       className="w-full py-2 border bg-white pl-10 pr-3 border-gray-300 rounded-md disabled:bg-gray-100"
                     >
-                      <option value="">Select State</option>
+                      <option value="">
+                        {statesLoading ? "Loading states..." : "Select State"}
+                      </option>
                       {statesForCity?.map((state) => (
                         <option key={state.id} value={state.stateName}>
                           {state.stateName}
@@ -888,7 +936,7 @@ const EditLeadForm: React.FC<{
                 </div>
               )}
 
-              {/* Customer Address */}
+              {/* Address */}
               <div className="w-full md:col-span-2">
                 <label className="block text-md font-extrabold text-gray-700 mb-1">
                   Customer Address
@@ -903,9 +951,7 @@ const EditLeadForm: React.FC<{
             </div>
           </div>
 
-          {/* ════════════════════════════════════════════════════════════════
-              SECTION 3 — Travel Requirements
-          ════════════════════════════════════════════════════════════════ */}
+          {/* ════════════════════════ SECTION 3 — Travel Requirements ════════════════════════ */}
           <div className="p-6 border rounded-xl bg-purple-50">
             <h3 className="relative pb-3 mb-6 text-xl font-semibold text-purple-800 border-b">
               <span className="px-3 py-1 mr-2 text-white bg-purple-600 rounded-md">
@@ -925,7 +971,7 @@ const EditLeadForm: React.FC<{
                     {/* Pickup DateTime */}
                     <div className="w-full md:w-[20%]">
                       <label className="block mb-1 font-extrabold text-gray-700 text-md">
-                        Pickup Date &amp; Time{" "}
+                        Pickup Date & Time{" "}
                         <span className="text-red-500">*</span>
                       </label>
                       <div className="relative">
@@ -948,7 +994,7 @@ const EditLeadForm: React.FC<{
                       )}
                     </div>
 
-                    {/* Pickup City */}
+                    {/* Pickup City — travelcity (getAllCitiesThunk) se */}
                     <div className="w-full md:w-[20%]">
                       <label className="block mb-1 font-extrabold text-gray-700 text-md">
                         Pickup City <span className="text-red-500">*</span>
@@ -958,7 +1004,11 @@ const EditLeadForm: React.FC<{
                           {...register("pickupcity")}
                           className="w-full py-2 pl-10 pr-8 border border-gray-300 rounded-md bg-white"
                         >
-                          <option value="">Select Pickup City</option>
+                          <option value="">
+                            {travelcity?.length === 0
+                              ? "Loading..."
+                              : "Select Pickup City"}
+                          </option>
                           {travelcity?.map((city) => (
                             <option
                               key={city.id ?? city.uuid}
@@ -979,7 +1029,6 @@ const EditLeadForm: React.FC<{
                         </p>
                       )}
                     </div>
-                     
 
                     {/* Pickup Address */}
                     <div className="w-full md:w-[30%]">
@@ -1004,9 +1053,10 @@ const EditLeadForm: React.FC<{
                       )}
                     </div>
 
+                    {/* Additional Pickup */}
                     <div className="w-full md:w-[20%]">
                       <label className="block mb-1 font-extrabold text-gray-700 text-md">
-                        Additional Pickup Addresses  
+                        Additional Pickup Addresses
                       </label>
                       <div className="relative">
                         <input
@@ -1019,11 +1069,6 @@ const EditLeadForm: React.FC<{
                           size={20}
                         />
                       </div>
-                      {errors.multiplepickup && (
-                        <p className="mt-1 text-sm text-red-500">
-                          {errors.multiplepickup.message}
-                        </p>
-                      )}
                     </div>
 
                     {/* No. of Days */}
@@ -1036,11 +1081,7 @@ const EditLeadForm: React.FC<{
                           type="number"
                           {...register("days", { valueAsNumber: true })}
                           readOnly={serviceType === "Pick & Drop"}
-                          className={`w-full ${
-                            serviceType === "Pick & Drop"
-                              ? "bg-purple-400"
-                              : "bg-purple-600"
-                          } text-white font-extrabold text-2xl py-2 text-center border border-gray-300 rounded-md`}
+                          className={`w-full ${serviceType === "Pick & Drop" ? "bg-purple-400" : "bg-purple-600"} text-white font-extrabold text-2xl py-2 text-center border border-gray-300 rounded-md`}
                           placeholder="Days"
                         />
                         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-white font-bold text-xs">
@@ -1059,7 +1100,7 @@ const EditLeadForm: React.FC<{
                     {/* Drop DateTime */}
                     <div className="w-full md:w-[20%]">
                       <label className="block mb-1 font-extrabold text-gray-700 text-md">
-                        Drop Date &amp; Time
+                        Drop Date & Time
                       </label>
                       <div className="relative">
                         <input
@@ -1076,7 +1117,7 @@ const EditLeadForm: React.FC<{
                       </div>
                     </div>
 
-                    {/* Drop City */}
+                    {/* Drop City — travelcity se */}
                     <div className="w-full md:w-[15%]">
                       <label className="block mb-1 font-extrabold text-gray-700 text-md">
                         Drop City <span className="text-red-500">*</span>
@@ -1086,7 +1127,11 @@ const EditLeadForm: React.FC<{
                           {...register("dropcity")}
                           className="w-full py-2 pl-10 pr-8 border border-gray-300 rounded-md bg-white"
                         >
-                          <option value="">Select Drop City</option>
+                          <option value="">
+                            {travelcity?.length === 0
+                              ? "Loading..."
+                              : "Select Drop City"}
+                          </option>
                           {travelcity?.map((city) => (
                             <option
                               key={city.id ?? city.uuid}
@@ -1108,7 +1153,6 @@ const EditLeadForm: React.FC<{
                       )}
                     </div>
 
-                    
                     {/* Drop Address */}
                     <div className="w-full md:w-[30%]">
                       <label className="block mb-1 font-extrabold text-gray-700 text-md">
@@ -1121,30 +1165,23 @@ const EditLeadForm: React.FC<{
                       />
                     </div>
 
+                    {/* Additional Drop */}
                     <div className="w-full md:w-[20%]">
                       <label className="block mb-1 font-extrabold text-gray-700 text-md">
-                        Additional Drop Addresses 
+                        Additional Drop Addresses
                       </label>
                       <div className="relative">
                         <input
                           {...register("multipledrop")}
                           className="w-full py-2 pl-10 pr-3 border border-gray-300 rounded-md"
-                          placeholder="Enter Multiple Pickup"
+                          placeholder="Enter Multiple Drop"
                         />
                         <MapPin
                           className="absolute text-purple-600 -translate-y-1/2 left-3 top-1/2"
                           size={20}
                         />
                       </div>
-                      {errors.multipledrop && (
-                        <p className="mt-1 text-sm text-red-500">
-                          {errors.multipledrop.message}
-                        </p>
-                      )}
                     </div>
-
-
-                    
 
                     {/* Service Type */}
                     <div className="w-full md:w-[15%]">
@@ -1169,7 +1206,7 @@ const EditLeadForm: React.FC<{
                       </select>
                     </div>
 
-                    {/* Trip Type (Round Trip only) */}
+                    {/* Trip Type */}
                     {serviceType === "Round Trip" && (
                       <div className="w-full md:w-[20%]">
                         <label className="block text-md font-extrabold text-gray-700 mb-1">
@@ -1200,7 +1237,7 @@ const EditLeadForm: React.FC<{
               </div>
             </div>
 
-            {/* Itinerary Details */}
+            {/* Itinerary */}
             <div className="p-4 mb-6 bg-white border rounded-lg">
               <span className="mb-6 font-extrabold text-purple-600 text-md">
                 Itinerary Details
@@ -1270,9 +1307,7 @@ const EditLeadForm: React.FC<{
                   </div>
                 </div>
               </div>
-
               <div className="grid grid-cols-1 gap-4 mt-4 md:grid-cols-4">
-                {/* Actual KM */}
                 <div>
                   <label className="block mb-1 font-extrabold text-gray-700 text-md">
                     Actual KM <span className="text-red-500">*</span>
@@ -1294,8 +1329,6 @@ const EditLeadForm: React.FC<{
                     </p>
                   )}
                 </div>
-
-                {/* Occasion */}
                 <div>
                   <label className="block text-md font-extrabold text-gray-700 mb-1">
                     Occasion Type
@@ -1443,112 +1476,63 @@ const EditLeadForm: React.FC<{
                 Vehicle Details (Optional)
               </span>
               <div className="flex flex-wrap gap-4 mt-4">
-                {/* Vehicle 1 */}
-                <div className="w-full md:w-[20%]">
-                  <label className="block text-md font-extrabold text-gray-700 mb-1">
-                    Vehicle Type 1
-                  </label>
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <select
-                        {...register("vehicles")}
-                        className="w-full py-2 border bg-white px-12 border-gray-300 rounded-md"
-                      >
-                        <option value="">Select</option>
-                        {sortVehicleCodes(vehicleCodes).map(
-                          (v: any, i: number) => (
-                            <option key={`${v.code}-${i}`} value={v.code}>
-                              {v.code}
-                            </option>
-                          ),
-                        )}
-                      </select>
-                      <FileText
-                        className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600"
-                        size={20}
+                {[
+                  {
+                    reg: "vehicles",
+                    reg2: "vehicle1Quantity",
+                    label: "Vehicle Type 1",
+                    suffix: "",
+                  },
+                  {
+                    reg: "vehicle2",
+                    reg2: "vehicle2Quantity",
+                    label: "Vehicle Type 2",
+                    suffix: "type2",
+                  },
+                  {
+                    reg: "vehicle3",
+                    reg2: "vehicle3Quantity",
+                    label: "Vehicle Type 3",
+                    suffix: "type3",
+                  },
+                ].map(({ reg, reg2, label, suffix }) => (
+                  <div key={reg} className="w-full md:w-[20%]">
+                    <label className="block text-md font-extrabold text-gray-700 mb-1">
+                      {label}
+                    </label>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <select
+                          {...register(reg as any)}
+                          className="w-full py-2 border bg-white px-12 border-gray-300 rounded-md"
+                        >
+                          <option value="">Select</option>
+                          {sortVehicleCodes(vehicleCodes).map(
+                            (v: any, i: number) => (
+                              <option
+                                key={`${v.code}-${suffix}-${i}`}
+                                value={v.code}
+                              >
+                                {v.code}
+                              </option>
+                            ),
+                          )}
+                        </select>
+                        <FileText
+                          className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600"
+                          size={20}
+                        />
+                      </div>
+                      <input
+                        type="number"
+                        placeholder="Qty"
+                        min="0"
+                        className="w-20 py-2 border border-gray-300 rounded-md text-center"
+                        {...register(reg2 as any, { valueAsNumber: true })}
                       />
                     </div>
-                    <input
-                      type="number"
-                      placeholder="Qty"
-                      min="0"
-                      className="w-20 py-2 border border-gray-300 rounded-md text-center"
-                      {...register("vehicle1Quantity", { valueAsNumber: true })}
-                    />
                   </div>
-                </div>
-
-                {/* Vehicle 2 */}
-                <div className="w-full md:w-[20%]">
-                  <label className="block text-md font-extrabold text-gray-700 mb-1">
-                    Vehicle Type 2
-                  </label>
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <select
-                        {...register("vehicle2")}
-                        className="w-full py-2 border bg-white px-12 border-gray-300 rounded-md"
-                      >
-                        <option value="">Select</option>
-                        {sortVehicleCodes(vehicleCodes).map(
-                          (v: any, i: number) => (
-                            <option key={`${v.code}-type2-${i}`} value={v.code}>
-                              {v.code}
-                            </option>
-                          ),
-                        )}
-                      </select>
-                      <FileText
-                        className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600"
-                        size={20}
-                      />
-                    </div>
-                    <input
-                      type="number"
-                      placeholder="Qty"
-                      min="0"
-                      className="w-20 py-2 border border-gray-300 rounded-md text-center"
-                      {...register("vehicle2Quantity", { valueAsNumber: true })}
-                    />
-                  </div>
-                </div>
-
-                {/* Vehicle 3 */}
-                <div className="w-full md:w-[20%]">
-                  <label className="block text-md font-extrabold text-gray-700 mb-1">
-                    Vehicle Type 3
-                  </label>
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <select
-                        {...register("vehicle3")}
-                        className="w-full py-2 border bg-white px-12 border-gray-300 rounded-md"
-                      >
-                        <option value="">Select</option>
-                        {sortVehicleCodes(vehicleCodes).map(
-                          (v: any, i: number) => (
-                            <option key={`${v.code}-type3-${i}`} value={v.code}>
-                              {v.code}
-                            </option>
-                          ),
-                        )}
-                      </select>
-                      <FileText
-                        className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600"
-                        size={20}
-                      />
-                    </div>
-                    <input
-                      type="number"
-                      placeholder="Qty"
-                      min="0"
-                      className="w-20 py-2 border border-gray-300 rounded-md text-center"
-                      {...register("vehicle3Quantity", { valueAsNumber: true })}
-                    />
-                  </div>
-                </div>
-
-                {/* Total Vehicle Requirement */}
+                ))}
                 <div className="w-full md:w-[35%]">
                   <label className="block mb-1 font-extrabold text-gray-700 text-md">
                     Total Vehicle Requirement
@@ -1651,7 +1635,7 @@ const EditLeadForm: React.FC<{
             </div>
           </div>
 
-          {/* ── Submit ────────────────────────────────────────────────────────── */}
+          {/* Submit */}
           <div className="pt-6">
             {!isValid && Object.keys(errors).length > 0 && (
               <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-md">
@@ -1672,14 +1656,18 @@ const EditLeadForm: React.FC<{
             )}
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || !isInitialized}
               className={`w-full px-6 py-3 font-medium rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
-                isSubmitting
+                isSubmitting || !isInitialized
                   ? "bg-gray-400 cursor-not-allowed"
                   : "bg-blue-900 text-white hover:bg-blue-500"
               }`}
             >
-              {isSubmitting ? "Updating..." : "Update Lead"}
+              {isSubmitting
+                ? "Updating..."
+                : !isInitialized
+                  ? "Loading..."
+                  : "Update Lead"}
             </button>
           </div>
         </form>

@@ -36,7 +36,7 @@ interface AssignedLeadsState {
   hasNextPage: boolean;
   selectedMonth: number;
   selectedYear: number;
-   selectedStatus: string | null;
+  selectedStatus: string | null;
   statusCounts: StatusCounts;
   totalLeads: number;
   monthlyStats: {
@@ -45,7 +45,7 @@ interface AssignedLeadsState {
     year: number;
     leadCount: number;
   }[];
-  zonesAdvisors:ZoneAdvisor[];
+  zonesAdvisors: ZoneAdvisor[];
 }
 
 interface LeadStatusState {
@@ -72,7 +72,7 @@ interface FetchMyAssignedLeadsArgs {
   search?: string;
   month?: number | null;
   year?: number | null;
-   status?: string | null; 
+  status?: string | null;
 }
 
 // 🔹 Initial State
@@ -93,7 +93,7 @@ const initialState: TravelAdvisorState = {
     hasNextPage: false,
     selectedMonth: new Date().getMonth() + 1,
     selectedYear: new Date().getFullYear(),
-    selectedStatus: null, 
+    selectedStatus: null,
     statusCounts: {
       NEW: 0,
       KYC: 0,
@@ -105,7 +105,7 @@ const initialState: TravelAdvisorState = {
     },
     totalLeads: 0,
     monthlyStats: [],
-    zonesAdvisors:[]
+    zonesAdvisors: [],
   },
 
   leadStatus: {
@@ -154,7 +154,7 @@ export const assignTravelAdvisor = createAsyncThunk<
     } catch (error: any) {
       return rejectWithValue(error.message);
     }
-  }
+  },
 );
 
 //
@@ -166,13 +166,24 @@ export const fetchMyAssignedLeads = createAsyncThunk<
   { rejectValue: string }
 >(
   "access/fetchMyAssignedLeads",
-  async ({ page = 1, cityIds, search, month, year, advisorId, status }, { rejectWithValue }) => {  // ✅ status add kiya
+  async (
+    { page = 1, cityIds, search, month, year, advisorId, status },
+    { rejectWithValue },
+  ) => {
+    // ✅ status add kiya
     try {
-      return await getMyAssignedLeadsApi(page, { cityIds, search, month, year, advisorId, status });  // ✅ status pass kiya
+      return await getMyAssignedLeadsApi(page, {
+        cityIds,
+        search,
+        month,
+        year,
+        advisorId,
+        status,
+      }); // ✅ status pass kiya
     } catch (error: any) {
       return rejectWithValue(error.message);
     }
-  }
+  },
 );
 
 //
@@ -205,7 +216,7 @@ export const fetchPresalesLeadStatusCount = createAsyncThunk<
     } catch (error: any) {
       return rejectWithValue(error.message);
     }
-  }
+  },
 );
 
 //
@@ -218,9 +229,34 @@ const travelAdvisorSlice = createSlice({
     resetAssignState: (state) => {
       state.assignSuccess = false;
     },
-    setAssignedStatus: (state, action) => {  // ✅ add kiya
+    setAssignedStatus: (state, action) => {
+      // ✅ add kiya
       state.assignedLeads.selectedStatus = action.payload;
-      state.assignedLeads.page = 1;  // ✅ status change pe page reset
+      state.assignedLeads.page = 1; // ✅ status change pe page reset
+    },
+    addRealtimeAssignedLead(state, action) {
+      const newLead = action.payload;
+      if (!newLead?.id) return;
+
+      const exists = state.assignedLeads.leads.some(
+        (lead) => String(lead.id) === String(newLead.id),
+      );
+
+      if (!exists) {
+        state.assignedLeads.leads.unshift(newLead);
+        state.assignedLeads.total += 1;
+      }
+    },
+
+    updateRealtimeAssignedLead(state, action) {
+      // ← sirf ye add karo
+      const updatedLead = action.payload;
+      const index = state.assignedLeads.leads.findIndex(
+        (lead) => String(lead.id) === String(updatedLead.id),
+      );
+      if (index !== -1) {
+        state.assignedLeads.leads[index] = updatedLead;
+      }
     },
   },
   extraReducers: (builder) => {
@@ -261,26 +297,25 @@ const travelAdvisorSlice = createSlice({
       })
       .addCase(fetchMyAssignedLeads.fulfilled, (state, action) => {
         const p = action.payload;
-       
-        state.assignedLeads.loading   = false;
-        state.assignedLeads.leads     = p.leads;
-        state.assignedLeads.page      = p.page;
-        state.assignedLeads.total     = p.total;
-        state.assignedLeads.totalPages   = p.totalPages;
-        state.assignedLeads.hasNextPage  = p.hasNextPage;
-        state.assignedLeads.selectedMonth = p.selectedMonth;
-        state.assignedLeads.selectedYear  = p.selectedYear;
-        state.assignedLeads.selectedStatus = p.selectedStatus ?? null; 
-        state.assignedLeads.statusCounts  = p.statusCounts;
-        state.assignedLeads.totalLeads    = p.totalLeads;
-        state.assignedLeads.monthlyStats  = p.monthlyStats ?? [];
-        state.assignedLeads.zonesAdvisors = p.zoneAdvisors ?? [];
 
-       
+        state.assignedLeads.loading = false;
+        state.assignedLeads.leads = p.leads;
+        state.assignedLeads.page = p.page;
+        state.assignedLeads.total = p.total;
+        state.assignedLeads.totalPages = p.totalPages;
+        state.assignedLeads.hasNextPage = p.hasNextPage;
+        state.assignedLeads.selectedMonth = p.selectedMonth;
+        state.assignedLeads.selectedYear = p.selectedYear;
+        state.assignedLeads.selectedStatus = p.selectedStatus ?? null;
+        state.assignedLeads.statusCounts = p.statusCounts;
+        state.assignedLeads.totalLeads = p.totalLeads;
+        state.assignedLeads.monthlyStats = p.monthlyStats ?? [];
+        state.assignedLeads.zonesAdvisors = p.zoneAdvisors ?? [];
       })
       .addCase(fetchMyAssignedLeads.rejected, (state, action) => {
         state.assignedLeads.loading = false;
-        state.assignedLeads.error = action.payload || "Failed to fetch assigned leads";
+        state.assignedLeads.error =
+          action.payload || "Failed to fetch assigned leads";
       })
 
       // 🔹 My Lead Status Count
@@ -290,12 +325,13 @@ const travelAdvisorSlice = createSlice({
       })
       .addCase(fetchMyLeadStatusCount.fulfilled, (state, action) => {
         state.leadStatus.loading = false;
-        state.leadStatus.totalLeads  = action.payload.totalLeads;
+        state.leadStatus.totalLeads = action.payload.totalLeads;
         state.leadStatus.statusCount = action.payload.statusCount;
       })
       .addCase(fetchMyLeadStatusCount.rejected, (state, action) => {
         state.leadStatus.loading = false;
-        state.leadStatus.error = action.payload || "Failed to fetch lead status count";
+        state.leadStatus.error =
+          action.payload || "Failed to fetch lead status count";
       })
 
       // 🔹 Presales Lead Status Count
@@ -305,15 +341,21 @@ const travelAdvisorSlice = createSlice({
       })
       .addCase(fetchPresalesLeadStatusCount.fulfilled, (state, action) => {
         state.leadStatus.loading = false;
-        state.leadStatus.totalLeads  = action.payload.totalLeads;
+        state.leadStatus.totalLeads = action.payload.totalLeads;
         state.leadStatus.statusCount = action.payload.statusCount;
       })
       .addCase(fetchPresalesLeadStatusCount.rejected, (state, action) => {
         state.leadStatus.loading = false;
-        state.leadStatus.error = action.payload || "Failed to fetch presales lead status count";
+        state.leadStatus.error =
+          action.payload || "Failed to fetch presales lead status count";
       });
   },
 });
 
-export const { resetAssignState, setAssignedStatus  } = travelAdvisorSlice.actions;
+export const {
+  resetAssignState,
+  setAssignedStatus,
+  addRealtimeAssignedLead,
+  updateRealtimeAssignedLead,
+} = travelAdvisorSlice.actions;
 export default travelAdvisorSlice.reducer;

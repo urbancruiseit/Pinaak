@@ -52,7 +52,6 @@ import {
   calculateTotalVehicles,
 } from "../../../../../../types/Editleads/editleadcalculations";
 
-// ─────────────────────────────────────────────────────────────────────────────
 const EditLeadForm: React.FC<{
   initialData: LeadRecord;
   onSuccess?: () => void;
@@ -60,7 +59,6 @@ const EditLeadForm: React.FC<{
 }> = ({ initialData, onSuccess, onCancel }) => {
   const dispatch = useDispatch<AppDispatch>();
 
-  // ── Redux state ───────────────────────────────────────────────────────────
   const { countries } = useSelector((state: RootState) => state.country);
   const { vehicleCodes } = useSelector((state: RootState) => state.vehicle);
   const { travelcity } = useSelector((state: RootState) => state.travelcity);
@@ -68,8 +66,6 @@ const EditLeadForm: React.FC<{
     (state: RootState) => state.stateCity,
   );
   const { currentUser } = useSelector((state: RootState) => state.user);
-
-  // ── React Hook Form ───────────────────────────────────────────────────────
   const {
     register,
     handleSubmit,
@@ -83,7 +79,6 @@ const EditLeadForm: React.FC<{
     defaultValues: DEFAULT_VALUES as any,
   });
 
-  // ── Local state ───────────────────────────────────────────────────────────
   const [formData, setFormData] = useState({
     firstName: "",
     middleName: "",
@@ -105,18 +100,10 @@ const EditLeadForm: React.FC<{
   const [alternateCountryCode, setAlternateCountryCode] = useState("+91");
   const [selectedCountry, setSelectedCountry] = useState<string>("");
 
-  // ── KEY FIX 1: isInitialized ──────────────────────────────────────────────
-  // Form sirf tab populate hoga jab cities + travelcity dono Redux mein aa jaayein
-  // Jab tak false hai, customerCity watch effect run nahi karega (state reset nahi hogi)
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // ── KEY FIX 2: pendingStateRef ────────────────────────────────────────────
-  // Tumhare stateSlice mein fetchStatesByCity.pending → statesForCity = [] ho jaata hai
-  // Isliye setValue("state", ...) turant nahi kar sakte
-  // Solution: state value yahan store karo, statesForCity array fill hone par set karo
   const pendingStateRef = useRef<string | null>(null);
 
-  // ── Watched fields ────────────────────────────────────────────────────────
   const pickupDateTime = watch("pickupDateTime");
   const dropDateTime = watch("dropDateTime");
   const smallbaggage = watch("smallbaggage");
@@ -135,15 +122,13 @@ const EditLeadForm: React.FC<{
 
   const isIndia = selectedCountry === "India";
 
-  // ── STEP 1: Mount pe saara data fetch karo ────────────────────────────────
   useEffect(() => {
     dispatch(getCountriesThunk());
-    dispatch(fetchAllCities()); // → cities array (stateSlice) — customerCity dropdown
+    dispatch(fetchAllCities());
     dispatch(fetchVehicles());
-    dispatch(getAllCitiesThunk()); // → travelcity array — pickup/drop city dropdown
+    dispatch(getAllCitiesThunk()); 
   }, [dispatch]);
 
-  // ── Auto-calculate baggage ────────────────────────────────────────────────
   useEffect(() => {
     const total = calculateTotalBaggage(
       Number(smallbaggage) || 0,
@@ -154,13 +139,11 @@ const EditLeadForm: React.FC<{
     setValue("totalbaggage", total);
   }, [smallbaggage, mediumbaggage, largebaggage, airportbaggage, setValue]);
 
-  // ── Auto-calculate days ───────────────────────────────────────────────────
   useEffect(() => {
     const days = calculateDays(serviceType, pickupDateTime, dropDateTime);
     setValue("days", days);
   }, [serviceType, pickupDateTime, dropDateTime, setValue]);
 
-  // ── Auto-calculate vehicles ───────────────────────────────────────────────
   useEffect(() => {
     const totalVehicles = calculateTotalVehicles(
       vehicles || "",
@@ -181,55 +164,55 @@ const EditLeadForm: React.FC<{
     setValue,
   ]);
 
-  // ── STEP 2: customerCity change effect (sirf user interaction ke liye) ────
-  // isInitialized = false hone tak yeh BILKUL nahi chalega
-  // Kyunki: initialization mein jab setValue("customerCity", cityValue) hota hai,
-  // to yeh effect bhi trigger hota tha aur setValue("state", "") kar deta tha
   useEffect(() => {
-    if (!isInitialized) return; // ← guard — initialization ke dauran skip karo
+    if (!isInitialized) return;
 
     if (customerCity) {
-      dispatch(fetchStatesByCity(customerCity)); // city name string pass ho raha hai
-      setValue("state", ""); // user ne khud city badli, state reset karo
+      dispatch(fetchStatesByCity(customerCity));
     } else {
       dispatch(resetStatesForCity());
       setValue("state", "");
     }
   }, [customerCity, isInitialized, dispatch, setValue]);
 
-  // ── STEP 3: city_id (branch city) set karo ───────────────────────────────
+  useEffect(() => {
+    if (statesForCity?.length > 0 && initialData?.state) {
+      setValue("state", initialData.state);
+    }
+  }, [statesForCity, initialData, setValue]);
+
   useEffect(() => {
     if (
       initialData?.city_id &&
       Array.isArray(currentUser?.city_ids) &&
       currentUser.city_ids.length > 0
     ) {
-      setValue("city_id", initialData.city_id);
-    }
+setValue(
+  "city_id",
+  Number(initialData.city_id),
+);    }
   }, [initialData, currentUser, setValue]);
 
-  // ── STEP 4: MAIN INITIALIZATION — cities + travelcity ready hone ke baad ─
   useEffect(() => {
     if (!initialData) return;
-    if (!cities?.length || !travelcity?.length) return; // dono ready hone tak wait karo
-    if (isInitialized) return; // sirf ek baar chalao
+    if (!cities?.length || !travelcity?.length) return;
+    if (isInitialized) return;
 
     const mapped = mapInitialDataToForm(initialData);
 
-    // Personal info
+  
     setFormData(mapped.formData);
     setAlternateCountryCode(mapped.alternateCountryCode ?? "+91");
     setCustomerCategoryTypeValue(mapped.customerCategoryTypeValue ?? "");
     setItineraryList(mapped.itineraryList ?? []);
 
-    // Country
+  
     const country =
       (initialData as any).countryName ??
       (initialData as any).customerCountry ??
       "";
     setSelectedCountry(country);
 
-    // Mapper ke saare setValue calls (pickup city, drop city, dates, etc.)
     Object.entries(mapped.setValues).forEach(([key, value]) => {
       setValue(key as keyof LeadFormData, value as any);
     });
@@ -238,26 +221,17 @@ const EditLeadForm: React.FC<{
     if ((initialData as any).address)
       setValue("address", (initialData as any).address);
 
-    // ── Customer City + State ka sahi flow ───────────────────────────────────
-    // Tumhara stateSlice ka fetchStatesByCity.pending case → statesForCity = []
-    // Isliye yeh order follow karo:
-    // 1. resetStatesForCity() → statesForCity = [] (clean slate, koi race condition nahi)
-    // 2. pendingStateRef.current = stateValue (pehle store karo)
-    // 3. setValue("customerCity", cityValue) (dropdown set karo)
-    // 4. fetchStatesByCity(cityValue) dispatch karo
-    // 5. fulfilled hone par → STEP 5 effect fire hoga → state set hoga
     const cityValue = (initialData as any).customerCity;
     const stateValue = (initialData as any).state ?? null;
 
     if (cityValue) {
-      dispatch(resetStatesForCity()); // purani states clear
-      pendingStateRef.current = stateValue; // pehle store karo (STEP 5 ke liye)
-      setValue("customerCity", cityValue); // city dropdown set karo
-      dispatch(fetchStatesByCity(cityValue)); // ab fetch karo (city name string pass)
-      // Note: STEP 2 effect guard hai (isInitialized=false), isliye state reset nahi hogi
+      dispatch(resetStatesForCity()); 
+      pendingStateRef.current = stateValue; 
+      setValue("customerCity", cityValue);
+      dispatch(fetchStatesByCity(cityValue)); 
     }
 
-    setIsInitialized(true); // ab STEP 2 effect active ho jaayega
+    setIsInitialized(true); 
     setTimeout(() => trigger(), 150);
   }, [
     initialData,
@@ -269,16 +243,11 @@ const EditLeadForm: React.FC<{
     dispatch,
   ]);
 
-  // ── STEP 5: statesForCity fulfilled hone ke baad pending state set karo ───
-  // Tumhare stateSlice mein:
-  //   fetchStatesByCity.pending   → statesForCity = []  ← yeh effect nahi chalega
-  //   fetchStatesByCity.fulfilled → statesForCity = [Maharashtra, Gujarat...]
-  //                                                  ← yahan yeh effect fire hoga
-  // Tab pendingStateRef.current mein stored value ("Maharashtra") set ho jaayegi
+
   useEffect(() => {
     if (pendingStateRef.current && statesForCity?.length > 0) {
       setValue("state", pendingStateRef.current);
-      pendingStateRef.current = null; // ek baar set kiya, clear karo
+      pendingStateRef.current = null;
     }
   }, [statesForCity, setValue]);
 
@@ -385,9 +354,7 @@ const EditLeadForm: React.FC<{
       return numA !== numB ? numA - numB : a.code.localeCompare(b.code);
     });
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // RENDER
-  // ─────────────────────────────────────────────────────────────────────────
+  
   return (
     <div>
       {/* Toast */}

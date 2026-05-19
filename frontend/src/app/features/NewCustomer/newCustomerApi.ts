@@ -15,7 +15,6 @@ export interface CustomerRecord {
   alternatePhone?: string;
   countryName?: string;
   customerCity?: string;
-  customerState?: string;
   address?: string;
   date_of_birth?: string;
   anniversary?: string;
@@ -56,7 +55,6 @@ const mapFormToBackend = (
   customerCategoryType: formData.customerCategoryType || undefined,
   countryName: formData.countryName || undefined,
   customerCity: formData.customerCity || undefined,
-  customerState: formData.customerState || undefined,
 });
 
 // ─── FETCH ALL CUSTOMERS ───────────────────────────

@@ -96,7 +96,7 @@ export const getPreSalesLeadAssignmentReport = async (cityIds, month, year) => {
 const [advisorUsers] = await hrmsPool.execute(
   `SELECT 
      u.id,
-     CONCAT_WS(' ', u.aliasName, u.middleName, u.lastName) AS adviser_name
+     CONCAT_WS(' ', u.aliasName) AS adviser_name
    FROM users u
    INNER JOIN roles r ON u.role_id = r.id
    INNER JOIN access_control ac ON ac.employee_id = u.id

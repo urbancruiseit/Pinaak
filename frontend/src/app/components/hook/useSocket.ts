@@ -5,7 +5,7 @@ import { useSelector } from "react-redux";
 import { RootState } from "@/app/redux/store";
 export const useSocket = () => {
   const { currentUser } = useSelector((state: RootState) => state.user);
-  console.log("🟠 currentUser:", currentUser);
+
   useEffect(() => {
     if (!currentUser?.id) {
       console.log("❌ User not loaded yet");

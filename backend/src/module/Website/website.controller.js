@@ -12,12 +12,10 @@ import {
 
 // ─── GET All Website GAC ────────────────────────────────────────────────
 export const getWebsiteGacController = asyncHandler(async (req, res) => {
-  console.log("🚀 getWebsiteGacController HIT");
 
   const data = await getAllWebsiteGac();
 
-  console.log("📦 Raw GAC data from DB:", data);
-  console.log("📊 Total GAC records:", data?.length ?? 0);
+ 
 
   if (!data || data.length === 0) {
     console.warn("⚠️  No GAC records found in DB");
@@ -32,7 +30,6 @@ export const getWebsiteGacController = asyncHandler(async (req, res) => {
 
 // ─── GET Single Website GAC By ID ──────────────────────────────────────
 export const getWebsiteGacByIdController = asyncHandler(async (req, res) => {
-  console.log("🚀 getWebsiteGacByIdController HIT");
 
   const { id } = req.params;
   console.log("🔍 Requested GAC ID:", id);
@@ -46,7 +43,6 @@ export const getWebsiteGacByIdController = asyncHandler(async (req, res) => {
 
   const record = await getWebsiteGacById(id);
 
-  console.log("📦 GAC record from DB:", record);
 
   if (!record) {
     console.warn(`⚠️  No GAC record found for ID: ${id}`);
@@ -55,7 +51,6 @@ export const getWebsiteGacByIdController = asyncHandler(async (req, res) => {
       .json(new ApiResponse(404, null, `ID ${id} ka record nahi mila`));
   }
 
-  console.log("✅ GAC record found:", record);
 
   return res
     .status(200)
@@ -64,15 +59,11 @@ export const getWebsiteGacByIdController = asyncHandler(async (req, res) => {
     );
 });
 
-// ─── GET All Trip Bookings ──────────────────────────────────────────────
-// ─── GET All Trip Bookings ──────────────────────────────────────────────
+
 export const getTripBookingsController = asyncHandler(async (req, res) => {
-  console.log("🚀 getTripBookingsController HIT");
 
   const data = await getAllTripBookings();
 
-  console.log("📦 Raw Trip Bookings data from DB:", data);
-  console.log("📊 Total Trip Booking records:", data?.length ?? 0);
 
   if (!data || data.length === 0) {
     console.warn("⚠️  No trip bookings found in DB");
@@ -85,7 +76,6 @@ export const getTripBookingsController = asyncHandler(async (req, res) => {
     });
   }
 
-  console.log("✅ First Trip Booking record sample:", data[0]);
 
   return res.status(200).json({
     success: true,

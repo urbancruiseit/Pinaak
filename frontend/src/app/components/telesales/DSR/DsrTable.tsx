@@ -32,21 +32,18 @@ export default function DsrTable({
   const { dsrList, listLoading, listError, totalCount } = useSelector(
     (state: RootState) => state.dsr,
   );
-
+  console.log("dsr listtss", dsrList);
   const safeDsrList: DsrRecord[] = Array.isArray(dsrList) ? dsrList : [];
 
-  // ✅ FIX 1: pageSize ab state hai, constant nahi
   const [pageSize, setPageSize] = useState(50);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState("");
   const [sortField, setSortField] = useState("dsr_date");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
-  // ✅ FIX 2: totalPages aur total properly calculate ho rahe hain
   const total = totalCount ?? 0;
   const totalPages = Math.ceil(total / pageSize) || 1;
 
-  // State for Edit Mode
   const [showEditForm, setShowEditForm] = useState(false);
   const [selectedDsr, setSelectedDsr] = useState<DsrRecord | null>(null);
 
@@ -70,7 +67,6 @@ export default function DsrTable({
     fetchData();
   }, [currentPage, pageSize, searchTerm, sortField, sortOrder]);
 
-  // pageSize change hone par page 1 pe reset
   const handlePageSizeChange = (newSize: number) => {
     setPageSize(newSize);
     setCurrentPage(1);
@@ -85,14 +81,12 @@ export default function DsrTable({
     }
   };
 
-  // Edit Handler
   const handleEditClick = (dsr: DsrRecord) => {
     setSelectedDsr(dsr);
     setShowEditForm(true);
     if (onEdit) onEdit(dsr);
   };
 
-  // Back to Table
   const handleBackToList = () => {
     setShowEditForm(false);
     setSelectedDsr(null);
@@ -112,8 +106,49 @@ export default function DsrTable({
   };
 
   const renderCell = (dsr: DsrRecord, column: BannerColumn) => {
-    const value = dsr[column.key as keyof DsrRecord];
+    // Customer JSON data
+    const customer =
+      Array.isArray(dsr.customer_amount) && dsr.customer_amount.length > 0
+        ? dsr.customer_amount[0]
+        : {};
 
+    // Vendor JSON data
+    const vendor =
+      Array.isArray(dsr.vendor_amount) && dsr.vendor_amount.length > 0
+        ? dsr.vendor_amount[0]
+        : {};
+
+    // Customer payment mapping
+    const customerMap: Record<string, any> = {
+      customerAmountReceivedDate: customer?.amountReceivedDate,
+      cusomerUcBankName: customer?.ucBankName,
+      customerBankName: customer?.customerBankName,
+      customerAmount_received: customer?.bookingAmount,
+      customerAtherAmount: customer?.otherAmount,
+      customerTransactionId: customer?.transactionId,
+      customerRemarksAmountReceived: customer?.remarks,
+      customerEnteredBy: customer?.enteredBy,
+    };
+
+    // Vendor payment mapping
+    const vendorMap: Record<string, any> = {
+      vendorAmountReceivedDate: vendor?.amountReceivedDate,
+      vendorUcBankName: vendor?.ucBankName,
+      vendorCustomerBankName: vendor?.customerBankName,
+      vendorTransactionId: vendor?.transactionId,
+      vendorBookingAmount: vendor?.bookingAmount,
+      vendorOtherAmount: vendor?.otherAmount,
+      vendorRemarksAmountReceived: vendor?.remarks,
+      vendorEnteredBy: vendor?.enteredBy,
+    };
+
+    // Final value
+    const value =
+      customerMap[column.key] ??
+      vendorMap[column.key] ??
+      dsr[column.key as keyof DsrRecord];
+
+    // Actions column
     if (column.key === "actions") {
       return (
         <div className="flex items-center justify-center gap-1">
@@ -124,6 +159,7 @@ export default function DsrTable({
           >
             <Eye size={15} />
           </button>
+
           <button
             onClick={() => handleEditClick(dsr)}
             className="p-1 rounded text-orange-500 hover:bg-orange-100"
@@ -131,6 +167,7 @@ export default function DsrTable({
           >
             <Edit size={15} />
           </button>
+
           <button
             onClick={() => {
               if (window.confirm("Delete this DSR?")) {
@@ -146,6 +183,7 @@ export default function DsrTable({
       );
     }
 
+    // Full Name tooltip
     if (column.key === "fullName") {
       return (
         <div className="relative group inline-block w-full">
@@ -159,18 +197,487 @@ export default function DsrTable({
       );
     }
 
-    if (column.type === "currency") {
+    if (column.key === "total") {
       return (
-        <span className="font-semibold">
+        <div className="relative group inline-block w-full">
+          <span className="cursor-help font-medium">
+            {formatCurrency(value as string | number)}
+          </span>
+
+          {/* Horizontal Hover Tooltip Table - appears below with proper positioning */}
+          {dsr.customer_amount &&
+            Array.isArray(dsr.customer_amount) &&
+            dsr.customer_amount.length > 0 && (
+              <div className="absolute left-1/2 transform -translate-x-1/2 top-full mt-2 z-50 hidden group-hover:block bg-white border border-gray-300 rounded-lg shadow-2xl w-auto pointer-events-auto">
+                <div className="p-2.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white text-xs font-semibold rounded-t-lg">
+                  Customer Amount Details ({dsr.customer_amount.length} Records)
+                </div>
+                <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+                  <table className="w-auto text-xs border-collapse table-auto">
+                    <thead className="bg-gray-100 sticky top-0">
+                      <tr className="border-b-2 border-gray-300">
+                        <th className="px-3 py-2.5 text-left font-semibold text-gray-700 border-r border-gray-200 whitespace-nowrap">
+                          S.No
+                        </th>
+                        <th className="px-3 py-2.5 text-left font-semibold text-gray-700 border-r border-gray-200 whitespace-nowrap">
+                          Booking Amount
+                        </th>
+                        <th className="px-3 py-2.5 text-left font-semibold text-gray-700 border-r border-gray-200 whitespace-nowrap">
+                          Other Amount
+                        </th>
+                        <th className="px-3 py-2.5 text-left font-semibold text-gray-700 border-r border-gray-200 whitespace-nowrap">
+                          Total Amount
+                        </th>
+                        <th className="px-3 py-2.5 text-left font-semibold text-gray-700 border-r border-gray-200 whitespace-nowrap">
+                          Received Date
+                        </th>
+                        <th className="px-3 py-2.5 text-left font-semibold text-gray-700 border-r border-gray-200 whitespace-nowrap">
+                          Transaction ID
+                        </th>
+                        <th className="px-3 py-2.5 text-left font-semibold text-gray-700 border-r border-gray-200 whitespace-nowrap">
+                          UC Bank Name
+                        </th>
+                        <th className="px-3 py-2.5 text-left font-semibold text-gray-700 border-r border-gray-200 whitespace-nowrap">
+                          Customer Bank Name
+                        </th>
+                        <th className="px-3 py-2.5 text-left font-semibold text-gray-700 border-r border-gray-200 whitespace-nowrap">
+                          Remarks
+                        </th>
+                        <th className="px-3 py-2.5 text-left font-semibold text-gray-700 whitespace-nowrap">
+                          Entered By
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dsr.customer_amount.map(
+                        (customer: any, index: number) => {
+                          const bookingAmount =
+                            customer.bookingAmount ||
+                            customer.customerAmount_received ||
+                            "0";
+                          const otherAmount =
+                            customer.otherAmount ||
+                            customer.customerAtherAmount ||
+                            "0";
+
+                          return (
+                            <tr
+                              key={index}
+                              className="border-b border-gray-200 hover:bg-gray-50"
+                            >
+                              <td className="px-3 py-2.5 text-gray-900 font-medium border-r border-gray-200 bg-gray-50 whitespace-nowrap text-center">
+                                {index + 1}
+                              </td>
+                              <td className="px-3 py-2.5 text-gray-900 font-medium border-r border-gray-200 whitespace-nowrap">
+                                {formatCurrency(bookingAmount)}
+                              </td>
+                              <td className="px-3 py-2.5 text-gray-900 font-medium border-r border-gray-200 whitespace-nowrap">
+                                {formatCurrency(otherAmount)}
+                              </td>
+                              <td className="px-3 py-2.5 text-gray-900 font-bold text-orange-600 border-r border-gray-200 whitespace-nowrap">
+                                {formatCurrency(
+                                  (parseFloat(bookingAmount) || 0) +
+                                    (parseFloat(otherAmount) || 0),
+                                )}
+                              </td>
+                              <td className="px-3 py-2.5 text-gray-900 border-r border-gray-200 whitespace-nowrap">
+                                {customer.amountReceivedDate ||
+                                customer.customerAmountReceivedDate
+                                  ? new Date(
+                                      customer.amountReceivedDate ||
+                                        customer.customerAmountReceivedDate,
+                                    ).toLocaleDateString("en-IN", {
+                                      day: "2-digit",
+                                      month: "2-digit",
+                                      year: "numeric",
+                                    })
+                                  : "—"}
+                              </td>
+                              <td className="px-3 py-2.5 text-gray-900 font-mono text-xs border-r border-gray-200 0">
+                                <div
+                                  className="truncate"
+                                  title={
+                                    customer.transactionId ||
+                                    customer.customerTransactionId
+                                  }
+                                >
+                                  {customer.transactionId ||
+                                    customer.customerTransactionId ||
+                                    "—"}
+                                </div>
+                              </td>
+                              <td className="px-3 py-2.5 text-gray-900 border-r border-gray-200 whitespace-nowrap">
+                                {customer.ucBankName ||
+                                  customer.cusomerUcBankName ||
+                                  "—"}
+                              </td>
+                              <td className="px-3 py-2.5 text-gray-900 border-r border-gray-200 whitespace-nowrap">
+                                {customer.customerBankName || "—"}
+                              </td>
+                              <td
+                                className="px-3 py-2.5 text-gray-900 max-w-[250px]  border-r border-gray-200"
+                                title={
+                                  customer.remarks ||
+                                  customer.customerRemarksAmountReceived
+                                }
+                              >
+                                <div className="truncate">
+                                  {customer.remarks ||
+                                    customer.customerRemarksAmountReceived ||
+                                    "—"}
+                                </div>
+                              </td>
+                              <td className="px-3 py-2.5 text-gray-900 whitespace-nowrap">
+                                {customer.enteredBy ||
+                                  customer.customerEnteredBy ||
+                                  "—"}
+                              </td>
+                            </tr>
+                          );
+                        },
+                      )}
+                    </tbody>
+                    <tfoot className="bg-gray-50 sticky bottom-0">
+                      <tr className="border-t-2 border-gray-300">
+                        <td className="px-3 py-2.5 font-bold text-gray-700 border-r border-gray-200 whitespace-nowrap">
+                          Total
+                        </td>
+                        <td className="px-3 py-2.5 font-bold text-gray-900 border-r border-gray-200 whitespace-nowrap">
+                          {formatCurrency(
+                            dsr.customer_amount.reduce(
+                              (sum: number, customer: any) => {
+                                const amt = parseFloat(
+                                  customer.bookingAmount ||
+                                    customer.customerAmount_received ||
+                                    "0",
+                                );
+                                return sum + (isNaN(amt) ? 0 : amt);
+                              },
+                              0,
+                            ),
+                          )}
+                        </td>
+                        <td className="px-3 py-2.5 font-bold text-gray-900 border-r border-gray-200 whitespace-nowrap">
+                          {formatCurrency(
+                            dsr.customer_amount.reduce(
+                              (sum: number, customer: any) => {
+                                const amt = parseFloat(
+                                  customer.otherAmount ||
+                                    customer.customerAtherAmount ||
+                                    "0",
+                                );
+                                return sum + (isNaN(amt) ? 0 : amt);
+                              },
+                              0,
+                            ),
+                          )}
+                        </td>
+                        <td className="px-3 py-2.5 font-bold text-orange-600 border-r border-gray-200 whitespace-nowrap">
+                          {formatCurrency(
+                            dsr.customer_amount.reduce(
+                              (sum: number, customer: any) => {
+                                const bookingAmt = parseFloat(
+                                  customer.bookingAmount ||
+                                    customer.customerAmount_received ||
+                                    "0",
+                                );
+                                const otherAmt = parseFloat(
+                                  customer.otherAmount ||
+                                    customer.customerAtherAmount ||
+                                    "0",
+                                );
+                                return (
+                                  sum +
+                                  (isNaN(bookingAmt) ? 0 : bookingAmt) +
+                                  (isNaN(otherAmt) ? 0 : otherAmt)
+                                );
+                              },
+                              0,
+                            ),
+                          )}
+                        </td>
+                        <td
+                          colSpan={6}
+                          className="px-3 py-2.5 text-gray-500 whitespace-nowrap"
+                        >
+                          Total Records: {dsr.customer_amount.length}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+            )}
+        </div>
+      );
+    }
+
+    if (column.key === "balance_amount") {
+      return (
+        <div className="relative group inline-block w-full">
+          <span className="cursor-help font-medium">
+            {formatCurrency(value as string | number)}
+          </span>
+
+          {/* Horizontal Hover Tooltip Table for Vendor Amount - appears below */}
+          {dsr.vendor_amount &&
+            Array.isArray(dsr.vendor_amount) &&
+            dsr.vendor_amount.length > 0 && (
+              <div className="absolute left-1/2 transform -translate-x-1/2 top-full mt-2 z-50 hidden group-hover:block bg-white border border-gray-300 rounded-lg shadow-2xl w-auto pointer-events-auto">
+                <div className="p-2.5 bg-gradient-to-r from-blue-500 to-blue-600 text-white text-xs font-semibold rounded-t-lg">
+                  Vendor Payment Details ({dsr.vendor_amount.length} Records)
+                </div>
+                <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
+                  <table className="w-auto text-xs border-collapse table-auto">
+                    <thead className="bg-gray-100 sticky top-0">
+                      <tr className="border-b-2 border-gray-300">
+                        <th className="px-3 py-2.5 text-left font-semibold text-gray-700 border-r border-gray-200 whitespace-nowrap">
+                          S.No
+                        </th>
+                        <th className="px-3 py-2.5 text-left font-semibold text-gray-700 border-r border-gray-200 whitespace-nowrap">
+                          VDR Amt RCD
+                        </th>
+                        <th className="px-3 py-2.5 text-left font-semibold text-gray-700 border-r border-gray-200 whitespace-nowrap">
+                          VDR OTHER Amt
+                        </th>
+                        <th className="px-3 py-2.5 text-left font-semibold text-gray-700 border-r border-gray-200 whitespace-nowrap">
+                          Total Amount
+                        </th>
+                        <th className="px-3 py-2.5 text-left font-semibold text-gray-700 border-r border-gray-200 whitespace-nowrap">
+                          VDR AMT RCD DATE
+                        </th>
+                        <th className="px-3 py-2.5 text-left font-semibold text-gray-700 border-r border-gray-200 whitespace-nowrap">
+                          VDR TRANSACTION ID
+                        </th>
+                        <th className="px-3 py-2.5 text-left font-semibold text-gray-700 border-r border-gray-200 whitespace-nowrap">
+                          UC BANK NAME
+                        </th>
+                        <th className="px-3 py-2.5 text-left font-semibold text-gray-700 border-r border-gray-200 whitespace-nowrap">
+                          VENDOR BANK NAME
+                        </th>
+                        <th className="px-3 py-2.5 text-left font-semibold text-gray-700 border-r border-gray-200 whitespace-nowrap">
+                          VDR RMK AMT
+                        </th>
+                        <th className="px-3 py-2.5 text-left font-semibold text-gray-700 whitespace-nowrap">
+                          Enter BY
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {dsr.vendor_amount.map((vendor: any, index: number) => {
+                        const bookingAmount =
+                          vendor.bookingAmount ||
+                          vendor.vendorBookingAmount ||
+                          "0";
+                        const otherAmount =
+                          vendor.otherAmount || vendor.vendorOtherAmount || "0";
+
+                        return (
+                          <tr
+                            key={index}
+                            className="border-b border-gray-200 hover:bg-gray-50"
+                          >
+                            <td className="px-3 py-2.5 text-gray-900 font-medium border-r border-gray-200 bg-gray-50 whitespace-nowrap text-center">
+                              {index + 1}
+                            </td>
+                            <td className="px-3 py-2.5 text-gray-900 font-medium border-r border-gray-200 whitespace-nowrap">
+                              {formatCurrency(bookingAmount)}
+                            </td>
+                            <td className="px-3 py-2.5 text-gray-900 font-medium border-r border-gray-200 whitespace-nowrap">
+                              {formatCurrency(otherAmount)}
+                            </td>
+                            <td className="px-3 py-2.5 text-gray-900 font-bold text-blue-600 border-r border-gray-200 whitespace-nowrap">
+                              {formatCurrency(
+                                (parseFloat(bookingAmount) || 0) +
+                                  (parseFloat(otherAmount) || 0),
+                              )}
+                            </td>
+                            <td className="px-3 py-2.5 text-gray-900 border-r border-gray-200 whitespace-nowrap">
+                              {vendor.amountReceivedDate ||
+                              vendor.vendorAmountReceivedDate
+                                ? new Date(
+                                    vendor.amountReceivedDate ||
+                                      vendor.vendorAmountReceivedDate,
+                                  ).toLocaleDateString("en-IN", {
+                                    day: "2-digit",
+                                    month: "2-digit",
+                                    year: "numeric",
+                                  })
+                                : "—"}
+                            </td>
+                            <td className="px-3 py-2.5 text-gray-900 font-mono text-xs border-r border-gray-200">
+                              <div
+                                className="truncate max-w-[200px]"
+                                title={
+                                  vendor.transactionId ||
+                                  vendor.vendorTransactionId
+                                }
+                              >
+                                {vendor.transactionId ||
+                                  vendor.vendorTransactionId ||
+                                  "—"}
+                              </div>
+                            </td>
+                            <td className="px-3 py-2.5 text-gray-900 border-r border-gray-200 whitespace-nowrap">
+                              {vendor.ucBankName ||
+                                vendor.vendorUcBankName ||
+                                "—"}
+                            </td>
+                            <td className="px-3 py-2.5 text-gray-900 border-r border-gray-200 whitespace-nowrap">
+                              {vendor.customerBankName ||
+                                vendor.vendorCustomerBankName ||
+                                "—"}
+                            </td>
+                            <td
+                              className="px-3 py-2.5 text-gray-900 max-w-[250px] border-r border-gray-200"
+                              title={
+                                vendor.remarks ||
+                                vendor.vendorRemarksAmountReceived
+                              }
+                            >
+                              <div className="truncate">
+                                {vendor.remarks ||
+                                  vendor.vendorRemarksAmountReceived ||
+                                  "—"}
+                              </div>
+                            </td>
+                            <td className="px-3 py-2.5 text-gray-900 whitespace-nowrap">
+                              {vendor.enteredBy ||
+                                vendor.vendorEnteredBy ||
+                                "—"}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                    <tfoot className="bg-gray-50 sticky bottom-0">
+                      <tr className="border-t-2 border-gray-300">
+                        <td className="px-3 py-2.5 font-bold text-gray-700 border-r border-gray-200 whitespace-nowrap">
+                          Total
+                        </td>
+                        <td className="px-3 py-2.5 font-bold text-gray-900 border-r border-gray-200 whitespace-nowrap">
+                          {formatCurrency(
+                            dsr.vendor_amount.reduce(
+                              (sum: number, vendor: any) => {
+                                const amt = parseFloat(
+                                  vendor.bookingAmount ||
+                                    vendor.vendorBookingAmount ||
+                                    "0",
+                                );
+                                return sum + (isNaN(amt) ? 0 : amt);
+                              },
+                              0,
+                            ),
+                          )}
+                        </td>
+                        <td className="px-3 py-2.5 font-bold text-gray-900 border-r border-gray-200 whitespace-nowrap">
+                          {formatCurrency(
+                            dsr.vendor_amount.reduce(
+                              (sum: number, vendor: any) => {
+                                const amt = parseFloat(
+                                  vendor.otherAmount ||
+                                    vendor.vendorOtherAmount ||
+                                    "0",
+                                );
+                                return sum + (isNaN(amt) ? 0 : amt);
+                              },
+                              0,
+                            ),
+                          )}
+                        </td>
+                        <td className="px-3 py-2.5 font-bold text-blue-600 border-r border-gray-200 whitespace-nowrap">
+                          {formatCurrency(
+                            dsr.vendor_amount.reduce(
+                              (sum: number, vendor: any) => {
+                                const bookingAmt = parseFloat(
+                                  vendor.bookingAmount ||
+                                    vendor.vendorBookingAmount ||
+                                    "0",
+                                );
+                                const otherAmt = parseFloat(
+                                  vendor.otherAmount ||
+                                    vendor.vendorOtherAmount ||
+                                    "0",
+                                );
+                                return (
+                                  sum +
+                                  (isNaN(bookingAmt) ? 0 : bookingAmt) +
+                                  (isNaN(otherAmt) ? 0 : otherAmt)
+                                );
+                              },
+                              0,
+                            ),
+                          )}
+                        </td>
+                        <td
+                          colSpan={6}
+                          className="px-3 py-2.5 text-gray-500 whitespace-nowrap"
+                        >
+                          Total Records: {dsr.vendor_amount.length}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+            )}
+        </div>
+      );
+    }
+
+    // Currency fields
+    const currencyFields = [
+      "customer_rate",
+      "customer_toll",
+      "park_tax",
+      "gst_amt",
+      "other_amount",
+      "tds",
+      "remaining_amount",
+      "vendor_rate",
+      "vendor_toll",
+      "vendor_park_tax",
+      "customer_to_vendor",
+      "outstanding",
+      "balance_amount",
+      "rate",
+      "pay",
+      "final_balance",
+      "before_amt",
+      "final_amt",
+      "gst",
+      "customerAmount_received",
+      "customerAtherAmount",
+      "vendorBookingAmount",
+      "vendorOtherAmount",
+    ];
+
+    if (currencyFields.includes(column.key)) {
+      return (
+        <span className="font-medium">
           {formatCurrency(value as string | number)}
         </span>
       );
     }
 
-    if (column.type === "date" && value) {
-      return new Date(value as string).toLocaleDateString("en-IN");
+    // Date fields
+    const dateFields = [
+      "dsr_date",
+      "pickupDateTime",
+      "dropDateTime",
+      "customerAmountReceivedDate",
+      "vendorAmountReceivedDate",
+    ];
+
+    if (dateFields.includes(column.key) && value) {
+      try {
+        return new Date(value).toLocaleDateString("en-IN");
+      } catch {
+        return <span className="text-gray-400">—</span>;
+      }
     }
 
+    // Default render
     return value !== undefined && value !== null && value !== "" ? (
       String(value)
     ) : (
@@ -252,7 +759,7 @@ export default function DsrTable({
       {/* TOOLBAR */}
       <div className="p-4 border-b border-gray-200 bg-white">
         <div className="flex flex-wrap gap-3 items-center justify-between">
-          <div className="relative flex-1 min-w-[250px]">
+          <div className="relative flex-1 w-auto">
             <Search
               className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
               size={18}
@@ -270,7 +777,6 @@ export default function DsrTable({
           </div>
 
           <div className="flex gap-2">
-            {/* ✅ FIX 3: pageSize state use ho rahi hai yahan bhi */}
             <select
               value={pageSize}
               onChange={(e) => handlePageSizeChange(Number(e.target.value))}
@@ -318,7 +824,7 @@ export default function DsrTable({
         className="overflow-x-auto"
         style={{ maxHeight: "calc(100vh - 300px)" }}
       >
-        <table className="w-full min-w-[2400px] border-collapse">
+        <table className="w-auto border-collapse">
           <thead className="sticky top-0 z-20">
             <tr>
               {bannerGroups.map((group) => (
@@ -401,8 +907,8 @@ export default function DsrTable({
                           px-2 py-2 border border-gray-500 text-xs whitespace-nowrap
                           ${cellBgClass} text-black
                           ${column.align === "center" ? "text-center" : ""}
-                          ${column.align === "right" ? "text-right" : ""}
-                          ${column.align === "left" ? "text-left" : ""}
+                          ${column.align === "center" ? "text-center" : ""}
+                          ${column.align === "center" ? "text-center" : ""}
                         `}
                       >
                         {renderCell(dsr, column)}
@@ -416,7 +922,7 @@ export default function DsrTable({
         </table>
       </div>
 
-      {/* ✅ FIX 4: Pagination ko sahi props pass ho rahe hain */}
+      {/* Pagination */}
       <Pagination
         currentPage={currentPage}
         totalPages={totalPages}

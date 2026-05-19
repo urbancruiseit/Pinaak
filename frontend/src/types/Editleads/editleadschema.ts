@@ -22,7 +22,7 @@ export const leadSchema = z.object({
   customerCategoryType: z.string().optional(),
   countryName: z.string().min(1, "Country is required"),
   customerCity: z.string().optional(),
-  customerState: z.string().optional(),
+  state: z.string().optional(),
   address: z.string().optional(),
   serviceType: z
     .enum([
@@ -76,6 +76,7 @@ export const leadSchema = z.object({
   lostReasonDetails: z.string().optional(),
   followUp: z.string().optional(),
   email: z.string().email("Invalid email format").optional().or(z.literal("")),
+  city_id: z.number().optional(),
 });
 
 export type LeadFormData = z.infer<typeof leadSchema>;

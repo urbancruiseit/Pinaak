@@ -68,6 +68,8 @@ const EditLeadForm: React.FC<{
   const { countries } = useSelector((state: RootState) => state.country);
   const { vehicleCodes } = useSelector((state: RootState) => state.vehicle);
   const { travelcity } = useSelector((state: RootState) => state.travelcity);
+  const [isInitialized, setIsInitialized] = useState(false);
+
   const { cities, statesForCity, citiesLoading, statesLoading } = useSelector(
     (state: RootState) => state.stateCity,
   );
@@ -166,13 +168,21 @@ const EditLeadForm: React.FC<{
   ]);
 
   useEffect(() => {
+    if (!isInitialized) return;
+
     if (customerCity) {
       dispatch(fetchStatesByCity(customerCity));
     } else {
       dispatch(resetStatesForCity());
+      setValue("state", "");
     }
-    setValue("state", "");
-  }, [customerCity, dispatch, setValue]);
+  }, [customerCity, isInitialized, dispatch, setValue]);
+
+  useEffect(() => {
+    if (statesForCity?.length > 0 && initialData?.state) {
+      setValue("state", initialData.state);
+    }
+  }, [statesForCity, initialData, setValue]);
 
   useEffect(() => {
     if (
@@ -180,7 +190,7 @@ const EditLeadForm: React.FC<{
       Array.isArray(currentUser?.city_ids) &&
       currentUser.city_ids.length > 0
     ) {
-      setValue("city_id", initialData.city_id);
+      setValue("city_id", Number(initialData.city_id));
     }
   }, [initialData, currentUser, setValue]);
 
@@ -951,8 +961,7 @@ const EditLeadForm: React.FC<{
                         </p>
                       )}
                     </div>
-                    
-                     
+
                     {/* Pickup Address */}
                     <div className="w-full md:w-[30%]">
                       <label className="block mb-1 font-extrabold text-gray-700 text-md">
@@ -978,7 +987,7 @@ const EditLeadForm: React.FC<{
 
                     <div className="w-full md:w-[20%]">
                       <label className="block mb-1 font-extrabold text-gray-700 text-md">
-                        Additional Pickup Addresses 
+                        Additional Pickup Addresses
                       </label>
                       <div className="relative">
                         <input
@@ -1080,8 +1089,6 @@ const EditLeadForm: React.FC<{
                       )}
                     </div>
 
-                    
-
                     {/* Drop Address */}
                     <div className="w-full md:w-[30%]">
                       <label className="block mb-1 font-extrabold text-gray-700 text-md">
@@ -1096,7 +1103,7 @@ const EditLeadForm: React.FC<{
 
                     <div className="w-full md:w-[20%]">
                       <label className="block mb-1 font-extrabold text-gray-700 text-md">
-                        Additional Drop Addresses 
+                        Additional Drop Addresses
                       </label>
                       <div className="relative">
                         <input

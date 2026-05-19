@@ -1,7 +1,11 @@
+import emitToHierarchy from "../../socket/EmitHelpers/socketEmitHelper.js";
+import { getIO } from "../../socket/socket.js";
 import { hrmsPool } from "../../config/mySqlDB.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
+import { getLeadById } from "../Leads/lead.model.js";
+
 import {
   assignTravelAdvisorToLead,
   findTravelAdvisorsByCityId,
@@ -38,6 +42,32 @@ const assignTravelAdvisor = asyncHandler(async (req, res) => {
 
   if (!result.success) {
     throw new ApiError(404, "Lead not found");
+  }
+
+  const fullLead = await getLeadById(leadId);
+
+  try {
+    const io = getIO();
+
+    emitToHierarchy({
+      io,
+      eventName: "leadUpdated",
+      lead: fullLead ?? result,
+      userIdKey: "advisor_id",
+    });
+
+    // ✅ Advisor — adviserLeadAssigned (naya row add)
+    if (fullLead?.advisor_id) {
+      io.to(`user_${fullLead.advisor_id}`).emit(
+        "adviserLeadAssigned",
+        fullLead,
+      );
+      console.log(
+        `📡 adviserLeadAssigned emitted to user_${fullLead.advisor_id}`,
+      );
+    }
+  } catch (err) {
+    console.error("⚠️ Socket emit failed:", err.message);
   }
 
   return res

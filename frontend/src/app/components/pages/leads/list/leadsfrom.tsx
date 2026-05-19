@@ -52,13 +52,13 @@ import { currentUserThunk } from "@/app/features/user/userSlice";
 const schema = z.object({
   date: z.string().min(1, "Date is required"),
   source: z.string().min(1, "Source is required"),
-  presales_id: z.number().min(1).optional(), // ✅ optional here, enforced in onSubmit
+  presales_id: z.number().min(1).optional(),
   status: z.string().min(1, "Status is required"),
   customerType: z.string().min(1, "Customer category is required"),
   customerCategoryType: z.string().optional(),
   countryName: z.string().min(1, "Country is required"),
   customerCity: z.string().optional(),
-  customerState: z.string().optional(),
+  state: z.string().optional(),
   address: z.string().optional(),
   serviceType: z.string().optional(),
   tripType: z.string().optional(),
@@ -235,8 +235,8 @@ const LeadsForm: React.FC = () => {
     if (currentUser?.id) {
       const userId = Number(currentUser.id);
       setValue("presales_id", userId, {
-        shouldValidate: true, // ✅ triggers validation immediately
-        shouldDirty: true, // ✅ marks field as dirty so RHF tracks it
+        shouldValidate: true,
+        shouldDirty: true,
       });
     }
   }, [currentUser, setValue]);
@@ -247,7 +247,7 @@ const LeadsForm: React.FC = () => {
       dispatch(fetchStatesByCity(customerCity));
     } else {
       dispatch(resetStatesForCity());
-      setValue("customerState", "");
+      setValue("state", "");
     }
   }, [customerCity, dispatch, setValue]);
 
@@ -435,7 +435,7 @@ const LeadsForm: React.FC = () => {
       tripType: "",
       city: "",
       customerCity: "",
-      customerState: "",
+      state: "",
       city_id: undefined,
     });
   };
@@ -453,7 +453,7 @@ const LeadsForm: React.FC = () => {
     });
 
     if (customer.customerCity) setValue("customerCity", customer.customerCity);
-    if (customer.state) setValue("customerState", customer.state);
+    if (customer.state) setValue("state", customer.state);
     if (customer.address) setValue("address", customer.address);
     if (customer.countryName) setValue("countryName", customer.countryName);
     if (customer.customerType) setValue("customerType", customer.customerType);
@@ -558,7 +558,7 @@ const LeadsForm: React.FC = () => {
         remarks: data.remarks || "",
         countryName: data.countryName || "",
         customerCity: data.customerCity || "",
-        customerState: data.customerState || "",
+        state: data.state || "",
         city: data.city || "",
         city_id: data.city_id || null,
         message: "",
@@ -1272,7 +1272,7 @@ const LeadsForm: React.FC = () => {
                       className="absolute -top-4 right-0 text-blue-500 cursor-help z-10"
                     />
                     <select
-                      {...register("customerState")}
+                      {...register("state")}
                       className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                       disabled={!customerCity || statesLoading}
                     >

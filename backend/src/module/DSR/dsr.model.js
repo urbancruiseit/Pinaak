@@ -19,10 +19,6 @@ export const createDsr = async (payload) => {
     parkTax,
     gstAmt,
     total,
-    bookingAmount,
-    otherAmount,
-    bankName,
-    amountReceived,
     tds,
     remainingAmount,
     vendorRate,
@@ -54,112 +50,134 @@ export const createDsr = async (payload) => {
   if (!customerId) throw new Error("Customer ID is required");
   if (!dsrDate) throw new Error("DSR Date is required");
 
-  let customerAmountValue = "[]";
-  let vendorAmountValue = "[]";
+  // JSON fields
+  const customerAmountValue =
+    typeof customer_amount === "string"
+      ? customer_amount
+      : JSON.stringify(customer_amount || []);
 
-  if (customer_amount) {
-    if (typeof customer_amount === "string") {
-      customerAmountValue = customer_amount;
-    } else {
-      customerAmountValue = JSON.stringify(customer_amount);
-    }
-  }
-
-  if (vendor_amount) {
-    if (typeof vendor_amount === "string") {
-      vendorAmountValue = vendor_amount;
-    } else {
-      vendorAmountValue = JSON.stringify(vendor_amount);
-    }
-  }
+  const vendorAmountValue =
+    typeof vendor_amount === "string"
+      ? vendor_amount
+      : JSON.stringify(vendor_amount || []);
 
   try {
-    const [result] = await pool.execute(
-      `INSERT INTO dsrs (
-        lead_id, customer_id, advisor_id, telesales, dsr_date, full_name,
-        bookingId, dsr_vehicles, dsr_category, veh_no, driver, vendor_name,
-        customer_rate, customer_toll, park_tax, gst_amt, total,
-        booking_amount, other_amount, bank_name, amount_received, tds,
-        remaining_amount, vendor_rate, vendor_toll, vendor_park_tax,
-        customer_to_vendor, outstanding, payment_status, balance_amount,
-        rate, pay, final_balance, before_amt, final_amt, gst,
-        remarks_ts, remarks_mis, remarksbyAccounts, refundCancelShare, 
-        feedbackByOfcs, feedbackByCustomer, googleRating, mobileAppRating,
-        customer_amount, vendor_amount
-      ) VALUES (
-        ?, ?, ?, ?, ?, ?,
-        ?, ?, ?, ?, ?, ?,
-        ?, ?, ?, ?, ?,
-        ?, ?, ?, ?, ?,
-        ?, ?, ?, ?,
-        ?, ?, ?, ?,
-        ?, ?, ?, ?, ?, ?,
-        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
-      )`,
-      [
-        leadId,
-        customerId,
-        advisorId ?? null,
-        telesales ?? null,
-        dsrDate,
-        fullName ?? null,
-        bookingId ?? null,
-        dsrVehicles ?? null,
-        dsrCategory ?? null,
-        vehNo ?? null,
-        driver ?? null,
-        vendorName ?? null,
-        customerRate ?? null,
-        customerToll ?? null,
-        parkTax ?? null,
-        gstAmt ?? null,
-        total ?? null,
-        bookingAmount ?? null,
-        otherAmount ?? null,
-        bankName ?? null,
-        amountReceived ?? null,
-        tds ?? null,
-        remainingAmount ?? null,
-        vendorRate ?? null,
-        vendorToll ?? null,
-        vendorParkTax ?? null,
-        customerToVendor ?? null,
-        outstanding ?? null,
-        paymentStatus ?? null,
-        balanceAmount ?? null,
-        rate ?? null,
-        pay ?? null,
-        finalBalance ?? null,
-        before ?? null,
-        final ?? null,
-        gst ?? null,
-        remarksTS ?? null,
-        remarksMIS ?? null,
-        remarksbyAccounts ?? null,
-        refundCancelShare ?? null,
-        feedbackByOfcs ?? null,
-        feedbackByCustomer ?? null,
-        googleRating ?? null,
-        mobileAppRating ?? null,
-        customerAmountValue,
-        vendorAmountValue,
-      ],
-    );
+    const columns = [
+      "lead_id",
+      "customer_id",
+      "advisor_id",
+      "telesales",
+      "dsr_date",
+      "full_name",
+      "bookingId",
+      "dsr_vehicles",
+      "dsr_category",
+      "veh_no",
+      "driver",
+      "vendor_name",
+      "customer_rate",
+      "customer_toll",
+      "park_tax",
+      "gst_amt",
+      "total",
+      "tds",
+      "remaining_amount",
+      "vendor_rate",
+      "vendor_toll",
+      "vendor_park_tax",
+      "customer_to_vendor",
+      "outstanding",
+      "payment_status",
+      "balance_amount",
+      "rate",
+      "pay",
+      "final_balance",
+      "before_amt",
+      "final_amt",
+      "gst",
+      "remarks_ts",
+      "remarks_mis",
+      "remarksbyAccounts",
+      "refundCancelShare",
+      "feedbackByOfcs",
+      "feedbackByCustomer",
+      "googleRating",
+      "mobileAppRating",
+      "customer_amount",
+      "vendor_amount",
+    ];
+
+    const values = [
+      leadId,
+      customerId,
+      advisorId ?? null,
+      telesales ?? null,
+      dsrDate,
+      fullName ?? null,
+      bookingId ?? null,
+      dsrVehicles ?? null,
+      dsrCategory ?? null,
+      vehNo ?? null,
+      driver ?? null,
+      vendorName ?? null,
+      customerRate ?? null,
+      customerToll ?? null,
+      parkTax ?? null,
+      gstAmt ?? null,
+      total ?? null,
+      tds ?? null,
+      remainingAmount ?? null,
+      vendorRate ?? null,
+      vendorToll ?? null,
+      vendorParkTax ?? null,
+      customerToVendor ?? null,
+      outstanding ?? null,
+      paymentStatus ?? null,
+      balanceAmount ?? null,
+      rate ?? null,
+      pay ?? null,
+      finalBalance ?? null,
+      before ?? null,
+      final ?? null,
+      gst ?? null,
+      remarksTS ?? null,
+      remarksMIS ?? null,
+      remarksbyAccounts ?? null,
+      refundCancelShare ?? null,
+      feedbackByOfcs ?? null,
+      feedbackByCustomer ?? null,
+      googleRating ?? null,
+      mobileAppRating ?? null,
+      customerAmountValue,
+      vendorAmountValue,
+    ];
+
+    const placeholders = values.map(() => "?").join(", ");
+
+    const query = `
+      INSERT INTO dsrs (
+        ${columns.join(", ")}
+      )
+      VALUES (${placeholders})
+    `;
+
+    const [result] = await pool.execute(query, values);
 
     if (result.affectedRows === 0) {
       throw new Error("DSR creation failed");
     }
 
     console.log("✅ DSR created with ID:", result.insertId);
-    return { success: true, dsrId: result.insertId };
+
+    return {
+      success: true,
+      dsrId: result.insertId,
+    };
   } catch (error) {
     console.error("createDsr error:", error);
     throw error;
   }
 };
-
-
-
 export const getDsrByLeadId = async (leadId) => {
   try {
     const [rows] = await pool.execute(
@@ -195,7 +213,7 @@ export const getAllDsrModel = async (
     let whereClause = `WHERE 1=1`;
     let values = [];
 
-    // ── Advisor filter ────────────────────────────────────────────────────
+    // ── Advisor filter ─────────────────────────────
     if (Array.isArray(advisorId)) {
       if (advisorId.length > 0) {
         const placeholders = advisorId.map(() => "?").join(",");
@@ -211,46 +229,60 @@ export const getAllDsrModel = async (
       whereClause += ` AND d.advisor_id IS NOT NULL`;
     }
 
-    // ── Month / Year filter ───────────────────────────────────────────────
+    // ── Month / Year filter ───────────────────────
     if (selectedMonth) {
-      whereClause += ` AND MONTH(d.created_at) = ? AND YEAR(d.created_at) = ?`;
+      whereClause += ` 
+        AND MONTH(d.created_at) = ? 
+        AND YEAR(d.created_at) = ?
+      `;
       values.push(selectedMonth, selectedYear);
     } else {
       whereClause += ` AND YEAR(d.created_at) = ?`;
       values.push(selectedYear);
     }
 
-    // ── City filter ───────────────────────────────────────────────────────
+    // ── City filter ───────────────────────────────
     if (cityIds && cityIds.length > 0) {
       const placeholders = cityIds.map(() => "?").join(",");
       whereClause += ` AND l.city_id IN (${placeholders})`;
       values.push(...cityIds);
     }
 
-    // ── Search filter ─────────────────────────────────────────────────────
+    // ── Search filter ─────────────────────────────
     if (search && search.trim()) {
       const like = `%${search.trim()}%`;
+
       whereClause += ` AND (
         CONCAT_WS(' ', c.firstName, c.middleName, c.lastName) LIKE ?
         OR c.customerPhone LIKE ?
         OR c.customerEmail LIKE ?
         OR d.veh_no LIKE ?
-        OR d.booking_id LIKE ?
+        OR d.bookingId LIKE ?
+        OR d.vendor_name LIKE ?
+        OR d.driver LIKE ?
       )`;
-      values.push(like, like, like, like, like);
+
+      values.push(like, like, like, like, like, like, like);
     }
 
-    // ── Status filter ─────────────────────────────────────────────────────
+    // ── Status filter ─────────────────────────────
     if (status && status.trim()) {
       whereClause += ` AND UPPER(d.payment_status) = ?`;
       values.push(status.trim().toUpperCase());
     }
 
-    // ── Main query ────────────────────────────────────────────────────────
+    // ── Main query ────────────────────────────────
     const query = `
       SELECT
         d.*,
-        CONCAT_WS(' ', c.firstName, c.middleName, c.lastName) AS fullName,
+
+        CONCAT_WS(
+          ' ',
+          c.firstName,
+          c.middleName,
+          c.lastName
+        ) AS fullName,
+
         c.firstName,
         c.middleName,
         c.lastName,
@@ -268,6 +300,7 @@ export const getAllDsrModel = async (
         c.gender,
         c.state,
         c.pincode,
+
         l.pickupDateTime,
         l.dropDateTime,
         l.pickupcity,
@@ -278,52 +311,84 @@ export const getAllDsrModel = async (
         l.occasion,
         l.days,
         l.passengerTotal
+
       FROM dsrs d
-      LEFT JOIN customers c ON c.id = d.customer_id
-      LEFT JOIN leads l ON l.id = d.lead_id
+      LEFT JOIN customers c
+        ON c.id = d.customer_id
+      LEFT JOIN leads l
+        ON l.id = d.lead_id
+
       ${whereClause}
+
       ORDER BY d.created_at DESC
       LIMIT ? OFFSET ?
     `;
 
     const [dsrs] = await pool.query(query, [...values, limitNumber, offset]);
 
-    // ── Total count ───────────────────────────────────────────────────────
+    // ── Parse JSON fields ─────────────────────────
+    const parsedDsrs = dsrs.map((dsr) => ({
+      ...dsr,
+
+      customer_amount:
+        typeof dsr.customer_amount === "string"
+          ? JSON.parse(dsr.customer_amount || "[]")
+          : dsr.customer_amount || [],
+
+      vendor_amount:
+        typeof dsr.vendor_amount === "string"
+          ? JSON.parse(dsr.vendor_amount || "[]")
+          : dsr.vendor_amount || [],
+    }));
+
+    // ── Total count ───────────────────────────────
     const countQuery = `
       SELECT COUNT(*) as total
       FROM dsrs d
-      LEFT JOIN customers c ON c.id = d.customer_id
-      LEFT JOIN leads l ON l.id = d.lead_id
+      LEFT JOIN customers c
+        ON c.id = d.customer_id
+      LEFT JOIN leads l
+        ON l.id = d.lead_id
       ${whereClause}
     `;
+
     const [countResult] = await pool.query(countQuery, values);
 
-    // ── Status counts (bina status filter ke) ────────────────────────────
+    // ── Status counts ─────────────────────────────
     const statusList = ["PAID", "UNPAID", "PARTIAL"];
 
     const statusCountWhereClause =
       status && status.trim()
         ? whereClause.replace(` AND UPPER(d.payment_status) = ?`, "")
         : whereClause;
+
     const statusCountValues =
       status && status.trim() ? values.slice(0, -1) : values;
 
     const statusQuery = `
-      SELECT d.payment_status AS status, COUNT(*) as count
+      SELECT
+        d.payment_status AS status,
+        COUNT(*) as count
       FROM dsrs d
-      LEFT JOIN customers c ON c.id = d.customer_id
-      LEFT JOIN leads l ON l.id = d.lead_id
+      LEFT JOIN customers c
+        ON c.id = d.customer_id
+      LEFT JOIN leads l
+        ON l.id = d.lead_id
       ${statusCountWhereClause}
       GROUP BY d.payment_status
     `;
+
     const [statusResult] = await pool.query(statusQuery, statusCountValues);
 
     const statusCounts = {};
+
     statusList.forEach((s) => {
       statusCounts[s] = 0;
     });
+
     statusResult.forEach((s) => {
       const key = (s.status || "").toUpperCase();
+
       if (Object.prototype.hasOwnProperty.call(statusCounts, key)) {
         statusCounts[key] = parseInt(s.count, 10);
       }
@@ -331,10 +396,9 @@ export const getAllDsrModel = async (
 
     const totalDsr = Object.values(statusCounts).reduce((a, b) => a + b, 0);
 
-    // ── Monthly stats ─────────────────────────────────────────────────────
+    // ── Monthly stats ─────────────────────────────
     let monthlyStatsWhereClause = `WHERE d.created_at IS NOT NULL`;
     let monthlyStatsValues = [];
-
     if (Array.isArray(advisorId)) {
       if (advisorId.length > 0) {
         const placeholders = advisorId.map(() => "?").join(",");
@@ -345,42 +409,75 @@ export const getAllDsrModel = async (
       }
     } else if (advisorId) {
       monthlyStatsWhereClause += ` AND d.advisor_id = ?`;
+
       monthlyStatsValues.push(Number(advisorId));
     } else {
       monthlyStatsWhereClause += ` AND d.advisor_id IS NOT NULL`;
     }
-
     monthlyStatsWhereClause += ` AND YEAR(d.created_at) = ?`;
     monthlyStatsValues.push(selectedYear);
-
     const [monthlyStats] = await pool.query(
       `
-      SELECT
-        DATE_FORMAT(d.created_at, '%Y-%m') AS month,
-        MONTHNAME(d.created_at) AS monthName,
-        YEAR(d.created_at) AS year,
-        COUNT(*) AS dsrCount
-      FROM dsrs d
-      ${monthlyStatsWhereClause}
-      GROUP BY DATE_FORMAT(d.created_at, '%Y-%m'), MONTHNAME(d.created_at), YEAR(d.created_at)
-      ORDER BY month ASC
-      `,
+        SELECT
+          DATE_FORMAT(
+            d.created_at,
+            '%Y-%m'
+          ) AS month,
+
+          MONTHNAME(
+            d.created_at
+          ) AS monthName,
+
+          YEAR(
+            d.created_at
+          ) AS year,
+
+          COUNT(*) AS dsrCount
+
+        FROM dsrs d
+        ${monthlyStatsWhereClause}
+
+        GROUP BY
+          DATE_FORMAT(
+            d.created_at,
+            '%Y-%m'
+          ),
+          MONTHNAME(
+            d.created_at
+          ),
+          YEAR(
+            d.created_at
+          )
+
+        ORDER BY month ASC
+        `,
       monthlyStatsValues,
     );
 
-    // ── Advisor names from hrmsPool ───────────────────────────────────────
+    // ── Advisor names ─────────────────────────────
     const uniqueAdvisorIds = [
-      ...new Set(dsrs.map((d) => d.advisor_id).filter((id) => id != null)),
+      ...new Set(
+        parsedDsrs.map((d) => d.advisor_id).filter((id) => id != null),
+      ),
     ];
+
     let advisorMap = {};
 
     if (uniqueAdvisorIds.length > 0) {
       try {
         const placeholders = uniqueAdvisorIds.map(() => "?").join(",");
+
         const [advisors] = await hrmsPool.query(
-          `SELECT id, shortName FROM users WHERE id IN (${placeholders})`,
+          `
+            SELECT
+              id,
+              shortName
+            FROM users
+            WHERE id IN (${placeholders})
+          `,
           uniqueAdvisorIds,
         );
+
         advisors.forEach((a) => {
           advisorMap[a.id] = a;
         });
@@ -389,9 +486,9 @@ export const getAllDsrModel = async (
       }
     }
 
-    const dsrList = dsrs.map((dsr) => ({
+    const dsrList = parsedDsrs.map((dsr) => ({
       ...dsr,
-      advisorShortName: advisorMap[dsr.advisor_id]?.shortName ?? null, // ✅ shortName fix (was short_name)
+      advisorShortName: advisorMap[dsr.advisor_id]?.shortName ?? null,
     }));
 
     return {

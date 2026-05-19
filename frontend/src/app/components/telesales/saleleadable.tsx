@@ -18,8 +18,10 @@ import {
   MONTH_OPTIONS,
 } from "../../../types/LeadsTable/leadstabledata";
 import {
+  addRealtimeAssignedLead,
   fetchMyAssignedLeads,
   setAssignedStatus,
+  updateRealtimeAssignedLead,
 } from "@/app/features/access/accessSlice";
 
 import { Eye, Edit, UserRoundPlus } from "lucide-react";
@@ -27,8 +29,8 @@ import {
   useLeadColumns,
   type LeadColumn,
 } from "../../../types/LeadsTable/leadTableColumns";
-
-// ─── Constants ────────────────────────────────────────────────────────────────
+import { connectSocket } from "@/app/socket";
+import { listenToAdviserLeads, listenToLeadUpdated, removeLeadListeners } from "@/app/socket/leadsocket";
 
 const CITY_OPTIONS = [
   "Delhi",
@@ -48,7 +50,6 @@ const CITY_ID_MAP: Record<string, number> = {
   Prayagraj: 5,
 };
 
-// ─── Tailwind bg class → CSS hex (mirrors BANNER_GROUP_LIGHT_BG_CLASS) ────────
 const BG_CLASS_TO_HEX: Record<string, string> = {
   "bg-blue-200": "#bfdbfe",
   "bg-pink-200": "#fbcfe8",
@@ -62,10 +63,7 @@ const BG_CLASS_TO_HEX: Record<string, string> = {
   "bg-slate-50": "#f8fafc",
 };
 
-// ─── Component ────────────────────────────────────────────────────────────────
-
 export default function LeadsTable() {
-  // ─── Server-side filter state ──────────────────────────────────────────────
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [cityFilter, setCityFilter] = useState<
@@ -81,7 +79,6 @@ export default function LeadsTable() {
     "All" | LeadRecord["status"]
   >("All");
 
-  // ─── Client-side only filter state ────────────────────────────────────────
   const [startMonth, setStartMonth] = useState("");
   const [endMonth, setEndMonth] = useState("");
   const [startType, setStartType] = useState("text");
@@ -90,8 +87,6 @@ export default function LeadsTable() {
   const [paxOpen, setPaxOpen] = useState(false);
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
   const [daysOpen, setDaysOpen] = useState(false);
-
-  // ─── UI state ─────────────────────────────────────────────────────────────
   const [detailLead, setDetailLead] = useState<LeadRecord | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [freezeKey, setFreezeKey] = useState<string | null>(null);
@@ -99,7 +94,6 @@ export default function LeadsTable() {
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 50;
 
-  // ─── Dropdown refs ─────────────────────────────────────────────────────────
   const paxBtnRef = useRef<HTMLButtonElement>(null);
   const daysBtnRef = useRef<HTMLButtonElement>(null);
   const daysDropdownRef = useRef<HTMLDivElement>(null);
@@ -110,13 +104,12 @@ export default function LeadsTable() {
   const [daysDropdownStyle, setDaysDropdownStyle] =
     useState<React.CSSProperties>({});
 
-  // ─── Redux ─────────────────────────────────────────────────────────────────
   const dispatch = useDispatch<AppDispatch>();
 
   const { assignedLeads } = useSelector(
     (state: RootState) => state.travelAdvisor,
   );
-
+  const { currentUser } = useSelector((state: RootState) => state.user);
   const {
     leads,
     loading,
@@ -134,8 +127,6 @@ export default function LeadsTable() {
     const t = setTimeout(() => setDebouncedSearch(searchTerm), 400);
     return () => clearTimeout(t);
   }, [searchTerm]);
-
-  // ─── Reset to page 1 on any server-side filter change ─────────────────────
   useEffect(() => {
     setCurrentPage(1);
   }, [
@@ -147,7 +138,24 @@ export default function LeadsTable() {
     statusFilter,
   ]);
 
-  // ─── Build fetch args ──────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!currentUser) return;
+
+    connectSocket(currentUser);
+
+    // New Lead
+    listenToAdviserLeads((lead) => {
+      dispatch(addRealtimeAssignedLead(lead));
+    });
+
+    // Lead Updated
+    listenToLeadUpdated((updatedLead) => {
+      dispatch(updateRealtimeAssignedLead(updatedLead)); // ← sirf ye change karo
+    });
+    return () => {
+      removeLeadListeners();
+    };
+  }, [currentUser, dispatch]);
 
   const buildFetchArgs = useCallback(
     (page: number) => ({

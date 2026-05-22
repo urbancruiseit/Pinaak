@@ -8,7 +8,7 @@ import { useAppDispatch } from "@/hooks/useRedux";
 import { useSelector } from "react-redux";
 import { RootState } from "@/app/redux/store";
 import { fetchLeads } from "@/app/features/lead/leadSlice";
-// apna actual path adjust karo
+import { DownloadButton } from "@/app/components/Download/download";
 
 export interface SearchFiltersProps {
   searchTerm: string;
@@ -85,7 +85,6 @@ export function LeadSearchFilters({
   endType,
   onEndTypeChange,
 }: SearchFiltersProps) {
-
   const dispatch = useAppDispatch();
   const { leads } = useSelector((state: RootState) => state.lead);
 
@@ -94,30 +93,23 @@ export function LeadSearchFilters({
 
   const handleSearchChange = useCallback(
     (value: string) => {
-      onSearchChange(value); // parent state update (input controlled)
-
+      onSearchChange(value);
       if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
-
       searchDebounceRef.current = setTimeout(() => {
         dispatch(
           fetchLeads({
             page: 1,
             search: value,
-            // month aur year bhi bhejo agar selectedMonth set hai
             ...(selectedMonth
-              ? {
-                  month: Number(selectedMonth),
-                  year: new Date().getFullYear(),
-                }
+              ? { month: Number(selectedMonth), year: new Date().getFullYear() }
               : {}),
-          })
+          }),
         );
-      }, 400); // 400ms debounce
+      }, 400);
     },
-    [dispatch, onSearchChange, selectedMonth]
+    [dispatch, onSearchChange, selectedMonth],
   );
 
-  // Cleanup timeout on unmount
   useEffect(() => {
     return () => {
       if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
@@ -127,8 +119,7 @@ export function LeadSearchFilters({
   // ─── Month change ──────────────────────────────────────────────────────────
   const handleMonthChange = useCallback(
     (month: string | null) => {
-      onMonthChange(month); // parent state update
-
+      onMonthChange(month);
       if (month) {
         dispatch(
           fetchLeads({
@@ -136,19 +127,13 @@ export function LeadSearchFilters({
             month: Number(month),
             year: new Date().getFullYear(),
             search: searchTerm || undefined,
-          })
+          }),
         );
       } else {
-        // Month deselect → sab leads fetch karo
-        dispatch(
-          fetchLeads({
-            page: 1,
-            search: searchTerm || undefined,
-          })
-        );
+        dispatch(fetchLeads({ page: 1, search: searchTerm || undefined }));
       }
     },
-    [dispatch, onMonthChange, searchTerm]
+    [dispatch, onMonthChange, searchTerm],
   );
 
   // ─── Checkbox helpers ──────────────────────────────────────────────────────
@@ -156,7 +141,7 @@ export function LeadSearchFilters({
     onPaxChange(
       selectedPax.includes(num)
         ? selectedPax.filter((v) => v !== num)
-        : [...selectedPax, num]
+        : [...selectedPax, num],
     );
   };
 
@@ -164,7 +149,7 @@ export function LeadSearchFilters({
     onDaysChange(
       selectedDays.includes(num)
         ? selectedDays.filter((v) => v !== num)
-        : [...selectedDays, num]
+        : [...selectedDays, num],
     );
   };
 
@@ -173,21 +158,25 @@ export function LeadSearchFilters({
 
   const handleDateFocus = (
     e: React.FocusEvent<HTMLInputElement>,
-    setType: (type: string) => void
+    setType: (type: string) => void,
   ) => {
     setType("date");
     setTimeout(() => {
-      try { e.currentTarget.showPicker(); } catch {}
+      try {
+        e.currentTarget.showPicker();
+      } catch {}
     }, 0);
   };
 
   const handleDateClick = (
     e: React.MouseEvent<HTMLInputElement>,
-    setType: (type: string) => void
+    setType: (type: string) => void,
   ) => {
     setType("date");
     setTimeout(() => {
-      try { e.currentTarget.showPicker(); } catch {}
+      try {
+        e.currentTarget.showPicker();
+      } catch {}
     }, 0);
   };
 
@@ -216,7 +205,9 @@ export function LeadSearchFilters({
         >
           <option value="All">All Statuses</option>
           {statusOptions.map((option) => (
-            <option key={option} value={option}>{option}</option>
+            <option key={option} value={option}>
+              {option}
+            </option>
           ))}
         </select>
       </div>
@@ -230,7 +221,9 @@ export function LeadSearchFilters({
         >
           <option value="All">All City</option>
           {cityOptions.map((option) => (
-            <option key={option} value={option}>{option}</option>
+            <option key={option} value={option}>
+              {option}
+            </option>
           ))}
         </select>
       </div>
@@ -242,7 +235,9 @@ export function LeadSearchFilters({
           onClick={onPaxToggle}
           className="w-full px-3 h-9 text-sm font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 text-left flex justify-between items-center bg-white"
         >
-          {selectedPax.length > 0 ? `${selectedPax.length} Pax Selected` : "Select Pax"}
+          {selectedPax.length > 0
+            ? `${selectedPax.length} Pax Selected`
+            : "Select Pax"}
           <span>▾</span>
         </button>
         {paxOpen &&
@@ -254,13 +249,23 @@ export function LeadSearchFilters({
               style={paxDropdownStyle}
             >
               <label className="flex items-center gap-2 px-3 py-2 hover:bg-slate-100 cursor-pointer">
-                <button onClick={handleClearPax} className="text-sm text-red-600 font-semibold hover:underline">
+                <button
+                  onClick={handleClearPax}
+                  className="text-sm text-red-600 font-semibold hover:underline"
+                >
                   Clear All
                 </button>
               </label>
               {Array.from({ length: 100 }, (_, i) => i + 1).map((num) => (
-                <label key={num} className="flex items-center gap-2 px-3 py-2 hover:bg-slate-100 cursor-pointer">
-                  <input type="checkbox" checked={selectedPax.includes(num)} onChange={() => handlePaxCheckbox(num)} />
+                <label
+                  key={num}
+                  className="flex items-center gap-2 px-3 py-2 hover:bg-slate-100 cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedPax.includes(num)}
+                    onChange={() => handlePaxCheckbox(num)}
+                  />
                   <span className="text-sm text-black">{num} Pax</span>
                 </label>
               ))}
@@ -276,7 +281,9 @@ export function LeadSearchFilters({
           onClick={onDaysToggle}
           className="w-full px-3 h-9 text-sm font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 text-left flex justify-between items-center bg-white"
         >
-          {selectedDays.length > 0 ? `${selectedDays.length} Days Selected` : "Select Days"}
+          {selectedDays.length > 0
+            ? `${selectedDays.length} Days Selected`
+            : "Select Days"}
           <span>▾</span>
         </button>
         {daysOpen &&
@@ -288,13 +295,23 @@ export function LeadSearchFilters({
               style={daysDropdownStyle}
             >
               <label className="flex items-center gap-2 px-3 py-2 hover:bg-slate-100 cursor-pointer">
-                <button onClick={handleClearDays} className="text-sm text-red-600 font-semibold hover:underline">
+                <button
+                  onClick={handleClearDays}
+                  className="text-sm text-red-600 font-semibold hover:underline"
+                >
                   Clear All
                 </button>
               </label>
               {Array.from({ length: 100 }, (_, i) => i + 1).map((num) => (
-                <label key={num} className="flex items-center gap-2 px-3 py-2 hover:bg-slate-100 cursor-pointer">
-                  <input type="checkbox" checked={selectedDays.includes(num)} onChange={() => handleDaysCheckbox(num)} />
+                <label
+                  key={num}
+                  className="flex items-center gap-2 px-3 py-2 hover:bg-slate-100 cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedDays.includes(num)}
+                    onChange={() => handleDaysCheckbox(num)}
+                  />
                   <span className="text-sm text-black">{num} Days</span>
                 </label>
               ))}
@@ -307,12 +324,16 @@ export function LeadSearchFilters({
       <div className="flex flex-col gap-1">
         <select
           value={freezeKey ?? "none"}
-          onChange={(e) => onFreezeChange(e.target.value === "none" ? null : e.target.value)}
+          onChange={(e) =>
+            onFreezeChange(e.target.value === "none" ? null : e.target.value)
+          }
           className="w-full px-3 py-2 text-sm font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
         >
           <option value="none">Freeze Columns</option>
           {columns.map((column) => (
-            <option key={column.key} value={column.key}>{column.label}</option>
+            <option key={column.key} value={column.key}>
+              {column.label}
+            </option>
           ))}
         </select>
       </div>
@@ -344,7 +365,8 @@ export function LeadSearchFilters({
           })}
         </div>
 
-        <div className="flex gap-4 w-full md:w-auto">
+        {/* ─── Date Range + Download Buttons ─────────────────────────────── */}
+        <div className="flex gap-2 w-full md:w-auto items-center">
           <input
             type={startType}
             value={startMonth}
@@ -353,7 +375,7 @@ export function LeadSearchFilters({
             onFocus={(e) => handleDateFocus(e, onStartTypeChange)}
             onClick={(e) => handleDateClick(e, onStartTypeChange)}
             onBlur={() => handleDateBlur(startMonth, onStartTypeChange)}
-            className="px-3 h-8 text-md font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white flex-1"
+            className="px-3 h-9 text-md font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white flex-1"
           />
           <input
             type={endType}
@@ -364,7 +386,14 @@ export function LeadSearchFilters({
             onFocus={(e) => handleDateFocus(e, onEndTypeChange)}
             onClick={(e) => handleDateClick(e, onEndTypeChange)}
             onBlur={() => handleDateBlur(endMonth, onEndTypeChange)}
-            className="px-3 h-8 text-md font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white flex-1"
+            className="px-3 h-9 text-md font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white flex-1"
+          />
+
+          {/* DownloadButton — Redux se leads data khud uthata hai */}
+          <DownloadButton
+            selectedMonth={selectedMonth}
+            startDate={startMonth}
+            endDate={endMonth}
           />
         </div>
       </div>

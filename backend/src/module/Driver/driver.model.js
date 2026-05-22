@@ -7,74 +7,48 @@ export const createDriverModel = async (data) => {
     const [columns] = await pool.execute("SHOW COLUMNS FROM drivers");
     const columnNames = columns.map((c) => c.Field);
 
-    
-    // helper to support both flat + nested
-    const getValue = (path1, path2) => {
-      return path1 ?? path2 ?? null;
-    };
-
     const fieldMapping = {
       // Personal Info
-      first_name: getValue(data.firstName, data?.personalInfo?.firstName),
-      last_name: getValue(data.lastName, data?.personalInfo?.lastName),
-      date_of_birth: getValue(
-        data.dateOfBirth,
-        data?.personalInfo?.dateOfBirth,
-      ),
-      gender: getValue(data.gender, data?.personalInfo?.gender),
-      email: getValue(data.email, data?.personalInfo?.email),
-      phone: getValue(data.phone, data?.personalInfo?.phone),
-      emergency_contact: getValue(
-        data.emergencyContact,
-        data?.personalInfo?.emergencyContact,
-      ),
-      blood_group: getValue(data.bloodGroup, data?.personalInfo?.bloodGroup),
-      vendor: getValue(data.vendor, data?.personalInfo?.vendor),
-      vendor_state: getValue(data.vendorState, data?.personalInfo?.vendorState),
-      vendor_city: getValue(data.vendorCity, data?.personalInfo?.vendorCity),
-      relative_name: getValue(
-        data.relativeName,
-        data?.personalInfo?.relativeName,
-      ),
+      first_name: data?.personalInfo?.firstName,
+      last_name: data?.personalInfo?.lastName,
+      date_of_birth: data?.personalInfo?.dateOfBirth,
+      gender: data?.personalInfo?.gender,
+      email: data?.personalInfo?.email,
+      phone: data?.personalInfo?.phone,
+      emergency_contact: data?.personalInfo?.emergencyContact,
+      blood_group: data?.personalInfo?.bloodGroup,
+      vendor: data?.personalInfo?.vendor,
+      vendor_state: data?.personalInfo?.vendorState,
+      vendor_city: data?.personalInfo?.vendorCity,
 
-      // Address Info
-      permanent_address: getValue(
-        data.permanentAddress,
-        data?.addressInfo?.permanentAddress,
-      ),
-      current_address: getValue(
-        data.currentAddress,
-        data?.addressInfo?.currentAddress,
-      ),
-      city: getValue(data.city, data?.addressInfo?.city),
-      state: getValue(data.state, data?.addressInfo?.state),
-      pincode: getValue(data.pincode, data?.addressInfo?.pincode),
+      // Permanent Address
+      permanent_address: data?.addressInfo?.permanentAddress,
+      permanent_city: data?.addressInfo?.permanentCity,
+      permanent_state: data?.addressInfo?.permanentState,
+      permanent_pincode: data?.addressInfo?.permanentPincode,
+
+      // Current Address
+      current_address: data?.addressInfo?.currentAddress,
+      current_city: data?.addressInfo?.currentCity,
+      current_state: data?.addressInfo?.currentState,
+      current_pincode: data?.addressInfo?.currentPincode,
 
       // License Info
-      license_number: getValue(
-        data.licenseNumber,
-        data?.licenseInfo?.licenseNumber,
-      ),
-      license_type: getValue(data.licenseType, data?.licenseInfo?.licenseType),
-      issuing_authority: getValue(
-        data.issuingAuthority,
-        data?.licenseInfo?.issuingAuthority,
-      ),
-      issue_date: getValue(data.issueDate, data?.licenseInfo?.issueDate),
-      expiry_date: getValue(data.expiryDate, data?.licenseInfo?.expiryDate),
-      experience_details: getValue(
-        data.experienceDetails,
-        data?.licenseInfo?.experienceDetails,
-      ),
-      dl_front: getValue(data.dlFront, data?.licenseInfo?.dlFront),
-      dl_back: getValue(data.dlBack, data?.licenseInfo?.dlBack),
+      license_number: data?.licenseInfo?.licenseNumber,
+      license_type: data?.licenseInfo?.licenseType,
+      issuing_authority: data?.licenseInfo?.issuingAuthority,
+      issue_date: data?.licenseInfo?.issueDate,
+      expiry_date: data?.licenseInfo?.expiryDate,
+      experience_details: data?.licenseInfo?.experienceDetails,
+      dl_front: data?.licenseInfo?.dlFront,
+      dl_back: data?.licenseInfo?.dlBack,
 
       // Employment
-      employee_id: getValue(data.employeeId, data?.employmentInfo?.employeeId),
+      employee_id: data?.employmentInfo?.employeeId,
 
       // Documents
-      aadhar_card: getValue(data.aadharCard, data?.documents?.aadharCard),
-      pan_card: getValue(data.panCard, data?.documents?.panCard),
+      aadhar_card: data?.documents?.aadharCard,
+      pan_card: data?.documents?.panCard,
     };
 
     const fields = [];
@@ -95,7 +69,6 @@ export const createDriverModel = async (data) => {
     }
 
     if (fields.length === 0) {
-      console.error("❌ No fields matched. Check mapping.");
       throw new Error("No valid fields to insert into drivers table");
     }
 
@@ -103,8 +76,6 @@ export const createDriverModel = async (data) => {
       INSERT INTO drivers (${fields.join(", ")})
       VALUES (${placeholders.join(", ")})
     `;
-
-
 
     const [result] = await pool.execute(query, values);
     return result;
@@ -114,7 +85,6 @@ export const createDriverModel = async (data) => {
   }
 };
 
-// Optional: Get all drivers
 export const getAllDriversModel = async () => {
   try {
     const [rows] = await pool.execute("SELECT * FROM drivers ORDER BY id DESC");
@@ -125,7 +95,6 @@ export const getAllDriversModel = async () => {
   }
 };
 
-// Optional: Get driver by ID
 export const getDriverByIdModel = async (id) => {
   try {
     const [rows] = await pool.execute("SELECT * FROM drivers WHERE id = ?", [
@@ -138,7 +107,6 @@ export const getDriverByIdModel = async (id) => {
   }
 };
 
-// Optional: Update driver
 export const updateDriverModel = async (id, data) => {
   try {
     const [columns] = await pool.execute("SHOW COLUMNS FROM drivers");
@@ -161,12 +129,17 @@ export const updateDriverModel = async (id, data) => {
       vendor_state: data?.personalInfo?.vendorState,
       vendor_city: data?.personalInfo?.vendorCity,
 
-      // Address Information
+      // Permanent Address
       permanent_address: data?.addressInfo?.permanentAddress,
+      permanent_city: data?.addressInfo?.permanentCity,
+      permanent_state: data?.addressInfo?.permanentState,
+      permanent_pincode: data?.addressInfo?.permanentPincode,
+
+      // Current Address
       current_address: data?.addressInfo?.currentAddress,
-      city: data?.addressInfo?.city,
-      state: data?.addressInfo?.state,
-      pincode: data?.addressInfo?.pincode,
+      current_city: data?.addressInfo?.currentCity,
+      current_state: data?.addressInfo?.currentState,
+      current_pincode: data?.addressInfo?.currentPincode,
 
       // License Information
       license_number: data?.licenseInfo?.licenseNumber,
@@ -213,7 +186,6 @@ export const updateDriverModel = async (id, data) => {
   }
 };
 
-// Optional: Delete driver
 export const deleteDriverModel = async (id) => {
   try {
     const [result] = await pool.execute("DELETE FROM drivers WHERE id = ?", [

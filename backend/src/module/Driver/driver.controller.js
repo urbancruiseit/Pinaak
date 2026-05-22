@@ -9,6 +9,55 @@ import {
   deleteDriverModel,
 } from "./driver.model.js";
 
+// Helper function to format a single driver
+const formatDriver = (driver) => {
+  if (!driver) return null;
+
+  return {
+    id: driver.id,
+    personalInfo: {
+      firstName: driver.first_name,
+      lastName: driver.last_name,
+      dateOfBirth: driver.date_of_birth,
+      gender: driver.gender,
+      email: driver.email,
+      phone: driver.phone,
+      emergencyContact: driver.emergency_contact,
+      bloodGroup: driver.blood_group,
+      vendor: driver.vendor,
+      vendorState: driver.vendor_state,
+      vendorCity: driver.vendor_city,
+    },
+    addressInfo: {
+      permanentAddress: driver.permanent_address,
+      permanentCity: driver.permanent_city,
+      permanentState: driver.permanent_state,
+      permanentPincode: driver.permanent_pincode,
+      currentAddress: driver.current_address,
+      currentCity: driver.current_city,
+      currentState: driver.current_state,
+      currentPincode: driver.current_pincode,
+    },
+    licenseInfo: {
+      licenseNumber: driver.license_number,
+      licenseType: driver.license_type,
+      issuingAuthority: driver.issuing_authority,
+      issueDate: driver.issue_date,
+      experienceDetails: driver.experience_details,
+      expiryDate: driver.expiry_date,
+      dlFront: driver.dl_front,
+      dlBack: driver.dl_back,
+    },
+    employmentInfo: {
+      employeeId: driver.employee_id,
+    },
+    documents: {
+      aadharCard: driver.aadhar_card,
+      panCard: driver.pan_card,
+    },
+  };
+};
+
 // ================= CREATE DRIVER =================
 export const createDriverController = asyncHandler(async (req, res) => {
   const data = req.body;
@@ -19,7 +68,6 @@ export const createDriverController = asyncHandler(async (req, res) => {
     throw new ApiError(500, "Failed to create driver");
   }
 
-  // ✅ Safe access (flat + nested dono support)
   const firstName = data?.firstName || data?.personalInfo?.firstName || null;
   const lastName = data?.lastName || data?.personalInfo?.lastName || null;
   const employeeId =
@@ -44,13 +92,22 @@ export const createDriverController = asyncHandler(async (req, res) => {
   );
 });
 
-// ================= GET ALL DRIVERS =================
+// ================= GET ALL DRIVERS - FIXED =================
 export const getAllDriversController = asyncHandler(async (req, res) => {
   const drivers = await getAllDriversModel();
 
+  // Format each driver to nested structure
+  const formattedDrivers = drivers.map((driver) => formatDriver(driver));
+
   return res
     .status(200)
-    .json(new ApiResponse(200, { drivers }, "Drivers fetched successfully"));
+    .json(
+      new ApiResponse(
+        200,
+        { drivers: formattedDrivers },
+        "Drivers fetched successfully",
+      ),
+    );
 });
 
 // ================= GET DRIVER BY ID =================
@@ -67,47 +124,7 @@ export const getDriverByIdController = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Driver not found");
   }
 
-  // Format the response to match frontend structure
-  const formattedDriver = {
-    id: driver.id,
-    personalInfo: {
-      firstName: driver.first_name,
-      lastName: driver.last_name,
-      dateOfBirth: driver.date_of_birth,
-      gender: driver.gender,
-      email: driver.email,
-      phone: driver.phone,
-      emergencyContact: driver.emergency_contact,
-      bloodGroup: driver.blood_group,
-      vendor: driver.vendor,
-      vendorState: driver.vendor_state,
-      vendorCity: driver.vendor_city,
-    },
-    addressInfo: {
-      permanentAddress: driver.permanent_address,
-      currentAddress: driver.current_address,
-      city: driver.city,
-      state: driver.state,
-      pincode: driver.pincode,
-    },
-    licenseInfo: {
-      licenseNumber: driver.license_number,
-      licenseType: driver.license_type,
-      issuingAuthority: driver.issuing_authority,
-      issueDate: driver.issue_date,
-      experienceDetails: driver.experience_details,
-      expiryDate: driver.expiry_date,
-      dlFront: driver.dl_front,
-      dlBack: driver.dl_back,
-    },
-    employmentInfo: {
-      employeeId: driver.employee_id,
-    },
-    documents: {
-      aadharCard: driver.aadhar_card,
-      panCard: driver.pan_card,
-    },
-  };
+  const formattedDriver = formatDriver(driver);
 
   return res
     .status(200)

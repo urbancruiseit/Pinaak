@@ -9,17 +9,22 @@ import {
   Mail,
   FileText,
   AlertCircle,
-  CheckCircle2,
+  CheckCircle,
+  X,
+  ArrowLeft,
 } from "lucide-react";
 import { AppDispatch, RootState } from "@/app/redux/store";
-import { createDriverThunk } from "@/app/features/Driver/driverSlice";
+import {
+  createDriverThunk,
+  updateDriverThunk,
+  resetSuccess,
+} from "@/app/features/Driver/driverSlice";
 import {
   fetchAllCities,
   fetchStatesByCity,
   resetStatesForCity,
 } from "@/app/features/State/stateSlice";
 
-// ── Types (Vendor form jaise) ─────────────────────────────────────────────────
 interface CityItem {
   id: number | string;
   cityName: string;
@@ -41,8 +46,6 @@ type AppRootState = RootState & {
   stateCity: StateCitySlice;
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
-
 interface DriverFormData {
   personalInfo: {
     firstName: string;
@@ -52,7 +55,6 @@ interface DriverFormData {
     email: string;
     phone: string;
     emergencyContact: string;
-    emergencyPhone: string;
     bloodGroup: string;
     vendor: string;
     vendorState: string;
@@ -60,10 +62,13 @@ interface DriverFormData {
   };
   addressInfo: {
     permanentAddress: string;
+    permanentCity: string;
+    permanentState: string;
+    permanentPincode: string;
     currentAddress: string;
-    city: string;
-    state: string;
-    pincode: string;
+    currentCity: string;
+    currentState: string;
+    currentPincode: string;
   };
   licenseInfo: {
     licenseNumber: string;
@@ -84,6 +89,56 @@ interface DriverFormData {
   };
 }
 
+interface DriverResponse {
+  id: number;
+  personalInfo?: {
+    firstName: string;
+    lastName: string;
+    dateOfBirth: string;
+    gender: string;
+    email: string;
+    phone: string;
+    emergencyContact: string;
+    bloodGroup: string;
+    vendor: string;
+    vendorState: string;
+    vendorCity: string;
+  };
+  addressInfo?: {
+    permanentAddress: string;
+    permanentCity: string;
+    permanentState: string;
+    permanentPincode: string;
+    currentAddress: string;
+    currentCity: string;
+    currentState: string;
+    currentPincode: string;
+  };
+  licenseInfo?: {
+    licenseNumber: string;
+    licenseType: string;
+    issuingAuthority: string;
+    issueDate: string;
+    experienceDetails: string;
+    expiryDate: string;
+    dlFront: string;
+    dlBack: string;
+  };
+  employmentInfo?: {
+    employeeId: string;
+  };
+  documents?: {
+    aadharCard: string;
+    panCard: string;
+  };
+}
+
+interface DriverFormProps {
+  initialData?: DriverResponse | null;
+  mode?: "create" | "edit";
+  onBack?: () => void;
+}
+
 const licenseTypes = [
   "MCWG",
   "MCWOG",
@@ -97,6 +152,7 @@ const licenseTypes = [
 ];
 
 const bloodGroups = ["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"];
+const genders = ["Male", "Female", "Other"];
 
 const sampleVendors = [
   { name: "Vendor A", state: "Maharashtra", city: "Mumbai" },
@@ -115,7 +171,6 @@ const initialFormState: DriverFormData = {
     email: "",
     phone: "",
     emergencyContact: "",
-    emergencyPhone: "",
     bloodGroup: "",
     vendor: "",
     vendorState: "",
@@ -123,10 +178,13 @@ const initialFormState: DriverFormData = {
   },
   addressInfo: {
     permanentAddress: "",
+    permanentCity: "",
+    permanentState: "",
+    permanentPincode: "",
     currentAddress: "",
-    city: "",
-    state: "",
-    pincode: "",
+    currentCity: "",
+    currentState: "",
+    currentPincode: "",
   },
   licenseInfo: {
     licenseNumber: "",
@@ -147,39 +205,47 @@ const initialFormState: DriverFormData = {
   },
 };
 
-const DriverForm: React.FC = () => {
+const DriverForm: React.FC<DriverFormProps> = ({
+  initialData,
+  mode = "create",
+  onBack,
+}) => {
   const dispatch = useDispatch<AppDispatch>();
+
+  const {
+    loading,
+    error,
+    successMessage: reduxSuccessMessage,
+  } = useSelector((state: RootState) => state.driver);
 
   const [formData, setFormData] = useState<DriverFormData>(initialFormState);
   const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>(
     {},
   );
   const [savingProfile, setSavingProfile] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [sameAsPermanent, setSameAsPermanent] = useState(false);
   const [isLoadingCities, setIsLoadingCities] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // ── Redux state — Vendor form jaise stateCity slice se ───────────────────
-  const stateSlice = useSelector((state: AppRootState) => state.stateCity);
-  const {
-    cities = [],
-    statesForCity = [],
-    loading: stateLoading = false,
-  } = stateSlice || {};
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
+  const [showErrorToast, setShowErrorToast] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
-  // Unique cities (duplicate hata do)
+  const stateSlice = useSelector((state: AppRootState) => state.stateCity);
+  const { cities = [], loading: stateLoading = false } = stateSlice || {};
+
+  // Separate states for permanent and current address
+  const [permanentStates, setPermanentStates] = useState<StateItem[]>([]);
+  const [currentStates, setCurrentStates] = useState<StateItem[]>([]);
+  const [permanentStateLoading, setPermanentStateLoading] = useState(false);
+  const [currentStateLoading, setCurrentStateLoading] = useState(false);
+
   const uniqueCities = React.useMemo(() => {
     if (!cities || !Array.isArray(cities)) return [];
     return [...new Map(cities.map((c) => [c?.cityName, c])).values()];
   }, [cities]);
 
-  // ── Address section ke liye alag states (personal se independent) ─────────
-  // addressInfo city/state → Redux statesForCity use karega
-  // (Vendor form ke companyinfo jaise)
-
-  // ── File state ────────────────────────────────────────────────────────────
   const [fileState, setFileState] = useState<{
     dlFront: File | null;
     dlBack: File | null;
@@ -192,7 +258,6 @@ const DriverForm: React.FC = () => {
     panCard: null,
   });
 
-  // ── Load all cities on mount ──────────────────────────────────────────────
   useEffect(() => {
     const loadCities = async () => {
       try {
@@ -207,7 +272,117 @@ const DriverForm: React.FC = () => {
     loadCities();
   }, [dispatch]);
 
-  // ── Handlers ──────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (reduxSuccessMessage) {
+      setSuccessMessage(reduxSuccessMessage);
+      setShowSuccessToast(true);
+      setTimeout(() => {
+        dispatch(resetSuccess());
+        if (mode === "edit" && onBack) {
+          onBack();
+        }
+      }, 2000);
+    }
+  }, [reduxSuccessMessage, dispatch, mode, onBack]);
+
+  useEffect(() => {
+    if (error) {
+      setErrorMessage(error);
+      setShowErrorToast(true);
+    }
+  }, [error]);
+
+  useEffect(() => {
+    if (mode === "edit" && initialData) {
+      setFormData({
+        personalInfo: {
+          firstName: initialData.personalInfo?.firstName || "",
+          lastName: initialData.personalInfo?.lastName || "",
+          dateOfBirth: initialData.personalInfo?.dateOfBirth || "",
+          gender: initialData.personalInfo?.gender || "",
+          email: initialData.personalInfo?.email || "",
+          phone: initialData.personalInfo?.phone || "",
+          emergencyContact: initialData.personalInfo?.emergencyContact || "",
+          bloodGroup: initialData.personalInfo?.bloodGroup || "",
+          vendor: initialData.personalInfo?.vendor || "",
+          vendorState: initialData.personalInfo?.vendorState || "",
+          vendorCity: initialData.personalInfo?.vendorCity || "",
+        },
+        addressInfo: {
+          permanentAddress: initialData.addressInfo?.permanentAddress || "",
+          permanentCity: initialData.addressInfo?.permanentCity || "",
+          permanentState: initialData.addressInfo?.permanentState || "",
+          permanentPincode: initialData.addressInfo?.permanentPincode || "",
+          currentAddress: initialData.addressInfo?.currentAddress || "",
+          currentCity: initialData.addressInfo?.currentCity || "",
+          currentState: initialData.addressInfo?.currentState || "",
+          currentPincode: initialData.addressInfo?.currentPincode || "",
+        },
+        licenseInfo: {
+          licenseNumber: initialData.licenseInfo?.licenseNumber || "",
+          licenseType: initialData.licenseInfo?.licenseType || "",
+          issuingAuthority: initialData.licenseInfo?.issuingAuthority || "",
+          issueDate: initialData.licenseInfo?.issueDate || "",
+          experienceDetails: initialData.licenseInfo?.experienceDetails || "",
+          expiryDate: initialData.licenseInfo?.expiryDate || "",
+          dlFront: initialData.licenseInfo?.dlFront || "",
+          dlBack: initialData.licenseInfo?.dlBack || "",
+        },
+        employmentInfo: {
+          employeeId: initialData.employmentInfo?.employeeId || "",
+        },
+        documents: {
+          aadharCard: initialData.documents?.aadharCard || "",
+          panCard: initialData.documents?.panCard || "",
+        },
+      });
+
+      // Load states for permanent city if exists
+      if (initialData.addressInfo?.permanentCity) {
+        setPermanentStateLoading(true);
+        dispatch(fetchStatesByCity(initialData.addressInfo.permanentCity))
+          .unwrap()
+          .then((result) => {
+            if (Array.isArray(result)) setPermanentStates(result);
+          })
+          .catch((err) => console.error("States fetch error:", err))
+          .finally(() => setPermanentStateLoading(false));
+      }
+
+      // Load states for current city if exists
+      if (initialData.addressInfo?.currentCity) {
+        setCurrentStateLoading(true);
+        dispatch(fetchStatesByCity(initialData.addressInfo.currentCity))
+          .unwrap()
+          .then((result) => {
+            if (Array.isArray(result)) setCurrentStates(result);
+          })
+          .catch((err) => console.error("States fetch error:", err))
+          .finally(() => setCurrentStateLoading(false));
+      }
+    }
+  }, [mode, initialData, dispatch]);
+
+  useEffect(() => {
+    if (showSuccessToast) {
+      const timer = setTimeout(() => {
+        setShowSuccessToast(false);
+        setSuccessMessage("");
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [showSuccessToast]);
+
+  useEffect(() => {
+    if (showErrorToast) {
+      const timer = setTimeout(() => {
+        setShowErrorToast(false);
+        setErrorMessage("");
+      }, 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [showErrorToast]);
+
   const markFieldTouched = useCallback((fieldName: string) => {
     setTouchedFields((prev) => ({ ...prev, [fieldName]: true }));
   }, []);
@@ -215,17 +390,6 @@ const DriverForm: React.FC = () => {
   const getInputClass = useCallback((fieldName: string, hasIcon = false) => {
     const base = `w-full p-2.5 border rounded-lg ${hasIcon ? "pl-10" : ""}`;
     return `${base} border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none`;
-  }, []);
-
-  const getMaxLength = useCallback((fieldName: string): number | undefined => {
-    const limits: Record<string, number> = {
-      phone: 10,
-      emergencyPhone: 10,
-      pincode: 6,
-      licenseNumber: 20,
-      experienceDetails: 2,
-    };
-    return limits[fieldName];
   }, []);
 
   const handleInputChange = useCallback(
@@ -252,46 +416,82 @@ const DriverForm: React.FC = () => {
     [],
   );
 
-  // ✅ Address City change → fetchStatesByCity (Vendor form jaise)
-  const handleCityChange = useCallback(
+  const handlePermanentCityChange = useCallback(
     async (e: React.ChangeEvent<HTMLSelectElement>) => {
       const selectedCity = e.target.value;
-
-      dispatch(resetStatesForCity());
-
+      setPermanentStates([]);
       setFormData((prev) => ({
         ...prev,
         addressInfo: {
           ...prev.addressInfo,
-          city: selectedCity,
-          state: "", // city badli to state reset
+          permanentCity: selectedCity,
+          permanentState: "",
         },
       }));
-      setErrors((prev) => ({ ...prev, city: "", state: "" }));
-
       if (!selectedCity) return;
-
       try {
-        await dispatch(fetchStatesByCity(selectedCity)).unwrap();
+        setPermanentStateLoading(true);
+        const result = await dispatch(fetchStatesByCity(selectedCity)).unwrap();
+        if (Array.isArray(result)) setPermanentStates(result);
       } catch (err) {
         console.error("States fetch error:", err);
+      } finally {
+        setPermanentStateLoading(false);
       }
     },
     [dispatch],
   );
 
-  // ✅ Address State change
-  const handleStateChange = useCallback(
+  const handlePermanentStateChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
       const selectedStateName = e.target.value;
       setFormData((prev) => ({
         ...prev,
         addressInfo: {
           ...prev.addressInfo,
-          state: selectedStateName,
+          permanentState: selectedStateName,
         },
       }));
-      setErrors((prev) => ({ ...prev, state: "" }));
+    },
+    [],
+  );
+
+  const handleCurrentCityChange = useCallback(
+    async (e: React.ChangeEvent<HTMLSelectElement>) => {
+      const selectedCity = e.target.value;
+      setCurrentStates([]);
+      setFormData((prev) => ({
+        ...prev,
+        addressInfo: {
+          ...prev.addressInfo,
+          currentCity: selectedCity,
+          currentState: "",
+        },
+      }));
+      if (!selectedCity) return;
+      try {
+        setCurrentStateLoading(true);
+        const result = await dispatch(fetchStatesByCity(selectedCity)).unwrap();
+        if (Array.isArray(result)) setCurrentStates(result);
+      } catch (err) {
+        console.error("States fetch error:", err);
+      } finally {
+        setCurrentStateLoading(false);
+      }
+    },
+    [dispatch],
+  );
+
+  const handleCurrentStateChange = useCallback(
+    (e: React.ChangeEvent<HTMLSelectElement>) => {
+      const selectedStateName = e.target.value;
+      setFormData((prev) => ({
+        ...prev,
+        addressInfo: {
+          ...prev.addressInfo,
+          currentState: selectedStateName,
+        },
+      }));
     },
     [],
   );
@@ -314,581 +514,560 @@ const DriverForm: React.FC = () => {
         addressInfo: {
           ...prev.addressInfo,
           currentAddress: prev.addressInfo.permanentAddress,
+          currentCity: prev.addressInfo.permanentCity,
+          currentState: prev.addressInfo.permanentState,
+          currentPincode: prev.addressInfo.permanentPincode,
         },
       }));
+      // Also copy the states array
+      setCurrentStates([...permanentStates]);
     } else {
       setFormData((prev) => ({
         ...prev,
-        addressInfo: { ...prev.addressInfo, currentAddress: "" },
+        addressInfo: {
+          ...prev.addressInfo,
+          currentAddress: "",
+          currentCity: "",
+          currentState: "",
+          currentPincode: "",
+        },
       }));
+      setCurrentStates([]);
     }
     setSameAsPermanent(!sameAsPermanent);
-  }, [sameAsPermanent]);
+  }, [sameAsPermanent, permanentStates]);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
       setSavingProfile(true);
-      setError(null);
-      setSuccessMessage(null);
+      setErrorMessage("");
+      setSuccessMessage("");
 
       try {
-        await dispatch(createDriverThunk(formData)).unwrap();
-        setSuccessMessage("Driver Created Successfully ✅");
-        setFormData(initialFormState);
-        setFileState({
-          dlFront: null,
-          dlBack: null,
-          aadharCard: null,
-          panCard: null,
-        });
-        setTouchedFields({});
-        setSameAsPermanent(false);
-        dispatch(resetStatesForCity());
+        const submissionData = {
+          personalInfo: formData.personalInfo,
+          addressInfo: formData.addressInfo,
+          licenseInfo: formData.licenseInfo,
+          employmentInfo: formData.employmentInfo,
+          documents: formData.documents,
+        };
+
+        console.log("Submitting data:", submissionData);
+
+        if (mode === "edit" && initialData?.id) {
+          await dispatch(
+            updateDriverThunk({
+              id: initialData.id,
+              data: submissionData,
+            }),
+          ).unwrap();
+          setSuccessMessage("Driver Updated Successfully! 🎉");
+          setShowSuccessToast(true);
+          setTimeout(() => {
+            if (onBack) {
+              onBack();
+            }
+          }, 2000);
+        } else {
+          await dispatch(createDriverThunk(submissionData)).unwrap();
+          setSuccessMessage("Driver Created Successfully! 🎉");
+          setShowSuccessToast(true);
+          setFormData(initialFormState);
+          setFileState({
+            dlFront: null,
+            dlBack: null,
+            aadharCard: null,
+            panCard: null,
+          });
+          setTouchedFields({});
+          setSameAsPermanent(false);
+          setPermanentStates([]);
+          setCurrentStates([]);
+          dispatch(resetStatesForCity());
+        }
       } catch (err: any) {
-        setError(err?.message || "Something went wrong. Please try again.");
+        console.error("Submit error:", err);
+        setErrorMessage(
+          err?.message ||
+            err?.error ||
+            "Something went wrong. Please try again.",
+        );
+        setShowErrorToast(true);
       } finally {
         setSavingProfile(false);
       }
     },
-    [formData, dispatch],
+    [formData, dispatch, mode, initialData, onBack],
   );
 
   return (
-    <div className="p-6 w-full mx-auto bg-white shadow-xl rounded-lg">
-      <div className="p-6">
-        <div className="p-4 mb-8 bg-orange-100 rounded-xl">
-          <div>
-            <h2 className="text-2xl font-bold text-center text-orange-600">
-              Driver Registration Form
-            </h2>
-            <p className="mt-2 text-center text-orange-700">
-              Complete all sections to register a new driver
-            </p>
+    <div className="w-full bg-gray-50 p-6">
+      {showSuccessToast && (
+        <div className="fixed right-4 top-4 z-50 animate-slide-in-right">
+          <div className="bg-green-50 border-l-4 border-green-500 rounded-lg shadow-lg p-4 flex items-center gap-3 min-w-[300px]">
+            <CheckCircle className="w-5 h-5 text-green-500" />
+            <p className="text-green-700 font-medium">{successMessage}</p>
+            <button
+              onClick={() => setShowSuccessToast(false)}
+              className="ml-auto text-green-600"
+            >
+              <X size={16} />
+            </button>
           </div>
         </div>
+      )}
 
-        {(error || successMessage) && (
-          <div className="mb-6">
-            {error && (
-              <div className="flex items-center gap-2 px-4 py-3 text-red-700 border border-red-200 rounded-lg bg-red-50">
-                <AlertCircle className="w-5 h-5" />
-                <span>{error}</span>
-              </div>
-            )}
-            {successMessage && (
-              <div className="flex items-center gap-2 px-4 py-3 mt-3 text-green-700 border border-green-200 rounded-lg bg-green-50">
-                <CheckCircle2 className="w-5 h-5" />
-                <span>{successMessage}</span>
-              </div>
-            )}
+      {showErrorToast && (
+        <div className="fixed right-4 top-4 z-50 animate-slide-in-right">
+          <div className="bg-red-50 border-l-4 border-red-500 rounded-lg shadow-lg p-4 flex items-center gap-3 min-w-[300px]">
+            <AlertCircle className="w-5 h-5 text-red-500" />
+            <p className="text-red-700 font-medium">{errorMessage}</p>
+            <button
+              onClick={() => setShowErrorToast(false)}
+              className="ml-auto text-red-600"
+            >
+              <X size={16} />
+            </button>
           </div>
-        )}
+        </div>
+      )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* ── Section 1: Personal Information ──────────────────────────── */}
-          <div className="p-6 border rounded-xl bg-blue-50">
-            <h3 className="pb-3 mb-6 text-xl font-semibold text-blue-800 border-b">
-              <span className="px-3 py-1 mr-2 text-white bg-blue-600 rounded-md">
-                1
-              </span>
-              Personal Information
-            </h3>
+      <div className="w-full bg-white shadow-xl rounded-lg">
+        <div className="p-6">
+          {mode === "edit" && onBack && (
+            <button
+              onClick={onBack}
+              className="mb-4 flex items-center gap-2 px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
+            >
+              <ArrowLeft size={18} />
+              Back to Driver List
+            </button>
+          )}
 
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-              <div>
-                <label className="block mb-1 font-extrabold text-gray-700">
-                  Employee ID
-                </label>
-                <div className="relative group">
+          <div className="bg-orange-100 p-4 rounded-lg mb-6">
+            <h2 className="text-2xl font-bold text-center text-orange-600">
+              {mode === "edit" ? "Edit Driver" : "Driver Registration"}
+            </h2>
+            <p className="text-center text-orange-700 text-sm mt-1">
+              {mode === "edit"
+                ? "Update driver information"
+                : "Fill all details to register a new driver"}
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Personal Information */}
+            <div className="border rounded-lg p-5 bg-blue-50">
+              <h3 className="text-lg font-semibold text-blue-800 mb-4 pb-2 border-b flex items-center gap-2">
+                <User size={20} /> Personal Information
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Employee ID *
+                  </label>
                   <input
                     type="text"
                     name="employmentInfo.employeeId"
                     value={formData.employmentInfo.employeeId}
                     onChange={handleInputChange}
-                    onBlur={() => markFieldTouched("employeeId")}
-                    placeholder="EMP-001"
-                    className={getInputClass("employeeId", true)}
-                  />
-                  <User
-                    className="absolute text-blue-600 -translate-y-1/2 left-3 top-1/2"
-                    size={20}
+                    className={getInputClass("employeeId")}
+                    placeholder="EMP001"
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="block mb-1 font-extrabold text-gray-700">
-                  Vendor Under
-                </label>
-                <select
-                  name="personalInfo.vendor"
-                  value={formData.personalInfo.vendor}
-                  onChange={(e) => {
-                    handleInputChange(e);
-                    const selectedVendor = sampleVendors.find(
-                      (v) => v.name === e.target.value,
-                    );
-                    if (selectedVendor) {
-                      setFormData((prev) => ({
-                        ...prev,
-                        personalInfo: {
-                          ...prev.personalInfo,
-                          vendorState: selectedVendor.state,
-                          vendorCity: selectedVendor.city,
-                        },
-                      }));
-                    }
-                  }}
-                  className={getInputClass("vendor", false)}
-                >
-                  <option value="">Select Vendor</option>
-                  {sampleVendors.map((vendor) => (
-                    <option key={vendor.name} value={vendor.name}>
-                      {vendor.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex gap-4">
-                <div className="flex-1">
-                  <label className="block mb-1 font-extrabold text-gray-700">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    First Name *
+                  </label>
+                  <input
+                    type="text"
+                    name="personalInfo.firstName"
+                    value={formData.personalInfo.firstName}
+                    onChange={handleInputChange}
+                    className={getInputClass("firstName")}
+                    placeholder="Enter first name"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Last Name
+                  </label>
+                  <input
+                    type="text"
+                    name="personalInfo.lastName"
+                    value={formData.personalInfo.lastName}
+                    onChange={handleInputChange}
+                    className={getInputClass("lastName")}
+                    placeholder="Enter last name"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Date of Birth
+                  </label>
+                  <input
+                    type="date"
+                    name="personalInfo.dateOfBirth"
+                    value={formData.personalInfo.dateOfBirth}
+                    onChange={handleInputChange}
+                    className={getInputClass("dateOfBirth")}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Gender
+                  </label>
+                  <select
+                    name="personalInfo.gender"
+                    value={formData.personalInfo.gender}
+                    onChange={handleInputChange}
+                    className={getInputClass("gender")}
+                  >
+                    <option value="">Select</option>
+                    {genders.map((g) => (
+                      <option key={g} value={g.toLowerCase()}>
+                        {g}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Mobile Number *
+                  </label>
+                  <input
+                    type="tel"
+                    name="personalInfo.phone"
+                    value={formData.personalInfo.phone}
+                    onChange={handleInputChange}
+                    className={getInputClass("phone")}
+                    placeholder="9876543210"
+                    maxLength={10}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    name="personalInfo.email"
+                    value={formData.personalInfo.email}
+                    onChange={handleInputChange}
+                    className={getInputClass("email")}
+                    placeholder="driver@example.com"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Emergency Contact
+                  </label>
+                  <input
+                    type="text"
+                    name="personalInfo.emergencyContact"
+                    value={formData.personalInfo.emergencyContact}
+                    onChange={handleInputChange}
+                    className={getInputClass("emergencyContact")}
+                    placeholder="Relative name - phone"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Blood Group
+                  </label>
+                  <select
+                    name="personalInfo.bloodGroup"
+                    value={formData.personalInfo.bloodGroup}
+                    onChange={handleInputChange}
+                    className={getInputClass("bloodGroup")}
+                  >
+                    <option value="">Select</option>
+                    {bloodGroups.map((bg) => (
+                      <option key={bg} value={bg}>
+                        {bg}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Vendor
+                  </label>
+                  <select
+                    name="personalInfo.vendor"
+                    value={formData.personalInfo.vendor}
+                    onChange={(e) => {
+                      handleInputChange(e);
+                      const selected = sampleVendors.find(
+                        (v) => v.name === e.target.value,
+                      );
+                      if (selected) {
+                        setFormData((prev) => ({
+                          ...prev,
+                          personalInfo: {
+                            ...prev.personalInfo,
+                            vendorState: selected.state,
+                            vendorCity: selected.city,
+                          },
+                        }));
+                      }
+                    }}
+                    className={getInputClass("vendor")}
+                  >
+                    <option value="">Select Vendor</option>
+                    {sampleVendors.map((v) => (
+                      <option key={v.name} value={v.name}>
+                        {v.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Vendor City
                   </label>
                   <input
                     type="text"
                     value={formData.personalInfo.vendorCity}
                     readOnly
-                    className="w-full p-2.5 border border-gray-300 rounded-lg bg-gray-100"
+                    className="w-full p-2.5 border rounded-lg bg-gray-100"
                   />
                 </div>
-                <div className="flex-1">
-                  <label className="block mb-1 font-extrabold text-gray-700">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
                     Vendor State
                   </label>
                   <input
                     type="text"
                     value={formData.personalInfo.vendorState}
                     readOnly
-                    className="w-full p-2.5 border border-gray-300 rounded-lg bg-gray-100"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block mb-1 font-extrabold text-gray-700">
-                  First Name
-                </label>
-                <div className="relative group">
-                  <input
-                    type="text"
-                    name="personalInfo.firstName"
-                    value={formData.personalInfo.firstName}
-                    onChange={handleInputChange}
-                    onBlur={() => markFieldTouched("firstName")}
-                    placeholder="Enter first name"
-                    className={getInputClass("firstName", true)}
-                  />
-                  <User
-                    className="absolute text-blue-600 -translate-y-1/2 left-3 top-1/2"
-                    size={20}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block mb-1 font-extrabold text-gray-700">
-                  Last Name
-                </label>
-                <div className="relative group">
-                  <input
-                    type="text"
-                    name="personalInfo.lastName"
-                    value={formData.personalInfo.lastName}
-                    onChange={handleInputChange}
-                    onBlur={() => markFieldTouched("lastName")}
-                    placeholder="Enter last name"
-                    className={getInputClass("lastName", true)}
-                  />
-                  <User
-                    className="absolute text-blue-600 -translate-y-1/2 left-3 top-1/2"
-                    size={20}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block mb-1 font-extrabold text-gray-700">
-                  Date of Birth
-                </label>
-                <div className="relative group">
-                  <input
-                    type="date"
-                    name="personalInfo.dateOfBirth"
-                    value={formData.personalInfo.dateOfBirth}
-                    onChange={handleInputChange}
-                    onBlur={() => markFieldTouched("dateOfBirth")}
-                    className={getInputClass("dateOfBirth", true)}
-                  />
-                  <Calendar
-                    className="absolute text-blue-600 -translate-y-1/2 left-3 top-1/2"
-                    size={20}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block mb-1 font-extrabold text-gray-700">
-                  Gender
-                </label>
-                <select
-                  name="personalInfo.gender"
-                  value={formData.personalInfo.gender}
-                  onChange={handleInputChange}
-                  className={getInputClass("gender", false)}
-                >
-                  <option value="">Select</option>
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block mb-1 font-extrabold text-gray-700">
-                  Mobile Number
-                </label>
-                <div className="relative group">
-                  <input
-                    name="personalInfo.phone"
-                    type="tel"
-                    value={formData.personalInfo.phone}
-                    onChange={handleInputChange}
-                    onBlur={() => markFieldTouched("phone")}
-                    className={getInputClass("phone", true)}
-                    placeholder="Enter WhatsApp number"
-                    maxLength={getMaxLength("phone")}
-                  />
-                  <Phone
-                    className="absolute text-blue-600 -translate-y-1/2 left-3 top-1/2"
-                    size={20}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block mb-1 font-extrabold text-gray-700">
-                  Relative Name
-                </label>
-                <div className="relative group">
-                  <input
-                    type="text"
-                    name="personalInfo.emergencyContact"
-                    value={formData.personalInfo.emergencyContact}
-                    onChange={handleInputChange}
-                    onBlur={() => markFieldTouched("emergencyContact")}
-                    placeholder="Enter relative name"
-                    className={getInputClass("emergencyContact", true)}
-                  />
-                  <User
-                    className="absolute text-blue-600 -translate-y-1/2 left-3 top-1/2"
-                    size={20}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block mb-1 font-extrabold text-gray-700">
-                  Relative Mobile Number
-                </label>
-                <div className="relative group">
-                  <input
-                    name="personalInfo.emergencyPhone"
-                    type="tel"
-                    value={formData.personalInfo.emergencyPhone}
-                    onChange={handleInputChange}
-                    onBlur={() => markFieldTouched("emergencyPhone")}
-                    className={getInputClass("emergencyPhone", true)}
-                    placeholder="Enter relative Mobile Number"
-                    maxLength={getMaxLength("emergencyPhone")}
-                  />
-                  <Phone
-                    className="absolute text-blue-600 -translate-y-1/2 left-3 top-1/2"
-                    size={20}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block mb-1 font-extrabold text-gray-700">
-                  Email
-                </label>
-                <div className="relative group">
-                  <input
-                    name="personalInfo.email"
-                    type="email"
-                    value={formData.personalInfo.email}
-                    onChange={handleInputChange}
-                    onBlur={() => markFieldTouched("email")}
-                    className={getInputClass("email", true)}
-                    placeholder="Enter email address"
-                  />
-                  <Mail
-                    className="absolute text-blue-600 -translate-y-1/2 left-3 top-1/2"
-                    size={20}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block mb-1 font-extrabold text-gray-700">
-                  Blood Group
-                </label>
-                <select
-                  name="personalInfo.bloodGroup"
-                  value={formData.personalInfo.bloodGroup}
-                  onChange={handleInputChange}
-                  className={getInputClass("bloodGroup", false)}
-                >
-                  <option value="">Select</option>
-                  {bloodGroups.map((group) => (
-                    <option key={group} value={group}>
-                      {group}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {/* ── Section 2: Address Information ───────────────────────────── */}
-          <div className="p-6 border rounded-xl bg-green-50">
-            <h3 className="pb-3 mb-6 text-xl font-semibold text-green-800 border-b">
-              <span className="px-3 py-1 mr-2 text-white bg-green-600 rounded-md">
-                2
-              </span>
-              Address Information
-            </h3>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block mb-1 font-extrabold text-gray-700">
-                  Permanent Address
-                </label>
-                <div className="relative group">
-                  <input
-                    name="addressInfo.permanentAddress"
-                    value={formData.addressInfo.permanentAddress}
-                    onChange={handleInputChange}
-                    onBlur={() => markFieldTouched("permanentAddress")}
-                    placeholder="Enter permanent address"
-                    className={getInputClass("permanentAddress", true)}
-                  />
-                  <MapPin
-                    className="absolute text-green-600 -translate-y-1/2 left-3 top-1/2"
-                    size={20}
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center mb-2">
-                <input
-                  type="checkbox"
-                  id="sameAddress"
-                  checked={sameAsPermanent}
-                  onChange={handleAddressSame}
-                  className="w-4 h-4 text-blue-600 rounded"
-                />
-                <label
-                  htmlFor="sameAddress"
-                  className="ml-2 text-sm text-gray-700"
-                >
-                  Same as Permanent Address
-                </label>
-              </div>
-
-              <div>
-                <label className="block mb-1 font-extrabold text-gray-700">
-                  Current Address
-                </label>
-                <div className="relative group">
-                  <input
-                    name="addressInfo.currentAddress"
-                    value={formData.addressInfo.currentAddress}
-                    onChange={handleInputChange}
-                    onBlur={() => markFieldTouched("currentAddress")}
-                    placeholder="Enter current address"
-                    className={getInputClass("currentAddress", true)}
-                    disabled={sameAsPermanent}
-                  />
-                  <MapPin
-                    className="absolute text-green-600 -translate-y-1/2 left-3 top-1/2"
-                    size={20}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                {/* ✅ City Dropdown — Redux cities (Vendor form jaise) */}
-                <div>
-                  <label className="block mb-1 font-extrabold text-gray-700">
-                    City
-                  </label>
-                  <div className="relative">
-                    <MapPin
-                      className="absolute left-3 top-3 text-gray-400 z-10"
-                      size={18}
-                    />
-                    <select
-                      name="addressInfo.city"
-                      value={formData.addressInfo.city}
-                      onChange={handleCityChange}
-                      onBlur={() => markFieldTouched("city")}
-                      className="w-full p-2.5 pl-10 border rounded-lg border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
-                      disabled={isLoadingCities}
-                    >
-                      <option value="">
-                        {isLoadingCities ? "Loading cities..." : "Select City"}
-                      </option>
-                      {uniqueCities.map((city) => (
-                        <option key={city.id} value={city.cityName}>
-                          {city.cityName}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  {touchedFields.city && errors.city && (
-                    <p className="text-sm text-red-600 mt-1">{errors.city}</p>
-                  )}
-                </div>
-
-                {/* ✅ State Dropdown — city select hone ke baad enable (Vendor form jaise) */}
-                <div>
-                  <label className="block mb-1 font-extrabold text-gray-700">
-                    State
-                  </label>
-                  <div className="relative">
-                    <MapPin
-                      className="absolute left-3 top-3 text-gray-400 z-10"
-                      size={18}
-                    />
-                    <select
-                      name="addressInfo.state"
-                      value={formData.addressInfo.state}
-                      onChange={handleStateChange}
-                      onBlur={() => markFieldTouched("state")}
-                      className="w-full p-2.5 pl-10 border rounded-lg border-gray-300 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 outline-none"
-                      disabled={
-                        !formData.addressInfo.city ||
-                        stateLoading ||
-                        statesForCity.length === 0
-                      }
-                    >
-                      <option value="">
-                        {stateLoading
-                          ? "Loading states..."
-                          : !formData.addressInfo.city
-                            ? "First select city"
-                            : statesForCity.length === 0
-                              ? "No states found"
-                              : "Select State"}
-                      </option>
-                      {statesForCity.map((state) => (
-                        <option key={state.id} value={state.stateName}>
-                          {state.stateName}
-                        </option>
-                      ))}
-                    </select>
-                    {stateLoading && (
-                      <div className="absolute right-3 top-3">
-                        <svg
-                          className="animate-spin h-5 w-5 text-blue-500"
-                          viewBox="0 0 24 24"
-                        >
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                            fill="none"
-                          />
-                          <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                          />
-                        </svg>
-                      </div>
-                    )}
-                  </div>
-                  {touchedFields.state && errors.state && (
-                    <p className="text-sm text-red-600 mt-1">{errors.state}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block mb-1 font-extrabold text-gray-700">
-                    Pincode
-                  </label>
-                  <input
-                    type="text"
-                    name="addressInfo.pincode"
-                    value={formData.addressInfo.pincode}
-                    onChange={handleInputChange}
-                    onBlur={() => markFieldTouched("pincode")}
-                    placeholder="Enter 6-digit pincode"
-                    className={getInputClass("pincode", false)}
-                    maxLength={getMaxLength("pincode")}
+                    className="w-full p-2.5 border rounded-lg bg-gray-100"
                   />
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* ── Section 3: License Information ───────────────────────────── */}
-          <div className="p-6 border rounded-xl bg-orange-100/50">
-            <h3 className="pb-3 mb-6 text-xl font-semibold text-orange-600 border-b border-orange-800">
-              <span className="px-3 py-1 mr-2 text-white bg-orange-600 rounded-md">
-                3
-              </span>
-              Driving License Information
-            </h3>
+            {/* Address Information */}
+            <div className="border rounded-lg p-5 bg-green-50">
+              <h3 className="text-lg font-semibold text-green-800 mb-4 pb-2 border-b flex items-center gap-2">
+                <MapPin size={20} /> Address Information
+              </h3>
+              <div className="space-y-6">
+                {/* Permanent Address Section */}
+                <div className="space-y-3">
+                  <h4 className="text-md font-semibold text-green-700">
+                    Permanent Address
+                  </h4>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Permanent Address
+                    </label>
+                    <textarea
+                      name="addressInfo.permanentAddress"
+                      value={formData.addressInfo.permanentAddress}
+                      onChange={handleInputChange}
+                      rows={2}
+                      className={getInputClass("permanentAddress")}
+                      placeholder="Enter permanent address"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        City
+                      </label>
+                      <select
+                        name="addressInfo.permanentCity"
+                        value={formData.addressInfo.permanentCity}
+                        onChange={handlePermanentCityChange}
+                        className="w-full p-2.5 border rounded-lg"
+                        disabled={isLoadingCities}
+                      >
+                        <option value="">
+                          {isLoadingCities ? "Loading..." : "Select City"}
+                        </option>
+                        {uniqueCities.map((city) => (
+                          <option key={city.id} value={city.cityName}>
+                            {city.cityName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        State
+                      </label>
+                      <select
+                        name="addressInfo.permanentState"
+                        value={formData.addressInfo.permanentState}
+                        onChange={handlePermanentStateChange}
+                        className="w-full p-2.5 border rounded-lg"
+                        disabled={
+                          !formData.addressInfo.permanentCity ||
+                          permanentStateLoading
+                        }
+                      >
+                        <option value="">
+                          {permanentStateLoading
+                            ? "Loading..."
+                            : "Select State"}
+                        </option>
+                        {permanentStates.map((state) => (
+                          <option key={state.id} value={state.stateName}>
+                            {state.stateName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Pincode
+                      </label>
+                      <input
+                        type="text"
+                        name="addressInfo.permanentPincode"
+                        value={formData.addressInfo.permanentPincode}
+                        onChange={handleInputChange}
+                        className={getInputClass("permanentPincode")}
+                        placeholder="6-digit pincode"
+                        maxLength={6}
+                      />
+                    </div>
+                  </div>
+                </div>
 
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-              <div>
-                <label className="block mb-1 font-extrabold text-gray-700">
-                  License Number
-                </label>
-                <div className="relative group">
+                {/* Same as Permanent Checkbox */}
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="sameAddress"
+                    checked={sameAsPermanent}
+                    onChange={handleAddressSame}
+                    className="w-4 h-4"
+                  />
+                  <label
+                    htmlFor="sameAddress"
+                    className="text-sm text-gray-700"
+                  >
+                    Same as Permanent Address
+                  </label>
+                </div>
+
+                {/* Current Address Section */}
+                <div className="space-y-3">
+                  <h4 className="text-md font-semibold text-green-700">
+                    Current Address
+                  </h4>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Current Address
+                    </label>
+                    <textarea
+                      name="addressInfo.currentAddress"
+                      value={formData.addressInfo.currentAddress}
+                      onChange={handleInputChange}
+                      rows={2}
+                      className={getInputClass("currentAddress")}
+                      disabled={sameAsPermanent}
+                      placeholder="Enter current address"
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        City
+                      </label>
+                      <select
+                        name="addressInfo.currentCity"
+                        value={formData.addressInfo.currentCity}
+                        onChange={handleCurrentCityChange}
+                        className="w-full p-2.5 border rounded-lg"
+                        disabled={sameAsPermanent || isLoadingCities}
+                      >
+                        <option value="">
+                          {isLoadingCities ? "Loading..." : "Select City"}
+                        </option>
+                        {uniqueCities.map((city) => (
+                          <option key={city.id} value={city.cityName}>
+                            {city.cityName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        State
+                      </label>
+                      <select
+                        name="addressInfo.currentState"
+                        value={formData.addressInfo.currentState}
+                        onChange={handleCurrentStateChange}
+                        className="w-full p-2.5 border rounded-lg"
+                        disabled={
+                          sameAsPermanent ||
+                          !formData.addressInfo.currentCity ||
+                          currentStateLoading
+                        }
+                      >
+                        <option value="">
+                          {currentStateLoading ? "Loading..." : "Select State"}
+                        </option>
+                        {currentStates.map((state) => (
+                          <option key={state.id} value={state.stateName}>
+                            {state.stateName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Pincode
+                      </label>
+                      <input
+                        type="text"
+                        name="addressInfo.currentPincode"
+                        value={formData.addressInfo.currentPincode}
+                        onChange={handleInputChange}
+                        className={getInputClass("currentPincode")}
+                        disabled={sameAsPermanent}
+                        placeholder="6-digit pincode"
+                        maxLength={6}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* License Information */}
+            <div className="border rounded-lg p-5 bg-orange-50">
+              <h3 className="text-lg font-semibold text-orange-800 mb-4 pb-2 border-b flex items-center gap-2">
+                <FileText size={20} /> License Information
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    License Number *
+                  </label>
                   <input
                     type="text"
                     name="licenseInfo.licenseNumber"
                     value={formData.licenseInfo.licenseNumber}
                     onChange={handleInputChange}
-                    onBlur={() => markFieldTouched("licenseNumber")}
-                    placeholder="Enter license number"
-                    className={getInputClass("licenseNumber", true)}
-                    maxLength={getMaxLength("licenseNumber")}
-                  />
-                  <FileText
-                    className="absolute text-orange-600 -translate-y-1/2 left-3 top-1/2"
-                    size={20}
+                    className={getInputClass("licenseNumber")}
+                    placeholder="DL-123456"
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="block mb-1 font-extrabold text-gray-700">
-                  License Type
-                </label>
-                <div className="relative group">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    License Type
+                  </label>
                   <select
                     name="licenseInfo.licenseType"
                     value={formData.licenseInfo.licenseType}
                     onChange={handleInputChange}
-                    className={getInputClass("licenseType", true)}
+                    className={getInputClass("licenseType")}
                   >
                     <option value="">Select Type</option>
                     {licenseTypes.map((type) => (
@@ -897,157 +1076,138 @@ const DriverForm: React.FC = () => {
                       </option>
                     ))}
                   </select>
-                  <FileText
-                    className="absolute text-orange-600 -translate-y-1/2 left-3 top-1/2"
-                    size={20}
-                  />
                 </div>
-              </div>
-
-              <div>
-                <label className="block mb-1 font-extrabold text-gray-700">
-                  Issuing Authority
-                </label>
-                <div className="relative group">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Issuing Authority
+                  </label>
                   <input
                     type="text"
                     name="licenseInfo.issuingAuthority"
                     value={formData.licenseInfo.issuingAuthority}
                     onChange={handleInputChange}
-                    onBlur={() => markFieldTouched("issuingAuthority")}
-                    placeholder="Enter issuing authority"
-                    className={getInputClass("issuingAuthority", true)}
-                  />
-                  <FileText
-                    className="absolute text-orange-600 -translate-y-1/2 left-3 top-1/2"
-                    size={20}
+                    className={getInputClass("issuingAuthority")}
+                    placeholder="RTO Office"
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="block mb-1 font-extrabold text-gray-700">
-                  Issue Date
-                </label>
-                <div className="relative group">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Issue Date
+                  </label>
                   <input
                     type="date"
                     name="licenseInfo.issueDate"
                     value={formData.licenseInfo.issueDate}
                     onChange={handleInputChange}
-                    onBlur={() => markFieldTouched("issueDate")}
-                    className={getInputClass("issueDate", true)}
-                  />
-                  <Calendar
-                    className="absolute text-orange-600 -translate-y-1/2 left-3 top-1/2"
-                    size={20}
+                    className={getInputClass("issueDate")}
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="block mb-1 font-extrabold text-gray-700">
-                  Expiry Date
-                </label>
-                <div className="relative group">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Expiry Date
+                  </label>
                   <input
                     type="date"
                     name="licenseInfo.expiryDate"
                     value={formData.licenseInfo.expiryDate}
                     onChange={handleInputChange}
-                    onBlur={() => markFieldTouched("expiryDate")}
-                    className={getInputClass("expiryDate", true)}
-                  />
-                  <Calendar
-                    className="absolute text-orange-600 -translate-y-1/2 left-3 top-1/2"
-                    size={20}
+                    className={getInputClass("expiryDate")}
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="block mb-1 font-extrabold text-gray-700">
-                  Experience Year
-                </label>
-                <div className="relative group">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Experience (Years)
+                  </label>
                   <input
-                    type="text"
+                    type="number"
                     name="licenseInfo.experienceDetails"
                     value={formData.licenseInfo.experienceDetails}
                     onChange={handleInputChange}
-                    onBlur={() => markFieldTouched("experienceDetails")}
-                    placeholder="Enter years of experience"
-                    className={getInputClass("experienceDetails", true)}
-                    maxLength={getMaxLength("experienceDetails")}
-                  />
-                  <Calendar
-                    className="absolute text-orange-600 -translate-y-1/2 left-3 top-1/2"
-                    size={20}
+                    className={getInputClass("experienceDetails")}
+                    placeholder="5"
                   />
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* ── Section 4: Documents Upload ───────────────────────────────── */}
-          <div className="p-6 border rounded-xl bg-gradient-to-r from-yellow-50 to-orange-50">
-            <h3 className="pb-3 mb-4 text-xl font-semibold text-yellow-800 border-b">
-              <span className="px-3 py-1 mr-2 text-white bg-yellow-600 rounded-md">
-                4
-              </span>
-              Documents Upload
-            </h3>
-
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              {(
-                [
-                  { key: "dlFront", label: "License Front Photo" },
-                  { key: "dlBack", label: "License Back Photo" },
+            {/* Documents */}
+            <div className="border rounded-lg p-5 bg-yellow-50">
+              <h3 className="text-lg font-semibold text-yellow-800 mb-4 pb-2 border-b flex items-center gap-2">
+                <FileText size={20} /> Documents
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {[
+                  { key: "dlFront", label: "License Front" },
+                  { key: "dlBack", label: "License Back" },
                   { key: "aadharCard", label: "Aadhar Card" },
                   { key: "panCard", label: "Pan Card" },
-                ] as const
-              ).map(({ key, label }) => (
-                <div key={key}>
-                  <label className="block mb-1 font-extrabold text-gray-700">
-                    {label}
-                  </label>
-                  <div className="flex items-center gap-2 p-3 rounded-md bg-blue-50">
-                    <input
-                      type="file"
-                      id={key}
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      onChange={(e) => handleFileChange(e, key)}
-                      className="hidden"
-                    />
-                    <label
-                      htmlFor={key}
-                      className="px-4 py-2 font-extrabold text-white bg-yellow-700 rounded-md cursor-pointer hover:bg-yellow-500"
-                    >
-                      Choose File
+                ].map(({ key, label }) => (
+                  <div key={key}>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      {label}
                     </label>
-                    {fileState[key] && (
-                      <span className="text-sm text-gray-600">
-                        {fileState[key]!.name}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="file"
+                        id={key}
+                        accept=".pdf,.jpg,.png"
+                        onChange={(e) =>
+                          handleFileChange(e, key as keyof typeof fileState)
+                        }
+                        className="hidden"
+                      />
+                      <label
+                        htmlFor={key}
+                        className="px-4 py-2 bg-yellow-600 text-white rounded-lg cursor-pointer hover:bg-yellow-700"
+                      >
+                        Choose File
+                      </label>
+                      {fileState[key as keyof typeof fileState] && (
+                        <span className="text-sm text-gray-600">
+                          {fileState[key as keyof typeof fileState]!.name}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
 
-          {/* Submit Button */}
-          <div className="flex justify-center gap-4 pt-6 border-t">
-            <button
-              type="submit"
-              disabled={savingProfile}
-              className="h-16 px-8 py-3 text-xl font-semibold text-white bg-orange-600 border-2 border-gray-200 rounded-full shadow-xl hover:bg-orange-700 w-88 disabled:bg-orange-300"
-            >
-              {savingProfile ? "Submitting..." : "Submit Driver Registration"}
-            </button>
-          </div>
-        </form>
+            {/* Submit Button */}
+            <div className="flex justify-center pt-4">
+              <button
+                type="submit"
+                disabled={savingProfile || loading}
+                className="px-8 py-3 bg-orange-600 text-white rounded-full hover:bg-orange-700 disabled:bg-orange-300 transition text-lg font-semibold"
+              >
+                {savingProfile || loading
+                  ? mode === "edit"
+                    ? "Updating..."
+                    : "Submitting..."
+                  : mode === "edit"
+                    ? "Update Driver"
+                    : "Submit Driver"}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
+
+      <style jsx>{`
+        @keyframes slideInRight {
+          from {
+            transform: translateX(100%);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+        .animate-slide-in-right {
+          animation: slideInRight 0.3s ease-out;
+        }
+      `}</style>
     </div>
   );
 };

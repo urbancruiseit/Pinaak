@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo, useRef } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useRouter } from "next/navigation";
 import {
@@ -29,13 +29,11 @@ import {
   updateCustomerThunk,
 } from "../../../features/NewCustomer/NewCustomerSlice";
 import { getCountriesThunk } from "../../../features/countrycode/countrycodeSlice";
-import Popup from "../../pages/leads/list/EditForm/customerpopup";
 
-// ✅ Desktop Notification import
-import {
-  requestNotificationPermission,
-  showDesktopNotification,
-} from "../../../components/pages/leads/list/EditForm/DesktopNotification";
+interface CustomerPersonalProps {
+  mode?: "edit" | "view" | "create";
+  onBack?: () => void;
+}
 
 interface CustomerRecord {
   firstName: string;
@@ -58,7 +56,6 @@ interface CustomerRecord {
   customerCategoryType: string;
   countryName: string;
   customerCity: string;
-  customerState: string;
   customerAddress: string;
 }
 
@@ -81,7 +78,6 @@ const initialFormState: CustomerRecord = {
   customerCategoryType: "",
   countryName: "",
   customerCity: "",
-  customerState: "",
   customerAddress: "",
 };
 
@@ -91,22 +87,23 @@ const CATEGORY_OPTIONS: Record<string, string[]> = {
   "Travel Agent": ["Tour Operator", "Travel Agency", "DMC", "Online Travel"],
 };
 
-const CustomerForm = () => {
+const CustomerPersonal: React.FC<CustomerPersonalProps> = ({
+  mode: propMode = "create",
+  onBack,
+}) => {
   const dispatch = useDispatch<AppDispatch>();
   const router = useRouter();
-  const [mode, setMode] = useState<string>("");
 
-  // ✅ Notification timer refs
-  const notificationIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const notificationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const [lastCreatedCustomer, setLastCreatedCustomer] = useState<{
-    name: string;
-    createdAt: Date;
-  } | null>(null);
+  const isEditMode = propMode === "edit";
+  const isViewMode = propMode === "view";
 
   const stateSlice = useSelector((state: RootState) => state.stateCity);
   const newCustomerSlice = useSelector((state: RootState) => state.newCustomer);
   const countrycodeSlice = useSelector((state: RootState) => state.country);
+
+  const selectedCustomer = useSelector(
+    (state: RootState) => state.newCustomer.selectedCustomer,
+  );
 
   const {
     cities = [],
@@ -124,181 +121,32 @@ const CustomerForm = () => {
     countrycodeSlice || {};
 
   const [formData, setFormData] = useState<CustomerRecord>(initialFormState);
+  const [editCustomerId, setEditCustomerId] = useState<number | null>(null);
   const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>(
     {},
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
   const [isLoadingCities, setIsLoadingCities] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [showDropdown, setShowDropdown] = useState(false);
   const [searching, setSearching] = useState(false);
-  const [alternateCountryCode, setAlternateCountryCode] = useState("");
-  const [customerType, setCustomerType] = useState("");
-  const [countryName, setCountryName] = useState("");
-  const [customerCity, setCustomerCity] = useState("");
-  const [isEditMode, setIsEditMode] = useState(false);
-  const [editCustomerId, setEditCustomerId] = useState<number | null>(null);
-  const [isViewMode, setIsViewMode] = useState(false);
-  const [customerCategoryTypeValue, setCustomerCategoryTypeValue] =
-    useState("");
-
-  // Popup states
-  const [showPopup, setShowPopup] = useState(false);
-  const [popupData, setPopupData] = useState({ customer: "" });
 
   const [fileState, setFileState] = useState<{
     passportPhoto: File | null;
     panDoc: File | null;
     gstDoc: File | null;
     adhar: File | null;
-    vendorProof: File | null;
-    vehicleDoc: File | null;
   }>({
     passportPhoto: null,
     panDoc: null,
     gstDoc: null,
     adhar: null,
-    vendorProof: null,
-    vehicleDoc: null,
   });
 
-  // ✅ Function to stop all recurring notifications
-  const stopRecurringNotifications = () => {
-    if (notificationIntervalRef.current) {
-      clearInterval(notificationIntervalRef.current);
-      notificationIntervalRef.current = null;
-    }
-    if (notificationTimeoutRef.current) {
-      clearTimeout(notificationTimeoutRef.current);
-      notificationTimeoutRef.current = null;
-    }
-  };
-
-  // ✅ Function to start recurring notifications for 10 minutes
-  const startRecurringNotifications = (
-    customerName: string,
-    createdAt: Date,
-  ) => {
-    // Stop any existing notifications first
-    stopRecurringNotifications();
-
-    const tenMinutesInMs = 10 * 60 * 1000;
-    const intervalTime = 30 * 1000; // 30 seconds
-
-    let notificationCount = 0;
-
-   
-
-    // Show first notification immediately
-    showDesktopNotification(
-      "✅ Customer Created Successfully!",
-      `${customerName} register ho gaya. Agle 10 minutes tak updates milte rahenge.`,
-      "/favicon.ico",
-      () => {
-        router.push("/dashboard?tab=customer-table");
-      },
-    );
-
-    // Set interval for every 30 seconds
-    notificationIntervalRef.current = setInterval(() => {
-      notificationCount++;
-      const elapsedMinutes = (notificationCount * intervalTime) / 1000 / 60;
-      const remainingMinutes = (10 - elapsedMinutes).toFixed(1);
-
-      showDesktopNotification(
-        "⏰ Reminder: New Customer Registered",
-        `${customerName} - ${remainingMinutes} minutes remaining in monitoring window.`,
-        "/favicon.ico",
-        () => {
-          router.push("/dashboard?tab=customer-table");
-        },
-      );
-
-      console.log(
-        `📢 Notification #${notificationCount} sent for ${customerName}`,
-      );
-    }, intervalTime);
-
-    // Stop after 10 minutes
-    notificationTimeoutRef.current = setTimeout(() => {
-      console.log(
-        `⏹️ Stopping notifications for ${customerName} after 10 minutes`,
-      );
-      stopRecurringNotifications();
-
-      // Final notification
-      showDesktopNotification(
-        "⏱️ Monitoring Period Ended",
-        `10 minute ka monitoring period complete ho gaya for ${customerName}.`,
-        "/favicon.ico",
-        () => {
-          router.push("/dashboard?tab=customer-table");
-        },
-      );
-    }, tenMinutesInMs);
-  };
-
-  // ✅ Cleanup on component unmount
-  useEffect(() => {
-    return () => {
-      stopRecurringNotifications();
-    };
-  }, []);
-
-  // ✅ Page load pe notification permission maango
-  useEffect(() => {
-    requestNotificationPermission();
-  }, []);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      const urlMode = params.get("mode");
-      setMode(urlMode || "");
-      if (urlMode === "edit") setIsEditMode(true);
-      else if (urlMode === "view") setIsViewMode(true);
-    }
-  }, []);
-
-  useEffect(() => {
-    const editData = localStorage.getItem("editCustomerData");
-    if (editData) {
-      const customer = JSON.parse(editData);
-      setFormData({
-        firstName: customer.firstName || "",
-        middleName: customer.middleName || "",
-        lastName: customer.lastName || "",
-        email: customer.customerEmail || "",
-        phone: customer.customerPhone || "",
-        alternatePhone: customer.alternatePhone || "",
-        dateOfBirth: customer.dateOfBirth || "",
-        anniversary: customer.anniversary || "",
-        gender: customer.gender || "",
-        address: customer.address || "",
-        state: customer.state || "",
-        city: customer.city || "",
-        pincode: customer.pincode || "",
-        stateId: customer.stateId,
-        cityId: customer.cityId,
-        companyName: customer.companyName || "",
-        customerType: customer.customerType || "",
-        customerCategoryType: customer.customerCategoryType || "",
-        countryName: customer.countryName || "",
-        customerCity: customer.customerCity || "",
-        customerState: customer.customerState || "",
-        customerAddress: customer.customerAddress || "",
-      });
-      setCustomerType(customer.customerType || "");
-      setCustomerCategoryTypeValue(customer.customerCategoryType || "");
-      setEditCustomerId(customer.id || null);
-      setIsEditMode(true);
-      localStorage.removeItem("editCustomerData");
-    }
-  }, []);
-
+  // Load cities on mount
   useEffect(() => {
     const loadCities = async () => {
       try {
@@ -313,49 +161,102 @@ const CustomerForm = () => {
     loadCities();
   }, [dispatch]);
 
+  // Load countries
   useEffect(() => {
     dispatch(getCountriesThunk());
   }, [dispatch]);
 
+  // For edit mode - populate form and fetch states
   useEffect(() => {
-    const loadCitiesForIndia = async () => {
-      if (countryName === "India") {
-        try {
-          await dispatch(fetchAllCities()).unwrap();
-        } catch (err) {
-          console.error("Cities fetch error:", err);
-        }
-      }
-    };
-    loadCitiesForIndia();
-  }, [dispatch, countryName]);
+    if (!selectedCustomer) return;
 
-  useEffect(() => {
-    const loadStates = async () => {
-      if (customerCity) {
-        try {
-          await dispatch(fetchStatesByCity(customerCity)).unwrap();
-        } catch (err) {
-          console.error("States fetch error:", err);
-        }
-      } else {
-        dispatch(resetStatesForCity());
-      }
-    };
-    loadStates();
-  }, [dispatch, customerCity]);
+    const selectedCity = selectedCustomer.customerCity || selectedCustomer.city;
 
+    setFormData({
+      firstName: selectedCustomer.firstName || "",
+      middleName: selectedCustomer.middleName || "",
+      lastName: selectedCustomer.lastName || "",
+      email: selectedCustomer.customerEmail || "",
+      phone: selectedCustomer.customerPhone || "",
+      alternatePhone: selectedCustomer.alternatePhone || "",
+      dateOfBirth: selectedCustomer.date_of_birth || "",
+      anniversary: selectedCustomer.anniversary || "",
+      gender: selectedCustomer.gender || "",
+      address: selectedCustomer.address || "",
+      city: selectedCity || "",
+      customerCity: selectedCity || "",
+      state: selectedCustomer.state || "",
+      pincode: selectedCustomer.pincode || "",
+      stateId: selectedCustomer.stateId,
+      cityId: selectedCustomer.cityId,
+      companyName: selectedCustomer.companyName || "",
+      customerType: selectedCustomer.customerType || "",
+      customerCategoryType: selectedCustomer.customerCategoryType || "",
+      countryName: selectedCustomer.countryName || "",
+      customerAddress: selectedCustomer.address || "",
+    });
+
+    setEditCustomerId(selectedCustomer.id || null);
+
+    // Fetch states for the city in edit mode
+    if (selectedCity) {
+      dispatch(fetchStatesByCity(selectedCity));
+    }
+  }, [selectedCustomer, dispatch]);
+
+  // For create mode - fetch states when city changes
   useEffect(() => {
-    const delayDebounce = setTimeout(() => {
-      if (searchTerm.length >= 2) {
-        handleSearch();
-      } else {
-        dispatch(clearSearchResults());
-        setShowDropdown(false);
-      }
-    }, 500);
-    return () => clearTimeout(delayDebounce);
-  }, [searchTerm, dispatch]);
+    if (!isEditMode && !isViewMode && formData.city) {
+      dispatch(fetchStatesByCity(formData.city));
+    } else if (!formData.city) {
+      dispatch(resetStatesForCity());
+    }
+  }, [dispatch, formData.city, isEditMode, isViewMode]);
+
+  // Handle city change
+  const handleCityChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedCity = e.target.value;
+    const selectedCityObj = cities.find(
+      (c: any) => c?.cityName === selectedCity,
+    );
+
+    // Reset state when city changes
+    dispatch(resetStatesForCity());
+
+    setFormData((prev) => ({
+      ...prev,
+      city: selectedCity,
+      customerCity: selectedCity,
+      cityId: selectedCityObj?.id,
+      state: "",
+      stateId: undefined,
+    }));
+
+    if (errors.city) setErrors((prev) => ({ ...prev, city: "" }));
+    if (!selectedCity) return;
+
+    try {
+      await dispatch(fetchStatesByCity(selectedCity)).unwrap();
+    } catch (err) {
+      console.error("States fetch error:", err);
+    }
+  };
+
+  // Handle state change
+  const handleStateChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedStateName = e.target.value;
+    const selectedState = statesForCity.find(
+      (s: any) => s?.stateName === selectedStateName,
+    );
+
+    setFormData((prev) => ({
+      ...prev,
+      state: selectedStateName,
+      stateId: selectedState?.id,
+    }));
+
+    if (errors.state) setErrors((prev) => ({ ...prev, state: "" }));
+  };
 
   const handleFileChange = (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -366,46 +267,13 @@ const CustomerForm = () => {
     }
   };
 
-  const handleCityChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const selectedCity = e.target.value;
-    const selectedCityObj = cities.find((c) => c?.cityName === selectedCity);
-    dispatch(resetStatesForCity());
-    setFormData((prev) => ({
-      ...prev,
-      city: selectedCity,
-      cityId: selectedCityObj?.id,
-      state: "",
-      stateId: undefined,
-    }));
-    if (errors.city) setErrors((prev) => ({ ...prev, city: "" }));
-    if (!selectedCity) return;
-    try {
-      await dispatch(fetchStatesByCity(selectedCity)).unwrap();
-    } catch (err) {
-      console.error("States fetch error:", err);
-    }
-  };
-
-  const handleStateChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const selectedStateName = e.target.value;
-    const selectedState = statesForCity.find(
-      (s) => s?.stateName === selectedStateName,
-    );
-    setFormData((prev) => ({
-      ...prev,
-      state: selectedStateName,
-      stateId: selectedState?.id,
-    }));
-    if (errors.state) setErrors((prev) => ({ ...prev, state: "" }));
-  };
-
   const handleSearch = async () => {
     if (!searchTerm.trim()) return;
     try {
       setSearching(true);
       await dispatch(searchCustomersThunk(searchTerm)).unwrap();
       setShowDropdown(searchResults.length > 0);
-    } catch (err: any) {
+    } catch (err) {
       console.error("Search error:", err);
       setShowDropdown(false);
     } finally {
@@ -415,17 +283,15 @@ const CustomerForm = () => {
 
   const handleSelectCustomer = (customer: any) => {
     const nameParts = (customer.customerName || "").split(" ");
-    const firstName = nameParts[0] || "";
-    const lastName = nameParts.slice(1).join(" ") || "";
-    setFormData({
-      ...formData,
-      firstName,
+    setFormData((prev) => ({
+      ...prev,
+      firstName: nameParts[0] || "",
       middleName: "",
-      lastName,
+      lastName: nameParts.slice(1).join(" ") || "",
       email: customer.customerEmail || "",
       phone: customer.customerPhone || "",
       companyName: customer.companyName || "",
-    });
+    }));
     setSearchTerm("");
     setShowDropdown(false);
     dispatch(clearSearchResults());
@@ -443,26 +309,14 @@ const CustomerForm = () => {
     >,
   ) => {
     const { name, value } = e.target;
-    if (name === "customerType") {
-      setCustomerType(value);
-      setFormData((prev) => ({
-        ...prev,
-        [name]: value,
-        customerCategoryType: "",
-      }));
-      setCustomerCategoryTypeValue("");
-    } else if (name === "customerCategoryType") {
-      setCustomerCategoryTypeValue(value);
-      setFormData((prev) => ({ ...prev, [name]: value }));
-    } else if (name === "countryName") {
-      setCountryName(value);
-      setFormData((prev) => ({ ...prev, [name]: value }));
-    } else if (name === "customerCity") {
-      setCustomerCity(value);
-      setFormData((prev) => ({ ...prev, [name]: value }));
-    } else {
-      setFormData((prev) => ({ ...prev, [name]: value }));
-    }
+
+    setFormData((prev) => {
+      if (name === "customerType") {
+        return { ...prev, customerType: value, customerCategoryType: "" };
+      }
+      return { ...prev, [name]: value };
+    });
+
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   };
 
@@ -481,6 +335,7 @@ const CustomerForm = () => {
       "state",
       "pincode",
     ];
+
     requiredFields.forEach((field) => {
       const value = formData[field as keyof CustomerRecord];
       if (!value || (typeof value === "string" && !value.trim())) {
@@ -493,110 +348,102 @@ const CustomerForm = () => {
         newErrors[field] = `${label} is required`;
       }
     });
+
     if (formData.email && !/\S+@\S+\.\S+/.test(formData.email))
       newErrors.email = "Enter valid email";
     if (formData.phone && !/^\d{10}$/.test(formData.phone))
       newErrors.phone = "Phone must be 10 digits";
     if (formData.pincode && !/^\d{6}$/.test(formData.pincode))
       newErrors.pincode = "Pincode must be 6 digits";
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  // ─── Submit ──────────────────────────────────────────────────────────────
+  const handleBack = () => {
+    if (onBack) {
+      onBack();
+    } else {
+      router.push("/dashboard?tab=customer-table");
+    }
+  };
+
+  // Submit handler
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Touch all fields for validation UI
     const allTouched: Record<string, boolean> = {};
     Object.keys(formData).forEach((k) => (allTouched[k] = true));
     setTouchedFields(allTouched);
+
     if (!validateForm()) return;
+
+    // Debug: Check what data is being sent
+    console.log("Submitting customer data:", JSON.stringify(formData, null, 2));
+    console.log("State value being sent:", formData.state);
+    console.log("City value being sent:", formData.city);
 
     try {
       setIsLoading(true);
-      setError(null);
+      setSubmitError(null);
 
-      // ✅ Full name pehle save karo — form reset se PEHLE
-      const fullName = [
-        formData.firstName,
-        formData.middleName,
-        formData.lastName,
-      ]
-        .filter(Boolean)
-        .join(" ");
+      // Prepare payload - make sure state and city are included
+      const payload = {
+        firstName: formData.firstName,
+        middleName: formData.middleName,
+        lastName: formData.lastName,
+        customerEmail: formData.email,
+        customerPhone: formData.phone,
+        alternatePhone: formData.alternatePhone,
+        date_of_birth: formData.dateOfBirth,
+        anniversary: formData.anniversary,
+        gender: formData.gender,
+        address: formData.address,
+        state: formData.state, // Explicitly include state
+        city: formData.city, // Explicitly include city
+        customerCity: formData.city,
+        pincode: formData.pincode,
+        stateId: formData.stateId,
+        cityId: formData.cityId,
+        companyName: formData.companyName,
+        customerType: formData.customerType,
+        customerCategoryType: formData.customerCategoryType,
+        countryName: formData.countryName,
+      };
+
+      console.log("Final payload:", payload);
 
       if (isEditMode && editCustomerId) {
         await dispatch(
-          updateCustomerThunk({ id: editCustomerId, data: formData }),
+          updateCustomerThunk({ id: editCustomerId, data: payload }),
         ).unwrap();
-
-        setIsSuccess(true);
-        setPopupData({ customer: fullName });
-        setShowPopup(true);
-
-        // ✅ Desktop notification - Edit mode
-        showDesktopNotification(
-          "Customer Updated ✅",
-          `${fullName} ka data successfully update ho gaya!`,
-          "/favicon.ico",
-          () => {
-            window.dispatchEvent(new CustomEvent("navigateToLeadTable"));
-          },
-        );
-
-        // ✅ STOP any existing notifications for previous customer
-        stopRecurringNotifications();
       } else {
-        await dispatch(createCustomerThunk(formData)).unwrap();
-
-        setIsSuccess(true);
-        setPopupData({ customer: fullName });
-        setShowPopup(true);
-
-        // ✅ Desktop notification - Create mode (immediate)
-        showDesktopNotification(
-          "Customer Registered 🎉",
-          `${fullName} successfully register ho gaya!`,
-          "/favicon.ico",
-          () => {
-            window.dispatchEvent(new CustomEvent("navigateToLeadTable"));
-          },
-        );
-
-        // ✅ START recurring notifications for 10 minutes (har 30 seconds)
-        const customerCreatedAt = new Date();
-        setLastCreatedCustomer({
-          name: fullName,
-          createdAt: customerCreatedAt,
-        });
-        startRecurringNotifications(fullName, customerCreatedAt);
-
-        // Form reset
+        await dispatch(createCustomerThunk(payload)).unwrap();
         setFormData(initialFormState);
-        setCustomerType("");
-        setCustomerCategoryTypeValue("");
-        setCountryName("");
-        setCustomerCity("");
+        setTouchedFields({});
+        setErrors({});
         dispatch(resetStatesForCity());
       }
 
+      setIsSuccess(true);
       window.scrollTo({ top: 0, behavior: "smooth" });
+
       setTimeout(() => {
         setIsSuccess(false);
-        if (isEditMode) {
-          setIsEditMode(false);
-          setEditCustomerId(null);
-          setFormData(initialFormState);
-          setCustomerType("");
-          setCustomerCategoryTypeValue("");
-        }
-      }, 5000);
+        if (isEditMode) handleBack();
+      }, 2500);
     } catch (err: any) {
-      setError(err?.message || "Registration failed");
+      console.error("Submit error details:", err);
+      setSubmitError(err?.message || "Operation failed. Please try again.");
     } finally {
       setIsLoading(false);
     }
   };
 
+  /* ================================================================
+     HELPERS
+  ================================================================ */
   const getInputClass = (field: string, icon = true) => {
     const base = `w-full ${icon ? "pl-10" : "px-4"} pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 transition-colors`;
     if (touchedFields[field] && errors[field])
@@ -604,21 +451,17 @@ const CustomerForm = () => {
     return `${base} border-gray-300 focus:ring-blue-200 focus:border-blue-400`;
   };
 
-  const uniqueCities = React.useMemo(() => {
+  const uniqueCities = useMemo(() => {
     if (!cities || !Array.isArray(cities)) return [];
-    return [...new Map(cities.map((c) => [c?.cityName, c])).values()];
+    return [...new Map(cities.map((c: any) => [c?.cityName, c])).values()];
   }, [cities]);
 
+  /* ================================================================
+     RENDER
+  ================================================================ */
   return (
     <div className="w-full bg-gray-50 min-h-screen">
-      {/* ✅ Popup */}
-      <Popup
-        showPopup={showPopup}
-        setShowPopup={setShowPopup}
-        popupData={popupData}
-      />
-
-      {/* Header */}
+      {/* ── Header ── */}
       <div className="sticky top-0 z-30 bg-orange-100 p-3 rounded-md shadow-sm">
         <div className="flex justify-between items-center">
           <div className="pl-4 border-l-8 border-orange-500 bg-white px-3 rounded-md shadow-md">
@@ -630,24 +473,29 @@ const CustomerForm = () => {
                   : "Customer Registration Form"}
             </h2>
           </div>
+
           {(isEditMode || isViewMode) && (
             <button
-              onClick={() => router.push("/dashboard?tab=customer-table")}
-              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
+              type="button"
+              onClick={handleBack}
+              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
             >
-              Back to Table
+              ← Back to Table
             </button>
           )}
         </div>
       </div>
 
       <div className="p-6 w-full mx-auto bg-white shadow-xl rounded-lg my-6">
-        {(error || customerError) && (
+        {/* ── Error Banner ── */}
+        {(submitError || customerError) && (
           <div className="flex items-center gap-2 p-4 mb-6 text-red-700 bg-red-50 rounded-lg border border-red-200">
             <AlertCircle size={20} />
-            <span className="font-medium">{error || customerError}</span>
+            <span className="font-medium">{submitError || customerError}</span>
           </div>
         )}
+
+        {/* ── Success Toast ── */}
         {isSuccess && (
           <div className="fixed top-6 right-6 z-50 flex items-center gap-2 px-5 py-3 text-green-700 bg-green-50 border border-green-300 rounded-lg shadow-lg">
             <CheckCircle2 size={20} />
@@ -658,7 +506,9 @@ const CustomerForm = () => {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Customer Information Section */}
+          {/* ════════════════════════════════════════════════
+              SECTION 1 — Customer Information
+          ════════════════════════════════════════════════ */}
           <div className="border rounded-xl p-6 bg-green-50">
             <div className="flex justify-between items-center mb-6 pb-3 border-b">
               <h3 className="text-xl font-semibold text-green-800 flex items-center">
@@ -668,12 +518,13 @@ const CustomerForm = () => {
                 Customer Information
               </h3>
 
+              {/* Search — only in create mode */}
               {!isEditMode && !isViewMode && (
                 <div className="relative">
                   <input
                     type="text"
                     placeholder="Search customers by name, email or phone..."
-                    className="pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent w-80"
+                    className="pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 w-80"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     onFocus={() =>
@@ -717,12 +568,12 @@ const CustomerForm = () => {
                   )}
                   {searching && (
                     <div className="absolute top-full mt-2 w-full bg-white border rounded-lg shadow-lg z-50 p-4 text-center">
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-green-600 mx-auto"></div>
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-green-600 mx-auto" />
                     </div>
                   )}
                   {showDropdown && !searching && searchResults.length > 0 && (
                     <div className="absolute top-full mt-2 w-full bg-white border rounded-lg shadow-lg z-50 max-h-80 overflow-y-auto">
-                      {searchResults.map((customer) => (
+                      {searchResults.map((customer: any) => (
                         <div
                           key={customer.uuid}
                           className="p-3 hover:bg-gray-100 cursor-pointer border-b"
@@ -752,6 +603,10 @@ const CustomerForm = () => {
                   First Name <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
+                  <User
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600"
+                    size={20}
+                  />
                   <input
                     name="firstName"
                     value={formData.firstName}
@@ -761,10 +616,6 @@ const CustomerForm = () => {
                     maxLength={50}
                     placeholder="Enter first name"
                     disabled={isViewMode}
-                  />
-                  <User
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600"
-                    size={20}
                   />
                 </div>
                 {touchedFields.firstName && errors.firstName && (
@@ -780,6 +631,10 @@ const CustomerForm = () => {
                   Middle Name
                 </label>
                 <div className="relative">
+                  <User
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600"
+                    size={20}
+                  />
                   <input
                     name="middleName"
                     value={formData.middleName}
@@ -788,10 +643,6 @@ const CustomerForm = () => {
                     maxLength={50}
                     placeholder="Enter middle name"
                     disabled={isViewMode}
-                  />
-                  <User
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600"
-                    size={20}
                   />
                 </div>
               </div>
@@ -802,6 +653,10 @@ const CustomerForm = () => {
                   Last Name <span className="text-red-500">*</span>
                 </label>
                 <div className="relative">
+                  <User
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600"
+                    size={20}
+                  />
                   <input
                     name="lastName"
                     value={formData.lastName}
@@ -811,10 +666,6 @@ const CustomerForm = () => {
                     maxLength={50}
                     placeholder="Enter last name"
                     disabled={isViewMode}
-                  />
-                  <User
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600"
-                    size={20}
                   />
                 </div>
                 {touchedFields.lastName && errors.lastName && (
@@ -849,7 +700,7 @@ const CustomerForm = () => {
                       });
                     }}
                     placeholder="Enter 10 digit number"
-                    className="w-full py-2 px-3 outline-none"
+                    className="w-full py-2 px-3 outline-none bg-white"
                     maxLength={10}
                     disabled={isViewMode}
                   />
@@ -869,6 +720,10 @@ const CustomerForm = () => {
                   Email
                 </label>
                 <div className="relative">
+                  <Mail
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600"
+                    size={20}
+                  />
                   <input
                     name="email"
                     type="email"
@@ -879,10 +734,6 @@ const CustomerForm = () => {
                     className="w-full py-2 border bg-white pl-10 pr-3 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     maxLength={100}
                     disabled={isViewMode}
-                  />
-                  <Mail
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600"
-                    size={20}
                   />
                 </div>
                 {touchedFields.email && errors.email && (
@@ -908,7 +759,7 @@ const CustomerForm = () => {
                     disabled={countriesLoading || isViewMode}
                   >
                     <option value="">Select Country</option>
-                    {countries.map((country) => (
+                    {countries.map((country: any) => (
                       <option key={country.id} value={country.country_name}>
                         {country.country_name}
                       </option>
@@ -918,11 +769,11 @@ const CustomerForm = () => {
               </div>
 
               {/* Customer Category */}
-              <div className="w-full">
+              <div>
                 <label className="block text-md font-extrabold text-gray-700 mb-1">
                   Customer Category <span className="text-red-500">*</span>
                 </label>
-                <div className="relative group">
+                <div className="relative">
                   <Info
                     size={15}
                     className="absolute -top-4 right-0 text-blue-500 cursor-help"
@@ -931,7 +782,7 @@ const CustomerForm = () => {
                     name="customerType"
                     value={formData.customerType}
                     onChange={handleFieldChange}
-                    className="w-full py-2 border bg-white pl-10 pr-3 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full py-2 border bg-white pl-4 pr-3 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     disabled={isViewMode}
                   >
                     <option value="">Select Customer Type</option>
@@ -947,12 +798,16 @@ const CustomerForm = () => {
                 )}
               </div>
 
-              {/* Customer Type */}
-              <div className="w-full">
+              {/* Customer Type (sub-category) */}
+              <div>
                 <label className="block text-md font-extrabold text-gray-700 mb-1">
                   Customer Type
                 </label>
-                <div className="relative group">
+                <div className="relative">
+                  <FileText
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600"
+                    size={20}
+                  />
                   <select
                     name="customerCategoryType"
                     value={formData.customerCategoryType}
@@ -970,24 +825,20 @@ const CustomerForm = () => {
                         ),
                       )}
                   </select>
-                  <FileText
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600"
-                    size={20}
-                  />
                 </div>
               </div>
 
-              {/* Company Name */}
+              {/* Company Name — only for non-Personal */}
               {formData.customerType !== "Personal" &&
                 formData.customerType !== "" && (
-                  <div className="w-full">
+                  <div>
                     <label className="block text-md font-extrabold text-gray-700 mb-1">
                       Company Name
                     </label>
-                    <div className="relative group">
-                      <Info
-                        size={15}
-                        className="absolute -top-4 right-0 text-blue-500 cursor-help"
+                    <div className="relative">
+                      <Building
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600"
+                        size={20}
                       />
                       <input
                         name="companyName"
@@ -999,21 +850,20 @@ const CustomerForm = () => {
                         placeholder="Enter company name"
                         disabled={isViewMode}
                       />
-                      <Building
-                        className="absolute left-3 top-1/2 -translate-y-1/2 text-green-600"
-                        size={20}
-                      />
                     </div>
                   </div>
                 )}
             </div>
           </div>
 
-          {/* Address Information */}
+          {/* ════════════════════════════════════════════════
+              SECTION 2 — Address Information
+          ════════════════════════════════════════════════ */}
           <div className="p-6 border rounded-xl bg-green-50">
             <h3 className="mb-4 text-xl font-semibold text-green-800 flex items-center gap-2">
               <Home size={20} /> Address Information
             </h3>
+
             <div className="mb-4">
               <label className="block text-md font-extrabold text-gray-700 mb-1">
                 Address <span className="text-red-500">*</span>
@@ -1032,6 +882,7 @@ const CustomerForm = () => {
                 <p className="text-sm text-red-600 mt-1">{errors.address}</p>
               )}
             </div>
+
             <div className="grid gap-4 md:grid-cols-3">
               {/* City */}
               <div>
@@ -1054,7 +905,7 @@ const CustomerForm = () => {
                     <option value="">
                       {isLoadingCities ? "Loading cities..." : "Select City"}
                     </option>
-                    {uniqueCities.map((city) => (
+                    {(uniqueCities as any[]).map((city: any) => (
                       <option key={city.id} value={city.cityName}>
                         {city.cityName}
                       </option>
@@ -1096,7 +947,7 @@ const CustomerForm = () => {
                           ? "First select city"
                           : "Select State"}
                     </option>
-                    {statesForCity.map((state) => (
+                    {statesForCity.map((state: any) => (
                       <option key={state.id} value={state.stateName}>
                         {state.stateName}
                       </option>
@@ -1154,15 +1005,17 @@ const CustomerForm = () => {
             </div>
           </div>
 
-          {/* Document Uploads */}
+          {/* ════════════════════════════════════════════════
+              SECTION 3 — Document Uploads
+          ════════════════════════════════════════════════ */}
           <div className="p-6 border rounded-xl bg-yellow-50">
             <h3 className="pb-3 mb-6 text-xl font-semibold text-yellow-800 border-b">
               <span className="px-3 py-1 mr-2 text-white bg-yellow-600 rounded-md">
-                4
+                3
               </span>
               Document Uploads
             </h3>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
               {(
                 [
                   { key: "passportPhoto", label: "Passport Photo" },
@@ -1178,7 +1031,7 @@ const CustomerForm = () => {
                   <input
                     type="file"
                     onChange={(e) => handleFileChange(e, key)}
-                    className="w-full p-2 border rounded-lg"
+                    className="w-full p-2 border rounded-lg bg-white"
                     disabled={isViewMode}
                   />
                   {fileState[key] && (
@@ -1192,8 +1045,8 @@ const CustomerForm = () => {
           </div>
 
           {/* Submit Button */}
-          <div className="flex justify-center pt-4">
-            {!isViewMode && (
+          {!isViewMode && (
+            <div className="flex justify-center pt-4">
               <button
                 type="submit"
                 disabled={
@@ -1202,7 +1055,7 @@ const CustomerForm = () => {
                   stateLoading ||
                   customerLoading
                 }
-                className="px-10 py-3 text-white bg-blue-600 rounded-full hover:bg-blue-700 
+                className="px-10 py-3 text-white bg-orange-600 rounded-full hover:bg-orange-700
                            disabled:opacity-50 disabled:cursor-not-allowed transition-all
                            font-semibold text-lg shadow-md hover:shadow-lg"
               >
@@ -1232,12 +1085,12 @@ const CustomerForm = () => {
                   "Register Customer"
                 )}
               </button>
-            )}
-          </div>
+            </div>
+          )}
         </form>
       </div>
     </div>
   );
 };
 
-export default CustomerForm;
+export default CustomerPersonal;

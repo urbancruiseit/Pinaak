@@ -148,3 +148,24 @@ export const updateCustomerAPI = async (
     throw new Error(error.response?.data?.message || "Error updating customer");
   }
 };
+
+// ─── GET CUSTOMER BY ID ─────────────────────────────
+
+export const getCustomerByIdAPI = async (
+  id: number,
+): Promise<CustomerRecord> => {
+  try {
+    const response = await axiosInstance.get(`/newcustomer/${id}`);
+
+    return response.data?.data?.customer || response.data?.data;
+  } catch (error: any) {
+    console.error(
+      "Error fetching customer by id:",
+      error.response?.data || error.message,
+    );
+
+    throw new Error(
+      error.response?.data?.message || "Error fetching customer details",
+    );
+  }
+};

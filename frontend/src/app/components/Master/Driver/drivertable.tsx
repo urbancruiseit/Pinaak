@@ -1,179 +1,207 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState, AppDispatch } from "../../../redux/store";
+import { Eye, Pencil, RefreshCw, Search, X } from "lucide-react";
 import {
   getDriversThunk,
   clearError,
+  getDriverByIdThunk,
   resetSuccess,
 } from "../../../features/Driver/driverSlice";
+import Pagination from "../../ui/pagination";
+import DriverForm from "./DriverFormData";
+import DriverViewModal from "./driverModelView"; // Import the view modal
 
-const DriverTable: React.FC = () => {
+interface DriverTableProps {
+  onEdit?: (driver: any) => void;
+  onView?: (driver: any) => void;
+}
+
+const DriverTable: React.FC<DriverTableProps> = ({ onEdit, onView }) => {
   const dispatch = useDispatch<AppDispatch>();
-  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
 
   const { drivers, loading, error, successMessage } = useSelector(
     (state: RootState) => state.driver,
   );
 
+  const [selectedDriver, setSelectedDriver] = useState<any>(null);
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false); // For view modal
+  const [editLoading, setEditLoading] = useState(false);
+  const [viewLoading, setViewLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 10;
+
+  // Success toast
+  const [showSuccessToast, setShowSuccessToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+
+  useEffect(() => {
+    if (successMessage) {
+      setToastMessage(successMessage);
+      setShowSuccessToast(true);
+      setTimeout(() => {
+        setShowSuccessToast(false);
+        dispatch(resetSuccess());
+      }, 3000);
+    }
+  }, [successMessage, dispatch]);
+
+  // Fetch drivers
   useEffect(() => {
     dispatch(getDriversThunk());
   }, [dispatch]);
 
-  // Clear success message after 3 seconds
-  useEffect(() => {
-    if (successMessage) {
-      setShowSuccessMessage(true);
-      const timer = setTimeout(() => {
-        setShowSuccessMessage(false);
-        dispatch(resetSuccess());
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [successMessage, dispatch]);
+  // Filter drivers
+  const filteredDrivers = useMemo(() => {
+    if (!drivers) return [];
+    if (searchTerm === "") return drivers;
 
-  const handleEditClick = (driver: any) => {
-    localStorage.setItem("editDriverData", JSON.stringify(driver));
-    window.location.href = "/dashboard?tab=driver&mode=edit";
+    const term = searchTerm.toLowerCase();
+    return drivers.filter((driver: any) => {
+      const firstName =
+        driver.personalInfo?.firstName || driver.first_name || "";
+      const lastName = driver.personalInfo?.lastName || driver.last_name || "";
+      const fullName = `${firstName} ${lastName}`.toLowerCase();
+      const employeeId = (
+        driver.employmentInfo?.employeeId ||
+        driver.employee_id ||
+        ""
+      ).toLowerCase();
+      const phone = (
+        driver.personalInfo?.phone ||
+        driver.phone ||
+        ""
+      ).toLowerCase();
+      const licenseNumber = (
+        driver.licenseInfo?.licenseNumber ||
+        driver.license_number ||
+        ""
+      ).toLowerCase();
+
+      return (
+        fullName.includes(term) ||
+        employeeId.includes(term) ||
+        phone.includes(term) ||
+        licenseNumber.includes(term)
+      );
+    });
+  }, [drivers, searchTerm]);
+
+  const totalPages = Math.ceil(filteredDrivers.length / rowsPerPage);
+  const paginatedDrivers = filteredDrivers.slice(
+    (currentPage - 1) * rowsPerPage,
+    currentPage * rowsPerPage,
+  );
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
   };
 
-  const handleViewClick = (driver: any) => {
-    localStorage.setItem("viewDriverData", JSON.stringify(driver));
-    window.location.href = "/dashboard?tab=driver&mode=view";
-  };
-
-  // Helper function to get driver name
   const getDriverName = (driver: any) => {
-    // Try different possible field names
-    if (driver.firstName && driver.lastName) {
-      return `${driver.firstName} ${driver.lastName}`;
+    const firstName = driver.personalInfo?.firstName || driver.first_name || "";
+    const lastName = driver.personalInfo?.lastName || driver.last_name || "";
+    return `${firstName} ${lastName}`.trim() || "—";
+  };
+
+  const getEmployeeId = (driver: any) =>
+    driver.employmentInfo?.employeeId || driver.employee_id || "—";
+  const getPhone = (driver: any) =>
+    driver.personalInfo?.phone || driver.phone || "—";
+  const getEmail = (driver: any) =>
+    driver.personalInfo?.email || driver.email || "—";
+  const getLicenseNumber = (driver: any) =>
+    driver.licenseInfo?.licenseNumber || driver.license_number || "—";
+  const getLicenseType = (driver: any) =>
+    driver.licenseInfo?.licenseType || driver.license_type || null;
+  const getVendor = (driver: any) =>
+    driver.personalInfo?.vendor || driver.vendor || null;
+  const getCity = (driver: any) =>
+    driver.addressInfo?.city || driver.city || "—";
+  const getState = (driver: any) =>
+    driver.addressInfo?.state || driver.state || "—";
+  const getBloodGroup = (driver: any) =>
+    driver.personalInfo?.bloodGroup || driver.blood_group || null;
+
+  const handleEditClick = async (driver: any) => {
+    try {
+      setEditLoading(true);
+      const driverData = await dispatch(getDriverByIdThunk(driver.id)).unwrap();
+      console.log("Fetched Driver Data for Edit:", driverData);
+      setSelectedDriver(driverData);
+      setShowEditForm(true);
+      onEdit?.(driverData);
+    } catch (error) {
+      console.error("Error fetching driver:", error);
+      setToastMessage("Failed to load driver data");
+      setShowSuccessToast(true);
+    } finally {
+      setEditLoading(false);
     }
-    if (driver.first_name && driver.last_name) {
-      return `${driver.first_name} ${driver.last_name}`;
+  };
+
+  // ✅ Updated VIEW HANDLER - Opens modal instead of redirecting
+  const handleViewClick = async (driver: any) => {
+    try {
+      setViewLoading(true);
+      const driverData = await dispatch(getDriverByIdThunk(driver.id)).unwrap();
+      console.log("Fetched Driver Data for View:", driverData);
+      setSelectedDriver(driverData);
+      setShowViewModal(true); // Open modal
+      onView?.(driverData);
+    } catch (error) {
+      console.error("Error fetching driver:", error);
+      setToastMessage("Failed to load driver data");
+      setShowSuccessToast(true);
+    } finally {
+      setViewLoading(false);
     }
-    if (driver.name) return driver.name;
-    if (driver.firstName) return driver.firstName;
-    if (driver.first_name) return driver.first_name;
-    return "—";
   };
 
-  // Helper function to get employee ID
-  const getEmployeeId = (driver: any) => {
-    if (driver.employeeId) return driver.employeeId;
-    if (driver.employee_id) return driver.employee_id;
-    if (driver.employmentInfo?.employeeId)
-      return driver.employmentInfo.employeeId;
-    return "—";
-  };
-
-  // Helper function to get phone
-  const getPhone = (driver: any) => {
-    if (driver.phone) return driver.phone;
-    if (driver.personalInfo?.phone) return driver.personalInfo.phone;
-    return "—";
-  };
-
-  // Helper function to get email
-  const getEmail = (driver: any) => {
-    if (driver.email) return driver.email;
-    if (driver.personalInfo?.email) return driver.personalInfo.email;
-    return "—";
-  };
-
-  // Helper function to get license number
-  const getLicenseNumber = (driver: any) => {
-    if (driver.licenseNumber) return driver.licenseNumber;
-    if (driver.license_number) return driver.license_number;
-    if (driver.licenseInfo?.licenseNumber)
-      return driver.licenseInfo.licenseNumber;
-    return "—";
-  };
-
-  // Helper function to get license type
-  const getLicenseType = (driver: any) => {
-    if (driver.licenseType) return driver.licenseType;
-    if (driver.license_type) return driver.license_type;
-    if (driver.licenseInfo?.licenseType) return driver.licenseInfo.licenseType;
-    return null;
-  };
-
-  // Helper function to get vendor
-  const getVendor = (driver: any) => {
-    if (driver.vendor) return driver.vendor;
-    if (driver.personalInfo?.vendor) return driver.personalInfo.vendor;
-    return null;
-  };
-
-  // Helper function to get city
-  const getCity = (driver: any) => {
-    if (driver.city) return driver.city;
-    if (driver.addressInfo?.city) return driver.addressInfo.city;
-    return "—";
-  };
-
-  // Helper function to get state
-  const getState = (driver: any) => {
-    if (driver.state) return driver.state;
-    if (driver.addressInfo?.state) return driver.addressInfo.state;
-    return "—";
-  };
-
-  // Helper function to get blood group
-  const getBloodGroup = (driver: any) => {
-    if (driver.bloodGroup) return driver.bloodGroup;
-    if (driver.blood_group) return driver.blood_group;
-    if (driver.personalInfo?.bloodGroup) return driver.personalInfo.bloodGroup;
-    return null;
-  };
-
-  // Filter drivers based on search term
-  const filteredDrivers = drivers?.filter((driver) => {
-    if (searchTerm === "") return true;
-
-    const searchLower = searchTerm.toLowerCase();
-
-    // Check all possible fields
-    const name = getDriverName(driver).toLowerCase();
-    const employeeId = getEmployeeId(driver).toLowerCase();
-    const licenseNumber = getLicenseNumber(driver).toLowerCase();
-    const phone = getPhone(driver).toLowerCase();
-    const vendor = getVendor(driver)?.toLowerCase() || "";
-    const email = getEmail(driver).toLowerCase();
-
+  // Show edit form
+  if (showEditForm) {
     return (
-      name.includes(searchLower) ||
-      employeeId.includes(searchLower) ||
-      licenseNumber.includes(searchLower) ||
-      phone.includes(searchLower) ||
-      vendor.includes(searchLower) ||
-      email.includes(searchLower)
+      <DriverForm
+        initialData={selectedDriver}
+        mode="edit"
+        onBack={() => {
+          setShowEditForm(false);
+          setSelectedDriver(null);
+          dispatch(getDriversThunk());
+        }}
+      />
     );
-  });
+  }
 
-  /* ================= LOADING ================= */
-  if (loading && drivers.length === 0) {
+  if (loading || editLoading || viewLoading) {
     return (
-      <div className="flex justify-center items-center py-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        <span className="ml-2 text-gray-600">Loading Drivers...</span>
+      <div className="flex justify-center items-center h-[70vh]">
+        <div className="animate-spin rounded-full h-10 w-10 border-4 border-orange-200 border-t-orange-600" />
+        <span className="ml-3 text-gray-600">
+          {editLoading 
+            ? "Fetching driver details for edit..." 
+            : viewLoading 
+              ? "Fetching driver details..." 
+              : "Loading drivers..."}
+        </span>
       </div>
     );
   }
 
-  /* ================= ERROR ================= */
-  if (error && drivers.length === 0) {
+  if (error) {
     return (
-      <div className="text-center py-8 px-4">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 max-w-md mx-auto">
-          <p className="text-red-600 mb-3">❌ Error: {error}</p>
+      <div className="text-center py-10">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md mx-auto">
+          <p className="text-red-600 mb-4">Error: {error}</p>
           <button
             onClick={() => {
               dispatch(clearError());
               dispatch(getDriversThunk());
             }}
-            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition"
+            className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
           >
             Try Again
           </button>
@@ -183,295 +211,205 @@ const DriverTable: React.FC = () => {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow overflow-hidden">
-      {/* SUCCESS MESSAGE */}
-      {showSuccessMessage && successMessage && (
-        <div className="fixed top-4 right-4 z-50 animate-slide-down">
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4 shadow-lg">
-            <p className="text-green-600">✅ {successMessage}</p>
+    <div className="flex flex-col h-[calc(100vh-120px)] overflow-hidden">
+      {/* View Modal */}
+      <DriverViewModal
+        isOpen={showViewModal}
+        onClose={() => {
+          setShowViewModal(false);
+          setSelectedDriver(null);
+        }}
+        driverData={selectedDriver}
+      />
+
+      {/* Success Toast */}
+      {showSuccessToast && (
+        <div className="fixed top-4 right-4 z-50 animate-slide-in-right">
+          <div className="bg-green-50 border-l-4 border-green-500 rounded-lg shadow-lg p-4 flex items-center gap-3">
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+            <p className="text-green-700 font-medium">{toastMessage}</p>
+            <button
+              onClick={() => setShowSuccessToast(false)}
+              className="text-green-600"
+            >
+              <X size={16} />
+            </button>
           </div>
         </div>
       )}
 
-      {/* HEADER */}
-      <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
-        <div className="flex justify-between items-center mb-4">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-800">Driver List</h2>
+      {/* Header */}
+      <div className="bg-orange-100 p-4 rounded-lg mb-4">
+        <div className="flex justify-between items-center flex-wrap gap-4">
+          <div className="pl-4 border-l-8 border-orange-500 bg-white px-6 py-4 rounded-xl shadow-md">
+            <h2 className="text-3xl font-bold text-orange-600">Driver List</h2>
             <p className="text-sm text-gray-500 mt-1">
               Total Drivers:{" "}
-              <span className="font-semibold text-gray-700">
-                {filteredDrivers?.length || 0}
+              <span className="font-semibold text-orange-600">
+                {filteredDrivers.length}
               </span>
               {searchTerm && drivers?.length > 0 && (
                 <span className="text-xs text-gray-400 ml-2">
-                  (filtered from {drivers?.length || 0} total)
+                  (filtered from {drivers.length} total)
                 </span>
               )}
             </p>
           </div>
-          <button
-            onClick={() => dispatch(getDriversThunk())}
-            className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition flex items-center gap-1"
-            disabled={loading}
-          >
-            {loading ? (
-              <>
-                <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white"></div>
-                <span>Loading...</span>
-              </>
-            ) : (
-              <>
-                <svg
-                  className="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                  />
-                </svg>
-                <span>Refresh</span>
-              </>
-            )}
-          </button>
-        </div>
 
-        {/* SEARCH BAR */}
-        <div className="relative">
-          <input
-            type="text"
-            placeholder="Search by name, employee ID, license number, phone, email or vendor..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full px-4 py-2 pl-10 pr-4 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-          <svg
-            className="absolute left-3 top-2.5 h-4 w-4 text-gray-400"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-            />
-          </svg>
-          {searchTerm && (
+          {/* Search and Refresh */}
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Search
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                size={18}
+              />
+              <input
+                type="text"
+                placeholder="Search by name, ID, phone..."
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="pl-10 pr-4 py-2 w-64 border rounded-lg focus:ring-2 focus:ring-orange-500"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm("")}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2"
+                >
+                  <X size={16} className="text-gray-400 hover:text-gray-600" />
+                </button>
+              )}
+            </div>
             <button
-              onClick={() => setSearchTerm("")}
-              className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+              onClick={() => dispatch(getDriversThunk())}
+              className="flex items-center gap-2 px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700"
             >
-              <svg
-                className="h-4 w-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
+              <RefreshCw size={18} /> Refresh
             </button>
-          )}
+          </div>
         </div>
       </div>
 
-      {/* TABLE */}
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          {/* THEAD */}
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                S.No
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Employee ID
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Driver Name
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Phone
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Email
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                License Number
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                License Type
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Vendor
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                City
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                State
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Blood Group
-              </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Actions
-              </th>
-            </tr>
-          </thead>
-
-          {/* TBODY */}
-          <tbody className="bg-white divide-y divide-gray-200">
-            {filteredDrivers && filteredDrivers.length > 0 ? (
-              filteredDrivers.map((driver, index) => (
-                <tr
-                  key={driver.id || index}
-                  className="hover:bg-gray-50 transition duration-150"
-                >
-                  <td className="px-4 py-4 text-sm text-gray-500">
-                    {index + 1}
-                  </td>
-
-                  <td className="px-4 py-4 text-sm font-mono text-blue-600 font-medium">
-                    {getEmployeeId(driver)}
-                  </td>
-
-                  <td className="px-4 py-4 text-sm font-medium text-gray-900">
-                    {getDriverName(driver)}
-                  </td>
-
-                  <td className="px-4 py-4 text-sm text-gray-600">
-                    {getPhone(driver)}
-                  </td>
-
-                  <td className="px-4 py-4 text-sm text-gray-600">
-                    {getEmail(driver)}
-                  </td>
-
-                  <td className="px-4 py-4 text-sm font-mono text-gray-600">
-                    {getLicenseNumber(driver)}
-                  </td>
-
-                  <td className="px-4 py-4 text-sm text-gray-600">
-                    {getLicenseType(driver) ? (
-                      <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
-                        {getLicenseType(driver)}
-                      </span>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-
-                  <td className="px-4 py-4 text-sm text-gray-600">
-                    {getVendor(driver) ? (
-                      <span className="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-800">
-                        {getVendor(driver)}
-                      </span>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-
-                  <td className="px-4 py-4 text-sm text-gray-600">
-                    {getCity(driver)}
-                  </td>
-
-                  <td className="px-4 py-4 text-sm text-gray-600">
-                    {getState(driver)}
-                  </td>
-
-                  <td className="px-4 py-4 text-sm text-gray-600">
-                    {getBloodGroup(driver) ? (
-                      <span className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">
-                        {getBloodGroup(driver)}
-                      </span>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-
-                  {/* ACTION BUTTONS */}
-                  <td className="px-4 py-4 text-sm">
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleEditClick(driver)}
-                        className="px-3 py-1.5 text-sm text-blue-700 bg-blue-100 rounded hover:bg-blue-200 transition duration-150"
-                        title="Edit Driver"
-                      >
-                        Edit
-                      </button>
-
-                      <button
-                        onClick={() => handleViewClick(driver)}
-                        className="px-3 py-1.5 text-sm text-gray-700 bg-gray-100 rounded hover:bg-gray-200 transition duration-150"
-                        title="View Driver"
-                      >
-                        View
-                      </button>
-                    </div>
+      {/* Table */}
+      <div className="bg-white border rounded-2xl shadow-md flex-1 overflow-hidden flex flex-col">
+        <div className="flex-1 overflow-auto">
+          <table className="min-w-full border-collapse text-sm">
+            <thead className="sticky top-0 z-10 bg-slate-800 text-white">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase">S.No</th>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase">Employee ID</th>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase">Driver Name</th>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase">Phone</th>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase">Email</th>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase">License Number</th>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase">License Type</th>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase">Vendor</th>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase">City</th>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase">State</th>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase">Blood Group</th>
+                <th className="px-4 py-3 text-left text-xs font-bold uppercase">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {paginatedDrivers.length > 0 ? (
+                paginatedDrivers.map((driver: any, index: number) => (
+                  <tr key={driver.id} className="hover:bg-orange-50 even:bg-gray-50">
+                    <td className="px-4 py-3 border text-xs">
+                      {(currentPage - 1) * rowsPerPage + index + 1}
+                    </td>
+                    <td className="px-4 py-3 border text-xs font-mono text-blue-600">
+                      {getEmployeeId(driver)}
+                    </td>
+                    <td className="px-4 py-3 border text-xs font-medium">
+                      {getDriverName(driver)}
+                    </td>
+                    <td className="px-4 py-3 border text-xs">{getPhone(driver)}</td>
+                    <td className="px-4 py-3 border text-xs">{getEmail(driver)}</td>
+                    <td className="px-4 py-3 border text-xs font-mono">
+                      {getLicenseNumber(driver)}
+                    </td>
+                    <td className="px-4 py-3 border text-xs">
+                      {getLicenseType(driver) && (
+                        <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
+                          {getLicenseType(driver)}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 border text-xs">
+                      {getVendor(driver) && (
+                        <span className="px-2 py-1 text-xs rounded-full bg-purple-100 text-purple-800">
+                          {getVendor(driver)}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 border text-xs">{getCity(driver)}</td>
+                    <td className="px-4 py-3 border text-xs">{getState(driver)}</td>
+                    <td className="px-4 py-3 border text-xs">
+                      {getBloodGroup(driver) && (
+                        <span className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">
+                          {getBloodGroup(driver)}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 border">
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleEditClick(driver)}
+                          className="p-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                          title="Edit Driver"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          onClick={() => handleViewClick(driver)}
+                          className="p-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                          title="View Driver"
+                        >
+                          <Eye size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={12} className="text-center py-12 text-gray-500">
+                    {searchTerm ? "No matching drivers found" : "No drivers found"}
                   </td>
                 </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={12} className="text-center py-12">
-                  <div className="flex flex-col items-center justify-center">
-                    <svg
-                      className="w-16 h-16 text-gray-400 mb-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                      />
-                    </svg>
-                    <p className="text-gray-500 text-lg">
-                      {searchTerm
-                        ? "No matching drivers found"
-                        : "No drivers found"}
-                    </p>
-                    <p className="text-gray-400 text-sm mt-1">
-                      {searchTerm
-                        ? "Try adjusting your search term"
-                        : "Click the refresh button to load drivers"}
-                    </p>
-                  </div>
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {filteredDrivers.length > 0 && (
+          <div className="border-t p-4">
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              totalItems={filteredDrivers.length}
+              rowsPerPage={rowsPerPage}
+              onPageChange={handlePageChange}
+            />
+          </div>
+        )}
       </div>
 
-      {/* CSS for animation */}
       <style jsx>{`
-        @keyframes slideDown {
+        @keyframes slideInRight {
           from {
-            transform: translateY(-100%);
+            transform: translateX(100%);
             opacity: 0;
           }
           to {
-            transform: translateY(0);
+            transform: translateX(0);
             opacity: 1;
           }
         }
-        .animate-slide-down {
-          animation: slideDown 0.3s ease-out;
+        .animate-slide-in-right {
+          animation: slideInRight 0.3s ease-out;
         }
       `}</style>
     </div>

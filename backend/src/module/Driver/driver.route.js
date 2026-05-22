@@ -6,11 +6,11 @@ import {
   updateDriverController,
   deleteDriverController,
 } from "./driver.controller.js";
-import { verifyJWT } from "../../middlewares/auth.middleware.js";
+// import { verifyJWT } from "../../middlewares/auth.middleware.js";
 
 const router = express.Router();
 
-router.use(verifyJWT);
+// router.use(verifyJWT);
 
 router.post("/", createDriverController);
 
@@ -23,3 +23,5 @@ router.put("/:id", updateDriverController);
 router.delete("/:id", deleteDriverController);
 
 export default router;
+
+

@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
-import axios from "axios"; // ✅ Add axios import
+import axios from "axios";
 import {
   createVendorAPI,
   updateVendorAPI,
@@ -38,8 +38,6 @@ export const updateVendorThunk = createAsyncThunk(
   },
 );
 
-// ✅ Get All Vendors
-// ✅ Get All Vendors
 export const getVendorsThunk = createAsyncThunk(
   "vendor/getVendors",
   async (_, { rejectWithValue }) => {
@@ -52,7 +50,6 @@ export const getVendorsThunk = createAsyncThunk(
 
       console.log("Get Vendors Response:", response.data);
 
-      // Handle different response structures
       if (response.data?.data?.vendors) {
         return response.data.data.vendors;
       } else if (response.data?.data) {
@@ -69,6 +66,7 @@ export const getVendorsThunk = createAsyncThunk(
     }
   },
 );
+
 export const getVendorByIdThunk = createAsyncThunk(
   "vendor/getVendorById",
   async (id: number, { rejectWithValue }) => {
@@ -99,6 +97,7 @@ export const getVendorByIdThunk = createAsyncThunk(
 interface VendorState {
   vendors: VendorResponse[];
   currentVendor: VendorResponse | null;
+  selectedVendor: VendorResponse | null; // ✅ ADDED
   loading: boolean;
   error: string | null;
   successMessage: string | null;
@@ -109,6 +108,7 @@ interface VendorState {
 const initialState: VendorState = {
   vendors: [],
   currentVendor: null,
+  selectedVendor: null, // ✅ ADDED
   loading: false,
   error: null,
   successMessage: null,
@@ -132,9 +132,14 @@ const vendorSlice = createSlice({
     setCurrentVendor: (state, action: PayloadAction<VendorResponse | null>) => {
       state.currentVendor = action.payload;
     },
+    // ✅ ADDED — manually selectedVendor clear karne ke liye
+    clearSelectedVendor: (state) => {
+      state.selectedVendor = null;
+    },
     clearVendorState: (state) => {
       state.vendors = [];
       state.currentVendor = null;
+      state.selectedVendor = null; // ✅ ADDED
       state.loading = false;
       state.error = null;
       state.successMessage = null;
@@ -182,6 +187,7 @@ const vendorSlice = createSlice({
           state.vendors[index] = action.payload;
         }
         state.currentVendor = action.payload;
+        state.selectedVendor = action.payload; // ✅ ADDED — update ke baad bhi sync rahe
         state.successMessage = "Vendor updated successfully";
         state.isSuccess = true;
       })
@@ -214,6 +220,7 @@ const vendorSlice = createSlice({
       .addCase(getVendorByIdThunk.fulfilled, (state, action) => {
         state.loading = false;
         state.currentVendor = action.payload;
+        state.selectedVendor = action.payload; // ✅ KEY FIX — VendorForm yahi read karta hai
         state.error = null;
       })
       .addCase(getVendorByIdThunk.rejected, (state, action) => {
@@ -223,7 +230,12 @@ const vendorSlice = createSlice({
   },
 });
 
-export const { resetSuccess, clearError, setCurrentVendor, clearVendorState } =
-  vendorSlice.actions;
+export const {
+  resetSuccess,
+  clearError,
+  setCurrentVendor,
+  clearSelectedVendor, // ✅ ADDED export
+  clearVendorState,
+} = vendorSlice.actions;
 
 export default vendorSlice.reducer;

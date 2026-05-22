@@ -89,6 +89,37 @@ export const createDriverAPI = async (
   }
 };
 
+// UPDATE DRIVER
+export const updateDriverAPI = async (
+  id: number,
+  formData: DriverFormData
+): Promise<DriverResponse> => {
+  try {
+    const payload = buildJsonPayload(formData);
+
+    const response = await axiosInstance.put(
+      `/driver/${id}`,
+      payload
+    );
+
+    return (
+      response.data?.data?.driver ||
+      response.data?.data
+    );
+  } catch (error: any) {
+    console.error(
+      "Error updating driver:",
+      error.response?.data || error.message
+    );
+
+    throw new Error(
+      error.response?.data?.message ||
+        "Error updating driver"
+    );
+  }
+};
+
 export default {
   createDriverAPI,
+  updateDriverAPI,
 };

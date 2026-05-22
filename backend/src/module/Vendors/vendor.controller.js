@@ -86,17 +86,29 @@ export const getAllVendorsController = asyncHandler(async (req, res) => {
 export const getVendorByIdController = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
-  if (!id) {
-    throw new ApiError(400, "Vendor ID is required");
+
+  // Convert to number safely
+  const vendorId = Number(id);
+
+  // Validate ID
+  if (!vendorId || isNaN(vendorId)) {
+    console.error("❌ Invalid Vendor ID:", id);
+    throw new ApiError(400, "Invalid Vendor ID");
   }
 
-  const vendor = await getVendorByIdModel(id);
+  try {
+    const vendor = await getVendorByIdModel(vendorId);
 
-  if (!vendor) {
-    throw new ApiError(404, "Vendor not found");
+    if (!vendor) {
+      console.error("❌ Vendor not found for ID:", vendorId);
+      throw new ApiError(404, "Vendor not found");
+    }
+
+    return res
+      .status(200)
+      .json(new ApiResponse(200, { vendor }, "Vendor fetched successfully"));
+  } catch (error) {
+    console.error("🔥 Controller Error:", error);
+    throw new ApiError(500, error.message || "Internal Server Error");
   }
-
-  return res
-    .status(200)
-    .json(new ApiResponse(200, { vendor }, "Vendor fetched successfully"));
 });

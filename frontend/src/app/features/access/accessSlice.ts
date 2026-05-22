@@ -73,6 +73,7 @@ interface FetchMyAssignedLeadsArgs {
   month?: number | null;
   year?: number | null;
   status?: string | null;
+  advisorId?: number | null;
 }
 
 // 🔹 Initial State

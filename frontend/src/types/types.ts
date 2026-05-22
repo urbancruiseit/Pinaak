@@ -286,6 +286,6 @@ export interface DsrRecord {
   customerBankName?: string;
   transactionId?: string;
   remarksAmountReceived?: string;
-  // vendor_amount?: json;
-  // customer_amount?:json;
+  vendor_amount?: JSON;
+  customer_amount?:JSON;
 }

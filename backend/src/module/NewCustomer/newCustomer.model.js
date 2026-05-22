@@ -155,3 +155,16 @@ export const updateCustomerById = async (id, data) => {
 
   return result;
 };
+
+export const getCustomerById = async (id) => {
+  const sql = `
+      SELECT *
+      FROM customers
+      WHERE id = ?
+      LIMIT 1
+    `;
+
+  const [rows] = await pool.execute(sql, [id]);
+
+  return rows[0] || null;
+};

@@ -19,7 +19,8 @@ type SidebarSection =
   | "payment"
   | "feedback"
   | "dashboard"
-  | "website";
+  | "website"
+  | "download-report";
 
 type MasterKey =
   | "vendor"
@@ -148,6 +149,11 @@ const UnwantedLeadsModule = dynamic(
   { ssr: false, loading: LoadingPanel },
 );
 
+const EmployeeReportsModule = dynamic(
+  () => import("../components/pages/leads/Reports/EmployeeReport"),
+  { ssr: false, loading: LoadingPanel },
+);
+
 const GACForm = dynamic(
   () => import("../components/pages/Website/list/gacTable"),
   { ssr: false, loading: LoadingPanel },
@@ -155,6 +161,12 @@ const GACForm = dynamic(
 
 const GAQTable = dynamic(
   () => import("../components/pages/Website/list/gaqTable"),
+  { ssr: false, loading: LoadingPanel },
+);
+
+// ✅ NEW: Download Report Module
+const DownloadReportModule = dynamic(
+  () => import("../components/Download/download"),
   { ssr: false, loading: LoadingPanel },
 );
 
@@ -315,11 +327,14 @@ export default function DashboardPage() {
   const [showMonthlyDistribution, setShowMonthlyDistribution] =
     useState<boolean>(false);
   const [showUnwantedLeads, setShowUnwantedLeads] = useState<boolean>(false);
+  const [showEmployeeReports, setShowEmployeeReports] =
+    useState<boolean>(false);
 
   const resetAllReportStates = () => {
     setShowMonthlyEnquiry(false);
     setShowMonthlyDistribution(false);
     setShowUnwantedLeads(false);
+    setShowEmployeeReports(false);
   };
 
   const dispatch = useDispatch<AppDispatch>();
@@ -470,7 +485,7 @@ export default function DashboardPage() {
       );
   }, []);
 
-  // DSR event handler — lead data store karo
+  // DSR event handler
   useEffect(() => {
     const handleDsrForm = (
       event: CustomEvent<{ lead: LeadRecord; action: string }>,
@@ -543,7 +558,6 @@ export default function DashboardPage() {
     }
   };
 
-  // ✅ FIX: DSR Lead Manager handler — wires Navbar's onDsrSelect to show DsrTableModule
   const handleDsrLeadSelect = (key: string) => {
     if (key === "dsr-lead-table") {
       setPendingModuleKey(null);
@@ -583,6 +597,12 @@ export default function DashboardPage() {
     setActiveLeadView("dashboard");
   };
 
+  const handleEmployeeReports = () => {
+    resetAllReportStates();
+    setShowEmployeeReports(true);
+    setActiveSection("leads");
+    setActiveLeadView("dashboard");
+  };
   // Website menu handler
   const handleWebsiteMenuSelect = (key: string) => {
     setActiveSection("website");
@@ -650,6 +670,14 @@ export default function DashboardPage() {
         );
       }
 
+      if (showEmployeeReports) {
+        return (
+          <div className="space-y-6">
+            <EmployeeReportsModule />
+          </div>
+        );
+      }
+
       if (activeLeadView === "lead-form") {
         return (
           <div className="space-y-6">
@@ -677,7 +705,6 @@ export default function DashboardPage() {
         );
       }
 
-      // ✅ FIX: DSR Lead Table now renders DsrTableModule (not LeadSaleTableModule with isDsr prop)
       if (activeLeadView === "dsr-lead-table") {
         return (
           <div className="space-y-6">
@@ -761,7 +788,6 @@ export default function DashboardPage() {
       );
     }
 
-    // DSR Form — lead data pass karo
     if (activeSection === "dsr-form") {
       return (
         <div className="space-y-6">
@@ -770,11 +796,19 @@ export default function DashboardPage() {
       );
     }
 
-    // Website section
     if (activeSection === "website") {
       return (
         <div className="space-y-6">
           {activeWebsiteView === "gac" ? <GACForm /> : <GAQTable />}
+        </div>
+      );
+    }
+
+    // ✅ NEW: Download Report section
+    if (activeSection === "download-report") {
+      return (
+        <div className="space-y-6">
+          <DownloadReportModule />
         </div>
       );
     }
@@ -815,7 +849,7 @@ export default function DashboardPage() {
         onMonthlyEnquiry={handleMonthlyEnquiry}
         onMonthlyDistribution={handleMonthlyDistribution}
         onUnwantedLeads={handleUnwantedLeads}
-        // ✅ FIX: onDsrSelect now wired to handleDsrLeadSelect
+        onEmployeeReports={handleEmployeeReports}
         onDsrSelect={handleDsrLeadSelect}
         onMasterSelect={(key) => {
           const targeted = permittedMasterTabs.find((tab) => tab.key === key);
@@ -890,6 +924,12 @@ export default function DashboardPage() {
           onWebsiteClick={() => {
             setActiveSection("website");
             setActiveWebsiteView("gac");
+            setPendingModuleKey(null);
+            resetAllReportStates();
+          }}
+          // ✅ NEW: Download Report click handler
+          ondownloadReportClick={() => {
+            setActiveSection("download-report");
             setPendingModuleKey(null);
             resetAllReportStates();
           }}

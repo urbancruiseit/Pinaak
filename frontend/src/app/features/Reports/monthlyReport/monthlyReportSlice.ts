@@ -5,6 +5,7 @@ import {
   LeadDistributionParams,
   MonthlyEnquiryRecord,
   AdviserDistributionRecord,
+  getStatusWiseReportApi,
   TeamTotal,
 } from "./monthlyReportApi";
 
@@ -23,6 +24,14 @@ interface MonthlyEnquiryState {
     loading: boolean;
     error: string | null;
   };
+  statusReport: {
+    data: any[];
+    teamTotal: any;
+    month: number | null;
+    year: number | null;
+    loading: boolean;
+    error: string | null;
+  };
 }
 
 // ✅ FIXED initial state
@@ -38,6 +47,14 @@ const initialState: MonthlyEnquiryState = {
     month: null,
     year: null,
     totalDaysInMonth: 0,
+    loading: false,
+    error: null,
+  },
+  statusReport: {
+    data: [],
+    teamTotal: {},
+    month: null,
+    year: null,
     loading: false,
     error: null,
   },
@@ -61,6 +78,20 @@ export const fetchLeadDistribution = createAsyncThunk(
   async (params: LeadDistributionParams = {}, { rejectWithValue }) => {
     try {
       return await getLeadDistributionApi(params);
+    } catch (error: any) {
+      return rejectWithValue(error.message);
+    }
+  },
+);
+
+export const fetchStatusWiseReport = createAsyncThunk(
+  "report/fetchStatusWiseReport",
+  async (
+    params: { month?: number; year?: number } = {},
+    { rejectWithValue },
+  ) => {
+    try {
+      return await getStatusWiseReportApi(params);
     } catch (error: any) {
       return rejectWithValue(error.message);
     }
@@ -108,6 +139,21 @@ const monthlyReportSlice = createSlice({
       .addCase(fetchLeadDistribution.rejected, (state, action) => {
         state.distribution.loading = false;
         state.distribution.error = action.payload as string;
+      })
+      .addCase(fetchStatusWiseReport.pending, (state) => {
+        state.statusReport.loading = true;
+        state.statusReport.error = null;
+      })
+      .addCase(fetchStatusWiseReport.fulfilled, (state, action) => {
+        state.statusReport.loading = false;
+        state.statusReport.data = action.payload.data;
+        state.statusReport.teamTotal = action.payload.teamTotal;
+        state.statusReport.month = action.payload.month;
+        state.statusReport.year = action.payload.year;
+      })
+      .addCase(fetchStatusWiseReport.rejected, (state, action) => {
+        state.statusReport.loading = false;
+        state.statusReport.error = action.payload as string;
       });
   },
 });

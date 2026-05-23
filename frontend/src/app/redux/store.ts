@@ -12,6 +12,7 @@ import driverReducer from "../features/Driver/driverSlice";
 import monthlyReducer from "../features/Reports/monthlyReport/monthlyReportSlice";
 import websiteGacReducer from "../features/Website/WebsiteSlice";
 import dsrReducer from "../features/Dsr/dsrSlice";
+import downloadReducer from "../features/Download/downloadSlice";
 
 export const store = configureStore({
   reducer: {
@@ -28,6 +29,7 @@ export const store = configureStore({
     report: monthlyReducer,
     websiteGac: websiteGacReducer,
     dsr: dsrReducer,
+    download: downloadReducer,
   },
 });
 

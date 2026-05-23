@@ -70,6 +70,37 @@ export interface LeadDistributionParams {
   advisorId?: number | null;
 }
 
+export interface StatusWiseReportParams {
+  month?: number;
+  year?: number;
+}
+
+export interface StatusWiseReportItem {
+  adviser_name: string;
+  blank: number;
+  kyc: number;
+  rfq: number;
+  lost: number;
+  book: number;
+  total: number;
+  con: string;
+}
+
+export interface StatusWiseReportResponse {
+  success: boolean;
+  month: number;
+  year: number;
+  data: StatusWiseReportItem[];
+  teamTotal: {
+    blank: number;
+    kyc: number;
+    rfq: number;
+    lost: number;
+    book: number;
+    total: number;
+  };
+}
+
 // ─── Error Handler ───────────────────────────────────────────────────
 
 const handleAxiosError = (error: any, context: string): never => {
@@ -187,6 +218,57 @@ export const getLeadDistributionApi = async (
       error?.response?.data?.error ||
       error.message ||
       "Failed to fetch lead distribution";
+
+    throw new Error(errorMessage);
+  }
+};
+
+export const getStatusWiseReportApi = async (
+  params: StatusWiseReportParams = {},
+): Promise<StatusWiseReportResponse> => {
+  try {
+    const response = await axiosInstance.get<{
+      data: StatusWiseReportResponse;
+    }>("/reports/status-wise-report", {
+      params: {
+        ...(params.month !== undefined && { month: params.month }),
+        ...(params.year !== undefined && { year: params.year }),
+      },
+      timeout: 15000,
+    });
+
+    const res = response?.data?.data;
+
+    console.log("status wise response:", res);
+
+    if (!res) {
+      throw new Error("Invalid response from server");
+    }
+
+    const now = new Date();
+
+    return {
+      success: res.success,
+      month: res.month ?? params.month ?? now.getMonth() + 1,
+      year: res.year ?? params.year ?? now.getFullYear(),
+
+      data: Array.isArray(res.data) ? res.data : [],
+
+      teamTotal: res.teamTotal ?? {
+        blank: 0,
+        kyc: 0,
+        rfq: 0,
+        lost: 0,
+        book: 0,
+        total: 0,
+      },
+    };
+  } catch (error: any) {
+    const errorMessage =
+      error?.response?.data?.message ||
+      error?.response?.data?.error ||
+      error.message ||
+      "Failed to fetch status wise report";
 
     throw new Error(errorMessage);
   }

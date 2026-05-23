@@ -14,6 +14,7 @@ import {
   Monitor,
   Shield,
   ChevronRight,
+  Download,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -27,6 +28,7 @@ interface SidebarProps {
   onAccessClick?: () => void;
   onFeedbackClick?: () => void;
   onWebsiteClick?: () => void;
+  ondownloadReportClick?: () => void;
 }
 
 const brandGradientStyle: React.CSSProperties = {
@@ -42,9 +44,9 @@ const Sidebar: React.FC<SidebarProps> = ({
   onRateQuotationClick,
   onBookingTripClick,
   onPaymentClick,
-  onAccessClick,
   onFeedbackClick,
   onWebsiteClick,
+  ondownloadReportClick,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -62,6 +64,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   const iconSize = 28;
   const sidebarWidth = isExpanded ? "280px" : "100px";
 
+  const isPresale = userRole?.toLowerCase() === "presale";
+
   return (
     <div
       className="h-full bg-white border-r border-gray-200 transition-all duration-300 ease-in-out relative overflow-y-auto overflow-x-hidden"
@@ -69,31 +73,6 @@ const Sidebar: React.FC<SidebarProps> = ({
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      {/* Logo Section - Fixed height to prevent shifting */}
-      {/* <div
-        className={`flex items-center min-h-[90px] ${
-          isExpanded
-            ? "justify-start gap-3 px-4 py-3"
-            : "justify-center px-2 py-3"
-        }`}
-      >
-        <Image
-          src={siteIcon}
-          alt="Site Icon"
-          width={isExpanded ? 50 : 44}
-          height={isExpanded ? 52 : 46}
-          className="object-cover shadow-sm rounded-xl transition-all duration-300 flex-shrink-0"
-        />
-        {isExpanded && (
-          <Image
-            src={pinaak}
-            alt="Pinaak Logo"
-            width={140}
-            className="object-cover shadow-sm rounded-xl transition-all duration-300"
-          />
-        )}
-      </div> */}
-
       {/* Menu Items Container */}
       <div className={`${isExpanded ? "px-3" : "px-2"} space-y-1.5 pb-4`}>
         {/* Master - Hide for Presales and Sales */}
@@ -122,7 +101,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         />
 
         {/* Rate Quotation - Hide for Presales */}
-        {userRole?.toLowerCase() !== "presale" && (
+        {!isPresale && (
           <MenuItem
             icon={<FileText size={isExpanded ? 26 : iconSize} />}
             label="Rate Quotation"
@@ -135,7 +114,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         )}
 
         {/* Booking - Hide for Presales */}
-        {userRole?.toLowerCase() !== "presale" && (
+        {!isPresale && (
           <MenuItem
             icon={<Calendar size={isExpanded ? 26 : iconSize} />}
             label="Booking"
@@ -169,20 +148,37 @@ const Sidebar: React.FC<SidebarProps> = ({
           color="red"
         />
 
-{/* Website - Hide for Travel Advisor */}
+        {/* Website - Hide for Travel Advisor and Presale */}
         {userRole?.toLowerCase() !== "travel advisor" &&
           userRole?.toLowerCase() !== "travel" &&
-          !userRole?.toLowerCase().includes("advisor") && (
-          <MenuItem
-            icon={<MessageSquare size={isExpanded ? 26 : iconSize} />}
-            label="Website"
-            description="Manage website content"
-            isExpanded={isExpanded}
-            isActive={activeItem === "website"}
-            onClick={onWebsiteClick}
-            color="red"
-          />
-        )}
+          !userRole?.toLowerCase().includes("advisor") &&
+          !isPresale && (
+            <MenuItem
+              icon={<Monitor size={isExpanded ? 26 : iconSize} />}
+              label="Website"
+              description="Manage website content"
+              isExpanded={isExpanded}
+              isActive={activeItem === "website"}
+              onClick={onWebsiteClick}
+              color="red"
+            />
+          )}
+
+        {/* Download Report - Only for Presale */}
+        {userRole?.toLowerCase() !== "travel advisor" &&
+          userRole?.toLowerCase() !== "travel" &&
+          !userRole?.toLowerCase().includes("advisor") &&
+          !isPresale && (
+            <MenuItem
+              icon={<Download size={isExpanded ? 26 : iconSize} />}
+              label="Download Report"
+              description="Download & export reports"
+              isExpanded={isExpanded}
+              isActive={activeItem === "download-report"}
+              onClick={ondownloadReportClick}
+              color="indigo"
+            />
+          )}
       </div>
 
       {/* Collapse indicator - small chevron */}
@@ -195,7 +191,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   );
 };
 
-// Separate MenuItem component for consistent alignment
+// ── MenuItem component ──
 interface MenuItemProps {
   icon: React.ReactNode;
   label: string;
@@ -285,7 +281,6 @@ const MenuItem: React.FC<MenuItemProps> = ({
         </div>
         <div className="text-left flex-1 min-w-0">
           <p className="font-extrabold text-md truncate">{label}</p>
-          {/* Increased description text size from text-xs to text-sm */}
           <p className="text-sm text-gray-500 truncate">{description}</p>
         </div>
       </button>

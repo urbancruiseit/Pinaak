@@ -20,6 +20,7 @@ import vendorRouter from "./module/Vendors/vendor.route.js";
 import driverRouter from "./module/Driver/driver.route.js";
 import websiteGacRoutes from "./module/Website/website.route.js";
 import dsrRouter from "./module/DSR/dsr.route.js";
+import downloadRoute from "./module/Download/download.route.js";
 
 dotenv.config();
 const app = express();
@@ -68,5 +69,5 @@ app.use("/api/v1/vendor", vendorRouter);
 app.use("/api/v1/driver", driverRouter);
 app.use("/api/v1/website-gac", websiteGacRoutes);
 app.use("/api/v1/dsr", dsrRouter);
-console.log("DSR Router registered");
+app.use("/api/v1/download", downloadRoute);
 export { app };

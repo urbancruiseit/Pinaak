@@ -231,6 +231,7 @@ interface NavbarProps {
   onMonthlyEnquiry?: () => void;
   onMonthlyDistribution?: () => void;
   onUnwantedLeads?: () => void;
+  onEmployeeReports?: () => void;
   showWebsiteMenu?: boolean;
   activeWebsiteKey?: string | null;
   onWebsiteMenuSelect?: (key: string) => void;
@@ -298,6 +299,8 @@ export function Navbar({
   onMonthlyEnquiry,
   onMonthlyDistribution,
   onUnwantedLeads,
+  onEmployeeReports,
+  
 }: NavbarProps) {
   // ✅ Redux se currentUser lo
   const dispatch = useDispatch<AppDispatch>();
@@ -432,11 +435,11 @@ export function Navbar({
     setMobileOpen(false);
   };
 
-const handleDsrSelect = (value: string) => {
-  onDsrSelect?.(value);
-  setOpenMenu(null);
-  setMobileOpen(false);
-};
+  const handleDsrSelect = (value: string) => {
+    onDsrSelect?.(value);
+    setOpenMenu(null);
+    setMobileOpen(false);
+  };
 
   const handleSalesEditFormSelect = (value: string) => {
     onSalesEditFormSelect?.(value);
@@ -724,7 +727,7 @@ const handleDsrSelect = (value: string) => {
                 )}
 
                 {/* Existing Sales Lead Manager button */}
-             
+
                 {(userRole?.toLowerCase() === "sales" ||
                   userRole?.toLowerCase() === "admin" ||
                   userRole?.toLowerCase() === "travel advisor" ||
@@ -827,6 +830,18 @@ const handleDsrSelect = (value: string) => {
                                 >
                                   <span className="w-1 h-1 rounded-full bg-green-300"></span>
                                   Unwanted Leads (ULR)
+                                </li>
+
+                                <li
+                                  onClick={() => {
+                                    onEmployeeReports?.();
+                                    setOpenMenu(null);
+                                    setMobileOpen(false);
+                                  }}
+                                  className="px-3 py-2.5 md:py-2 text-sm transition-all hover:bg-green-50 hover:text-green-700 hover:pl-4 cursor-pointer text-gray-700 flex items-center gap-2"
+                                >
+                                  <span className="w-1 h-1 rounded-full bg-green-300"></span>
+                                  Employee Reports (EPR)
                                 </li>
                               </ul>
                             )}

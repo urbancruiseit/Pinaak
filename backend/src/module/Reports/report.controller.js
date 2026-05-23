@@ -1,6 +1,7 @@
 import {
   getLeadCountByDateForYear,
   getMonthlyEnquiry,
+  getMonthlyStatusWiseReport,
   getPreSalesLeadAssignmentReport,
 } from "./report.model.js";
 import { ApiError } from "../../utils/ApiError.js";
@@ -104,3 +105,51 @@ export const getLeadCountByAdviserForMonthController = asyncHandler(
     return res.status(200).json(new ApiResponse(200, data, "Success"));
   },
 );
+
+export const getMonthlyStatusWiseReportController = asyncHandler(async (req, res) => {
+  const { month, year } = req.query;
+  const user = req.user;
+
+  let cityIds = [];
+
+  // ---------------- CITY FILTER ----------------
+  if (
+    user.subDepartment === "Tele-Sales" &&
+    user.role === "City Manager"
+  ) {
+    const zoneIds = user.zone_ids ?? [];
+
+    if (!zoneIds.length) {
+      return res
+        .status(400)
+        .json(new ApiResponse(400, null, "Zone IDs not found"));
+    }
+
+    const placeholders = zoneIds.map(() => "?").join(",");
+
+    const [cities] = await hrmsPool.query(
+      `SELECT id FROM city WHERE zone_id IN (${placeholders})`,
+      zoneIds
+    );
+
+    cityIds = cities.map((c) => c.id);
+
+    if (!cityIds.length) {
+      return res
+        .status(200)
+        .json(new ApiResponse(200, [], "No cities found"));
+    }
+  } else {
+    cityIds = user.city_ids ?? [];
+  }
+
+  const result = await getMonthlyStatusWiseReport(
+    cityIds,
+    month ? Number(month) : undefined,
+    year ? Number(year) : undefined
+  );
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, result, "Success"));
+});

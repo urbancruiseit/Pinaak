@@ -8,7 +8,6 @@ import { useAppDispatch } from "@/hooks/useRedux";
 import { useSelector } from "react-redux";
 import { RootState } from "@/app/redux/store";
 import { fetchLeads } from "@/app/features/lead/leadSlice";
-import { DownloadButton } from "@/app/components/Download/download";
 
 export interface SearchFiltersProps {
   searchTerm: string;
@@ -389,12 +388,6 @@ export function LeadSearchFilters({
             className="px-3 h-9 text-md font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white flex-1"
           />
 
-          {/* DownloadButton — Redux se leads data khud uthata hai */}
-          <DownloadButton
-            selectedMonth={selectedMonth}
-            startDate={startMonth}
-            endDate={endMonth}
-          />
         </div>
       </div>
     </div>

@@ -76,15 +76,12 @@ export const getLeadCountByDateForYear = async (
 };
 
 export const getPreSalesLeadAssignmentReport = async (cityIds, month, year) => {
- 
-
   month = month || new Date().getMonth() + 1;
   year = year || new Date().getFullYear();
 
   const totalDaysInMonth = new Date(year, month, 0).getDate();
 
   // Step 1 — City IDs directly req.user se
-  
 
   if (!cityIds || cityIds.length === 0) {
     return { success: false, message: "No cities assigned to this user" };
@@ -93,8 +90,8 @@ export const getPreSalesLeadAssignmentReport = async (cityIds, month, year) => {
   const cityPlaceholders = cityIds.map(() => "?").join(",");
 
   // Step 2 — In cities ke travel advisers HRMS se nikalo
-const [advisorUsers] = await hrmsPool.execute(
-  `SELECT 
+  const [advisorUsers] = await hrmsPool.execute(
+    `SELECT 
      u.id,
      CONCAT_WS(' ', u.aliasName) AS adviser_name
    FROM users u
@@ -104,13 +101,14 @@ const [advisorUsers] = await hrmsPool.execute(
    WHERE r.role_name = 'Travel Advisor'
      AND acc.city_id IN (${cityPlaceholders})
      AND u.is_active = 1`,
-  cityIds
-);
+    cityIds,
+  );
 
   if (!advisorUsers.length) {
     return {
       success: true,
-      month, year,
+      month,
+      year,
       totalDaysInMonth,
       data: [],
       teamTotal: null,
@@ -134,73 +132,79 @@ const [advisorUsers] = await hrmsPool.execute(
        AND l.advisor_id IN (${advisorPlaceholders})
      GROUP BY l.advisor_id, DAY(l.enquiryTime)
      ORDER BY l.advisor_id ASC, DAY(l.enquiryTime) ASC`,
-    [month, year, ...advisorIds]
+    [month, year, ...advisorIds],
   );
 
   // Step 4 — Har adviser ka base structure
   const adviserMap = {};
   advisorUsers.forEach((u) => {
     adviserMap[u.id] = {
-      adviser_id:   u.id,
+      adviser_id: u.id,
       adviser_name: u.adviser_name,
-      total_leads:  0,
+      total_leads: 0,
       total_booked: 0,
-      active_days:  new Set(),
+      active_days: new Set(),
       days: Array.from({ length: totalDaysInMonth }, (_, i) => ({
-        day:    i + 1,
-        leads:  0,
+        day: i + 1,
+        leads: 0,
         booked: 0,
       })),
     };
   });
 
   // Step 5 — Leads data fill karo
- // Step 5 — Leads data fill karo
-const filledDays = {}; // track karo kaunse days mein data aaya
+  // Step 5 — Leads data fill karo
+  const filledDays = {}; // track karo kaunse days mein data aaya
 
-leadRows.forEach((row) => {
-  const adviser = adviserMap[row.advisor_id];
-  if (!adviser) return;
+  leadRows.forEach((row) => {
+    const adviser = adviserMap[row.advisor_id];
+    if (!adviser) return;
 
-  const dayIndex = row.day - 1;
-  adviser.days[dayIndex].leads  = Number(row.total_leads);
-  adviser.days[dayIndex].booked = Number(row.booked_leads);
-  adviser.total_leads           += Number(row.total_leads);
-  adviser.total_booked          += Number(row.booked_leads);
-  adviser.active_days.add(row.day);
-});
+    const dayIndex = row.day - 1;
+    adviser.days[dayIndex].leads = Number(row.total_leads);
+    adviser.days[dayIndex].booked = Number(row.booked_leads);
+    adviser.total_leads += Number(row.total_leads);
+    adviser.total_booked += Number(row.booked_leads);
+    adviser.active_days.add(row.day);
+  });
 
-// Step 6 — Final format
-const data = Object.values(adviserMap).map((adviser) => ({
-  adviser_id:        adviser.adviser_id,
-  adviser_name:      adviser.adviser_name,
-  total_leads:       adviser.total_leads,
-  total_booked:      adviser.total_booked,
-  avg_leads_per_day:
-    adviser.active_days.size > 0
-      ? parseFloat((adviser.total_leads / adviser.active_days.size).toFixed(2))
-      : "-",
-  cntb_percentage:
-    adviser.total_leads > 0
-      ? parseFloat(((adviser.total_booked / adviser.total_leads) * 100).toFixed(1))
-      : "-",
-  days: adviser.days.map((d) => ({
-    day:    d.day,
-    leads:  d.leads  === 0 ? "-" : d.leads,
-    booked: d.booked === 0 ? "-" : d.booked,
-  })),
-}));
+  // Step 6 — Final format
+  const data = Object.values(adviserMap).map((adviser) => ({
+    adviser_id: adviser.adviser_id,
+    adviser_name: adviser.adviser_name,
+    total_leads: adviser.total_leads,
+    total_booked: adviser.total_booked,
+    avg_leads_per_day:
+      adviser.active_days.size > 0
+        ? parseFloat(
+            (adviser.total_leads / adviser.active_days.size).toFixed(2),
+          )
+        : "-",
+    cntb_percentage:
+      adviser.total_leads > 0
+        ? parseFloat(
+            ((adviser.total_booked / adviser.total_leads) * 100).toFixed(1),
+          )
+        : "-",
+    days: adviser.days.map((d) => ({
+      day: d.day,
+      leads: d.leads === 0 ? "-" : d.leads,
+      booked: d.booked === 0 ? "-" : d.booked,
+    })),
+  }));
 
   // Step 7 — Team total
- const teamTotal = {
-  total_leads:  data.reduce((s, a) => s + a.total_leads, 0),
-  total_booked: data.reduce((s, a) => s + a.total_booked, 0),
-  days: Array.from({ length: totalDaysInMonth }, (_, i) => ({
-    day:    i + 1,
-    leads:  data.reduce((s, a) => s + (Number(a.days[i].leads) || 0), 0) || "-",
-    booked: data.reduce((s, a) => s + (Number(a.days[i].booked) || 0), 0) || "-",
-  })),
-};
+  const teamTotal = {
+    total_leads: data.reduce((s, a) => s + a.total_leads, 0),
+    total_booked: data.reduce((s, a) => s + a.total_booked, 0),
+    days: Array.from({ length: totalDaysInMonth }, (_, i) => ({
+      day: i + 1,
+      leads:
+        data.reduce((s, a) => s + (Number(a.days[i].leads) || 0), 0) || "-",
+      booked:
+        data.reduce((s, a) => s + (Number(a.days[i].booked) || 0), 0) || "-",
+    })),
+  };
   return {
     success: true,
     month,
@@ -209,4 +213,116 @@ const data = Object.values(adviserMap).map((adviser) => ({
     data,
     teamTotal,
   };
+};
+
+export const getMonthlyStatusWiseReport = async (cityIds, month, year) => {
+  month = month || new Date().getMonth() + 1;
+  year = year || new Date().getFullYear();
+
+  if (!cityIds || cityIds.length === 0) {
+    return { success: false, message: "No cities assigned" };
+  }
+
+  const cityPlaceholders = cityIds.map(() => "?").join(",");
+
+  // ---------------- ADVISORS ----------------
+  const [advisors] = await hrmsPool.execute(
+    `SELECT 
+        u.id,
+        CONCAT_WS(' ', u.aliasName) AS adviser_name
+     FROM users u
+     INNER JOIN roles r ON u.role_id = r.id
+     INNER JOIN access_control ac ON ac.employee_id = u.id
+     INNER JOIN access_control_cities acc ON acc.access_control_id = ac.id
+     WHERE r.role_name = 'Travel Advisor'
+       AND acc.city_id IN (${cityPlaceholders})
+       AND u.is_active = 1`,
+    cityIds,
+  );
+
+  if (!advisors.length) {
+    return { success: true, data: [], teamTotal: {} };
+  }
+
+  const advisorIds = advisors.map((a) => a.id);
+  const advisorPlaceholders = advisorIds.map(() => "?").join(",");
+
+  // ---------------- STATUS WISE LEADS ----------------
+  const [rows] = await pool.execute(
+    `SELECT 
+        l.advisor_id,
+        l.status,
+        COUNT(l.id) AS total
+     FROM leads l
+     WHERE 
+        MONTH(l.enquiryTime) = ?
+        AND YEAR(l.enquiryTime) = ?
+        AND l.advisor_id IN (${advisorPlaceholders})
+     GROUP BY l.advisor_id, l.status`,
+    [month, year, ...advisorIds],
+  );
+
+  // ---------------- STRUCTURE ----------------
+  const map = {};
+
+  advisors.forEach((a) => {
+    map[a.id] = {
+      adviser_id: a.id,
+      adviser_name: a.adviser_name,
+
+      // ✅ All 7 statuses from statusList
+      new: 0,
+      kyc: 0,
+      rfq: 0,
+      hot: 0,
+      vehn: 0, // VEH-N
+      lost: 0,
+      book: 0,
+      blank: 0,
+
+      total: 0,
+    };
+  });
+
+  // ---------------- FILL DATA ----------------
+  rows.forEach((r) => {
+    const a = map[r.advisor_id];
+    if (!a) return;
+
+    const status = r.status?.toUpperCase().trim();
+    const count = Number(r.total);
+
+    if (status === "NEW") a.new += count;
+    else if (status === "KYC") a.kyc += count;
+    else if (status === "RFQ") a.rfq += count;
+    else if (status === "HOT") a.hot += count;
+    else if (status === "VEH-N" || status === "VEHN") a.vehn += count;
+    else if (status === "LOST") a.lost += count;
+    else if (status === "BOOK") a.book += count;
+    else if (status === "BLANK") a.blank += count;
+
+    a.total += count;
+  });
+
+  // ---------------- FINAL FORMAT ----------------
+  const data = Object.values(map).map((a) => ({
+    ...a,
+    // con = conversion % based on BOOK / total
+    con: a.total ? ((a.book / a.total) * 100).toFixed(0) + "%" : "0%",
+  }));
+
+  // ---------------- TEAM TOTAL ----------------
+  const teamTotal = {
+    new: data.reduce((s, r) => s + r.new, 0),
+    kyc: data.reduce((s, r) => s + r.kyc, 0),
+    rfq: data.reduce((s, r) => s + r.rfq, 0),
+    hot: data.reduce((s, r) => s + r.hot, 0),
+    vehn: data.reduce((s, r) => s + r.vehn, 0),
+    lost: data.reduce((s, r) => s + r.lost, 0),
+    book: data.reduce((s, r) => s + r.book, 0),
+    blank: data.reduce((s, r) => s + r.blank, 0),
+    total: data.reduce((s, r) => s + r.total, 0),
+  };
+
+  return { success: true, month, year, data, teamTotal };
 };

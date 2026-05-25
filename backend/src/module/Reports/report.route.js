@@ -2,8 +2,10 @@ import express from "express";
 import {
   getLeadCountByAdviserForMonthController,
   getLeadCountByDateForYearController,
+  getMonthlyDateWiseStatusReportController,
   getMonthlyStatusWiseReportController,
   monthlyEnquiryReport,
+  timeEnquiryReport,
 } from "./report.controller.js";
 import { verifyJWT } from "../../middlewares/auth.middleware.js";
 
@@ -21,4 +23,13 @@ router.get(
   verifyJWT,
   getMonthlyStatusWiseReportController,
 );
+
+router.get(
+  "/status-wise-date-report",
+  verifyJWT,
+  getMonthlyDateWiseStatusReportController,
+);
+
+router.get("/time-enquiry", timeEnquiryReport);
+
 export default router;

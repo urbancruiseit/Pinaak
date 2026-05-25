@@ -101,6 +101,18 @@ export interface StatusWiseReportResponse {
   };
 }
 
+export interface TimeEnquiryRecord {
+  month: number;
+  day: number;
+  hour: number;
+  total: number;
+}
+
+export interface TimeEnquiryResponse {
+  success: boolean;
+  year?: number;
+  data: TimeEnquiryRecord[];
+}
 // ─── Error Handler ───────────────────────────────────────────────────
 
 const handleAxiosError = (error: any, context: string): never => {
@@ -271,5 +283,41 @@ export const getStatusWiseReportApi = async (
       "Failed to fetch status wise report";
 
     throw new Error(errorMessage);
+  }
+};
+
+export const getTimeEnquiryApi = async (
+  year: number,
+): Promise<TimeEnquiryResponse> => {
+  try {
+    const { data: res } = await axiosInstance.get<TimeEnquiryResponse>(
+      "/reports/time-enquiry",
+      { params: { year }, timeout: 10000 },
+    );
+
+    return {
+      success: res.success,
+      year: res.year ?? year,
+      data: Array.isArray(res.data) ? res.data : [],
+    };
+  } catch (error) {
+    throw handleAxiosError(error, "getTimeEnquiryApi");
+  }
+};
+
+export const getStatusWiseDateReportApi = async (params = {}) => {
+  try {
+    const response = await axiosInstance.get(
+      "/reports/status-wise-date-report",
+      {
+        params,
+      },
+    );
+
+    return response.data.data;
+  } catch (error: any) {
+    throw new Error(
+      error?.response?.data?.message || "Failed to fetch date wise report",
+    );
   }
 };

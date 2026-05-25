@@ -154,6 +154,15 @@ const EmployeeReportsModule = dynamic(
   { ssr: false, loading: LoadingPanel },
 );
 
+const TimeEnquiryReportsModule = dynamic(
+  () => import("../components/pages/leads/Reports/TimeEnquiryReports"),
+  { ssr: false, loading: LoadingPanel },
+);
+
+const DateEmployeeReportsModule = dynamic (
+   () => import("../components/pages/leads/Reports/EmployeeDateReport"),
+  { ssr: false, loading: LoadingPanel },
+);
 const GACForm = dynamic(
   () => import("../components/pages/Website/list/gacTable"),
   { ssr: false, loading: LoadingPanel },
@@ -329,12 +338,19 @@ export default function DashboardPage() {
   const [showUnwantedLeads, setShowUnwantedLeads] = useState<boolean>(false);
   const [showEmployeeReports, setShowEmployeeReports] =
     useState<boolean>(false);
+  const [showTimeEnquiryReports, setShowTimeEnquiryReports] =
+    useState<boolean>(false);
+
+  const [showDateEmployeeReports, setShowDateEmployeeReports] =
+    useState<boolean>(false);
 
   const resetAllReportStates = () => {
     setShowMonthlyEnquiry(false);
     setShowMonthlyDistribution(false);
     setShowUnwantedLeads(false);
     setShowEmployeeReports(false);
+    setShowTimeEnquiryReports(false);
+    setShowDateEmployeeReports(false);
   };
 
   const dispatch = useDispatch<AppDispatch>();
@@ -603,6 +619,20 @@ export default function DashboardPage() {
     setActiveSection("leads");
     setActiveLeadView("dashboard");
   };
+
+  const handleTimeEnquiryReports = () => {
+    resetAllReportStates();
+    setShowTimeEnquiryReports(true);
+    setActiveSection("leads");
+    setActiveLeadView("dashboard");
+  };
+
+  const handleDateEmployeeReports = () => {
+    resetAllReportStates();
+    setShowDateEmployeeReports(true);
+    setActiveSection("leads");
+    setActiveLeadView("dashboard");
+  };
   // Website menu handler
   const handleWebsiteMenuSelect = (key: string) => {
     setActiveSection("website");
@@ -674,6 +704,21 @@ export default function DashboardPage() {
         return (
           <div className="space-y-6">
             <EmployeeReportsModule />
+          </div>
+        );
+      }
+      if (showTimeEnquiryReports) {
+        return (
+          <div className="space-y-6">
+            <TimeEnquiryReportsModule />
+          </div>
+        );
+      }
+
+      if (showDateEmployeeReports)  {
+        return (
+          <div className="space-y-6">
+            <DateEmployeeReportsModule />
           </div>
         );
       }
@@ -850,6 +895,8 @@ export default function DashboardPage() {
         onMonthlyDistribution={handleMonthlyDistribution}
         onUnwantedLeads={handleUnwantedLeads}
         onEmployeeReports={handleEmployeeReports}
+        onTimeEnquiryReports={handleTimeEnquiryReports}
+        onDateEmployeeReports={handleDateEmployeeReports}
         onDsrSelect={handleDsrLeadSelect}
         onMasterSelect={(key) => {
           const targeted = permittedMasterTabs.find((tab) => tab.key === key);

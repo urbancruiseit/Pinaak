@@ -232,6 +232,8 @@ interface NavbarProps {
   onMonthlyDistribution?: () => void;
   onUnwantedLeads?: () => void;
   onEmployeeReports?: () => void;
+  onTimeEnquiryReports?: () => void;
+  onDateEmployeeReports?: () => void;
   showWebsiteMenu?: boolean;
   activeWebsiteKey?: string | null;
   onWebsiteMenuSelect?: (key: string) => void;
@@ -300,7 +302,8 @@ export function Navbar({
   onMonthlyDistribution,
   onUnwantedLeads,
   onEmployeeReports,
-  
+  onTimeEnquiryReports,
+  onDateEmployeeReports,
 }: NavbarProps) {
   // ✅ Redux se currentUser lo
   const dispatch = useDispatch<AppDispatch>();
@@ -842,6 +845,30 @@ export function Navbar({
                                 >
                                   <span className="w-1 h-1 rounded-full bg-green-300"></span>
                                   Employee Reports (EPR)
+                                </li>
+
+                                <li
+                                  onClick={() => {
+                                    onTimeEnquiryReports?.();
+                                    setOpenMenu(null);
+                                    setMobileOpen(false);
+                                  }}
+                                  className="px-3 py-2.5 md:py-2 text-sm transition-all hover:bg-green-50 hover:text-green-700 hover:pl-4 cursor-pointer text-gray-700 flex items-center gap-2"
+                                >
+                                  <span className="w-1 h-1 rounded-full bg-green-300"></span>
+                                  Time Enquiry Reports (TER)
+                                </li>
+
+                                  <li
+                                  onClick={() => {
+                                    onDateEmployeeReports?.();
+                                    setOpenMenu(null);
+                                    setMobileOpen(false);
+                                  }}
+                                  className="px-3 py-2.5 md:py-2 text-sm transition-all hover:bg-green-50 hover:text-green-700 hover:pl-4 cursor-pointer text-gray-700 flex items-center gap-2"
+                                >
+                                  <span className="w-1 h-1 rounded-full bg-green-300"></span>
+                                 Date Employee Reports (DER)
                                 </li>
                               </ul>
                             )}

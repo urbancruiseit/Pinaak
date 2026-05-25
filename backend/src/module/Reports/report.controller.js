@@ -1,8 +1,10 @@
 import {
   getLeadCountByDateForYear,
+  getMonthlyDateWiseStatusReport,
   getMonthlyEnquiry,
   getMonthlyStatusWiseReport,
   getPreSalesLeadAssignmentReport,
+  getTimeEnquiryReport,
 } from "./report.model.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
@@ -61,11 +63,9 @@ export const getLeadCountByAdviserForMonthController = asyncHandler(
 
     if (
       preSalesUser.subDepartment === "Tele-Sales" &&
-      preSalesUser.role === "City Manager"  // ✅ FIXED
+      preSalesUser.role === "City Manager" // ✅ FIXED
     ) {
       const zoneIds = preSalesUser.zone_ids ?? [];
-
-  
 
       if (zoneIds.length === 0) {
         return res
@@ -76,12 +76,10 @@ export const getLeadCountByAdviserForMonthController = asyncHandler(
       const placeholders = zoneIds.map(() => "?").join(",");
       const [cities] = await hrmsPool.query(
         `SELECT id FROM city WHERE zone_id IN (${placeholders})`,
-        zoneIds
+        zoneIds,
       );
 
       cityIds = cities.map((c) => c.id);
-
- 
 
       if (cityIds.length === 0) {
         return res
@@ -92,64 +90,133 @@ export const getLeadCountByAdviserForMonthController = asyncHandler(
       cityIds = preSalesUser.city_ids ?? [];
     }
 
-
-
     const data = await getPreSalesLeadAssignmentReport(
       cityIds,
       month ? Number(month) : undefined,
       year ? Number(year) : undefined,
     );
 
-   
-
     return res.status(200).json(new ApiResponse(200, data, "Success"));
   },
 );
 
-export const getMonthlyStatusWiseReportController = asyncHandler(async (req, res) => {
-  const { month, year } = req.query;
-  const user = req.user;
+export const getMonthlyStatusWiseReportController = asyncHandler(
+  async (req, res) => {
+    const { month, year } = req.query;
+    const user = req.user;
 
-  let cityIds = [];
+    let cityIds = [];
 
-  // ---------------- CITY FILTER ----------------
-  if (
-    user.subDepartment === "Tele-Sales" &&
-    user.role === "City Manager"
-  ) {
-    const zoneIds = user.zone_ids ?? [];
+    // ---------------- CITY FILTER ----------------
+    if (user.subDepartment === "Tele-Sales" && user.role === "City Manager") {
+      const zoneIds = user.zone_ids ?? [];
 
-    if (!zoneIds.length) {
-      return res
-        .status(400)
-        .json(new ApiResponse(400, null, "Zone IDs not found"));
+      if (!zoneIds.length) {
+        return res
+          .status(400)
+          .json(new ApiResponse(400, null, "Zone IDs not found"));
+      }
+
+      const placeholders = zoneIds.map(() => "?").join(",");
+
+      const [cities] = await hrmsPool.query(
+        `SELECT id FROM city WHERE zone_id IN (${placeholders})`,
+        zoneIds,
+      );
+
+      cityIds = cities.map((c) => c.id);
+
+      if (!cityIds.length) {
+        return res
+          .status(200)
+          .json(new ApiResponse(200, [], "No cities found"));
+      }
+    } else {
+      cityIds = user.city_ids ?? [];
     }
 
-    const placeholders = zoneIds.map(() => "?").join(",");
-
-    const [cities] = await hrmsPool.query(
-      `SELECT id FROM city WHERE zone_id IN (${placeholders})`,
-      zoneIds
+    const result = await getMonthlyStatusWiseReport(
+      cityIds,
+      month ? Number(month) : undefined,
+      year ? Number(year) : undefined,
     );
 
-    cityIds = cities.map((c) => c.id);
+    return res.status(200).json(new ApiResponse(200, result, "Success"));
+  },
+);
 
-    if (!cityIds.length) {
-      return res
-        .status(200)
-        .json(new ApiResponse(200, [], "No cities found"));
+export const timeEnquiryReport = async (req, res) => {
+  try {
+    const year = req.query.year
+      ? parseInt(req.query.year)
+      : new Date().getFullYear();
+
+    if (isNaN(year) || year < 2000 || year > 2100) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid year parameter",
+      });
     }
-  } else {
-    cityIds = user.city_ids ?? [];
+
+    const data = await getTimeEnquiryReport(year);
+
+    res.json({
+      success: true,
+      year,
+      data: data || [],
+    });
+  } catch (error) {
+    console.error("❌ Time Enquiry Controller Error:", error.message);
+    res.status(500).json({
+      success: false,
+      message: "Server Error: " + error.message,
+    });
   }
+};
 
-  const result = await getMonthlyStatusWiseReport(
-    cityIds,
-    month ? Number(month) : undefined,
-    year ? Number(year) : undefined
-  );
 
-  return res
-    .status(200)
-    .json(new ApiResponse(200, result, "Success"));
-});
+export const getMonthlyDateWiseStatusReportController =
+  asyncHandler(async (req, res) => {
+    const { month, year } = req.query;
+    const user = req.user;
+
+    let cityIds = [];
+
+    if (
+      user.subDepartment === "Tele-Sales" &&
+      user.role === "City Manager"
+    ) {
+      const zoneIds = user.zone_ids ?? [];
+
+      if (!zoneIds.length) {
+        return res.status(400).json({
+          message: "Zone IDs not found",
+        });
+      }
+
+      const placeholders = zoneIds.map(() => "?").join(",");
+
+      const [cities] = await hrmsPool.query(
+        `SELECT id 
+         FROM city 
+         WHERE zone_id IN (${placeholders})`,
+        zoneIds,
+      );
+
+      cityIds = cities.map((c) => c.id);
+    } else {
+      cityIds = user.city_ids ?? [];
+    }
+
+    const result =
+      await getMonthlyDateWiseStatusReport(
+        cityIds,
+        month ? Number(month) : undefined,
+        year ? Number(year) : undefined,
+      );
+
+    return res.status(200).json({
+      success: true,
+      data: result,
+    });
+  });

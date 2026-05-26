@@ -517,11 +517,11 @@ export const useLeadColumns = ({
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 font-extrabold text-xl">
-                    <span className="text-slate-400">📞</span>
+                    <span className="text-slate-400">👤</span>
                     <span>{lead.customerCategoryType || "-"}</span>
                   </div>
                   <div className="flex items-center gap-2 font-extrabold text-xl">
-                    <span className="text-slate-400">📞</span>
+                    <span className="text-slate-400">👤</span>
                     <span>{lead.customerType || "-"}</span>
                   </div>
                 </div>

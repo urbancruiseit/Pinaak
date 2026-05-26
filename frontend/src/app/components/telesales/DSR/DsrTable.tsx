@@ -7,6 +7,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/app/redux/store";
 import { fetchAllDsr } from "@/app/features/Dsr/dsrSlice";
 import Pagination from "../../ui/pagination";
+import ViewDsrModal from "./viewDsrModel";
 import {
   Eye,
   Edit,
@@ -46,6 +47,8 @@ export default function DsrTable({
 
   const [showEditForm, setShowEditForm] = useState(false);
   const [selectedDsr, setSelectedDsr] = useState<DsrRecord | null>(null);
+  const [viewModalOpen, setViewModalOpen] = useState(false);
+  const [viewDsr, setViewDsr] = useState<DsrRecord | null>(null);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -153,7 +156,11 @@ export default function DsrTable({
       return (
         <div className="flex items-center justify-center gap-1">
           <button
-            onClick={() => onView?.(dsr)}
+            onClick={() => {
+              setViewDsr(dsr);
+              setViewModalOpen(true);
+              onView?.(dsr);
+            }}
             className="p-1 rounded text-blue-600 hover:bg-blue-100"
             title="View"
           >
@@ -929,6 +936,16 @@ export default function DsrTable({
         totalItems={total}
         rowsPerPage={pageSize}
         onPageChange={handlePageChange}
+      />
+
+      {/* View DSR Modal */}
+      <ViewDsrModal
+        dsr={viewDsr}
+        isOpen={viewModalOpen}
+        onClose={() => {
+          setViewModalOpen(false);
+          setViewDsr(null);
+        }}
       />
     </div>
   );

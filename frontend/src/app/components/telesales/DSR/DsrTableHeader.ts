@@ -101,12 +101,13 @@ export const DSR_TABLE_BANNER: BannerColumn[] = [
     minWidthPx: 110,
   },
   {
-    key: "telesales",
+    key: "advisorShortName",
     label: "TELE SALES",
     groupLabel: "BOOKING",
     minWidthClass: "min-w-[110px]",
     minWidthPx: 110,
   },
+
   {
     key: "bookingId",
     label: "BOOKING ID",

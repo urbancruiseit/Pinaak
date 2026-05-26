@@ -126,7 +126,7 @@ const EditLeadForm: React.FC<{
     dispatch(getCountriesThunk());
     dispatch(fetchAllCities());
     dispatch(fetchVehicles());
-    dispatch(getAllCitiesThunk()); 
+    dispatch(getAllCitiesThunk());
   }, [dispatch]);
 
   useEffect(() => {
@@ -187,10 +187,8 @@ const EditLeadForm: React.FC<{
       Array.isArray(currentUser?.city_ids) &&
       currentUser.city_ids.length > 0
     ) {
-setValue(
-  "city_id",
-  Number(initialData.city_id),
-);    }
+      setValue("city_id", Number(initialData.city_id));
+    }
   }, [initialData, currentUser, setValue]);
 
   useEffect(() => {
@@ -200,13 +198,11 @@ setValue(
 
     const mapped = mapInitialDataToForm(initialData);
 
-  
     setFormData(mapped.formData);
     setAlternateCountryCode(mapped.alternateCountryCode ?? "+91");
     setCustomerCategoryTypeValue(mapped.customerCategoryTypeValue ?? "");
     setItineraryList(mapped.itineraryList ?? []);
 
-  
     const country =
       (initialData as any).countryName ??
       (initialData as any).customerCountry ??
@@ -225,13 +221,13 @@ setValue(
     const stateValue = (initialData as any).state ?? null;
 
     if (cityValue) {
-      dispatch(resetStatesForCity()); 
-      pendingStateRef.current = stateValue; 
+      dispatch(resetStatesForCity());
+      pendingStateRef.current = stateValue;
       setValue("customerCity", cityValue);
-      dispatch(fetchStatesByCity(cityValue)); 
+      dispatch(fetchStatesByCity(cityValue));
     }
 
-    setIsInitialized(true); 
+    setIsInitialized(true);
     setTimeout(() => trigger(), 150);
   }, [
     initialData,
@@ -242,7 +238,6 @@ setValue(
     trigger,
     dispatch,
   ]);
-
 
   useEffect(() => {
     if (pendingStateRef.current && statesForCity?.length > 0) {
@@ -354,7 +349,6 @@ setValue(
       return numA !== numB ? numA - numB : a.code.localeCompare(b.code);
     });
 
-  
   return (
     <div>
       {/* Toast */}
@@ -1174,7 +1168,8 @@ setValue(
                     </div>
 
                     {/* Trip Type */}
-                    {serviceType === "Round Trip" && (
+                    {(serviceType === "Round Trip" ||
+                      serviceType === "Round Trip Drop") && (
                       <div className="w-full md:w-[20%]">
                         <label className="block text-md font-extrabold text-gray-700 mb-1">
                           Trip Type

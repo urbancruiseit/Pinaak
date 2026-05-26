@@ -354,9 +354,7 @@ export const getAllDsrModel = async (
 
     const [countResult] = await pool.query(countQuery, values);
 
-    // ── Status counts ─────────────────────────────
     const statusList = ["PAID", "UNPAID", "PARTIAL"];
-
     const statusCountWhereClause =
       status && status.trim()
         ? whereClause.replace(` AND UPPER(d.payment_status) = ?`, "")
@@ -471,7 +469,7 @@ export const getAllDsrModel = async (
           `
             SELECT
               id,
-              shortName
+              aliasName
             FROM users
             WHERE id IN (${placeholders})
           `,
@@ -488,7 +486,7 @@ export const getAllDsrModel = async (
 
     const dsrList = parsedDsrs.map((dsr) => ({
       ...dsr,
-      advisorShortName: advisorMap[dsr.advisor_id]?.shortName ?? null,
+      advisorShortName: advisorMap[dsr.advisor_id]?.aliasName ?? null,
     }));
 
     return {

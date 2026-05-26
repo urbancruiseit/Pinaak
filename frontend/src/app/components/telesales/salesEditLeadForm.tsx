@@ -1145,7 +1145,8 @@ const EditLeadForm: React.FC<{
                     </div>
 
                     {/* Trip Type */}
-                    {serviceType === "Round Trip" && (
+                    {(serviceType === "Round Trip" ||
+                      serviceType === "Round Trip Drop") && (
                       <div className="w-full md:w-[20%]">
                         <label className="block text-md font-extrabold text-gray-700 mb-1">
                           Trip Type

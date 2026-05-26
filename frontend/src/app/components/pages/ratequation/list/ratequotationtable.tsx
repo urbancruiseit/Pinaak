@@ -748,7 +748,7 @@ export default function RateQuotationTable({
             <h2 className="text-lg font-semibold mb-5">
               Edit Customer Details :-
               <span className="text-blue-600 ml-1">
-                {editForm?.customerName || "N/A"}
+                {editForm?.fullName || "N/A"}
               </span>
             </h2>
 
@@ -763,7 +763,7 @@ export default function RateQuotationTable({
                 <input
                   type="text"
                   name="customerName"
-                  value={editForm.customerName || ""}
+                  value={editForm.fullName || ""}
                   onChange={handleInputChange}
                   placeholder="Customer Name"
                   className="w-full border rounded-md px-3 py-2"

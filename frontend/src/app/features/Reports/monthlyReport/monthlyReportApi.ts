@@ -251,8 +251,6 @@ export const getStatusWiseReportApi = async (
 
     const res = response?.data?.data;
 
-    console.log("status wise response:", res);
-
     if (!res) {
       throw new Error("Invalid response from server");
     }

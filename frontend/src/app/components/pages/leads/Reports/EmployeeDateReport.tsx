@@ -1,13 +1,10 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useDispatch } from "react-redux";
-import {
-  fetchStatusWiseReport,
-  fetchStatusWiseDateReport,
-} from "@/app/features/Reports/monthlyReport/monthlyReportSlice";
+import { fetchStatusWiseDateReport } from "@/app/features/Reports/monthlyReport/monthlyReportSlice";
 import { AppDispatch } from "@/app/redux/store";
-import { Loader2, CalendarDays } from "lucide-react";
+import { Loader2 } from "lucide-react";
 
 const MONTH_MAP: Record<string, number> = {
   JAN: 1,
@@ -63,7 +60,6 @@ const STATUS_STYLE: Record<string, string> = {
   blank: "text-slate-700 bg-slate-50",
 };
 
-// Row colors for alternating employees
 const rowColors = [
   "bg-indigo-50",
   "bg-cyan-50",
@@ -73,486 +69,219 @@ const rowColors = [
   "bg-yellow-50",
 ];
 
-interface DateWiseData {
-  date: string;
-  adviser_name: string;
-  statuses: Record<string, number>;
-  total: number;
-}
-
-interface MonthDateWiseData {
-  monthName: string;
-  dateWiseData: DateWiseData[];
-  totals: Record<string, Record<string, number>>;
-}
-
 const Empreport = () => {
   const dispatch = useDispatch<AppDispatch>();
 
   const [selectedYear, setSelectedYear] = useState("2026");
-  const [selectedMonth, setSelectedMonth] = useState("ALL");
+
+  const [selectedMonth, setSelectedMonth] = useState("MAY");
 
   const [loading, setLoading] = useState(false);
-  const [dateWiseLoading, setDateWiseLoading] = useState(false);
 
-  const [allMonthsData, setAllMonthsData] = useState<Record<string, any[]>>({});
+  const [employees, setEmployees] = useState<any[]>([]);
 
-  const [processedData, setProcessedData] = useState<any[]>([]);
-
-  // Store date-wise data for all months
-  const [dateWiseDataMap, setDateWiseDataMap] = useState<
-    Record<string, MonthDateWiseData>
-  >({});
-
-  // Get unique employees list
-  const employeesList = useMemo(() => {
-    return processedData.map((emp) => emp.adviser_name);
-  }, [processedData]);
-
-  // FETCH ALL MONTHS SUMMARY DATA
+  // Date Wise API Fetch
   useEffect(() => {
-    const fetchMonthlyData = async () => {
+    const fetchData = async () => {
       try {
         setLoading(true);
 
-        const responses = await Promise.all(
-          ALL_MONTHS.map(async (month) => {
-            try {
-              const result = await dispatch(
-                fetchStatusWiseReport({
-                  month: MONTH_MAP[month],
-                  year: Number(selectedYear),
-                }),
-              ).unwrap();
-
-              return {
-                month,
-                data: result?.data || [],
-              };
-            } catch {
-              return {
-                month,
-                data: [],
-              };
-            }
+        const result = await dispatch(
+          fetchStatusWiseDateReport({
+            month: MONTH_MAP[selectedMonth],
+            year: Number(selectedYear),
           }),
-        );
+        ).unwrap();
 
-        const formatted: Record<string, any[]> = {};
+        console.log("DATE REPORT API:", result);
 
-        responses.forEach((r) => {
-          formatted[r.month] = r.data;
-        });
+        const safeEmployees = Array.isArray(result?.data) ? result.data : [];
 
-        setAllMonthsData(formatted);
+        setEmployees(safeEmployees);
+      } catch (err) {
+        console.error("Date Report Error:", err);
+        setEmployees([]);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchMonthlyData();
-  }, [selectedYear, dispatch]);
+    fetchData();
+  }, [selectedMonth, selectedYear, dispatch]);
 
-  // FETCH DATE-WISE DATA FOR SELECTED MONTH
-  useEffect(() => {
-    const fetchDateWiseData = async () => {
-      if (!selectedMonth || selectedMonth === "ALL") return;
+  const daysInMonth = new Date(
+    Number(selectedYear),
+    MONTH_MAP[selectedMonth],
+    0,
+  ).getDate();
 
-      const monthNumber = MONTH_MAP[selectedMonth];
-
-      // Check if already fetched
-      if (dateWiseDataMap[selectedMonth]) return;
-
-      try {
-        setDateWiseLoading(true);
-
-        const result = await dispatch(
-          fetchStatusWiseDateReport({
-            month: monthNumber,
-            year: Number(selectedYear),
-          }),
-        ).unwrap();
-
-        setDateWiseDataMap((prev) => ({
-          ...prev,
-          [selectedMonth]: {
-            monthName: selectedMonth,
-            dateWiseData: result?.dateWiseData || [],
-            totals: result?.totals || {},
-          },
-        }));
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setDateWiseLoading(false);
-      }
-    };
-
-    fetchDateWiseData();
-  }, [selectedMonth, selectedYear, dispatch, dateWiseDataMap]);
-
-  // PROCESS EMPLOYEE SUMMARY DATA
-  useEffect(() => {
-    const employeeMap = new Map<string, any>();
-
-    for (const month of ALL_MONTHS) {
-      const monthData = allMonthsData[month] || [];
-
-      for (const item of monthData) {
-        const name = item.adviser_name;
-
-        if (!employeeMap.has(name)) {
-          employeeMap.set(name, {
-            adviser_name: name,
-            months: {},
-          });
-        }
-
-        employeeMap.get(name).months[month] = {
-          new: item.new || 0,
-          kyc: item.kyc || 0,
-          rfq: item.rfq || 0,
-          hot: item.hot || 0,
-          vehn: item.vehn || 0,
-          lost: item.lost || 0,
-          book: item.book || 0,
-          blank: item.blank || 0,
-          total: item.total || 0,
-        };
-      }
-    }
-
-    const emptyMonth = {
-      new: 0,
-      kyc: 0,
-      rfq: 0,
-      hot: 0,
-      vehn: 0,
-      lost: 0,
-      book: 0,
-      blank: 0,
-      total: 0,
-    };
-
-    const finalData = Array.from(employeeMap.values());
-
-    finalData.forEach((emp) => {
-      ALL_MONTHS.forEach((month) => {
-        if (!emp.months[month]) {
-          emp.months[month] = { ...emptyMonth };
-        }
-      });
-    });
-
-    setProcessedData(finalData);
-  }, [allMonthsData]);
-
-  // Get days in month
-  const getDaysInMonth = (month: string, year: number) => {
-    const monthNumber = MONTH_MAP[month];
-    return new Date(year, monthNumber, 0).getDate();
-  };
-
-  // Get date-wise data for current selected month
-  const currentDateWiseData =
-    selectedMonth !== "ALL" ? dateWiseDataMap[selectedMonth] : null;
-  const daysInMonth =
-    selectedMonth !== "ALL"
-      ? getDaysInMonth(selectedMonth, Number(selectedYear))
-      : 0;
   const daysArray = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
-  // Group date-wise data by employee
-  const getEmployeeDailyData = (employeeName: string) => {
-    if (!currentDateWiseData) return [];
-    return currentDateWiseData.dateWiseData.filter(
-      (item: any) => item.adviser_name === employeeName,
-    );
-  };
-
-  const displayMonths = selectedMonth === "ALL" ? ALL_MONTHS : [selectedMonth];
-
   return (
-    <div className="min-h-screen bg-slate-100 p-4">
-      <div className="bg-white rounded-lg shadow p-4 mb-5">
-        <h1 className="text-3xl font-bold text-orange-600">
-          Employee Performance Report - {selectedYear}
-        </h1>
+    <div className="">
+      {/* HEADER */}
+      <div className="mb-4 bg-orange-100 shadow-lg rounded-md flex justify-between items-center">
+        <div className="sticky top-0 z-10 bg-orange-100 p-3 rounded-md">
+          <div className="pl-4 border-l-8 border-orange-500 bg-white px-3 rounded-md shadow-md">
+            <h2 className="text-4xl font-bold text-left py-4 text-orange-600 p-2">
+              Employee Performance Report -{selectedMonth} {selectedYear}
+            </h2>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="bg-white rounded-lg p-2 shadow mb-4 flex gap-2">
+          <select
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(e.target.value)}
+            className="border rounded p-2"
+          >
+            {[2024, 2025, 2026, 2027].map((y) => (
+              <option key={y}>{y}</option>
+            ))}
+          </select>
+
+          <select
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="border rounded p-2"
+          >
+            {ALL_MONTHS.map((month) => (
+              <option key={month} value={month}>
+                {month}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
-      {/* FILTERS */}
-      <div className="bg-white rounded-lg p-4 shadow mb-4 flex gap-4">
-        <select
-          value={selectedYear}
-          onChange={(e) => setSelectedYear(e.target.value)}
-          className="border rounded p-2"
-        >
-          {[2024, 2025, 2026, 2027].map((y) => (
-            <option key={y}>{y}</option>
-          ))}
-        </select>
-
-        <select
-          value={selectedMonth}
-          onChange={(e) => setSelectedMonth(e.target.value)}
-          className="border rounded p-2"
-        >
-          <option value="ALL">All Months (Summary View)</option>
-          {ALL_MONTHS.map((month) => (
-            <option key={month}>{month}</option>
-          ))}
-        </select>
-      </div>
-
-      {/* LOADING */}
       {loading ? (
         <div className="flex justify-center py-20">
           <Loader2 className="animate-spin w-10 h-10" />
         </div>
       ) : (
-        <>
-          {selectedMonth === "ALL" ? (
-            /* SUMMARY VIEW - Monthly cards */
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-              {processedData.map((employee, idx) => {
-                const yearlyTotal = ALL_MONTHS.reduce(
-                  (sum, month) => sum + (employee.months[month]?.total || 0),
-                  0,
-                );
+        <div className="bg-white rounded-xl shadow overflow-x-auto">
+          <table className="w-full border border-gray-300 text-sm">
+            <thead>
+              <tr className="bg-blue-950 text-white">
+                <th className="sticky left-0 bg-blue-950 border p-2 w-auto">
+                  EMP
+                </th>
 
-                return (
-                  <div key={idx} className="bg-white rounded-xl shadow">
-                    <div className="bg-blue-950 p-4 text-white rounded-t-xl">
-                      <h2 className="font-bold text-lg">
-                        {employee.adviser_name}
-                      </h2>
-                      <p>Yearly Total: {yearlyTotal}</p>
-                    </div>
+                <th className="border p-1 min-w-[50px] ">Status</th>
 
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="bg-slate-100">
-                          <th>Month</th>
-                          {STATUSES.map((s) => (
-                            <th key={s}>{STATUS_LABELS[s]}</th>
-                          ))}
-                          <th>Total</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {displayMonths.map((month) => {
-                          const d = employee.months[month];
-                          return (
-                            <tr key={month}>
-                              <td className="font-semibold">{month}</td>
-                              {STATUSES.map((status) => (
-                                <td key={status}>
-                                  <span
-                                    className={`px-2 py-1 rounded ${STATUS_STYLE[status]}`}
-                                  >
-                                    {d?.[status] || 0}
-                                  </span>
-                                </td>
-                              ))}
-                              <td className="font-bold">{d?.total || 0}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            /* DAILY BREAKDOWN VIEW - Like distribution report */
-            <div className="bg-white rounded-xl shadow">
-              <div className="bg-blue-950 p-4 text-white rounded-t-xl">
-                <h2 className="font-bold text-xl">
-                  Daily Status Breakdown - {selectedMonth} {selectedYear}
-                </h2>
-                <p className="text-sm opacity-90">
-                  Status-wise distribution for all employees
-                </p>
-              </div>
+                {daysArray.map((day) => (
+                  <th key={day} className="border p-2 min-w-[50px]">
+                    {day}
+                  </th>
+                ))}
 
-              {dateWiseLoading ? (
-                <div className="flex justify-center py-20">
-                  <Loader2 className="animate-spin w-10 h-10" />
-                </div>
-              ) : !currentDateWiseData ? (
-                <div className="flex justify-center py-20">
-                  <p className="text-gray-500">No data available</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full border border-gray-400 border-separate border-spacing-0 text-sm">
-                    <thead>
-                      <tr className="bg-blue-950 text-white sticky top-0">
-                        <th className="border-r border-b border-gray-600 px-3 py-2 sticky left-0 bg-blue-950 min-w-[120px]">
-                          Employee
-                        </th>
-                        <th className="border-r border-b border-gray-600 px-3 py-2 min-w-[80px]">
-                          Status
-                        </th>
-                        {daysArray.map((day) => (
-                          <th
-                            key={day}
-                            className="border-r border-b border-gray-600 px-2 py-2 min-w-[50px]"
-                          >
-                            {day}
-                          </th>
-                        ))}
-                        <th className="border-b border-gray-600 px-3 py-2 min-w-[80px]">
-                          TOTAL
-                        </th>
-                      </tr>
-                    </thead>
+                <th className="border p-2 bg-amber-700">TOTAL</th>
+              </tr>
+            </thead>
 
-                    <tbody>
-                      {processedData.map((employee, empIndex) => {
-                        const colorIndex = empIndex % rowColors.length;
-                        const bgColor = rowColors[colorIndex];
-                        const employeeDailyData = getEmployeeDailyData(
-                          employee.adviser_name,
-                        );
-                        const employeeTotals =
-                          currentDateWiseData?.totals?.[
-                            employee.adviser_name
-                          ] || {};
+            <tbody>
+              {employees.length > 0 ? (
+                employees.map((employee, empIndex) => {
+                  const bgColor = rowColors[empIndex % rowColors.length];
 
-                        return (
-                          <React.Fragment key={employee.adviser_name}>
-                            {/* LEADS ROW (All statuses combined as one row per status) */}
-                            {STATUSES.map((status, statusIdx) => {
-                              const isFirstStatus = statusIdx === 0;
-                              const statusTotal = employeeTotals[status] || 0;
+                  const days = Array.isArray(employee?.days)
+                    ? employee.days
+                    : [];
 
-                              return (
-                                <tr
-                                  key={`${employee.adviser_name}-${status}`}
-                                  className={bgColor}
-                                >
-                                  {isFirstStatus && (
-                                    <td
-                                      rowSpan={STATUSES.length}
-                                      className={`border-r border-b border-gray-300 px-3 py-2 font-bold text-left sticky left-0 ${bgColor} min-w-[120px]`}
-                                    >
-                                      {employee.adviser_name}
-                                    </td>
-                                  )}
+                  const totals = employee?.totals || {};
 
-                                  <td
-                                    className={`border-r border-b border-gray-300 px-3 py-1 ${STATUS_STYLE[status]}`}
-                                  >
-                                    {STATUS_LABELS[status]}
-                                  </td>
-
-                                  {daysArray.map((day) => {
-                                    const dayData = employeeDailyData.find(
-                                      (d: any) =>
-                                        new Date(d.date).getDate() === day,
-                                    );
-                                    const value =
-                                      dayData?.statuses?.[status] || 0;
-                                    return (
-                                      <td
-                                        key={day}
-                                        className="border-r border-b border-gray-300 px-2 py-1 text-center"
-                                      >
-                                        {value > 0 ? value : "-"}
-                                      </td>
-                                    );
-                                  })}
-
-                                  <td
-                                    className={`border-b border-gray-300 px-3 py-1 text-center font-bold ${statusTotal > 0 ? "bg-amber-200" : ""}`}
-                                  >
-                                    {statusTotal || 0}
-                                  </td>
-                                </tr>
-                              );
-                            })}
-
-                            {/* Total Row for this employee */}
-                            <tr
-                              className={`${bgColor} border-b-2 border-gray-400`}
+                  return (
+                    <React.Fragment key={employee?.adviser_id}>
+                      {STATUSES.map((status, statusIdx) => (
+                        <tr
+                          key={`${employee?.adviser_id}-${status}`}
+                          className={bgColor}
+                        >
+                          {statusIdx === 0 && (
+                            <td
+                              rowSpan={STATUSES.length + 1}
+                              className={`sticky left-0 border font-bold ${bgColor} w-[35px] min-w-[35px] max-w-[35px] p-0 text-center align-middle`}
                             >
-                              <td
-                                colSpan={2}
-                                className="border-r border-b border-gray-300 px-3 py-2 font-bold text-right"
+                              <div
+                                className="flex items-center justify-center mx-auto font-extrabold text-base"
+                                style={{
+                                  writingMode: "vertical-rl",
+                                  transform: "rotate(180deg)",
+                                  whiteSpace: "nowrap",
+                                  lineHeight: "16px",
+                                  padding: "6px 0",
+                                  letterSpacing: "0.5px",
+                                }}
                               >
-                                TOTAL
-                              </td>
-                              {daysArray.map((day) => {
-                                const dayData = employeeDailyData.find(
-                                  (d: any) =>
-                                    new Date(d.date).getDate() === day,
-                                );
-                                const total = dayData?.total || 0;
-                                return (
-                                  <td
-                                    key={day}
-                                    className="border-r border-b border-gray-300 px-2 py-2 text-center font-bold bg-amber-100"
-                                  >
-                                    {total > 0 ? total : "-"}
-                                  </td>
-                                );
-                              })}
-                              <td className="border-b border-gray-300 px-3 py-2 text-center font-bold bg-amber-300">
-                                {employeeTotals.total || 0}
-                              </td>
-                            </tr>
-                          </React.Fragment>
-                        );
-                      })}
-                    </tbody>
+                                {employee?.adviser_name}
+                              </div>
+                            </td>
+                          )}
 
-                    {/* Grand Total Row */}
-                    {currentDateWiseData && (
-                      <tfoot>
-                        <tr className="bg-amber-600 text-white font-bold">
-                          <td
-                            colSpan={2}
-                            className="border-r border-gray-600 px-3 py-2 text-center"
-                          >
-                            GRAND TOTAL
+                          <td className={`border p-2 ${STATUS_STYLE[status]}`}>
+                            {STATUS_LABELS[status]}
                           </td>
-                          {daysArray.map((day) => {
-                            let dayTotal = 0;
-                            currentDateWiseData.dateWiseData.forEach(
-                              (item: any) => {
-                                if (new Date(item.date).getDate() === day) {
-                                  dayTotal += item.total || 0;
-                                }
-                              },
-                            );
+
+                          {daysArray.map((dayNo) => {
+                            const dayData =
+                              days.find((d: any) => d.day === dayNo) || {};
+
                             return (
                               <td
-                                key={day}
-                                className="border-r border-gray-600 px-2 py-2 text-center"
+                                key={dayNo}
+                                className="border text-center font-semibold"
                               >
-                                {dayTotal}
+                                {(dayData?.[status] || 0) > 0
+                                  ? dayData[status]
+                                  : "-"}
                               </td>
                             );
                           })}
-                          <td className="px-3 py-2 text-center">
-                            {Object.values(
-                              currentDateWiseData.totals || {},
-                            ).reduce(
-                              (sum: number, emp: any) => sum + (emp.total || 0),
-                              0,
-                            )}
+
+                          <td className="border text-center bg-amber-200 font-bold">
+                            {totals[status] || 0}
                           </td>
                         </tr>
-                      </tfoot>
-                    )}
-                  </table>
-                </div>
+                      ))}
+                      {/* TOTAL ROW */}
+                      <tr className="bg-amber-500 text-lg font-extrabold ">
+                        <td className="border text-center px-3 py-2">TOTAL</td>
+
+                        {daysArray.map((dayNo) => {
+                          const dayData =
+                            days.find((d: any) => d.day === dayNo) || {};
+
+                          return (
+                            <td
+                              key={dayNo}
+                              className="border text-center text-base font-semibold"
+                            >
+                              {(dayData?.total || 0) > 0 ? dayData.total : "-"}
+                            </td>
+                          );
+                        })}
+
+                        <td className="border bg-amber-300 text-center font-bold">
+                          {totals.total || 0}
+                        </td>
+                      </tr>
+                    </React.Fragment>
+                  );
+                })
+              ) : (
+                <tr>
+                  <td
+                    colSpan={daysArray.length + 3}
+                    className="text-center py-10 text-gray-500"
+                  >
+                    No Data Found
+                  </td>
+                </tr>
               )}
-            </div>
-          )}
-        </>
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

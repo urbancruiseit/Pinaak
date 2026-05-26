@@ -363,20 +363,28 @@ export const getMonthlyDateWiseStatusReport = async (cityIds, month, year) => {
   month = month || new Date().getMonth() + 1;
   year = year || new Date().getFullYear();
 
+  const totalDaysInMonth = new Date(year, month, 0).getDate();
+
   if (!cityIds || cityIds.length === 0) {
-    return { success: false, message: "No cities assigned" };
+    return {
+      success: false,
+      message: "No cities assigned",
+    };
   }
 
   const cityPlaceholders = cityIds.map(() => "?").join(",");
 
   // ---------------- GET TRAVEL ADVISORS ----------------
   const [advisors] = await hrmsPool.execute(
-    `SELECT 
-        u.id
+    `SELECT
+        u.id,
+        u.aliasName AS adviser_name
      FROM users u
-     INNER JOIN roles r ON u.role_id = r.id
-     INNER JOIN access_control ac ON ac.employee_id = u.id
-     INNER JOIN access_control_cities acc 
+     INNER JOIN roles r
+        ON u.role_id = r.id
+     INNER JOIN access_control ac
+        ON ac.employee_id = u.id
+     INNER JOIN access_control_cities acc
         ON acc.access_control_id = ac.id
      WHERE r.role_name = 'Travel Advisor'
        AND acc.city_id IN (${cityPlaceholders})
@@ -387,6 +395,8 @@ export const getMonthlyDateWiseStatusReport = async (cityIds, month, year) => {
   if (!advisors.length) {
     return {
       success: true,
+      month,
+      year,
       data: [],
       teamTotal: {},
     };
@@ -395,9 +405,10 @@ export const getMonthlyDateWiseStatusReport = async (cityIds, month, year) => {
   const advisorIds = advisors.map((a) => a.id);
   const advisorPlaceholders = advisorIds.map(() => "?").join(",");
 
-  // ---------------- DATE WISE QUERY ----------------
+  // ---------------- DATE + STATUS + ADVISOR QUERY ----------------
   const [rows] = await pool.execute(
     `SELECT
+        l.advisor_id,
         DAY(l.enquiryTime) AS day,
         l.status,
         COUNT(l.id) AS total
@@ -405,70 +416,121 @@ export const getMonthlyDateWiseStatusReport = async (cityIds, month, year) => {
      WHERE MONTH(l.enquiryTime) = ?
        AND YEAR(l.enquiryTime) = ?
        AND l.advisor_id IN (${advisorPlaceholders})
-     GROUP BY DAY(l.enquiryTime), l.status
-     ORDER BY DAY(l.enquiryTime) ASC`,
+     GROUP BY
+       l.advisor_id,
+       DAY(l.enquiryTime),
+       l.status
+     ORDER BY
+       l.advisor_id ASC,
+       DAY(l.enquiryTime) ASC`,
     [month, year, ...advisorIds],
   );
 
-  // ---------------- CREATE ALL DAYS ----------------
-  const totalDays = new Date(year, month, 0).getDate();
+  // ---------------- CREATE ADVISOR STRUCTURE ----------------
+  const adviserMap = {};
 
-  const map = {};
+  advisors.forEach((advisor) => {
+    adviserMap[advisor.id] = {
+      adviser_id: advisor.id,
+      adviser_name: advisor.adviser_name,
 
-  for (let i = 1; i <= totalDays; i++) {
-    map[i] = {
-      date: i,
-      new: 0,
-      kyc: 0,
-      rfq: 0,
-      hot: 0,
-      vehn: 0,
-      lost: 0,
-      book: 0,
-      blank: 0,
-      total: 0,
+      totals: {
+        new: 0,
+        kyc: 0,
+        rfq: 0,
+        hot: 0,
+        vehn: 0,
+        lost: 0,
+        book: 0,
+        blank: 0,
+        total: 0,
+      },
+
+      days: Array.from({ length: totalDaysInMonth }, (_, i) => ({
+        day: i + 1,
+        new: 0,
+        kyc: 0,
+        rfq: 0,
+        hot: 0,
+        vehn: 0,
+        lost: 0,
+        book: 0,
+        blank: 0,
+        total: 0,
+      })),
     };
-  }
+  });
 
   // ---------------- FILL DATA ----------------
   rows.forEach((r) => {
-    const item = map[r.day];
-    if (!item) return;
+    const adviser = adviserMap[r.advisor_id];
+
+    if (!adviser) return;
+
+    const dayIndex = r.day - 1;
+    const dayData = adviser.days[dayIndex];
 
     const status = r.status?.toUpperCase()?.trim();
+
     const count = Number(r.total);
 
-    if (status === "NEW") item.new += count;
-    else if (status === "KYC") item.kyc += count;
-    else if (status === "RFQ") item.rfq += count;
-    else if (status === "HOT") item.hot += count;
-    else if (status === "VEH-N" || status === "VEHN") item.vehn += count;
-    else if (status === "LOST") item.lost += count;
-    else if (status === "BOOK") item.book += count;
-    else if (status === "BLANK") item.blank += count;
+    if (status === "NEW") {
+      dayData.new += count;
+      adviser.totals.new += count;
+    } else if (status === "KYC") {
+      dayData.kyc += count;
+      adviser.totals.kyc += count;
+    } else if (status === "RFQ") {
+      dayData.rfq += count;
+      adviser.totals.rfq += count;
+    } else if (status === "HOT") {
+      dayData.hot += count;
+      adviser.totals.hot += count;
+    } else if (status === "VEH-N" || status === "VEHN") {
+      dayData.vehn += count;
+      adviser.totals.vehn += count;
+    } else if (status === "LOST") {
+      dayData.lost += count;
+      adviser.totals.lost += count;
+    } else if (status === "BOOK") {
+      dayData.book += count;
+      adviser.totals.book += count;
+    } else {
+      dayData.blank += count;
+      adviser.totals.blank += count;
+    }
 
-    item.total += count;
+    dayData.total += count;
+    adviser.totals.total += count;
   });
 
-  const data = Object.values(map);
+  // ---------------- FINAL DATA ----------------
+  const data = Object.values(adviserMap);
 
   // ---------------- TEAM TOTAL ----------------
   const teamTotal = {
-    new: data.reduce((s, r) => s + r.new, 0),
-    kyc: data.reduce((s, r) => s + r.kyc, 0),
-    rfq: data.reduce((s, r) => s + r.rfq, 0),
-    hot: data.reduce((s, r) => s + r.hot, 0),
-    vehn: data.reduce((s, r) => s + r.vehn, 0),
-    lost: data.reduce((s, r) => s + r.lost, 0),
-    book: data.reduce((s, r) => s + r.book, 0),
-    blank: data.reduce((s, r) => s + r.blank, 0),
-    total: data.reduce((s, r) => s + r.total, 0),
+    new: 0,
+    kyc: 0,
+    rfq: 0,
+    hot: 0,
+    vehn: 0,
+    lost: 0,
+    book: 0,
+    blank: 0,
+    total: 0,
   };
+
+  data.forEach((emp) => {
+    Object.keys(teamTotal).forEach((key) => {
+      teamTotal[key] += emp.totals[key] || 0;
+    });
+  });
 
   return {
     success: true,
     month,
     year,
+    totalDaysInMonth,
     data,
     teamTotal,
   };

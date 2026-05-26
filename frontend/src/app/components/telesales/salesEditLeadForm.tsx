@@ -914,8 +914,6 @@ const EditLeadForm: React.FC<{
                         <input
                           type="datetime-local"
                           {...register("pickupDateTime")}
-                          min={minDate}
-                          max={maxDate}
                           className="w-full bg-white py-2 pl-10 pr-3 border border-gray-300 rounded-md"
                         />
                         <Calendar

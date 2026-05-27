@@ -1085,13 +1085,12 @@ export default function DsrForm({
             </div>
           </div>
 
-          {/* ── 5 — Payment & Balance ────────────────────────────────────── */}
           <div className="border rounded-xl p-6 bg-pink-50">
             <h3 className="text-xl font-semibold text-pink-800 mb-6 pb-3 border-b">
               <span className="bg-pink-600 text-white px-3 py-1 rounded-md mr-2">
                 5
               </span>
-              Payment & Balance
+              TA Margin
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {selectField("paymentStatus", "Payment Status", [
@@ -1107,6 +1106,24 @@ export default function DsrForm({
               )}
               {field("rate", "Rate", "Rate", <DollarSign size={20} />)}
               {field("pay", "Pay", "Pay amount", <DollarSign size={20} />)}
+            </div>
+          </div>
+
+          {/* ── 6 — Payment & Balance ────────────────────────────────────── */}
+          <div className="border rounded-xl p-6 bg-pink-50">
+            <h3 className="text-xl font-semibold text-pink-800 mb-6 pb-3 border-b">
+              <span className="bg-pink-600 text-white px-3 py-1 rounded-md mr-2">
+                6
+              </span>
+              UC Margin
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              {selectField("paymentStatus", "Payment Status", [
+                { value: "Pending", label: "Pending" },
+                { value: "Partial", label: "Partial" },
+                { value: "Completed", label: "Completed" },
+              ])}
+
               {field(
                 "finalBalance",
                 "Final Balance",
@@ -1129,11 +1146,11 @@ export default function DsrForm({
             </div>
           </div>
 
-          {/* ── 6 — Remarks ──────────────────────────────────────────────── */}
+          {/* ── 7 — Remarks ──────────────────────────────────────────────── */}
           <div className="border rounded-xl p-6 bg-indigo-50">
             <h3 className="text-xl font-semibold text-indigo-800 mb-6 pb-3 border-b">
               <span className="bg-indigo-600 text-white px-3 py-1 rounded-md mr-2">
-                6
+                7
               </span>
               Remarks
             </h3>
@@ -1169,11 +1186,11 @@ export default function DsrForm({
             </div>
           </div>
 
-          {/* ── 7 — Account Remarks ───────────────────────────────────────── */}
+          {/* ── 8 — Account Remarks ───────────────────────────────────────── */}
           <div className="border rounded-xl p-6 bg-yellow-50">
             <h3 className="text-xl font-semibold text-yellow-800 mb-6 pb-3 border-b">
               <span className="bg-yellow-600 text-white px-3 py-1 rounded-md mr-2">
-                7
+                8
               </span>
               Account Remarks
             </h3>
@@ -1209,11 +1226,11 @@ export default function DsrForm({
             </div>
           </div>
 
-          {/* ── 8 — OFS Feedback ─────────────────────────────────────────── */}
+          {/* ── 9 — OFS Feedback ─────────────────────────────────────────── */}
           <div className="border rounded-xl p-6 bg-blue-50">
             <h3 className="text-xl font-semibold text-blue-800 mb-6 pb-3 border-b">
               <span className="bg-blue-600 text-white px-3 py-1 rounded-md mr-2">
-                8
+                9
               </span>
               Ofs Feedback
             </h3>

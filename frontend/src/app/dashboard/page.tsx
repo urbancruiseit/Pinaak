@@ -287,7 +287,7 @@ const masterTabs: MasterTab[] = [
   {
     key: "quotation-pdf",
     label: "Quotation PDF",
-    component: dynamic(() => import("../components/Master/quotationPdf"), {
+    component: dynamic(() => import("../components/pages/ratequation/list/quotationPdf"), {
       ssr: false,
       loading: LoadingPanel,
     }),

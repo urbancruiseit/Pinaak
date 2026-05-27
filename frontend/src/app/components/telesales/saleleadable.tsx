@@ -7,7 +7,7 @@ import SalesEditLeadForm from "../telesales/salesEditLeadForm";
 import type { LeadRecord } from "../../../types/types";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/app/redux/store";
-
+import RateQuotationModel from "../../components/pages/ratequation/list/rateQuotationModel";
 import Pagination from "../ui/pagination";
 import LeadDetailsModel from "../DetailModel/LeadModel/leadTabledetailsmodel";
 import {
@@ -30,7 +30,11 @@ import {
   type LeadColumn,
 } from "../../../types/LeadsTable/leadTableColumns";
 import { connectSocket } from "@/app/socket";
-import { listenToAdviserLeads, listenToLeadUpdated, removeLeadListeners } from "@/app/socket/leadsocket";
+import {
+  listenToAdviserLeads,
+  listenToLeadUpdated,
+  removeLeadListeners,
+} from "@/app/socket/leadsocket";
 
 const CITY_OPTIONS = [
   "Delhi",
@@ -98,6 +102,9 @@ export default function LeadsTable() {
   const daysBtnRef = useRef<HTMLButtonElement>(null);
   const daysDropdownRef = useRef<HTMLDivElement>(null);
   const paxDropdownRef = useRef<HTMLDivElement>(null);
+  const [rateQuotationLead, setRateQuotationLead] = useState<LeadRecord | null>(
+    null,
+  );
   const [paxDropdownStyle, setPaxDropdownStyle] = useState<React.CSSProperties>(
     {},
   );
@@ -277,21 +284,19 @@ export default function LeadsTable() {
     label: "Actions",
     render: (lead: LeadRecord) => (
       <div className="flex gap-1 justify-evenly">
+        {/* Rate Quotation Button */}
         <button
           onClick={(e) => {
             e.stopPropagation();
-            window.dispatchEvent(
-              new CustomEvent("rateQuotation", {
-                detail: { lead, action: "navigate" },
-              }),
-            );
+            setRateQuotationLead(lead);
           }}
           className="px-2 py-1 text-xs font-semibold text-white bg-green-600 rounded hover:bg-green-700 flex items-center justify-center"
-          title="Add Rate Quotation"
+          title="Rate Quotation"
         >
-          💰
+          💰{" "}
         </button>
 
+        {/* DSR Button */}
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -307,6 +312,7 @@ export default function LeadsTable() {
           <UserRoundPlus size={20} />
         </button>
 
+        {/* View Button */}
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -318,6 +324,8 @@ export default function LeadsTable() {
         >
           <Eye size={14} />
         </button>
+
+        {/* Edit Button */}
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -372,7 +380,6 @@ export default function LeadsTable() {
     if (freezeIndex === -1) setFreezeKey(null);
   }, [freezeIndex, freezeKey]);
 
-  // ─── DOM-measured column widths (for accurate sticky left offsets) ─────────
   const theadRef = useRef<HTMLTableSectionElement>(null);
   const [colWidths, setColWidths] = useState<number[]>([]);
 
@@ -1149,6 +1156,16 @@ export default function LeadsTable() {
             setIsDetailModalOpen(false);
             setTimeout(() => setDetailLead(null), 300);
           }}
+        />
+      )}
+
+      {/* Rate Quotation Modal */}
+      {/* Rate Quotation Modal */}
+      {rateQuotationLead && (
+        <RateQuotationModel
+          lead={rateQuotationLead}
+          isOpen={true}
+          onClose={() => setRateQuotationLead(null)}
         />
       )}
     </>

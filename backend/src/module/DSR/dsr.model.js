@@ -166,9 +166,6 @@ export const createDsr = async (payload) => {
     if (result.affectedRows === 0) {
       throw new Error("DSR creation failed");
     }
-
-    console.log("✅ DSR created with ID:", result.insertId);
-
     return {
       success: true,
       dsrId: result.insertId,

@@ -20,7 +20,12 @@ import {
 import Image from "next/image";
 import urbancruiselogo from "../../../../../../src/app/assets/urbanlogo.png";
 
-export default function QuotationPage() {
+interface QuotationPdfProps {
+  data: any;
+  onClose: () => void;
+}
+
+export default function QuotationPage({ data, onClose }: QuotationPdfProps) {
   return (
     <div className="max-w-5xl mx-auto my-8 bg-white border shadow-md rounded-lg overflow-hidden print:shadow-none print:my-0">
       {/* HEADER with Logo and Social Images */}

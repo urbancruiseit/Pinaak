@@ -13,6 +13,7 @@ import monthlyReducer from "../features/Reports/monthlyReport/monthlyReportSlice
 import websiteGacReducer from "../features/Website/WebsiteSlice";
 import dsrReducer from "../features/Dsr/dsrSlice";
 import downloadReducer from "../features/Download/downloadSlice";
+import rateReducer from "../features/Rate/rateSlice";
 
 export const store = configureStore({
   reducer: {
@@ -30,6 +31,7 @@ export const store = configureStore({
     websiteGac: websiteGacReducer,
     dsr: dsrReducer,
     download: downloadReducer,
+    rate: rateReducer,
   },
 });
 

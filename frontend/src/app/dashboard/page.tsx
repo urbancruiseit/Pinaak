@@ -159,8 +159,8 @@ const TimeEnquiryReportsModule = dynamic(
   { ssr: false, loading: LoadingPanel },
 );
 
-const DateEmployeeReportsModule = dynamic (
-   () => import("../components/pages/leads/Reports/EmployeeDateReport"),
+const DateEmployeeReportsModule = dynamic(
+  () => import("../components/pages/leads/Reports/EmployeeDateReport"),
   { ssr: false, loading: LoadingPanel },
 );
 const GACForm = dynamic(
@@ -287,10 +287,13 @@ const masterTabs: MasterTab[] = [
   {
     key: "quotation-pdf",
     label: "Quotation PDF",
-    component: dynamic(() => import("../components/pages/ratequation/list/quotationPdf"), {
-      ssr: false,
-      loading: LoadingPanel,
-    }),
+    component: dynamic(
+      () => import("../components/pages/ratequation/list/quotation"),
+      {
+        ssr: false,
+        loading: LoadingPanel,
+      },
+    ),
   },
   {
     key: "country-code",
@@ -715,7 +718,7 @@ export default function DashboardPage() {
         );
       }
 
-      if (showDateEmployeeReports)  {
+      if (showDateEmployeeReports) {
         return (
           <div className="space-y-6">
             <DateEmployeeReportsModule />

@@ -174,18 +174,14 @@ export const timeEnquiryReport = async (req, res) => {
   }
 };
 
-
-export const getMonthlyDateWiseStatusReportController =
-  asyncHandler(async (req, res) => {
+export const getMonthlyDateWiseStatusReportController = asyncHandler(
+  async (req, res) => {
     const { month, year } = req.query;
     const user = req.user;
 
     let cityIds = [];
 
-    if (
-      user.subDepartment === "Tele-Sales" &&
-      user.role === "City Manager"
-    ) {
+    if (user.subDepartment === "Tele-Sales" && user.role === "City Manager") {
       const zoneIds = user.zone_ids ?? [];
 
       if (!zoneIds.length) {
@@ -208,15 +204,15 @@ export const getMonthlyDateWiseStatusReportController =
       cityIds = user.city_ids ?? [];
     }
 
-    const result =
-      await getMonthlyDateWiseStatusReport(
-        cityIds,
-        month ? Number(month) : undefined,
-        year ? Number(year) : undefined,
-      );
+    const result = await getMonthlyDateWiseStatusReport(
+      cityIds,
+      month ? Number(month) : undefined,
+      year ? Number(year) : undefined,
+    );
 
     return res.status(200).json({
       success: true,
       data: result,
     });
-  });
+  },
+);

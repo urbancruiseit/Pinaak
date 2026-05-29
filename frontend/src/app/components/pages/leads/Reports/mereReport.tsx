@@ -14,6 +14,7 @@ const getFirstDayOfMonth = (year: number, month: number) => {
   return new Date(year, month, 1).getDay();
 };
 
+// Month order starting from April (Financial Year)
 const MONTH_NAMES = [
   "APR",
   "MAY",
@@ -29,12 +30,49 @@ const MONTH_NAMES = [
   "MAR",
 ];
 
+// Mapping from month name to actual month number (1-12)
+const MONTH_NAME_TO_NUMBER: { [key: string]: number } = {
+  APR: 4,
+  MAY: 5,
+  JUN: 6,
+  JUL: 7,
+  AUG: 8,
+  SEP: 9,
+  OCT: 10,
+  NOV: 11,
+  DEC: 12,
+  JAN: 1,
+  FEB: 2,
+  MAR: 3,
+};
+
+// Mapping from month name to 0-based index for Date object (FIXED)
+const MONTH_NAME_TO_INDEX: { [key: string]: number } = {
+  APR: 3, // April = month 3 (0-based)
+  MAY: 4, // May = month 4 (0-based)
+  JUN: 5, // June = month 5 (0-based)
+  JUL: 6, // July = month 6 (0-based)
+  AUG: 7, // August = month 7 (0-based)
+  SEP: 8, // September = month 8 (0-based)
+  OCT: 9, // October = month 9 (0-based)
+  NOV: 10, // November = month 10 (0-based)
+  DEC: 11, // December = month 11 (0-based)
+  JAN: 0, // January = month 0 (0-based)
+  FEB: 1, // February = month 1 (0-based)
+  MAR: 2, // March = month 2 (0-based)
+};
+
 const getMonthsData = (year: number) => {
-  return MONTH_NAMES.map((name, index) => ({
-    name,
-    days: getDaysInMonth(year, index),
-    firstDay: getFirstDayOfMonth(year, index),
-  }));
+  return MONTH_NAMES.map((name) => {
+    const monthIndex = MONTH_NAME_TO_INDEX[name];
+    const days = getDaysInMonth(year, monthIndex);
+    return {
+      name,
+      monthNumber: MONTH_NAME_TO_NUMBER[name],
+      days: days,
+      firstDay: getFirstDayOfMonth(year, monthIndex),
+    };
+  });
 };
 
 function getMonthColorClass(monthName: string): string {
@@ -42,7 +80,6 @@ function getMonthColorClass(monthName: string): string {
   if (["JUL", "AUG", "SEP", "OCT"].includes(monthName)) return "bg-cyan-300";
   if (["NOV", "DEC", "JAN"].includes(monthName)) return "bg-green-300";
   if (["FEB", "MAR"].includes(monthName)) return "bg-cyan-300";
-
   return "";
 }
 
@@ -51,14 +88,13 @@ const now = new Date();
 const CURRENT_YEAR = now.getFullYear();
 const CURRENT_MONTH = MONTH_NAMES[now.getMonth()];
 
-// Year range: 2 pehle se 2 baad tak
+// Year range: 2 years before to 2 years after
 const YEAR_OPTIONS = Array.from({ length: 5 }, (_, i) =>
   (CURRENT_YEAR - 2 + i).toString(),
 );
 
 export default function MonthlyEnquiryReport() {
   const [year, setYear] = useState(CURRENT_YEAR.toString());
-  const [selectedMonth, setSelectedMonth] = useState(CURRENT_MONTH);
 
   const dispatch = useDispatch<AppDispatch>();
 
@@ -68,27 +104,30 @@ export default function MonthlyEnquiryReport() {
     loading,
     error,
   } = useSelector((s: RootState) => s.report);
+
   // ─── Fetch on year change ──────────────────────────────────
   useEffect(() => {
     dispatch(fetchMonthlyEnquiry(Number(year)));
   }, [year, dispatch]);
+
   // ─── Process data ──────────────────────────────────────────
   const reportData = useMemo(() => {
     const monthsData = getMonthsData(Number(year));
 
-    return monthsData.map((month, index) => {
-      const monthNumber = index + 4;
+    return monthsData.map((month) => {
       const dailyData = Array(month.days).fill(0);
 
       if (apiData && apiData.length > 0) {
         apiData.forEach((item) => {
-          if (item.month === monthNumber && item.day <= month.days) {
+          // Use monthNumber from the mapping instead of index+4
+          if (item.month === month.monthNumber && item.day <= month.days) {
             dailyData[item.day - 1] = item.total;
           }
         });
       }
+
       const total = dailyData.reduce((a: number, b: number) => a + b, 0);
-      const avg = Math.round(total / month.days);
+      const avg = month.days > 0 ? Math.round(total / month.days) : 0;
 
       return { ...month, dailyData, total, avg };
     });
@@ -153,7 +192,7 @@ export default function MonthlyEnquiryReport() {
       </div>
 
       {/* ── No Data Warning ── */}
-      {apiData.length === 0 && !loading && (
+      {(!apiData || apiData.length === 0) && !loading && (
         <div className="mb-4 bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-center text-yellow-700 font-medium">
           ⚠️ No data found for year {year}
         </div>
@@ -209,7 +248,7 @@ export default function MonthlyEnquiryReport() {
 
                   {[...Array(31 - month.days)].map((_, i) => (
                     <td
-                      key={i}
+                      key={`empty-${i}`}
                       className={`border border-gray-600 p-1 ${monthColor}`}
                     />
                   ))}
@@ -225,7 +264,6 @@ export default function MonthlyEnquiryReport() {
               );
             })}
 
-            {/* ── Grand Total Row ── */}
             {/* ── Grand Total Row ── */}
             <tr className="bg-yellow-200 text-black font-bold text-lg">
               <td className="border border-gray-600 p-2 text-xl">TOTAL</td>

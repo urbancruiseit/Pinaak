@@ -5,7 +5,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/app/redux/store";
 import { fetchAllRateQuotation } from "@/app/features/Rate/rateSlice";
 import RateQuotationModel from "./rateQuotationModel";
-import QuotationPdf from "./quotationPdf";
+import QuotationPdf from "./quotation";
 import {
   Search,
   RefreshCw,

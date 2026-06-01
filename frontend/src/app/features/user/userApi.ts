@@ -30,8 +30,12 @@ export const currentUser = async (): Promise<User> => {
 
     return response.data.data;
   } catch (error: any) {
-    console.error("Current user error:", error.response?.data || error.message);
-    throw new Error(error.response?.data?.message || "Unauthorized");
+    const status = error?.response?.status;
+    if (status !== 401) {
+      const detail = error?.response?.data?.message ?? error?.message ?? JSON.stringify(error);
+      console.warn("Current user check failed:", detail);
+    }
+    throw new Error(error?.response?.data?.message ?? error?.message ?? "Unauthorized");
   }
 };
 

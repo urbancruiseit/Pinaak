@@ -436,8 +436,8 @@ const Empreport = () => {
                             Total: {empYearlyTotal}
                           </span>
                           <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-md">
-                            <span className="text-green-700 text-[14px] font-extrabold leading-tight text-center">
-                              {bookingPercent}%
+                            <span className="text-green-700 text-[16px] font-extrabold leading-tight text-center">
+                              {bookingPercent} %
                             </span>
                           </div>
                         </div>
@@ -497,12 +497,12 @@ const Empreport = () => {
                         >
                           BK
                         </th>
-                        <th className="px-0.5 py-1.5 text-center text-slate-600 font-semibold text-[13px]">
+                        <th className="px-0.5 py-1.5 text-center text-slate-600 font-semibold text-[14px]">
                           TTL
                         </th>
-                        <th className="px-0.5 py-1.5 text-center text-slate-600 font-semibold text-[13px] relative group cursor-help overflow-visible">
+                        <th className="px-0.5 py-1.5 text-center text-slate-600 font-semibold text-[16px] relative group cursor-help overflow-visible">
                           %
-                          <div className="absolute hidden group-hover:flex z-[999] bottom-full left-1/2 -translate-x-1/2 mb-2 bg-gray-800 text-white text-[11px] rounded px-2 py-1 whitespace-nowrap shadow-lg flex-col items-center">
+                          <div className="absolute hidden group-hover:flex z-[999] bottom-full left-1/2 -translate-x-1/2 mb-2 bg-gray-800 text-white text-[16px] rounded px-2 py-1 whitespace-nowrap shadow-lg flex-col items-center">
                             <span>(BK ÷ TTL) × 100</span>
                             <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800" />
                           </div>
@@ -565,10 +565,10 @@ const Empreport = () => {
                             >
                               {d?.book || "-"}
                             </td>
-                            <td className="px-0.5 py-1 text-center text-[13px] font-bold text-emerald-600">
+                            <td className="px-0.5 py-1 text-center text-[16px] font-bold text-emerald-600">
                               {monthTotal === 0 ? "-" : monthTotal}
                             </td>
-                            <td className="px-0.5 py-1 text-center text-[13px] font-bold text-green-900">
+                            <td className="px-0.5 py-1 text-center text-[16px] font-bold text-green-900">
                               {monthContrib === 0 ? "-" : `${monthContrib}%`}
                             </td>
                           </tr>

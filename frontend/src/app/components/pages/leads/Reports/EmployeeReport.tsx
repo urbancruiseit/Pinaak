@@ -304,11 +304,11 @@ const Empreport = () => {
         <div className="grid grid-cols-12 gap-3 mb-4">
           {/* Total Leads - chota col */}
           <div className="col-span-2 bg-white rounded-lg shadow-md border border-slate-100 p-3 flex gap-3">
-            <div className="p-1.5 bg-blue-600 rounded-md self-start">
+            <div className="p-1.5 bg-green-700 rounded-md self-start">
               <TrendingUp className="w-4 h-4 text-white" />
             </div>
             <div>
-              <p className="text-xs text-slate-500">Total Leads</p>
+              <p className="text-md text-slate-500">Total Leads</p>
               <p className="text-xl font-bold text-slate-800">
                 {summary.totalLeads.toLocaleString()}
               </p>

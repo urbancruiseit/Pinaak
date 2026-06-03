@@ -12,6 +12,10 @@ export const getSocket = (): Socket => {
       upgrade: false,
       withCredentials: true,
       autoConnect: false,
+
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 3000,
     });
 
     socket.on("connect_error", (err) => {

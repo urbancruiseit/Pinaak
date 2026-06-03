@@ -115,7 +115,6 @@ export interface TimeEnquiryResponse {
 }
 // ─── Error Handler ───────────────────────────────────────────────────
 
-
 const handleAxiosError = (error: any, context: string): never => {
   console.error(`❌ [${context}] Error:`, {
     message: error.message,
@@ -141,20 +140,24 @@ const handleAxiosError = (error: any, context: string): never => {
 };
 
 // ─── APIs ────────────────────────────────────────────────────────────
-
 export const getMonthlyEnquiryApi = async (
   year: number,
 ): Promise<MonthlyEnquiryResponse> => {
   try {
-    const { data: res } = await axiosInstance.get<MonthlyEnquiryResponse>(
+    const response = await axiosInstance.get<MonthlyEnquiryResponse>(
       "/reports/monthly-enquiry",
       { params: { year }, timeout: 10000 },
     );
 
+    // Backend structure:
+    // response.data = { statusCode, success, message, data: { year, data: [...] } }
+    const res = response.data;
+    const payload = res.data;
+
     return {
       success: res.success,
-      year: res.year ?? year,
-      data: Array.isArray(res.data) ? res.data : [],
+      year: payload.year ?? year,
+      data: Array.isArray(payload.data) ? payload.data : [],
     };
   } catch (error) {
     throw handleAxiosError(error, "getMonthlyEnquiryApi");

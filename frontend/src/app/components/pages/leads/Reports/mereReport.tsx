@@ -122,7 +122,7 @@ export default function MonthlyEnquiryReport() {
 
       const total = dailyData.reduce((a: number, b: number) => a + b, 0);
 
-      // ── AVG: sirf un dino se divide karo jisme data aaya (non-zero days) ──
+      // AVG: sirf data wale dino se divide
       const activeDays = dailyData.filter((v: number) => v > 0).length;
       const avg = activeDays > 0 ? Math.round(total / activeDays) : 0;
 
@@ -131,6 +131,16 @@ export default function MonthlyEnquiryReport() {
   }, [apiData, year]);
 
   const grandTotal = reportData.reduce((acc, m) => acc + m.total, 0);
+
+  // ── Grand AVG: sirf un months ka average jisme koi data aaya ho ──
+  // Formula: un months ke avg ka average jinka total > 0
+  const activeMonths = reportData.filter((m) => m.total > 0);
+  const grandAvg =
+    activeMonths.length > 0
+      ? Math.round(
+          activeMonths.reduce((sum, m) => sum + m.avg, 0) / activeMonths.length,
+        )
+      : 0;
 
   if (loading) {
     return (
@@ -269,13 +279,9 @@ export default function MonthlyEnquiryReport() {
                     const highValue = value > 50;
 
                     let cellBg = "";
-                    if (sunday && highValue) {
-                      cellBg = "!bg-orange-200";
-                    } else if (highValue) {
-                      cellBg = "!bg-orange-400";
-                    } else if (sunday) {
-                      cellBg = "!bg-red-200";
-                    }
+                    if (sunday && highValue) cellBg = "!bg-orange-200";
+                    else if (highValue) cellBg = "!bg-orange-400";
+                    else if (sunday) cellBg = "!bg-red-200";
 
                     return (
                       <td
@@ -301,7 +307,6 @@ export default function MonthlyEnquiryReport() {
                     );
                   })}
 
-                  {/* Empty cells for months < 31 days */}
                   {[...Array(31 - month.days)].map((_, i) => (
                     <td
                       key={`empty-${i}`}
@@ -313,9 +318,8 @@ export default function MonthlyEnquiryReport() {
                     {month.total}
                   </td>
 
-                  {/* AVG: total ÷ sirf data wale din */}
                   <td className="border border-gray-600 p-2 bg-amber-200 font-bold text-red-800 text-xl">
-                    {month.avg}
+                    {month.avg > 0 ? month.avg : ""}
                   </td>
                 </tr>
               );
@@ -347,7 +351,10 @@ export default function MonthlyEnquiryReport() {
                 {grandTotal}
               </td>
 
-              <td className="border border-gray-600 p-2 text-xl font-bold text-red-700" />
+              {/* ── Grand AVG: active months ke avg ka average ── */}
+              <td className="border border-gray-600 p-2 text-2xl font-extrabold text-red-700">
+                {grandAvg > 0 ? grandAvg : ""}
+              </td>
             </tr>
           </tbody>
         </table>

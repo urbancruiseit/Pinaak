@@ -8,14 +8,23 @@ let socket: Socket | null = null;
 export const getSocket = (): Socket => {
   if (!socket) {
     socket = io(SOCKET_URL, {
-      transports: ["polling"],
+      transports: ["websocket"], // ✅ FIXED: polling → websocket
       upgrade: false,
       withCredentials: true,
       autoConnect: false,
+
+      // ✅ Reconnection settings — bar bar connect na kare
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 2000,
     });
 
     socket.on("connect_error", (err) => {
       console.error("⚠️ Socket error:", err.message);
+    });
+
+    socket.on("disconnect", (reason) => {
+      console.warn("🔌 Socket disconnected:", reason);
     });
   }
 
@@ -23,10 +32,8 @@ export const getSocket = (): Socket => {
 };
 
 export const connectSocket = (user?: any) => {
-  // ✅ SAFETY
   if (!user?.id) {
     console.log("❌ Invalid user for socket");
-
     return;
   }
 
@@ -41,11 +48,8 @@ export const connectSocket = (user?: any) => {
       id: user.id,
       fullName: user.fullName,
       role_id: user.role_id,
-
       region_ids: user.region_ids || [],
-
       zone_ids: user.zone_ids || [],
-
       city_ids: user.city_ids || [],
     });
 

@@ -5,6 +5,9 @@ let io;
 
 export const initSocket = (server) => {
   io = new Server(server, {
+    // ✅ FIXED: WebSocket force kiya — polling band
+    transports: ["websocket"],
+
     cors: {
       origin: (process.env.CORS_ORIGIN || "http://localhost:3000")
         .split(",")
@@ -12,15 +15,24 @@ export const initSocket = (server) => {
       credentials: true,
       methods: ["GET", "POST"],
     },
+
+    // ✅ Performance settings
+    pingTimeout: 60000, // 60s — connection jaldi band na ho
+    pingInterval: 25000, // 25s — ping interval
   });
 
   io.on("connection", (socket) => {
-    console.log("🟢 User Connected:", socket.id);
+    console.log(
+      "🟢 User Connected:",
+      socket.id,
+      "| Transport:",
+      socket.conn.transport.name,
+    );
 
     registerSocketEvents(socket, io);
 
-    socket.on("disconnect", () => {
-      console.log("🔴 User Disconnected:", socket.id);
+    socket.on("disconnect", (reason) => {
+      console.log("🔴 User Disconnected:", socket.id, "| Reason:", reason);
     });
   });
 };

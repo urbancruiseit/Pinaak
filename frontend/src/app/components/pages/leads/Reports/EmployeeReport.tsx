@@ -232,7 +232,15 @@ const Empreport = () => {
       (sum, emp) => sum + yearSum(emp, "total"),
       0,
     );
-    const avgPerEmployee = Math.round(totalLeads / (processedData.length || 1));
+
+    // ✅ Jinme koi bhi data aaya ho unhi months ka avg
+    const activeMonths = ALL_MONTHS.filter((m) =>
+      processedData.some((emp) => emp.months[m]?.total !== "-"),
+    ).length;
+
+    const avgPerMonth =
+      activeMonths > 0 ? Math.round(totalLeads / activeMonths) : 0;
+
     // ✅ Top performer = sabse zyada bookings wala
     const topPerformer = processedData.reduce(
       (best, emp) => {
@@ -242,7 +250,8 @@ const Empreport = () => {
       },
       { name: "", total: 0 },
     );
-    return { totalLeads, avgPerEmployee, topPerformer };
+
+    return { totalLeads, avgPerMonth, topPerformer };
   };
 
   const summary = getSummaryStats();
@@ -292,10 +301,11 @@ const Empreport = () => {
 
       {/* SUMMARY CARDS */}
       {!loading && processedData.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-          <div className="bg-white rounded-lg shadow-md border border-slate-100 p-3 flex items-center gap-3">
-            <div className="p-2 bg-emerald-100 rounded-lg">
-              <TrendingUp className="w-5 h-5 text-blue-950" />
+        <div className="grid grid-cols-12 gap-3 mb-4">
+          {/* Total Leads - chota col */}
+          <div className="col-span-2 bg-white rounded-lg shadow-md border border-slate-100 p-3 flex gap-3">
+            <div className="p-1.5 bg-blue-600 rounded-md self-start">
+              <TrendingUp className="w-4 h-4 text-white" />
             </div>
             <div>
               <p className="text-xs text-slate-500">Total Leads</p>
@@ -304,30 +314,71 @@ const Empreport = () => {
               </p>
             </div>
           </div>
-          <div className="bg-white rounded-lg shadow-md border border-slate-100 p-3 flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <Users className="w-5 h-5 text-blue-600" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500">Avg per Employee</p>
-              <p className="text-xl font-bold text-slate-800">
-                {summary.avgPerEmployee}
-              </p>
+
+          {/* Avg per Month - bara col, ek hi row */}
+          <div className="col-span-7 bg-white rounded-lg shadow-md border border-slate-100 p-3">
+            <p className="text-md text-slate-500 mb-1">Month wise Leads</p>
+            <div className="flex flex-nowrap gap-x-2 overflow-x-auto items-center">
+              {ALL_MONTHS.map((m, idx) => {
+                const monthTotal = processedData.reduce((sum, emp) => {
+                  const val = emp.months[m]?.total;
+                  return sum + (val !== "-" ? Number(val) : 0);
+                }, 0);
+                return (
+                  <React.Fragment key={m}>
+                    <span className="text-[15px] whitespace-nowrap">
+                      <span className="text-black font-bold">{m}</span>
+                      <span className="text-black font-bold">- </span>
+                      <span className="text-green-800 font-bold">
+                        {monthTotal}
+                      </span>
+                    </span>
+                    {idx < ALL_MONTHS.length - 1 && (
+                      <span className="text-slate-700 font-light text-[18px]">
+                        |
+                      </span>
+                    )}
+                  </React.Fragment>
+                );
+              })}
             </div>
           </div>
-          <div className="bg-white rounded-lg shadow-md border border-slate-100 p-3 flex items-center gap-3">
-            <div className="p-2 bg-amber-100 rounded-lg">
-              <Calendar className="w-5 h-5 text-amber-600" />
-            </div>
-            <div>
-              <p className="text-xs text-slate-500">Top Performer</p>
-              <p className="text-base font-bold text-slate-800 truncate">
-                {capitalizeName(summary.topPerformer.name) || "—"}
-              </p>
-              {/* ✅ leads → bookings */}
-              <p className="text-xs text-green-900">
-                {summary.topPerformer.total} bookings
-              </p>
+
+          {/* Top Performers - 1st 2nd 3rd */}
+          <div className="col-span-3 bg-white rounded-lg shadow-md border border-slate-100 p-3">
+            <p className="text-md text-slate-500 mb-2">Top Performers</p>
+            <div className="flex items-center justify-between gap-2">
+              {processedData
+                .map((emp) => ({
+                  name: emp.adviser_name,
+                  book: yearSum(emp, "book"),
+                }))
+                .sort((a, b) => b.book - a.book)
+                .slice(0, 3)
+                .map((emp, idx) => {
+                  const medals = ["🥇", "🥈", "🥉"];
+                  const textColors = [
+                    "text-yellow-700",
+                    "text-slate-600",
+                    "text-amber-700",
+                  ];
+                  return (
+                    <div
+                      key={idx}
+                      className="flex-1 flex flex-col items-center gap-0.5"
+                    >
+                      <span className="text-[16px]">{medals[idx]}</span>
+                      <span
+                        className={`text-[15px] font-bold ${textColors[idx]} text-center truncate w-full`}
+                      >
+                        {capitalizeName(emp.name)}
+                      </span>
+                      <span className="text-[13px] font-extrabold text-green-800">
+                        {emp.book} BK
+                      </span>
+                    </div>
+                  );
+                })}
             </div>
           </div>
         </div>
@@ -384,14 +435,13 @@ const Empreport = () => {
                           <span className="text-emerald-100 text-md font-semibold whitespace-nowrap">
                             Total: {empYearlyTotal}
                           </span>
-                          <span className="text-emerald-100 text-md">
-                            | {bookingPercent}% booking
-                          </span>
+                          <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-md">
+                            <span className="text-green-700 text-[14px] font-extrabold leading-tight text-center">
+                              {bookingPercent}%
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="w-7 h-7 bg-white/20 rounded-full flex items-center justify-center ml-2">
-                      <Users className="w-3.5 h-3.5 text-white" />
                     </div>
                   </div>
                   <div className="mt-2 h-1 bg-white/20 rounded-full overflow-hidden">
@@ -450,11 +500,10 @@ const Empreport = () => {
                         <th className="px-0.5 py-1.5 text-center text-slate-600 font-semibold text-[13px]">
                           TTL
                         </th>
-                        {/* ✅ Tooltip on % heading */}
-                        <th className="px-0.5 py-1.5 text-center text-slate-600 font-semibold text-[13px] relative group cursor-help">
+                        <th className="px-0.5 py-1.5 text-center text-slate-600 font-semibold text-[13px] relative group cursor-help overflow-visible">
                           %
-                          <div className="absolute hidden group-hover:block z-50 bottom-full left-1/2 -translate-x-1/2 mb-1 bg-gray-800 text-white text-[11px] rounded px-2 py-1 whitespace-nowrap shadow-lg">
-                            (BK ÷ TTL) × 100
+                          <div className="absolute hidden group-hover:flex z-[999] bottom-full left-1/2 -translate-x-1/2 mb-2 bg-gray-800 text-white text-[11px] rounded px-2 py-1 whitespace-nowrap shadow-lg flex-col items-center">
+                            <span>(BK ÷ TTL) × 100</span>
                             <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800" />
                           </div>
                         </th>

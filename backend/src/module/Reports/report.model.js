@@ -271,8 +271,8 @@ export const getMonthlyStatusWiseReport = async (cityIds, month, year) => {
         COUNT(l.id) AS total
      FROM leads l
      WHERE 
-        MONTH(l.enquiryTime) = ?
-        AND YEAR(l.enquiryTime) = ?
+        MONTH(l.pickupDateTime) = ?
+        AND YEAR(l.pickupDateTime) = ?
         AND l.advisor_id IN (${advisorPlaceholders})
      GROUP BY l.advisor_id, l.status`,
     [month, year, ...advisorIds],

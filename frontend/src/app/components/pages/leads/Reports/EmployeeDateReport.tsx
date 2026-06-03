@@ -50,14 +50,14 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_STYLE: Record<string, string> = {
-  new: "text-emerald-700 bg-emerald-50",
-  kyc: "text-blue-700 bg-blue-50",
-  rfq: "text-purple-700 bg-purple-50",
-  hot: "text-red-700 bg-red-50",
-  vehn: "text-amber-700 bg-amber-50",
-  lost: "text-gray-700 bg-gray-50",
-  book: "text-indigo-700 bg-indigo-50",
-  blank: "text-slate-700 bg-slate-50",
+  new: "text-white bg-blue-400",
+  kyc: "text-white bg-orange-600",
+  rfq: "text-white bg-blue-600",
+  hot: "text-white bg-purple-600",
+  vehn: "text-white bg-[#2c1332]",
+  lost: "text-white bg-red-500",
+  book: "text-white bg-green-600",
+  blank: "text-white bg-slate-600",
 };
 
 const rowColors = [
@@ -124,7 +124,7 @@ const Empreport = () => {
         <div className="sticky top-0 z-10 bg-orange-100 p-3 rounded-md">
           <div className="pl-4 border-l-8 border-orange-500 bg-white px-3 rounded-md shadow-md">
             <h2 className="text-4xl font-bold text-left py-4 text-orange-600 p-2">
-              Employee Performance Report -{selectedMonth} {selectedYear}
+              Employee Performance PS -{selectedMonth} {selectedYear}
             </h2>
           </div>
         </div>

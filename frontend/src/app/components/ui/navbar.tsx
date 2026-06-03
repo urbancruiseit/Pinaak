@@ -844,7 +844,19 @@ export function Navbar({
                                   className="px-3 py-2.5 md:py-2 text-sm transition-all hover:bg-green-50 hover:text-green-700 hover:pl-4 cursor-pointer text-gray-700 flex items-center gap-2"
                                 >
                                   <span className="w-1 h-1 rounded-full bg-green-300"></span>
-                                  Employee Reports (EPR)
+                                  Employee Performance - TS (EP-TS)
+                                </li>
+
+                                <li
+                                  onClick={() => {
+                                    onDateEmployeeReports?.();
+                                    setOpenMenu(null);
+                                    setMobileOpen(false);
+                                  }}
+                                  className="px-3 py-2.5 md:py-2 text-sm transition-all hover:bg-green-50 hover:text-green-700 hover:pl-4 cursor-pointer text-gray-700 flex items-center gap-2"
+                                >
+                                  <span className="w-1 h-1 rounded-full bg-green-300"></span>
+                                  Employee Performance - PS (EP-PS)
                                 </li>
 
                                 <li
@@ -857,18 +869,6 @@ export function Navbar({
                                 >
                                   <span className="w-1 h-1 rounded-full bg-green-300"></span>
                                   Time Enquiry Reports (TER)
-                                </li>
-
-                                  <li
-                                  onClick={() => {
-                                    onDateEmployeeReports?.();
-                                    setOpenMenu(null);
-                                    setMobileOpen(false);
-                                  }}
-                                  className="px-3 py-2.5 md:py-2 text-sm transition-all hover:bg-green-50 hover:text-green-700 hover:pl-4 cursor-pointer text-gray-700 flex items-center gap-2"
-                                >
-                                  <span className="w-1 h-1 rounded-full bg-green-300"></span>
-                                 Date Employee Reports (DER)
                                 </li>
                               </ul>
                             )}

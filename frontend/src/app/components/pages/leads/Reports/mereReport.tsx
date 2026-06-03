@@ -14,7 +14,6 @@ const getFirstDayOfMonth = (year: number, month: number) => {
   return new Date(year, month, 1).getDay();
 };
 
-// Month order starting from April (Financial Year)
 const MONTH_NAMES = [
   "APR",
   "MAY",
@@ -30,7 +29,6 @@ const MONTH_NAMES = [
   "MAR",
 ];
 
-// Mapping from month name to actual month number (1-12)
 const MONTH_NAME_TO_NUMBER: { [key: string]: number } = {
   APR: 4,
   MAY: 5,
@@ -46,20 +44,19 @@ const MONTH_NAME_TO_NUMBER: { [key: string]: number } = {
   MAR: 3,
 };
 
-// Mapping from month name to 0-based index for Date object (FIXED)
 const MONTH_NAME_TO_INDEX: { [key: string]: number } = {
-  APR: 3, // April = month 3 (0-based)
-  MAY: 4, // May = month 4 (0-based)
-  JUN: 5, // June = month 5 (0-based)
-  JUL: 6, // July = month 6 (0-based)
-  AUG: 7, // August = month 7 (0-based)
-  SEP: 8, // September = month 8 (0-based)
-  OCT: 9, // October = month 9 (0-based)
-  NOV: 10, // November = month 10 (0-based)
-  DEC: 11, // December = month 11 (0-based)
-  JAN: 0, // January = month 0 (0-based)
-  FEB: 1, // February = month 1 (0-based)
-  MAR: 2, // March = month 2 (0-based)
+  APR: 3,
+  MAY: 4,
+  JUN: 5,
+  JUL: 6,
+  AUG: 7,
+  SEP: 8,
+  OCT: 9,
+  NOV: 10,
+  DEC: 11,
+  JAN: 0,
+  FEB: 1,
+  MAR: 2,
 };
 
 const getMonthsData = (year: number) => {
@@ -69,7 +66,7 @@ const getMonthsData = (year: number) => {
     return {
       name,
       monthNumber: MONTH_NAME_TO_NUMBER[name],
-      days: days,
+      days,
       firstDay: getFirstDayOfMonth(year, monthIndex),
     };
   });
@@ -83,12 +80,13 @@ function getMonthColorClass(monthName: string): string {
   return "";
 }
 
-// ─── Current year & month (dynamic) ───────────────────────
+const isSunday = (year: number, monthIndex: number, day: number): boolean => {
+  return new Date(year, monthIndex, day).getDay() === 0;
+};
+
 const now = new Date();
 const CURRENT_YEAR = now.getFullYear();
-const CURRENT_MONTH = MONTH_NAMES[now.getMonth()];
 
-// Year range: 2 years before to 2 years after
 const YEAR_OPTIONS = Array.from({ length: 5 }, (_, i) =>
   (CURRENT_YEAR - 2 + i).toString(),
 );
@@ -98,19 +96,16 @@ export default function MonthlyEnquiryReport() {
 
   const dispatch = useDispatch<AppDispatch>();
 
-  // ─── Redux State ───────────────────────────────────────────
   const {
     data: apiData,
     loading,
     error,
   } = useSelector((s: RootState) => s.report);
 
-  // ─── Fetch on year change ──────────────────────────────────
   useEffect(() => {
     dispatch(fetchMonthlyEnquiry(Number(year)));
   }, [year, dispatch]);
 
-  // ─── Process data ──────────────────────────────────────────
   const reportData = useMemo(() => {
     const monthsData = getMonthsData(Number(year));
 
@@ -119,7 +114,6 @@ export default function MonthlyEnquiryReport() {
 
       if (apiData && apiData.length > 0) {
         apiData.forEach((item) => {
-          // Use monthNumber from the mapping instead of index+4
           if (item.month === month.monthNumber && item.day <= month.days) {
             dailyData[item.day - 1] = item.total;
           }
@@ -127,7 +121,10 @@ export default function MonthlyEnquiryReport() {
       }
 
       const total = dailyData.reduce((a: number, b: number) => a + b, 0);
-      const avg = month.days > 0 ? Math.round(total / month.days) : 0;
+
+      // ── AVG: sirf un dino se divide karo jisme data aaya (non-zero days) ──
+      const activeDays = dailyData.filter((v: number) => v > 0).length;
+      const avg = activeDays > 0 ? Math.round(total / activeDays) : 0;
 
       return { ...month, dailyData, total, avg };
     });
@@ -146,7 +143,6 @@ export default function MonthlyEnquiryReport() {
     );
   }
 
-  // ─── Error State ───────────────────────────────────────────
   if (error) {
     return (
       <div className="p-4">
@@ -165,6 +161,18 @@ export default function MonthlyEnquiryReport() {
 
   return (
     <div className="p-4">
+      <style>{`
+        .high-value {
+          display: inline-block;
+          color: #7c2d12;
+          font-weight: 900;
+        }
+        .sunday-cell {
+          color: #b91c1c;
+          font-weight: 900;
+        }
+      `}</style>
+
       {/* ── Header ── */}
       <div className="sticky top-0 z-10 bg-orange-100 p-3 rounded-md mb-4 border border-orange-200 shadow-sm">
         <div className="flex justify-between items-center">
@@ -175,7 +183,6 @@ export default function MonthlyEnquiryReport() {
           </div>
 
           <div className="flex gap-4">
-            {/* Year Select */}
             <select
               value={year}
               onChange={(e) => setYear(e.target.value)}
@@ -188,6 +195,22 @@ export default function MonthlyEnquiryReport() {
               ))}
             </select>
           </div>
+        </div>
+
+        {/* ── Legend ── */}
+        <div className="flex gap-4 mt-2 pl-1 text-sm font-semibold">
+          <span className="flex items-center gap-1">
+            <span className="inline-block w-4 h-4 rounded bg-red-200 border border-red-400" />
+            Sunday
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="inline-block w-4 h-4 rounded bg-orange-400 border border-orange-600" />
+            Enquiry &gt; 50
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="inline-block w-4 h-4 rounded bg-orange-200 border border-orange-400" />
+            Sunday + &gt; 50
+          </span>
         </div>
       </div>
 
@@ -206,7 +229,6 @@ export default function MonthlyEnquiryReport() {
               <th className="border border-gray-600 p-3 font-bold text-xl">
                 MONTH
               </th>
-
               {[...Array(31)].map((_, i) => (
                 <th
                   key={i}
@@ -215,11 +237,9 @@ export default function MonthlyEnquiryReport() {
                   {i + 1}
                 </th>
               ))}
-
               <th className="border border-gray-600 p-3 font-bold text-green-600 text-xl">
                 TOTAL
               </th>
-
               <th className="border border-gray-600 p-3 font-bold text-red-600 text-xl">
                 AVG
               </th>
@@ -229,6 +249,8 @@ export default function MonthlyEnquiryReport() {
           <tbody>
             {reportData.map((month, idx) => {
               const monthColor = getMonthColorClass(month.name);
+              const monthIndex = MONTH_NAME_TO_INDEX[month.name];
+
               return (
                 <tr key={idx}>
                   <td
@@ -237,15 +259,49 @@ export default function MonthlyEnquiryReport() {
                     {month.name}
                   </td>
 
-                  {month.dailyData.map((value: number, i: number) => (
-                    <td
-                      key={i}
-                      className={`border border-gray-600 p-1 text-lg ${monthColor} ${value > 0 ? "font-bold" : ""}`}
-                    >
-                      {value > 0 ? value : ""}
-                    </td>
-                  ))}
+                  {month.dailyData.map((value: number, i: number) => {
+                    const dayNumber = i + 1;
+                    const sunday = isSunday(
+                      Number(year),
+                      monthIndex,
+                      dayNumber,
+                    );
+                    const highValue = value > 50;
 
+                    let cellBg = "";
+                    if (sunday && highValue) {
+                      cellBg = "!bg-orange-200";
+                    } else if (highValue) {
+                      cellBg = "!bg-orange-400";
+                    } else if (sunday) {
+                      cellBg = "!bg-red-200";
+                    }
+
+                    return (
+                      <td
+                        key={i}
+                        className={`border border-gray-600 p-1 text-lg ${monthColor} ${cellBg}`}
+                      >
+                        {value > 0 ? (
+                          <span
+                            className={
+                              highValue
+                                ? "high-value"
+                                : sunday
+                                  ? "sunday-cell"
+                                  : ""
+                            }
+                          >
+                            {value}
+                          </span>
+                        ) : (
+                          ""
+                        )}
+                      </td>
+                    );
+                  })}
+
+                  {/* Empty cells for months < 31 days */}
                   {[...Array(31 - month.days)].map((_, i) => (
                     <td
                       key={`empty-${i}`}
@@ -257,6 +313,7 @@ export default function MonthlyEnquiryReport() {
                     {month.total}
                   </td>
 
+                  {/* AVG: total ÷ sirf data wale din */}
                   <td className="border border-gray-600 p-2 bg-amber-200 font-bold text-red-800 text-xl">
                     {month.avg}
                   </td>
@@ -290,9 +347,7 @@ export default function MonthlyEnquiryReport() {
                 {grandTotal}
               </td>
 
-              <td className="border border-gray-600 p-2 text-xl font-bold text-red-700">
-                {/* empty avg cell */}
-              </td>
+              <td className="border border-gray-600 p-2 text-xl font-bold text-red-700" />
             </tr>
           </tbody>
         </table>

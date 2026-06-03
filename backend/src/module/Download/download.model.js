@@ -4,39 +4,41 @@ export const getLeadReport = async (month, year) => {
   try {
     const query = `
       SELECT 
-        l.*,
-        c.uuid AS customer_uuid,
-        CONCAT_WS(' ', c.firstName, c.middleName, c.lastName) AS fullName,
-        c.firstName,
-        c.middleName,
-        c.lastName,
+        l.id,
+        l.uuid,
+        l.customer_id,
+        l.advisor_id,
+        CONCAT_WS(' ', c.firstName, c.middleName, c.lastName) AS customerFullName,
         c.customerPhone,
         c.customerEmail,
-        c.companyName,
-        c.customerType,
-        c.customerCategoryType,
-        c.alternatePhone,
-        c.countryName,
-        c.customerCity,
         c.address,
-        c.date_of_birth,
-        c.anniversary,
-        c.gender,
+        c.customerCity,
         c.state,
-        c.pincode
+        c.pincode,
+        l.source,
+        l.presales_id,
+        l.status,
+        l.serviceType,
+        l.pickupAddress,
+        l.dropAddress,
+        l.pickupDateTime,
+        l.dropDateTime,
+        l.days,
+        l.tripType,
+        l.remarks,
+        l.lost_reason,
+        l.created_at,
+        l.updated_at
       FROM leads l
-      LEFT JOIN customers c 
-      ON l.customer_id = c.id
+      LEFT JOIN customers c ON l.customer_id = c.id
       WHERE MONTH(l.created_at) = ?
       AND YEAR(l.created_at) = ?
       ORDER BY l.id DESC
     `;
 
     const [rows] = await pool.execute(query, [month, year]);
-
     if (!rows.length) return [];
 
-    // advisor & presales name fetch
     const userIds = [
       ...new Set(
         rows
@@ -50,22 +52,12 @@ export const getLeadReport = async (month, year) => {
     if (userIds.length > 0) {
       try {
         const placeholders = userIds.map(() => "?").join(",");
-
         const [users] = await hrmsPool.query(
-          `
-          SELECT 
-            id,
-            aliasName,
-            firstName,
-            middleName,
-            lastName,
-            shortName
-          FROM users
-          WHERE id IN (${placeholders})
-          `,
+          `SELECT id, aliasName, firstName, middleName, lastName, shortName
+           FROM users
+           WHERE id IN (${placeholders})`,
           userIds,
         );
-
         users.forEach((u) => {
           userMap[u.id] = u;
         });
@@ -79,10 +71,32 @@ export const getLeadReport = async (month, year) => {
       const presales = userMap[lead.presales_id];
 
       return {
-        ...lead,
-
+        id: lead.id,
+        uuid: lead.uuid,
+        customer_id: lead.customer_id,
+        advisor_id: lead.advisor_id,
+        customerFullName: lead.customerFullName,
+        customerPhone: lead.customerPhone,
+        customerEmail: lead.customerEmail,
+        address: lead.address,
+        customerCity: lead.customerCity,
+        state: lead.state,
+        pincode: lead.pincode,
+        source: lead.source,
+        presales_id: lead.presales_id,
+        status: lead.status,
+        serviceType: lead.serviceType,
+        pickupAddress: lead.pickupAddress,
+        dropAddress: lead.dropAddress,
+        pickupDateTime: lead.pickupDateTime,
+        dropDateTime: lead.dropDateTime,
+        days: lead.days,
+        tripType: lead.tripType,
+        remarks: lead.remarks,
+        lost_reason: lead.lost_reason,
+        created_at: lead.created_at,
+        updated_at: lead.updated_at,
         advisorFullName: advisor?.aliasName?.trim() || null,
-
         presalesFullName: presales?.shortName?.trim() || null,
       };
     });

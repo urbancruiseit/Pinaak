@@ -11,34 +11,27 @@ import { ApiResponse } from "../../utils/ApiResponse.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { hrmsPool } from "../../config/mySqlDB.js";
 
-export const monthlyEnquiryReport = async (req, res) => {
-  try {
-    const year = req.query.year
-      ? parseInt(req.query.year)
-      : new Date().getFullYear();
+export const monthlyEnquiryReport = asyncHandler(async (req, res) => {
+  const year = req.query.year
+    ? parseInt(req.query.year)
+    : new Date().getFullYear();
 
-    if (isNaN(year) || year < 2000 || year > 2100) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid year parameter",
-      });
-    }
-
-    const data = await getMonthlyEnquiry(year);
-
-    res.json({
-      success: true,
-      year,
-      data: data || [],
-    });
-  } catch (error) {
-    console.error("❌ Report Controller Error:", error.message);
-    res.status(500).json({
-      success: false,
-      message: "Server Error: " + error.message,
-    });
+  if (isNaN(year) || year < 2000 || year > 2100) {
+    throw new ApiError(400, "Invalid year parameter");
   }
-};
+
+  const data = await getMonthlyEnquiry(year);
+  console.log(" data", data);
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        { year, data: data || [] },
+        "Monthly enquiry report fetched successfully",
+      ),
+    );
+});
 
 export const getLeadCountByDateForYearController = asyncHandler(
   async (req, res) => {

@@ -8,12 +8,11 @@ export const getMonthlyEnquiry = async (year) => {
       return [];
     }
 
-    // IMPORTANT: Using enquiryTime instead of created_at
     const query = `
       SELECT 
         MONTH(enquiryTime) AS month,
-        DAY(enquiryTime) AS day,
-        COUNT(id) AS total
+        DAY(enquiryTime)   AS day,
+        COUNT(id)          AS total
       FROM leads
       WHERE YEAR(enquiryTime) = ?
       GROUP BY MONTH(enquiryTime), DAY(enquiryTime)
@@ -22,12 +21,29 @@ export const getMonthlyEnquiry = async (year) => {
 
     const [rows] = await pool.execute(query, [year]);
 
-    // Log first few records for debugging
     if (rows.length > 0) {
       console.log("📝 Sample record:", rows[0]);
     }
 
-    return rows;
+    // ── Average: sirf un dino se divide karo jisme data aaya ──
+    const monthMap = {}; // { [monthNumber]: { days, total } }
+
+    rows.forEach((row) => {
+      const m = row.month;
+      if (!monthMap[m]) {
+        monthMap[m] = { days: 0, total: 0 };
+      }
+      monthMap[m].days += 1;
+      monthMap[m].total += Number(row.total);
+    });
+
+    const result = rows.map((row) => {
+      const { days, total } = monthMap[row.month];
+      const avg = days > 0 ? Math.round(total / days) : 0;
+      return { ...row, avg };
+    });
+
+    return result;
   } catch (error) {
     console.error("❌ Model Error:", error.message);
     throw error;

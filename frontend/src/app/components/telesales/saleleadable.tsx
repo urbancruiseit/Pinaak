@@ -193,12 +193,12 @@ export default function LeadsTable() {
   }, [dispatch, currentPage, buildFetchArgs]);
 
   // ─── Polling every 60s ──────────────────────────────────────────────────────
-  useEffect(() => {
-    const interval = setInterval(() => {
-      dispatch(fetchMyAssignedLeads(buildFetchArgs(currentPage)));
-    }, 60000);
-    return () => clearInterval(interval);
-  }, [dispatch, currentPage, buildFetchArgs]);
+  // useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     dispatch(fetchMyAssignedLeads(buildFetchArgs(currentPage)));
+  //   }, 60000);
+  //   return () => clearInterval(interval);
+  // }, [dispatch, currentPage, buildFetchArgs]);
 
   // ─── Re-fetch after lead submitted event ──────────────────────────────────
   useEffect(() => {

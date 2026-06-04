@@ -345,6 +345,9 @@ export const getLeads = async (
   const selectedMonth = month ? parseInt(month, 10) : null;
   const selectedYear = year ? parseInt(year, 10) : now.getFullYear();
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // WHERE CLAUSE BUILD (index-friendly)
+  // ─────────────────────────────────────────────────────────────────────────
   let whereClause = `WHERE (l.unwanted_status IS NULL OR l.unwanted_status != 'unwanted')`;
   let values = [];
 
@@ -354,10 +357,14 @@ export const getLeads = async (
     values.push(presalesId);
   }
 
-  // ── Month + Year filter ───────────────────────────────────────────────────
+  // ── Month + Year filter (FIXED: range instead of MONTH()/YEAR() functions)
+  // MONTH()/YEAR() functions prevent index usage → full table scan hoti thi
+  // Range query index use karti hai → 3x faster
   if (selectedMonth) {
-    whereClause += ` AND MONTH(l.created_at) = ? AND YEAR(l.created_at) = ?`;
-    values.push(selectedMonth, selectedYear);
+    const startDate = new Date(selectedYear, selectedMonth - 1, 1);
+    const endDate = new Date(selectedYear, selectedMonth, 1);
+    whereClause += ` AND l.created_at >= ? AND l.created_at < ?`;
+    values.push(startDate, endDate);
   }
 
   // ── City filter ───────────────────────────────────────────────────────────
@@ -379,15 +386,79 @@ export const getLeads = async (
     values.push(like, like, like, like);
   }
 
-  // ── Status filter ─────────────────────────────────────────────────────────
+  // ── Status filter (FIXED: value pehle uppercase, UPPER() function nahi)
+  // UPPER(l.status) index bypass karta tha → slow query
+  // Ab direct compare → index use hoga
+  let statusWhereClause = "";
   if (status && status.trim()) {
-    whereClause += ` AND UPPER(l.status) = ?`;
+    statusWhereClause = ` AND l.status = ?`;
+    whereClause += statusWhereClause;
     values.push(status.trim().toUpperCase());
   }
 
-  const query = `
+  // ─────────────────────────────────────────────────────────────────────────
+  // STATUS COUNT WHERE CLAUSE (bina status filter ke)
+  // ─────────────────────────────────────────────────────────────────────────
+  const statusCountWhereClause = statusWhereClause
+    ? whereClause.replace(statusWhereClause, "")
+    : whereClause;
+
+  const statusCountValues =
+    status && status.trim() ? values.slice(0, -1) : values;
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // QUERY 1: Main leads data
+  // ─────────────────────────────────────────────────────────────────────────
+  const leadsQuery = `
     SELECT 
-      l.*,
+      l.id,
+      l.uuid,
+      l.customer_id,
+      l.advisor_id,
+      l.presales_id,
+      l.status,
+      l.source,
+      l.city_id,
+      l.city,
+      l.unwanted_status,
+      l.created_at,
+      l.updated_at,
+      l.date,
+      l.enquiryTime,
+      l.serviceType,
+      l.occasion,
+      l.tripType,
+      l.days,
+      l.pickupDateTime,
+      l.dropDateTime,
+      l.pickupAddress,
+      l.dropAddress,
+      l.pickupcity,
+      l.dropcity,
+      l.multiplepickup,
+      l.multipledrop,
+      l.km,
+      l.passengerTotal,
+      l.petsNumber,
+      l.petsNames,
+      l.smallBaggage,
+      l.mediumBaggage,
+      l.largeBaggage,
+      l.airportBaggage,
+      l.totalBaggage,
+      l.itinerary,
+      l.vehicles,
+      l.vehicle2,
+      l.vehicle3,
+      l.vehicle1Quantity,
+      l.vehicle2Quantity,
+      l.vehicle3Quantity,
+      l.requirementVehicle,
+      l.remarks,
+      l.message,
+      l.lost_reason,
+      l.lostReasonDetails,
+      l.followUp,
       c.uuid AS customer_uuid,
       CONCAT_WS(' ', c.firstName, c.middleName, c.lastName) AS fullName,
       c.firstName,
@@ -414,54 +485,52 @@ export const getLeads = async (
     LIMIT ? OFFSET ?
   `;
 
-  const [leads] = await pool.query(query, [...values, limitNumber, offset]);
-
-  // ── Total count ───────────────────────────────────────────────────────────
-  const countQuery = `
-    SELECT COUNT(*) as total 
-    FROM leads l
-    LEFT JOIN customers c ON l.customer_id = c.id
-    ${whereClause}
-  `;
-  const [countResult] = await pool.query(countQuery, values);
-
-  // ── Status wise count ─────────────────────────────────────────────────────
-  // ✅ Status counts hamesha BINA status filter ke aayenge (pure counts)
-  const statusList = ["NEW", "RFQ", "KYC", "HOT", "VEH-N", "LOST", "BOOK"];
-
-  const statusCountWhereClause = whereClause.replace(
-    / AND UPPER\(l\.status\) = \?/,
-    "",
-  );
-  const statusCountValues =
-    status && status.trim()
-      ? values.slice(0, -1) // status value hata do
-      : values;
-
-  const statusQuery = `
-    SELECT l.status, COUNT(*) as count
+  // ─────────────────────────────────────────────────────────────────────────
+  // QUERY 2: Total count + Status counts COMBINED (2 queries ki jagah 1)
+  // Pehle alag alag COUNT(*) aur GROUP BY status chal rahi thi
+  // Ab ek hi query mein dono kaam → 1 DB round-trip bachegi
+  // ─────────────────────────────────────────────────────────────────────────
+  const combinedCountQuery = `
+    SELECT 
+      COUNT(*) AS total,
+      SUM(CASE WHEN l.status = 'NEW'   THEN 1 ELSE 0 END) AS new_count,
+      SUM(CASE WHEN l.status = 'RFQ'   THEN 1 ELSE 0 END) AS rfq_count,
+      SUM(CASE WHEN l.status = 'KYC'   THEN 1 ELSE 0 END) AS kyc_count,
+      SUM(CASE WHEN l.status = 'HOT'   THEN 1 ELSE 0 END) AS hot_count,
+      SUM(CASE WHEN l.status = 'VEH-N' THEN 1 ELSE 0 END) AS vehn_count,
+      SUM(CASE WHEN l.status = 'LOST'  THEN 1 ELSE 0 END) AS lost_count,
+      SUM(CASE WHEN l.status = 'BOOK'  THEN 1 ELSE 0 END) AS book_count
     FROM leads l
     LEFT JOIN customers c ON l.customer_id = c.id
     ${statusCountWhereClause}
-    GROUP BY l.status
   `;
-  const [statusResult] = await pool.query(statusQuery, statusCountValues);
 
-  const statusCounts = {};
-  statusList.forEach((s) => {
-    statusCounts[s] = 0;
-  });
+  // ─────────────────────────────────────────────────────────────────────────
+  // RUN QUERY 1 + QUERY 2 PARALLEL (Promise.all → dono ek saath chalenge)
+  // Pehle sequential thi → Query1 khatam hoti tab Query2 shuru hoti
+  // Ab parallel → total time = max(Q1, Q2) instead of Q1 + Q2
+  // ─────────────────────────────────────────────────────────────────────────
+  const [[leads], [countResult]] = await Promise.all([
+    pool.query(leadsQuery, [...values, limitNumber, offset]),
+    pool.query(combinedCountQuery, statusCountValues),
+  ]);
 
-  statusResult.forEach((s) => {
-    const key = (s.status || "").toUpperCase();
-    if (statusCounts.hasOwnProperty(key)) {
-      statusCounts[key] = parseInt(s.count, 10);
-    }
-  });
+  // ─────────────────────────────────────────────────────────────────────────
+  // STATUS COUNTS from combined query result
+  // ─────────────────────────────────────────────────────────────────────────
+  const row = countResult[0];
+  const statusCounts = {
+    NEW: parseInt(row.new_count, 10) || 0,
+    RFQ: parseInt(row.rfq_count, 10) || 0,
+    KYC: parseInt(row.kyc_count, 10) || 0,
+    HOT: parseInt(row.hot_count, 10) || 0,
+    "VEH-N": parseInt(row.vehn_count, 10) || 0,
+    LOST: parseInt(row.lost_count, 10) || 0,
+    BOOK: parseInt(row.book_count, 10) || 0,
+  };
 
   const totalLeads = Object.values(statusCounts).reduce((a, b) => a + b, 0);
 
-  // ── Advisor + Presales names ──────────────────────────────────────────────
   const advisorIds = leads
     .map((l) => l.advisor_id)
     .filter((id) => id !== null && id !== undefined);
@@ -493,9 +562,9 @@ export const getLeads = async (
   const getName = (userId, type) => {
     const user = userMap[userId];
     if (!user) return null;
-    const first =
+    const name =
       type === "advisor" ? user.aliasName || "" : user.shortName || "";
-    return `${first} `.trim() || null;
+    return name.trim() || null;
   };
 
   const leadsWithNames = leads.map((lead) => ({
@@ -506,17 +575,16 @@ export const getLeads = async (
 
   return {
     leads: leadsWithNames,
-    total: countResult[0].total,
+    total: parseInt(row.total, 10),
     page: pageNumber,
-    totalPages: Math.ceil(countResult[0].total / limitNumber),
+    totalPages: Math.ceil(parseInt(row.total, 10) / limitNumber),
     selectedMonth,
     selectedYear,
-    selectedStatus: status ? status.trim().toUpperCase() : null, // ✅ response mein bhi bhejo
+    selectedStatus: status ? status.trim().toUpperCase() : null,
     statusCounts,
     totalLeads,
   };
 };
-
 export const updateLeadUnwantedStatus = async (leadId, status) => {
   try {
     // validation

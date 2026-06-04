@@ -30,12 +30,10 @@ import {
 } from "../../../../../types/LeadsTable/leadstabledata";
 
 import {
-  calculateLeadStatusCounts,
   calculateLeadStatusPercentages,
   LeadStatusBadge,
   MonthPickupBadge,
   calculateMonthPickupCounts,
-  type LeadStatusCounts,
   type LeadStatusPercentages,
 } from "../../../../../types/LeadsTable/leadstatus";
 import {
@@ -117,14 +115,13 @@ export default function LeadsTable() {
   const {
     leads,
     loading,
-    error,
+
     totalPages,
     total,
     selectedMonth: reduxMonth,
     selectedYear: reduxYear,
     selectedStatus: reduxStatus,
     statusCounts,
-    totalLeads,
   } = useSelector((state: RootState) => state.lead);
 
   const { currentUser } = useSelector((state: RootState) => state.user);
@@ -203,19 +200,12 @@ export default function LeadsTable() {
     const handleLeadSubmitted = () => {
       setEditLead(null);
       setDetailLead(null);
-      dispatch(
-        fetchLeads({
-          page: currentPage,
-          month: reduxMonth,
-          year: reduxYear,
-          status: reduxStatus ?? undefined,
-        }),
-      );
+      setCurrentPage(1); // ← sirf yeh karo, fetchLeads nahi
     };
     window.addEventListener("leadSubmitted", handleLeadSubmitted);
     return () =>
       window.removeEventListener("leadSubmitted", handleLeadSubmitted);
-  }, [dispatch, currentPage, reduxMonth, reduxYear, reduxStatus]);
+  }, []);
 
   useEffect(() => {
     const handleAssignLead = (event: Event) => {

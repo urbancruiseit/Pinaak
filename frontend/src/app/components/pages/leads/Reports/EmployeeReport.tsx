@@ -96,7 +96,7 @@ const Empreport = () => {
       case "lost":
         return "text-red-500";
       case "book":
-        return "text-green-500";
+        return "text-green-800";
       default:
         return "text-yellow-700";
     }
@@ -117,7 +117,7 @@ const Empreport = () => {
       case "LST":
         return "text-red-500";
       case "BK":
-        return "text-green-500";
+        return "text-green-800";
       default:
         return "text-yellow-700";
     }
@@ -267,19 +267,18 @@ const Empreport = () => {
   };
 
   return (
-    <div className="min-h-screen via-white to-slate-100 p-4">
-      {/* HEADER */}
-      <div className="pl-4 border-l-8 border-orange-600 bg-white px-3 rounded-md shadow-sm mb-4">
+   
+  <div className="min-h-screen via-white to-slate-100">
+    {/* HEADER - STICKY */}
+    <div className="sticky top-0 z-50 bg-white shadow-sm">
+      <div className="pl-4 border-l-8 border-orange-600 bg-white px-3">
         <div className="flex justify-between items-center py-4">
           <h2 className="text-4xl font-bold text-orange-700 p-2">
             📊 Employee Performance TS – {selectedYear}
           </h2>
           <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-slate-200 shadow-sm">
             <Filter className="w-4 h-4 text-slate-500" />
-            <label
-              htmlFor="yearSelect"
-              className="text-sm font-medium text-slate-700"
-            >
+            <label htmlFor="yearSelect" className="text-sm font-medium text-slate-700">
               Select Year:
             </label>
             <select
@@ -290,34 +289,46 @@ const Empreport = () => {
               disabled={loading}
             >
               {AVAILABLE_YEARS.map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
+                <option key={year} value={year}>{year}</option>
               ))}
             </select>
           </div>
         </div>
       </div>
 
-      {/* SUMMARY CARDS */}
+      {/* SUMMARY CARDS - STICKY (header ke saath) */}
       {!loading && processedData.length > 0 && (
-        <div className="grid grid-cols-12 gap-3 mb-4">
-          {/* Total Leads - chota col */}
-          <div className="col-span-2 bg-white rounded-lg shadow-md border border-slate-100 p-3 flex gap-3">
-            <div className="p-1.5 bg-green-700 rounded-md self-start">
-              <TrendingUp className="w-4 h-4 text-white" />
+        <div className="grid grid-cols-12 gap-3 px-4 py-3 bg-slate-50 border-b border-slate-200">
+          {/* Total Leads + Avg */}
+          <div className="col-span-2 bg-white rounded-lg shadow-md border border-slate-100 p-3 flex flex-col gap-3">
+            <div className="flex gap-2">
+              <div className="p-1.5 bg-green-700 rounded-md self-start">
+                <TrendingUp className="w-4 h-4 text-white" />
+              </div>
+              <div>
+                <p className="text-md text-slate-500">Total Leads</p>
+                <p className="text-xl font-bold text-slate-800">
+                  {summary.totalLeads.toLocaleString()}
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-md text-slate-500">Total Leads</p>
-              <p className="text-xl font-bold text-slate-800">
-                {summary.totalLeads.toLocaleString()}
-              </p>
+            <div className="h-px bg-slate-200 w-full" />
+            <div className="flex gap-2">
+              <div className="p-1.5 bg-blue-700 rounded-md self-start">
+                <TrendingUp className="w-4 h-4 text-white" />
+              </div>
+              <div>
+                <p className="text-md text-slate-500">Avg Per Month</p>
+                <p className="text-xl font-bold text-slate-800">
+                  {summary.avgPerMonth}
+                </p>
+              </div>
             </div>
           </div>
 
-          {/* Avg per Month - bara col, ek hi row */}
+          {/* Month wise Leads */}
           <div className="col-span-7 bg-white rounded-lg shadow-md border border-slate-100 p-3">
-            <p className="text-md text-slate-500 mb-1">Month wise Leads</p>
+            <p className="text-md text-slate-500 mb-4">Month wise Leads</p>
             <div className="flex flex-nowrap gap-x-2 overflow-x-auto items-center">
               {ALL_MONTHS.map((m, idx) => {
                 const monthTotal = processedData.reduce((sum, emp) => {
@@ -326,17 +337,13 @@ const Empreport = () => {
                 }, 0);
                 return (
                   <React.Fragment key={m}>
-                    <span className="text-[15px] whitespace-nowrap">
-                      <span className="text-black font-bold">{m}</span>
-                      <span className="text-black font-bold">- </span>
-                      <span className="text-green-800 font-bold">
-                        {monthTotal}
-                      </span>
+                    <span className="text-[18px] whitespace-nowrap">
+                      <span className="text-black font-extrabold">{m}</span>
+                      <span className="text-black font-extrabold">- </span>
+                      <span className="text-green-800 font-extrabold">{monthTotal}</span>
                     </span>
                     {idx < ALL_MONTHS.length - 1 && (
-                      <span className="text-slate-700 font-light text-[18px]">
-                        |
-                      </span>
+                      <span className="text-slate-700 font-light text-[18px]">|</span>
                     )}
                   </React.Fragment>
                 );
@@ -344,33 +351,26 @@ const Empreport = () => {
             </div>
           </div>
 
-          {/* Top Performers - 1st 2nd 3rd */}
+          {/* Top Performers */}
           <div className="col-span-3 bg-white rounded-lg shadow-md border border-slate-100 p-3">
             <p className="text-md text-slate-500 mb-2">Top Performers</p>
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex items-stretch gap-2">
               {processedData
-                .map((emp) => ({
-                  name: emp.adviser_name,
-                  book: yearSum(emp, "book"),
-                }))
+                .map((emp) => ({ name: emp.adviser_name, book: yearSum(emp, "book") }))
                 .sort((a, b) => b.book - a.book)
                 .slice(0, 3)
                 .map((emp, idx) => {
                   const medals = ["🥇", "🥈", "🥉"];
-                  const textColors = [
-                    "text-yellow-700",
-                    "text-slate-600",
-                    "text-amber-700",
+                  const textColors = ["text-yellow-700", "text-slate-600", "text-amber-700"];
+                  const bgColors = [
+                    "bg-yellow-50 border-yellow-200",
+                    "bg-slate-50 border-slate-200",
+                    "bg-amber-50 border-amber-200",
                   ];
                   return (
-                    <div
-                      key={idx}
-                      className="flex-1 flex flex-col items-center gap-0.5"
-                    >
+                    <div key={idx} className={`flex-1 flex flex-col items-center gap-0.5 border rounded-lg p-2 ${bgColors[idx]}`}>
                       <span className="text-[16px]">{medals[idx]}</span>
-                      <span
-                        className={`text-[15px] font-bold ${textColors[idx]} text-center truncate w-full`}
-                      >
+                      <span className={`text-[15px] font-bold ${textColors[idx]} text-center truncate w-full`}>
                         {capitalizeName(emp.name)}
                       </span>
                       <span className="text-[13px] font-extrabold text-green-800">
@@ -383,7 +383,10 @@ const Empreport = () => {
           </div>
         </div>
       )}
+    </div>
 
+    {/* SCROLLABLE CONTENT */}
+    <div className="p-4">
       {/* LOADING */}
       {loading && (
         <div className="flex flex-col items-center justify-center py-16">
@@ -391,9 +394,7 @@ const Empreport = () => {
           <p className="mt-3 text-slate-500 font-medium text-sm">
             Loading performance data for {selectedYear}...
           </p>
-          <p className="text-xs text-slate-400 mt-1">
-            Fetching reports for all months
-          </p>
+          <p className="text-xs text-slate-400 mt-1">Fetching reports for all months</p>
         </div>
       )}
 
@@ -403,26 +404,18 @@ const Empreport = () => {
           {processedData.map((employee, empIdx) => {
             const empYearlyTotal = yearSum(employee, "total");
             const empYearlyBook = yearSum(employee, "book");
-            const contributionPercent =
-              grandTotal > 0
-                ? Math.round((empYearlyTotal / grandTotal) * 100)
-                : 0;
-            const bookingPercent =
-              empYearlyTotal > 0
-                ? Math.round((empYearlyBook / empYearlyTotal) * 100)
-                : 0;
+            const contributionPercent = grandTotal > 0 ? Math.round((empYearlyTotal / grandTotal) * 100) : 0;
+            const bookingPercent = empYearlyTotal > 0 ? Math.round((empYearlyBook / empYearlyTotal) * 100) : 0;
             const isExpanded = expandedCard === empIdx;
 
             return (
               <div
                 key={empIdx}
-                className={`bg-white rounded-xl shadow-lg border-2 border-green-500 overflow-hidden transition-all duration-300 hover:shadow-xl ${
-                  isExpanded ? "ring-2 ring-emerald-400 shadow-2xl" : ""
-                }`}
+                className={`bg-white rounded-xl shadow-lg border-2 border-green-500 overflow-hidden transition-all duration-300 hover:shadow-xl ${isExpanded ? "ring-2 ring-emerald-400 shadow-2xl" : ""}`}
               >
                 {/* Employee Header */}
                 <div
-                  className="bg-green-950 p-3 cursor-pointer"
+                  className="bg-green-950 p-3 cursor-pointer sticky top-[var(--sticky-top,0)] z-10"
                   onClick={() => setExpandedCard(isExpanded ? null : empIdx)}
                 >
                   <div className="flex justify-between items-center">
@@ -436,8 +429,9 @@ const Empreport = () => {
                             Total: {empYearlyTotal}
                           </span>
                           <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-md">
-                            <span className="text-green-700 text-[16px] font-extrabold leading-tight text-center">
-                              {bookingPercent} %
+                            <span className="text-green-700 text-[18px] ml-1 font-extrabold leading-tight text-center">
+                              {bookingPercent}
+                              <span className="text-green-700 text-[12px] font-extrabold leading-tight text-center">%</span>
                             </span>
                           </div>
                         </div>
@@ -447,9 +441,7 @@ const Empreport = () => {
                   <div className="mt-2 h-1 bg-white/20 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-white rounded-full transition-all duration-500"
-                      style={{
-                        width: `${Math.min(100, contributionPercent)}%`,
-                      }}
+                      style={{ width: `${Math.min(100, contributionPercent)}%` }}
                     />
                   </div>
                 </div>
@@ -457,50 +449,18 @@ const Empreport = () => {
                 {/* Table */}
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs">
-                    <thead>
+                    <thead className="sticky top-0 z-10">
                       <tr className="bg-slate-100">
-                        <th className="px-1.5 py-1.5 text-left text-slate-600 font-semibold text-[13px]">
-                          Mon
-                        </th>
-                        <th
-                          className={`px-0.5 py-1.5 text-center font-semibold text-[13px] ${getHeadingColor("NEW")}`}
-                        >
-                          NEW
-                        </th>
-                        <th
-                          className={`px-0.5 py-1.5 text-center font-semibold text-[13px] ${getHeadingColor("KYC")}`}
-                        >
-                          KYC
-                        </th>
-                        <th
-                          className={`px-0.5 py-1.5 text-center font-semibold text-[13px] ${getHeadingColor("RFQ")}`}
-                        >
-                          RFQ
-                        </th>
-                        <th
-                          className={`px-0.5 py-1.5 text-center font-semibold text-[13px] ${getHeadingColor("HOT")}`}
-                        >
-                          HOT
-                        </th>
-                        <th
-                          className={`px-0.5 py-1.5 text-center font-semibold text-[13px] ${getHeadingColor("VEH")}`}
-                        >
-                          VEH
-                        </th>
-                        <th
-                          className={`px-0.5 py-1.5 text-center font-semibold text-[13px] ${getHeadingColor("LST")}`}
-                        >
-                          LST
-                        </th>
-                        <th
-                          className={`px-0.5 py-1.5 text-center font-semibold text-[13px] ${getHeadingColor("BK")}`}
-                        >
-                          BK
-                        </th>
-                        <th className="px-0.5 py-1.5 text-center text-slate-600 font-semibold text-[14px]">
-                          TTL
-                        </th>
-                        <th className="px-0.5 py-1.5 text-center text-slate-600 font-semibold text-[16px] relative group cursor-help overflow-visible">
+                        <th className="px-1.5 py-1.5 text-left text-slate-600 font-semibold text-[13px]">Mon</th>
+                        <th className={`px-0.5 py-1.5 text-center font-semibold text-[13px] ${getHeadingColor("NEW")}`}>NEW</th>
+                        <th className={`px-0.5 py-1.5 text-center font-semibold text-[13px] ${getHeadingColor("KYC")}`}>KYC</th>
+                        <th className={`px-0.5 py-1.5 text-center font-semibold text-[13px] ${getHeadingColor("RFQ")}`}>RFQ</th>
+                        <th className={`px-0.5 py-1.5 text-center font-semibold text-[13px] ${getHeadingColor("HOT")}`}>HOT</th>
+                        <th className={`px-0.5 py-1.5 text-center font-semibold text-[13px] ${getHeadingColor("VEH")}`}>VEH</th>
+                        <th className={`px-0.5 py-1.5 text-center font-semibold text-[13px] ${getHeadingColor("LST")}`}>LST</th>
+                        <th className={`px-0.5 py-1.5 text-center font-semibold text-[13px] ${getHeadingColor("BK")}`}>BK</th>
+                        <th className="px-0.5 py-1.5 text-center text-black font-semibold text-[14px]">TTL</th>
+                        <th className="px-0.5 py-1.5 text-center text-blue-600 font-semibold text-[16px] relative group cursor-help overflow-visible">
                           %
                           <div className="absolute hidden group-hover:flex z-[999] bottom-full left-1/2 -translate-x-1/2 mb-2 bg-gray-800 text-white text-[16px] rounded px-2 py-1 whitespace-nowrap shadow-lg flex-col items-center">
                             <span>(BK ÷ TTL) × 100</span>
@@ -509,119 +469,40 @@ const Empreport = () => {
                         </th>
                       </tr>
                     </thead>
-
                     <tbody>
                       {ALL_MONTHS.map((month) => {
                         const d = employee.months[month];
-                        const monthTotal =
-                          d?.total !== "-" ? Number(d?.total || 0) : 0;
-                        const bookVal =
-                          d?.book !== "-" && d?.book ? Number(d.book) : 0;
-                        const monthContrib =
-                          monthTotal > 0
-                            ? Math.round((bookVal / monthTotal) * 100)
-                            : 0;
-
+                        const monthTotal = d?.total !== "-" ? Number(d?.total || 0) : 0;
+                        const bookVal = d?.book !== "-" && d?.book ? Number(d.book) : 0;
+                        const monthContrib = monthTotal > 0 ? Math.round((bookVal / monthTotal) * 100) : 0;
                         return (
-                          <tr
-                            key={month}
-                            className={`border-b border-slate-100 transition-colors ${getRowColor(month)}`}
-                          >
-                            <td className="px-1.5 py-1 font-semibold text-slate-700 whitespace-nowrap text-[13px]">
-                              {month}
-                            </td>
-                            <td
-                              className={`px-0.5 py-1 text-center text-[13px] font-bold ${getStatusColor("new")}`}
-                            >
-                              {d?.new || "-"}
-                            </td>
-                            <td
-                              className={`px-0.5 py-1 text-center text-[13px] font-bold ${getStatusColor("kyc")}`}
-                            >
-                              {d?.kyc || "-"}
-                            </td>
-                            <td
-                              className={`px-0.5 py-1 text-center text-[13px] font-bold ${getStatusColor("rfq")}`}
-                            >
-                              {d?.rfq || "-"}
-                            </td>
-                            <td
-                              className={`px-0.5 py-1 text-center text-[13px] font-bold ${getStatusColor("hot")}`}
-                            >
-                              {d?.hot || "-"}
-                            </td>
-                            <td
-                              className={`px-0.5 py-1 text-center text-[13px] font-bold ${getStatusColor("vehn")}`}
-                            >
-                              {d?.vehn || "-"}
-                            </td>
-                            <td
-                              className={`px-0.5 py-1 text-center text-[13px] font-bold ${getStatusColor("lost")}`}
-                            >
-                              {d?.lost || "-"}
-                            </td>
-                            <td
-                              className={`px-0.5 py-1 text-center text-[13px] font-bold ${getStatusColor("book")}`}
-                            >
-                              {d?.book || "-"}
-                            </td>
-                            <td className="px-0.5 py-1 text-center text-[16px] font-bold text-emerald-600">
-                              {monthTotal === 0 ? "-" : monthTotal}
-                            </td>
-                            <td className="px-0.5 py-1 text-center text-[16px] font-bold text-green-900">
-                              {monthContrib === 0 ? "-" : `${monthContrib}%`}
-                            </td>
+                          <tr key={month} className={`border-b border-slate-100 transition-colors ${getRowColor(month)}`}>
+                            <td className="px-1.5 py-1 font-semibold text-slate-700 whitespace-nowrap text-[13px]">{month}</td>
+                            <td className={`px-0.5 py-1 text-center text-[13px] font-bold ${getStatusColor("new")}`}>{d?.new || "-"}</td>
+                            <td className={`px-0.5 py-1 text-center text-[13px] font-bold ${getStatusColor("kyc")}`}>{d?.kyc || "-"}</td>
+                            <td className={`px-0.5 py-1 text-center text-[13px] font-bold ${getStatusColor("rfq")}`}>{d?.rfq || "-"}</td>
+                            <td className={`px-0.5 py-1 text-center text-[13px] font-bold ${getStatusColor("hot")}`}>{d?.hot || "-"}</td>
+                            <td className={`px-0.5 py-1 text-center text-[13px] font-bold ${getStatusColor("vehn")}`}>{d?.vehn || "-"}</td>
+                            <td className={`px-0.5 py-1 text-center text-[13px] font-bold ${getStatusColor("lost")}`}>{d?.lost || "-"}</td>
+                            <td className={`px-0.5 py-1 text-center text-[13px] font-bold ${getStatusColor("book")}`}>{d?.book || "-"}</td>
+                            <td className="px-0.5 py-1 text-center text-[16px] font-bold text-black">{monthTotal === 0 ? "-" : monthTotal}</td>
+                            <td className="px-0.5 py-1 text-center text-[16px] font-bold text-blue-600">{monthContrib === 0 ? "-" : `${monthContrib}%`}</td>
                           </tr>
                         );
                       })}
                     </tbody>
-
                     <tfoot>
                       <tr className="bg-slate-200 font-bold">
-                        <td className="px-1.5 py-1.5 text-slate-700 text-[16px] font-bold">
-                          Total
-                        </td>
-                        <td
-                          className={`px-0.5 py-1.5 text-center font-bold text-[16px] ${getStatusColor("new")}`}
-                        >
-                          {formatValue(yearSum(employee, "new"))}
-                        </td>
-                        <td
-                          className={`px-0.5 py-1.5 text-center font-bold text-[16px] ${getStatusColor("kyc")}`}
-                        >
-                          {formatValue(yearSum(employee, "kyc"))}
-                        </td>
-                        <td
-                          className={`px-0.5 py-1.5 text-center font-bold text-[16px] ${getStatusColor("rfq")}`}
-                        >
-                          {formatValue(yearSum(employee, "rfq"))}
-                        </td>
-                        <td
-                          className={`px-0.5 py-1.5 text-center font-bold text-[16px] ${getStatusColor("hot")}`}
-                        >
-                          {formatValue(yearSum(employee, "hot"))}
-                        </td>
-                        <td
-                          className={`px-0.5 py-1.5 text-center font-bold text-[16px] ${getStatusColor("vehn")}`}
-                        >
-                          {formatValue(yearSum(employee, "vehn"))}
-                        </td>
-                        <td
-                          className={`px-0.5 py-1.5 text-center font-bold text-[16px] ${getStatusColor("lost")}`}
-                        >
-                          {formatValue(yearSum(employee, "lost"))}
-                        </td>
-                        <td
-                          className={`px-0.5 py-1.5 text-center font-bold text-[16px] ${getStatusColor("book")}`}
-                        >
-                          {formatValue(yearSum(employee, "book"))}
-                        </td>
-                        <td className="px-0.5 py-1.5 text-center text-emerald-700 font-bold text-[16px]">
-                          {empYearlyTotal === 0 ? "-" : empYearlyTotal}
-                        </td>
-                        <td className="px-0.5 py-1.5 text-center text-green-900 font-bold text-[16px]">
-                          {bookingPercent === 0 ? "-" : `${bookingPercent}%`}
-                        </td>
+                        <td className="px-1.5 py-1.5 text-slate-700 text-[16px] font-bold">Total</td>
+                        <td className={`px-0.5 py-1.5 text-center font-bold text-[16px] ${getStatusColor("new")}`}>{formatValue(yearSum(employee, "new"))}</td>
+                        <td className={`px-0.5 py-1.5 text-center font-bold text-[16px] ${getStatusColor("kyc")}`}>{formatValue(yearSum(employee, "kyc"))}</td>
+                        <td className={`px-0.5 py-1.5 text-center font-bold text-[16px] ${getStatusColor("rfq")}`}>{formatValue(yearSum(employee, "rfq"))}</td>
+                        <td className={`px-0.5 py-1.5 text-center font-bold text-[16px] ${getStatusColor("hot")}`}>{formatValue(yearSum(employee, "hot"))}</td>
+                        <td className={`px-0.5 py-1.5 text-center font-bold text-[16px] ${getStatusColor("vehn")}`}>{formatValue(yearSum(employee, "vehn"))}</td>
+                        <td className={`px-0.5 py-1.5 text-center font-bold text-[16px] ${getStatusColor("lost")}`}>{formatValue(yearSum(employee, "lost"))}</td>
+                        <td className={`px-0.5 py-1.5 text-center font-bold text-[16px] ${getStatusColor("book")}`}>{formatValue(yearSum(employee, "book"))}</td>
+                        <td className="px-0.5 py-1.5 text-center text-black font-bold text-[16px]">{empYearlyTotal === 0 ? "-" : empYearlyTotal}</td>
+                        <td className="px-0.5 py-1.5 text-center text-blue-600 font-bold text-[16px]">{bookingPercent === 0 ? "-" : `${bookingPercent}%`}</td>
                       </tr>
                     </tfoot>
                   </table>
@@ -638,16 +519,13 @@ const Empreport = () => {
           <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-3">
             <BarChart3 className="w-8 h-8 text-slate-400" />
           </div>
-          <p className="text-slate-500 font-semibold text-base">
-            No data found for {selectedYear}
-          </p>
-          <p className="text-slate-400 text-sm mt-1">
-            Try selecting a different year
-          </p>
+          <p className="text-slate-500 font-semibold text-base">No data found for {selectedYear}</p>
+          <p className="text-slate-400 text-sm mt-1">Try selecting a different year</p>
         </div>
       )}
     </div>
-  );
+  </div>
+);
 };
 
 export default Empreport;

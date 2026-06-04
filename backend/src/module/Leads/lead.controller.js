@@ -73,18 +73,6 @@ const createLeads = asyncHandler(async (req, res) => {
   const fullLead = await getLeadById(newLead.id);
 
   // ✅ Step 5: Full data ke saath socket emit
-  try {
-    const io = getIO();
-    emitToHierarchy({
-      io,
-      eventName: "presalesLeadCreated",
-      lead: fullLead ?? newLead, // fallback
-      userIdKey: "presales_id",
-    });
-    console.log("📡 presalesLeadCreated emitted with full data");
-  } catch (err) {
-    console.error("⚠️ Socket emit failed:", err.message);
-  }
 
   // Step 6: Response
   return res.status(201).json(
@@ -102,6 +90,20 @@ const createLeads = asyncHandler(async (req, res) => {
       "Lead created successfully",
     ),
   );
+
+  try {
+    const fullLead = await getLeadById(newLead.id);
+    const io = getIO();
+    emitToHierarchy({
+      io,
+      eventName: "presalesLeadCreated",
+      lead: fullLead ?? newLead,
+      userIdKey: "presales_id",
+    });
+    console.log("📡 presalesLeadCreated emitted with full data");
+  } catch (err) {
+    console.error("⚠️ Socket emit failed:", err.message);
+  }
 });
 
 const listLeads = asyncHandler(async (req, res) => {

@@ -485,11 +485,7 @@ export const getLeads = async (
     LIMIT ? OFFSET ?
   `;
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // QUERY 2: Total count + Status counts COMBINED (2 queries ki jagah 1)
-  // Pehle alag alag COUNT(*) aur GROUP BY status chal rahi thi
-  // Ab ek hi query mein dono kaam → 1 DB round-trip bachegi
-  // ─────────────────────────────────────────────────────────────────────────
+
   const combinedCountQuery = `
     SELECT 
       COUNT(*) AS total,
@@ -505,19 +501,13 @@ export const getLeads = async (
     ${statusCountWhereClause}
   `;
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // RUN QUERY 1 + QUERY 2 PARALLEL (Promise.all → dono ek saath chalenge)
-  // Pehle sequential thi → Query1 khatam hoti tab Query2 shuru hoti
-  // Ab parallel → total time = max(Q1, Q2) instead of Q1 + Q2
-  // ─────────────────────────────────────────────────────────────────────────
+
   const [[leads], [countResult]] = await Promise.all([
     pool.query(leadsQuery, [...values, limitNumber, offset]),
     pool.query(combinedCountQuery, statusCountValues),
   ]);
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // STATUS COUNTS from combined query result
-  // ─────────────────────────────────────────────────────────────────────────
+  
   const row = countResult[0];
   const statusCounts = {
     NEW: parseInt(row.new_count, 10) || 0,

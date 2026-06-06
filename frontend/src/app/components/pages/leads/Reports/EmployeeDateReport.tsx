@@ -5,6 +5,9 @@ import { useDispatch } from "react-redux";
 import { fetchStatusWiseDateReport } from "@/app/features/Reports/monthlyReport/monthlyReportSlice";
 import { AppDispatch } from "@/app/redux/store";
 import { Loader2 } from "lucide-react";
+import Image from "next/image";
+import { Eye, X, ChevronDown } from "lucide-react";
+import employeeDate from "../../../../assets/empforstatus.png";
 
 const MONTH_MAP: Record<string, number> = {
   JAN: 1,
@@ -36,7 +39,7 @@ const ALL_MONTHS = [
   "DEC",
 ];
 
-const STATUSES = ["new", "kyc", "rfq", "hot", "vehn", "lost", "book", "blank"];
+const STATUSES = ["new", "kyc", "rfq", "hot", "vehn", "lost", "book"];
 
 const STATUS_LABELS: Record<string, string> = {
   new: "NEW",
@@ -46,18 +49,16 @@ const STATUS_LABELS: Record<string, string> = {
   vehn: "VEH-N",
   lost: "LOST",
   book: "BOOK",
-  blank: "BLANK",
 };
 
 const STATUS_STYLE: Record<string, string> = {
-  new: "text-white bg-blue-400",
-  kyc: "text-white bg-orange-600",
-  rfq: "text-white bg-blue-600",
-  hot: "text-white bg-purple-600",
-  vehn: "text-white bg-[#2c1332]",
-  lost: "text-white bg-red-500",
-  book: "text-white bg-green-600",
-  blank: "text-white bg-slate-600",
+  new: "text-blue-600 bg-blue-200",
+  kyc: "text-cyan-800 bg-cyan-200",
+  rfq: "text-amber-600 bg-amber-200",
+  hot: "text-pink-950 bg-pink-200",
+  vehn: "text-[#2c1332] bg-[#2c1332]/5",
+  lost: "text-red-600 bg-red-200",
+  book: "text-green-800 bg-green-200",
 };
 
 const rowColors = [
@@ -72,20 +73,22 @@ const rowColors = [
 const Empreport = () => {
   const dispatch = useDispatch<AppDispatch>();
 
-  const [selectedYear, setSelectedYear] = useState("2026");
-
-  const [selectedMonth, setSelectedMonth] = useState("MAY");
+  // ✅ Default: current year & current month
+  const [selectedYear, setSelectedYear] = useState(
+    new Date().getFullYear().toString(),
+  );
+  const [selectedMonth, setSelectedMonth] = useState(
+    ALL_MONTHS[new Date().getMonth()],
+  );
 
   const [loading, setLoading] = useState(false);
-
   const [employees, setEmployees] = useState<any[]>([]);
+  const [showImageModal, setShowImageModal] = useState(false);
 
-  // Date Wise API Fetch
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-
         const result = await dispatch(
           fetchStatusWiseDateReport({
             month: MONTH_MAP[selectedMonth],
@@ -93,10 +96,7 @@ const Empreport = () => {
           }),
         ).unwrap();
 
-        console.log("DATE REPORT API:", result);
-
         const safeEmployees = Array.isArray(result?.data) ? result.data : [];
-
         setEmployees(safeEmployees);
       } catch (err) {
         console.error("Date Report Error:", err);
@@ -120,39 +120,85 @@ const Empreport = () => {
   return (
     <div className="">
       {/* HEADER */}
-      <div className="mb-4 bg-orange-100 shadow-lg rounded-md flex justify-between items-center">
-        <div className="sticky top-0 z-10 bg-orange-100 p-3 rounded-md">
-          <div className="pl-4 border-l-8 border-orange-500 bg-white px-3 rounded-md shadow-md">
-            <h2 className="text-4xl font-bold text-left py-4 text-orange-600 p-2">
-              Employee Performance PS -{selectedMonth} {selectedYear}
+      <div className="sticky top-0 z-30 bg-orange-100 shadow-sm">
+        <div className="pl-4 border-l-8 border-orange-500 bg-orange-100 px-3">
+          <div className="flex justify-between items-center py-4">
+            <h2 className="text-4xl font-bold text-orange-600 p-2">
+              Employee Performance PS – {selectedMonth} {selectedYear}
             </h2>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowImageModal(true)}
+                className="p-1 rounded-full hover:bg-orange-50 border-2 border-orange-400 shadow-sm transition-colors"
+                title="View Chart"
+              >
+                <Eye className="w-6 h-6 text-orange-600" />
+              </button>
+
+              <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-slate-200 shadow-sm">
+                <label className="text-sm font-medium text-slate-700">
+                  Select Year:
+                </label>
+                <select
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(e.target.value)}
+                  className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm font-medium text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 cursor-pointer"
+                >
+                  {[2024, 2025, 2026, 2027].map((y) => (
+                    <option key={y}>{y}</option>
+                  ))}
+                </select>
+
+                <span className="text-slate-300 text-lg">|</span>
+
+                <select
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm font-medium text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 cursor-pointer"
+                >
+                  {ALL_MONTHS.map((month) => (
+                    <option key={month} value={month}>
+                      {month}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="bg-white rounded-lg p-2 shadow mb-4 flex gap-2">
-          <select
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(e.target.value)}
-            className="border rounded p-2"
+        {showImageModal && (
+          <div
+            className="fixed inset-0 z-[999] flex items-center justify-center bg-black/70 backdrop-blur-sm"
+            onClick={() => setShowImageModal(false)}
           >
-            {[2024, 2025, 2026, 2027].map((y) => (
-              <option key={y}>{y}</option>
-            ))}
-          </select>
-
-          <select
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(e.target.value)}
-            className="border rounded p-2"
-          >
-            {ALL_MONTHS.map((month) => (
-              <option key={month} value={month}>
-                {month}
-              </option>
-            ))}
-          </select>
-        </div>
+            <div
+              className="relative bg-white rounded-2xl shadow-2xl p-4 max-w-6xl w-full mx-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-between items-center mb-3 px-1">
+                <h3 className="text-lg font-bold text-orange-700">
+                  Employee Reports PS Chart – {selectedMonth} {selectedYear}
+                </h3>
+                <button
+                  onClick={() => setShowImageModal(false)}
+                  className="w-10 h-10 flex items-center justify-center rounded-full bg-[#EE0000] hover:bg-red-700 transition-colors"
+                >
+                  <X className="w-6 h-6 text-white" strokeWidth={3} />
+                </button>
+              </div>
+              <Image
+                src={employeeDate}
+                alt="Employee Performance TS"
+                width={1920}
+                height={1080}
+                priority
+                className="w-full rounded-xl object-contain max-h-[70vh]"
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {loading ? (
@@ -160,23 +206,24 @@ const Empreport = () => {
           <Loader2 className="animate-spin w-10 h-10" />
         </div>
       ) : (
-        <div className="bg-white rounded-xl shadow overflow-x-auto">
+        <div className="bg-white rounded-xl mt-2 shadow overflow-x-auto">
           <table className="w-full border border-gray-300 text-sm">
             <thead>
-              <tr className="bg-blue-950 text-white">
-                <th className="sticky left-0 bg-blue-950 border p-2 w-auto">
+              <tr className="bg-green-950 text-white">
+                {/* ✅ EMP - sticky */}
+                <th className="sticky left-0 z-20 bg-green-950 border p-2 w-[35px] min-w-[35px]">
                   EMP
                 </th>
-
-                <th className="border p-1 min-w-[50px] ">Status</th>
-
+                {/* ✅ Status - sticky after EMP */}
+                <th className="sticky left-[35px] z-20 bg-green-950 border p-1 min-w-[70px]">
+                  Status
+                </th>
                 {daysArray.map((day) => (
-                  <th key={day} className="border p-2 min-w-[50px]">
+                  <th key={day} className="border p-2 min-w-[40px]">
                     {day}
                   </th>
                 ))}
-
-                <th className="border p-2 bg-amber-700">TOTAL</th>
+                <th className="border p-2 bg-green-950 min-w-[60px]">TOTAL</th>
               </tr>
             </thead>
 
@@ -184,11 +231,9 @@ const Empreport = () => {
               {employees.length > 0 ? (
                 employees.map((employee, empIndex) => {
                   const bgColor = rowColors[empIndex % rowColors.length];
-
                   const days = Array.isArray(employee?.days)
                     ? employee.days
                     : [];
-
                   const totals = employee?.totals || {};
 
                   return (
@@ -201,7 +246,7 @@ const Empreport = () => {
                           {statusIdx === 0 && (
                             <td
                               rowSpan={STATUSES.length + 1}
-                              className={`sticky left-0 border font-bold ${bgColor} w-[35px] min-w-[35px] max-w-[35px] p-0 text-center align-middle`}
+                              className={`sticky left-0 z-10 border font-bold ${bgColor} w-[35px] min-w-[35px] max-w-[35px] p-0 text-center align-middle`}
                             >
                               <div
                                 className="flex items-center justify-center mx-auto font-extrabold text-base"
@@ -211,26 +256,31 @@ const Empreport = () => {
                                   whiteSpace: "nowrap",
                                   lineHeight: "16px",
                                   padding: "6px 0",
-                                  letterSpacing: "0.5px",
+                                  letterSpacing: "10px",
                                 }}
                               >
-                                {employee?.adviser_name}
+                                {employee?.adviser_name
+                                  ?.toUpperCase()
+                                  .replace(/\s+/g, " ")
+                                  .trim()}
                               </div>
                             </td>
                           )}
 
-                          <td className={`border p-2 ${STATUS_STYLE[status]}`}>
+                          {/* ✅ Status cell - sticky */}
+                          <td
+                            className={`sticky left-[35px] z-10 border p-0.5 font-semibold ${STATUS_STYLE[status]}`}
+                          >
                             {STATUS_LABELS[status]}
                           </td>
 
                           {daysArray.map((dayNo) => {
                             const dayData =
                               days.find((d: any) => d.day === dayNo) || {};
-
                             return (
                               <td
                                 key={dayNo}
-                                className="border text-center font-semibold"
+                                className={`border text-center font-semibold ${STATUS_STYLE[status].split(" ")[0]}`}
                               >
                                 {(dayData?.[status] || 0) > 0
                                   ? dayData[status]
@@ -244,14 +294,16 @@ const Empreport = () => {
                           </td>
                         </tr>
                       ))}
-                      {/* TOTAL ROW */}
-                      <tr className="bg-amber-500 text-lg font-extrabold ">
-                        <td className="border text-center px-3 py-2">TOTAL</td>
 
+                      {/* TOTAL ROW */}
+                      <tr className="bg-amber-500 text-lg font-extrabold">
+                        {/* ✅ TOTAL label - sticky */}
+                        <td className="sticky left-[35px] z-10 border text-center px-3 py-2 bg-amber-500">
+                          TOTAL
+                        </td>
                         {daysArray.map((dayNo) => {
                           const dayData =
                             days.find((d: any) => d.day === dayNo) || {};
-
                           return (
                             <td
                               key={dayNo}
@@ -261,7 +313,6 @@ const Empreport = () => {
                             </td>
                           );
                         })}
-
                         <td className="border bg-amber-300 text-center font-bold">
                           {totals.total || 0}
                         </td>

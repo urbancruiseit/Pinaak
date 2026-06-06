@@ -226,9 +226,6 @@ const leadSlice = createSlice({
         state.page = action.payload.page;
         state.limit = action.payload.limit;
         state.totalPages = action.payload.totalPages || 1;
-        state.selectedMonth = action.payload.selectedMonth;
-        state.selectedYear = action.payload.selectedYear;
-        state.selectedStatus = action.payload.selectedStatus ?? null; // ✅
         state.statusCounts = action.payload.statusCounts;
         state.totalLeads = action.payload.totalLeads;
       })

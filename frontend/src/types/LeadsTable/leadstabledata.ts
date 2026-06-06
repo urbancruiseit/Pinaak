@@ -51,7 +51,7 @@ export const SERVICE_TYPE_COLOR_MAP: Record<string, string> = {
 export const statusClassMap: Record<LeadRecord["status"], string> = {
   New: "bg-blue-600 text-white",
   KYC: "bg-cyan-800 text-white font-bold",
-  RFQ: "bg-amber-600 text-white font-bold",
+  RFQ: "bg-amber-800 text-white font-bold",
   HOT: "bg-pink-600 text-white font-bold",
   Book: "bg-green-600 text-white font-bold",
   "Veh-n": "bg-[#2c1332] text-white font-bold",

@@ -274,16 +274,16 @@ export default function MonthlyEnquiryReport() {
         {hasAnyData ? (
           <table className="border-collapse w-full text-center font-semibold">
             <thead>
-              <tr className="bg-blue-950 text-white">
+              <tr className="bg-green-950 text-white">
                 <th className="border p-2">TIME SLOT</th>
                 {[...Array(monthInfo.days)].map((_, i) => (
                   <th key={i} className="border p-1">
                     {i + 1}
                   </th>
                 ))}
-                <th className="border bg-blue-950 text-white">TOTAL</th>
-                <th className="border bg-blue-950 text-white">AVG</th>
-                <th className="border bg-blue-950 text-white">%</th>
+                <th className="border bg-green-950 text-white">TOTAL</th>
+                <th className="border bg-green-950 text-white">AVG</th>
+                <th className="border bg-green-950 text-white">%</th>
               </tr>
             </thead>
 
@@ -311,7 +311,7 @@ export default function MonthlyEnquiryReport() {
               ))}
 
               {/* Total row */}
-              <tr className="bg-blue-950 text-white font-bold">
+              <tr className="bg-green-800 text-white font-bold">
                 <td className="border p-2">TOTAL</td>
                 {dailyTotals.map((v, i) => (
                   <td key={i} className="border p-1">

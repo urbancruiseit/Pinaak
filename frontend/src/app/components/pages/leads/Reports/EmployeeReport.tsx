@@ -4,6 +4,10 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch } from "react-redux";
 import { fetchStatusWiseReport } from "@/app/features/Reports/monthlyReport/monthlyReportSlice";
 import { AppDispatch } from "@/app/redux/store";
+import Image from "next/image";
+import employee from "../../../../assets/employeeformulaview.png";
+import { Eye, X, ChevronDown } from "lucide-react";
+
 import {
   BarChart3,
   Calendar,
@@ -54,6 +58,7 @@ const Empreport = () => {
   const [loading, setLoading] = useState(false);
   const [processedData, setProcessedData] = useState<any[]>([]);
   const [expandedCard, setExpandedCard] = useState<number | null>(null);
+  const [showImageModal, setShowImageModal] = useState(false);
 
   const formatValue = (value: any) => {
     if (value === 0 || value === "0" || value === null || value === undefined)
@@ -275,30 +280,78 @@ const Empreport = () => {
             <h2 className="text-4xl font-bold text-orange-700 p-2">
               📊 Employee Performance TS – {selectedYear}
             </h2>
-            <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-slate-200 shadow-sm">
-              <Filter className="w-4 h-4 text-slate-500" />
-              <label
-                htmlFor="yearSelect"
-                className="text-sm font-medium text-slate-700"
+            <div className="flex items-center gap-3">
+              {/* Eye Button */}
+              <button
+                onClick={() => setShowImageModal(true)}
+                className="p-1 rounded-full hover:bg-orange-50 border-2 border-orange-400 shadow-sm transition-colors"
+                title="View Chart"
               >
-                Select Year:
-              </label>
-              <select
-                id="yearSelect"
-                value={selectedYear}
-                onChange={handleYearChange}
-                className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm font-medium text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 cursor-pointer hover:bg-slate-50 transition-colors"
-                disabled={loading}
-              >
-                {AVAILABLE_YEARS.map((year) => (
-                  <option key={year} value={year}>
-                    {year}
-                  </option>
-                ))}
-              </select>
+                <Eye className="w-6 h-6 text-orange-600" />
+              </button>
+
+              {/* Year Select */}
+              <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-slate-200 shadow-sm">
+                <Filter className="w-4 h-4 text-slate-500" />
+                <label
+                  htmlFor="yearSelect"
+                  className="text-sm font-medium text-slate-700"
+                >
+                  Select Year:
+                </label>
+                <select
+                  id="yearSelect"
+                  value={selectedYear}
+                  onChange={handleYearChange}
+                  className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm font-medium text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 cursor-pointer hover:bg-slate-50 transition-colors"
+                  disabled={loading}
+                >
+                  {AVAILABLE_YEARS.map((year) => (
+                    <option key={year} value={year}>
+                      {year}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
         </div>
+
+        {/* Image Modal */}
+        {showImageModal && (
+          <div
+            className="fixed inset-0 z-[999] flex items-center justify-center bg-black/70 backdrop-blur-sm"
+            onClick={() => setShowImageModal(false)}
+          >
+            <div
+              className="relative bg-white rounded-2xl shadow-2xl p-4 max-w-4xl w-full mx-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="flex justify-between items-center mb-3 px-1">
+                <h3 className="text-lg font-bold text-orange-700">
+                  Employee Performance TS – {selectedYear}
+                </h3>
+              <button
+                  onClick={() => setShowImageModal(false)}
+                  className="w-10 h-10 flex items-center justify-center rounded-full bg-[#EE0000] hover:bg-red-700 transition-colors"
+                >
+                  <X className="w-6 h-6 text-white" strokeWidth={3} />
+                </button>
+              </div>
+
+              {/* Image */}
+              <Image
+                src={employee}
+                alt="Performance Chart"
+                width={900}
+                height={600}
+                priority
+                className="w-full rounded-xl object-contain max-h-[70vh]"
+              />
+            </div>
+          </div>
+        )}
 
         {/* SUMMARY CARDS - STICKY (header ke saath) */}
         {!loading && processedData.length > 0 && (
@@ -310,7 +363,7 @@ const Empreport = () => {
                   <TrendingUp className="w-4 h-4 text-white" />
                 </div>
                 <div>
-                  <p className="text-md text-slate-500">Total Leads</p>
+                  <p className="text-md text-slate-500">Total Leads Per Year</p>
                   <p className="text-xl font-bold text-slate-800">
                     {summary.totalLeads.toLocaleString()}
                   </p>
@@ -322,7 +375,7 @@ const Empreport = () => {
                   <TrendingUp className="w-4 h-4 text-white" />
                 </div>
                 <div>
-                  <p className="text-md text-slate-500">Avg Per Month</p>
+                  <p className="text-md text-slate-500">Avg Leads Per Month</p>
                   <p className="text-xl font-bold text-slate-800">
                     {summary.avgPerMonth}
                   </p>
@@ -330,38 +383,120 @@ const Empreport = () => {
               </div>
             </div>
 
-            {/* Month wise Leads */}
-            <div className="col-span-7 bg-white rounded-lg shadow-md border border-slate-100 p-3">
-              <p className="text-md text-slate-500 mb-4">Month wise Leads</p>
-              <div className="flex flex-nowrap gap-x-2 overflow-x-auto items-center">
-                {ALL_MONTHS.map((m, idx) => {
-                  const monthTotal = processedData.reduce((sum, emp) => {
-                    const val = emp.months[m]?.total;
-                    return sum + (val !== "-" ? Number(val) : 0);
-                  }, 0);
-                  return (
-                    <React.Fragment key={m}>
-                      <span className="text-[18px] whitespace-nowrap">
-                        <span className="text-black font-extrabold">{m}</span>
-                        <span className="text-black font-extrabold">- </span>
-                        <span className="text-green-800 font-extrabold">
-                          {monthTotal}
-                        </span>
-                      </span>
-                      {idx < ALL_MONTHS.length - 1 && (
-                        <span className="text-slate-700 font-light text-[18px]">
-                          |
-                        </span>
-                      )}
-                    </React.Fragment>
-                  );
-                })}
+            {/* Month wise Leads - 6+6 two rows */}
+            <div className="col-span-4 bg-white rounded-lg shadow-md border border-slate-100 p-3">
+              <p className="text-md text-slate-500 mb-2">Month wise Leads</p>
+              <div className="flex flex-col gap-2">
+                {[ALL_MONTHS.slice(0, 6), ALL_MONTHS.slice(6)].map(
+                  (rowMonths, rowIdx) => (
+                    <div
+                      key={rowIdx}
+                      className="flex flex-nowrap gap-x-2 items-center"
+                    >
+                      {rowMonths.map((m, idx) => {
+                        const monthTotal = processedData.reduce((sum, emp) => {
+                          const val = emp.months[m]?.total;
+                          return sum + (val !== "-" ? Number(val) : 0);
+                        }, 0);
+                        return (
+                          <React.Fragment key={m}>
+                            <span className="text-[18px] whitespace-nowrap">
+                              <span className="text-black font-extrabold">
+                                {m}
+                              </span>
+                              <span className="text-black font-extrabold">
+                                -{" "}
+                              </span>
+                              <span className="text-red-800 font-extrabold">
+                                {monthTotal}
+                              </span>
+                            </span>
+                            {idx < rowMonths.length - 1 && (
+                              <span className="text-slate-400 font-light text-[15px]">
+                                |
+                              </span>
+                            )}
+                          </React.Fragment>
+                        );
+                      })}
+                    </div>
+                  ),
+                )}
               </div>
             </div>
 
-            {/* Top Performers */}
+            {/* Top Performers Month Wise */}
             <div className="col-span-3 bg-white rounded-lg shadow-md border border-slate-100 p-3">
-              <p className="text-md text-slate-500 mb-2">Top Performers</p>
+              <p className="text-md text-slate-500 mb-2">
+                Top Performers –{" "}
+                {(() => {
+                  const now = new Date();
+                  const monthNum = now.getMonth() + 1;
+                  return (
+                    Object.entries(MONTH_MAP).find(
+                      ([, v]) => v === monthNum,
+                    )?.[0] ?? ""
+                  );
+                })()}
+              </p>
+              <div className="flex items-stretch gap-2">
+                {(() => {
+                  const now = new Date();
+                  const monthNum = now.getMonth() + 1;
+                  const currentMonthKey =
+                    Object.entries(MONTH_MAP).find(
+                      ([, v]) => v === monthNum,
+                    )?.[0] ?? "";
+
+                  return processedData
+                    .map((emp) => {
+                      const monthData = emp.months[currentMonthKey];
+                      const book =
+                        monthData?.book !== "-" && monthData?.book
+                          ? Number(monthData.book)
+                          : 0;
+                      return { name: emp.adviser_name, book };
+                    })
+                    .sort((a, b) => b.book - a.book)
+                    .slice(0, 3)
+                    .map((emp, idx) => {
+                      const medals = ["🥇", "🥈", "🥉"];
+                      const textColors = [
+                        "text-yellow-700",
+                        "text-slate-600",
+                        "text-amber-700",
+                      ];
+                      const bgColors = [
+                        "bg-yellow-50 border-yellow-200",
+                        "bg-slate-50 border-slate-200",
+                        "bg-amber-50 border-amber-200",
+                      ];
+                      return (
+                        <div
+                          key={idx}
+                          className={`flex-1 flex flex-col items-center gap-0.5 border rounded-lg p-2 ${bgColors[idx]}`}
+                        >
+                          <span className="text-[16px]">{medals[idx]}</span>
+                          <span
+                            className={`text-[18px] font-bold ${textColors[idx]} text-center truncate w-full`}
+                          >
+                            {capitalizeName(emp.name)}
+                          </span>
+                          <span className="text-[15px] font-extrabold text-green-800">
+                            {emp.book} BK
+                          </span>
+                        </div>
+                      );
+                    });
+                })()}
+              </div>
+            </div>
+
+            {/* Top Performers Yearly */}
+            <div className="col-span-3 bg-white rounded-lg shadow-md border border-slate-100 p-3">
+              <p className="text-md text-slate-500 mb-2">
+                Top Performers – {selectedYear}
+              </p>
               <div className="flex items-stretch gap-2">
                 {processedData
                   .map((emp) => ({
@@ -389,11 +524,11 @@ const Empreport = () => {
                       >
                         <span className="text-[16px]">{medals[idx]}</span>
                         <span
-                          className={`text-[15px] font-bold ${textColors[idx]} text-center truncate w-full`}
+                          className={`text-[18px] font-bold ${textColors[idx]} text-center truncate w-full`}
                         >
                           {capitalizeName(emp.name)}
                         </span>
-                        <span className="text-[13px] font-extrabold text-green-800">
+                        <span className="text-[15px] font-extrabold text-green-800">
                           {emp.book} BK
                         </span>
                       </div>
@@ -549,7 +684,7 @@ const Empreport = () => {
                               key={month}
                               className={`border-b border-slate-100 transition-colors ${getRowColor(month)}`}
                             >
-                              <td className="px-1.5 py-1 font-semibold text-slate-700 whitespace-nowrap text-[13px]">
+                              <td className="px-1.5 py-2 font-semibold text-slate-700 whitespace-nowrap text-[13px]">
                                 {month}
                               </td>
                               <td

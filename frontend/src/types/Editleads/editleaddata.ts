@@ -18,7 +18,6 @@ export const STATUS_OPTIONS = [
   "Book",
   "Veh-n",
   "Lost",
-  "Blank",
 ];
 
 export const CITY_OPTIONS = ["delhi", "gurgoan", "hydrabad", "noida"];

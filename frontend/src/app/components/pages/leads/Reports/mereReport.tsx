@@ -5,6 +5,9 @@ import { useState, useMemo, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchMonthlyEnquiry } from "../../../../features/Reports/monthlyReport/monthlyReportSlice";
 import { RootState, AppDispatch } from "@/app/redux/store";
+import { Eye, X, ChevronDown } from "lucide-react";
+import Image from "next/image";
+import employee from "../../../../assets/monthyview.png";
 
 const getDaysInMonth = (year: number, month: number) => {
   return new Date(year, month + 1, 0).getDate();
@@ -93,6 +96,7 @@ const YEAR_OPTIONS = Array.from({ length: 5 }, (_, i) =>
 
 export default function MonthlyEnquiryReport() {
   const [year, setYear] = useState(CURRENT_YEAR.toString());
+  const [showImageModal, setShowImageModal] = useState(false);
 
   const dispatch = useDispatch<AppDispatch>();
 
@@ -121,8 +125,6 @@ export default function MonthlyEnquiryReport() {
       }
 
       const total = dailyData.reduce((a: number, b: number) => a + b, 0);
-
-      // AVG: sirf data wale dino se divide
       const activeDays = dailyData.filter((v: number) => v > 0).length;
       const avg = activeDays > 0 ? Math.round(total / activeDays) : 0;
 
@@ -132,8 +134,6 @@ export default function MonthlyEnquiryReport() {
 
   const grandTotal = reportData.reduce((acc, m) => acc + m.total, 0);
 
-  // ── Grand AVG: sirf un months ka average jisme koi data aaya ho ──
-  // Formula: un months ke avg ka average jinka total > 0
   const activeMonths = reportData.filter((m) => m.total > 0);
   const grandAvg =
     activeMonths.length > 0
@@ -174,11 +174,15 @@ export default function MonthlyEnquiryReport() {
       <style>{`
         .high-value {
           display: inline-block;
-          color: #7c2d12;
+          color: #be123c;
           font-weight: 900;
         }
         .sunday-cell {
-          color: #b91c1c;
+          color: #000000;
+          font-weight: 900;
+        }
+        .sunday-high {
+          color: #be123c;
           font-weight: 900;
         }
       `}</style>
@@ -193,6 +197,13 @@ export default function MonthlyEnquiryReport() {
           </div>
 
           <div className="flex gap-4">
+            <button
+              onClick={() => setShowImageModal(true)}
+              className="p-1 rounded-full hover:bg-orange-50 border-2 border-orange-400 shadow-sm transition-colors"
+              title="View Chart"
+            >
+              <Eye className="w-6 h-6 text-orange-600" />
+            </button>
             <select
               value={year}
               onChange={(e) => setYear(e.target.value)}
@@ -207,19 +218,55 @@ export default function MonthlyEnquiryReport() {
           </div>
         </div>
 
+        {/* Image Modal */}
+        {showImageModal && (
+          <div
+            className="fixed inset-0 z-[999] flex items-center justify-center bg-black/70 backdrop-blur-sm"
+            onClick={() => setShowImageModal(false)}
+          >
+            <div
+              className="relative bg-white rounded-2xl shadow-2xl p-4 max-w-4xl w-full mx-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="flex justify-between items-center mb-3 px-1">
+                <h3 className="text-lg font-bold text-orange-700">
+                  Employee Performance TS – {year}
+                </h3>
+                <button
+                  onClick={() => setShowImageModal(false)}
+                  className="w-10 h-10 flex items-center justify-center rounded-full bg-[#EE0000] hover:bg-red-700 transition-colors"
+                >
+                  <X className="w-6 h-6 text-white" strokeWidth={3} />
+                </button>
+              </div>
+
+              {/* Image */}
+              <Image
+                src={employee}
+                alt="Performance Chart"
+                width={900}
+                height={600}
+                priority
+                className="w-full rounded-xl object-contain max-h-[70vh]"
+              />
+            </div>
+          </div>
+        )}
+
         {/* ── Legend ── */}
         <div className="flex gap-4 mt-2 pl-1 text-sm font-semibold">
           <span className="flex items-center gap-1">
-            <span className="inline-block w-4 h-4 rounded bg-red-200 border border-red-400" />
+            <span className="inline-block w-4 h-4 rounded bg-gray-300 border border-gray-500" />
             Sunday
           </span>
           <span className="flex items-center gap-1">
-            <span className="inline-block w-4 h-4 rounded bg-orange-400 border border-orange-600" />
-            Enquiry &gt; 50
+            <span className="inline-block w-4 h-4 rounded bg-green-300 border border-green-500" />
+            <span style={{ color: "#be123c" }}>Enquiry &gt; 50</span>
           </span>
           <span className="flex items-center gap-1">
-            <span className="inline-block w-4 h-4 rounded bg-orange-200 border border-orange-400" />
-            Sunday + &gt; 50
+            <span className="inline-block w-4 h-4 rounded bg-gray-300 border border-gray-500" />
+            <span style={{ color: "#be123c" }}>Sunday + &gt; 50</span>
           </span>
         </div>
       </div>
@@ -234,23 +281,23 @@ export default function MonthlyEnquiryReport() {
       {/* ── Table ── */}
       <div className="overflow-x-auto border border-gray-600 rounded-lg shadow-sm">
         <table className="border-collapse w-full text-center font-bold">
-          <thead className="bg-yellow-300 text-blue-900 text-2xl">
+          <thead className="bg-green-950 text-white text-2xl">
             <tr>
-              <th className="border border-gray-600 p-3 font-bold text-xl">
+              <th className="border border-white p-3 font-bold text-xl">
                 MONTH
               </th>
               {[...Array(31)].map((_, i) => (
                 <th
                   key={i}
-                  className="border border-gray-600 p-2 font-bold text-lg"
+                  className="border border-white p-2 font-bold text-lg"
                 >
                   {i + 1}
                 </th>
               ))}
-              <th className="border border-gray-600 p-3 font-bold text-green-600 text-xl">
+              <th className="border border-white p-3 font-bold text-white text-xl">
                 TOTAL
               </th>
-              <th className="border border-gray-600 p-3 font-bold text-red-600 text-xl">
+              <th className="border border-white p-3 font-bold text-white text-xl">
                 AVG
               </th>
             </tr>
@@ -278,10 +325,16 @@ export default function MonthlyEnquiryReport() {
                     );
                     const highValue = value > 50;
 
-                    let cellBg = "";
-                    if (sunday && highValue) cellBg = "!bg-orange-200";
-                    else if (highValue) cellBg = "!bg-orange-400";
-                    else if (sunday) cellBg = "!bg-red-200";
+                    const cellBg = sunday ? "!bg-gray-300" : "";
+
+                    const textClass =
+                      highValue && sunday
+                        ? "sunday-high"
+                        : highValue
+                          ? "high-value"
+                          : sunday
+                            ? "sunday-cell"
+                            : "";
 
                     return (
                       <td
@@ -289,17 +342,7 @@ export default function MonthlyEnquiryReport() {
                         className={`border border-gray-600 p-1 text-lg ${monthColor} ${cellBg}`}
                       >
                         {value > 0 ? (
-                          <span
-                            className={
-                              highValue
-                                ? "high-value"
-                                : sunday
-                                  ? "sunday-cell"
-                                  : ""
-                            }
-                          >
-                            {value}
-                          </span>
+                          <span className={textClass}>{value}</span>
                         ) : (
                           ""
                         )}
@@ -317,7 +360,6 @@ export default function MonthlyEnquiryReport() {
                   <td className="border border-gray-600 p-2 bg-amber-200 font-bold text-green-800 text-xl">
                     {month.total}
                   </td>
-
                   <td className="border border-gray-600 p-2 bg-amber-200 font-bold text-red-800 text-xl">
                     {month.avg > 0 ? month.avg : ""}
                   </td>
@@ -326,8 +368,8 @@ export default function MonthlyEnquiryReport() {
             })}
 
             {/* ── Grand Total Row ── */}
-            <tr className="bg-yellow-200 text-black font-bold text-lg">
-              <td className="border border-gray-600 p-2 text-xl">TOTAL</td>
+            <tr className="bg-green-800 text-white font-bold text-lg">
+              <td className="border border-white p-2 text-xl">TOTAL</td>
 
               {[...Array(31)].map((_, dateIndex) => {
                 const dailyTotal = reportData.reduce((sum, month) => {
@@ -340,19 +382,17 @@ export default function MonthlyEnquiryReport() {
                 return (
                   <td
                     key={dateIndex}
-                    className="border border-gray-600 p-2 text-lg"
+                    className="border border-white p-2 text-lg"
                   >
                     {dailyTotal > 0 ? dailyTotal : ""}
                   </td>
                 );
               })}
 
-              <td className="border border-gray-600 p-2 text-2xl font-extrabold text-green-700">
+              <td className="border border-white p-2 text-2xl font-extrabold text-white">
                 {grandTotal}
               </td>
-
-              {/* ── Grand AVG: active months ke avg ka average ── */}
-              <td className="border border-gray-600 p-2 text-2xl font-extrabold text-red-700">
+              <td className="border border-gray-600 p-2 text-2xl font-extrabold text-white">
                 {grandAvg > 0 ? grandAvg : ""}
               </td>
             </tr>

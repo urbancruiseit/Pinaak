@@ -9,7 +9,7 @@ export const getSocket = (): Socket => {
   if (!socket) {
     socket = io(SOCKET_URL, {
       // ✅ WebSocket pehle try karo, polling fallback rakho
-      transports: ["websocket"],
+      transports: ["websocket, polling"],
       upgrade: true, // ✅ websocket pe upgrade hone do
       withCredentials: true,
       autoConnect: false,

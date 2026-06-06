@@ -5,7 +5,6 @@ import { pool } from "../../config/mySqlDB.js";
 // ─── GET All Records ───────────────────────────────────────────────────────────
 export const getAllWebsiteGac = async () => {
   try {
-    // Check if table exists
     const [tables] = await pool.query("SHOW TABLES LIKE 'website_gac'");
     if (tables.length === 0) {
       return [];
@@ -23,14 +22,9 @@ export const getAllWebsiteGac = async () => {
        ORDER BY created_at DESC`,
     );
 
-    if (rows.length > 0) {
-      console.log("📝 Sample record:", rows[0]);
-    }
-
     return rows;
   } catch (error) {
-    console.error("❌ Model Error (getAll):", error.message);
-    throw error;
+    throw new Error(`getAllWebsiteGac failed: ${error.message}`);
   }
 };
 
@@ -50,23 +44,20 @@ export const getWebsiteGacById = async (id) => {
       [id],
     );
 
-    if (rows.length === 0) {
-      return null;
-    }
+    if (rows.length === 0) return null;
 
     return rows[0];
   } catch (error) {
-    console.error("❌ Model Error (getById):", error.message);
-    throw error;
+    throw new Error(`getWebsiteGacById failed: ${error.message}`);
   }
 };
 
+// ─── GET All Trip Bookings ─────────────────────────────────────────────────────
 export const getAllTripBookings = async () => {
   try {
-    const [tables] = await pool.query("SHOW TABLES LIKE 'trip_bookings'"); // ✅ s added
+    const [tables] = await pool.query("SHOW TABLES LIKE 'trip_bookings'");
     if (tables.length === 0) {
-      console.error("❌ Table 'trip_bookings' does not exist");
-      return [];
+      throw new Error("Table 'trip_bookings' does not exist");
     }
 
     const [rows] = await pool.execute(
@@ -91,19 +82,16 @@ export const getAllTripBookings = async () => {
         city,
         created_at
       FROM trip_bookings
-      ORDER BY created_at DESC`  // ✅ s added
+      ORDER BY created_at DESC`,
     );
-
-    console.log("📊 Total rows fetched:", rows.length);
-    if (rows.length > 0) console.log("📝 Sample record:", rows[0]);
 
     return rows;
   } catch (error) {
-    console.error("❌ Model Error (getAllTripBookings):", error.message);
-    throw error;
+    throw new Error(`getAllTripBookings failed: ${error.message}`);
   }
 };
 
+// ─── GET Single Trip Booking By ID ────────────────────────────────────────────
 export const getTripBookingById = async (id) => {
   try {
     const [rows] = await pool.execute(
@@ -128,14 +116,13 @@ export const getTripBookingById = async (id) => {
         city,
         created_at
       FROM trip_bookings
-      WHERE id = ?`,  // ✅ s added
-      [id]
+      WHERE id = ?`,
+      [id],
     );
 
     if (rows.length === 0) return null;
     return rows[0];
   } catch (error) {
-    console.error("❌ Model Error (getTripBookingById):", error.message);
-    throw error;
+    throw new Error(`getTripBookingById failed: ${error.message}`);
   }
 };

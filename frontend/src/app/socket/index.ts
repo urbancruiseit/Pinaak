@@ -1,21 +1,24 @@
 import { io, Socket } from "socket.io-client";
 
 const SOCKET_URL =
-  process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:4000";
+  process.env.NEXT_PUBLIC_SOCKET_URL ||
+  (typeof window !== "undefined"
+    ? window.location.origin
+    : "http://localhost:4000");
 
 let socket: Socket | null = null;
 
 export const getSocket = (): Socket => {
   if (!socket) {
     socket = io(SOCKET_URL, {
-      // ✅ WebSocket pehle try karo, polling fallback rakho
       transports: ["websocket"],
-      upgrade: true, // ✅ websocket pe upgrade hone do
+      upgrade: true,
       withCredentials: true,
       autoConnect: false,
       reconnection: true,
       reconnectionAttempts: 5,
       reconnectionDelay: 3000,
+      path: "/socket.io/",
     });
 
     socket.on("connect_error", (err) => {
@@ -37,7 +40,7 @@ export const connectSocket = (user?: any) => {
 
   s.on("connect", () => {
     console.log("✅ Socket connected:", s.id);
-    console.log("🔌 Transport used:", s.io.engine.transport.name); // ← check karo websocket aaya ya nahi
+    console.log("🔌 Transport used:", s.io.engine.transport.name);
 
     s.emit("joinRooms", {
       id: user.id,

@@ -21,11 +21,6 @@ export const getMonthlyEnquiry = async (year) => {
 
     const [rows] = await pool.execute(query, [year]);
 
-    if (rows.length > 0) {
-      console.log("📝 Sample record:", rows[0]);
-    }
-
-    // ── Average: sirf un dino se divide karo jisme data aaya ──
     const monthMap = {}; // { [monthNumber]: { days, total } }
 
     rows.forEach((row) => {
@@ -363,10 +358,6 @@ export const getTimeEnquiryReport = async (year) => {
     `;
 
     const [rows] = await pool.execute(query, [year]);
-
-    if (rows.length > 0) {
-      console.log("⏰ Time Enquiry Sample:", rows[0]);
-    }
 
     return rows;
   } catch (error) {

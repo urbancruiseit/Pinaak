@@ -40,6 +40,8 @@ const isNewStatus = (status?: string) => {
   return s === "-" || s === "NEW";
 };
 
+const POLL_INTERVAL_MS = 2 * 60 * 1000;
+
 export default function GlobalLeadPopup() {
   const dispatch = useDispatch<AppDispatch>();
   const { currentUser } = useSelector((state: RootState) => state.user);
@@ -56,6 +58,7 @@ export default function GlobalLeadPopup() {
   const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(
     new Map(),
   );
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const isTravelAdvisor = currentUser?.role_name === "Travel Advisor";
 
@@ -63,6 +66,7 @@ export default function GlobalLeadPopup() {
   useEffect(() => {
     return () => {
       timersRef.current.forEach((t) => clearTimeout(t));
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
     };
   }, []);
 
@@ -77,11 +81,13 @@ export default function GlobalLeadPopup() {
     }, 300);
   }, []);
 
-  // ─── Show lead ────────────────────────────────────────────────────────────
+  // ─── Show lead — advisor match check ─────────────────────────────────────
   const showLead = useCallback(
     (l: LeadRecord) => {
       if (!isNewStatus(l.status)) return;
       if (currentLeadIdRef.current !== null) return;
+
+      // ─── Current user aur lead ka advisor_id match check ──────────
       if (String(l.advisor_id) !== String(currentUser?.id)) return;
 
       currentLeadIdRef.current = String(l.id);
@@ -100,6 +106,8 @@ export default function GlobalLeadPopup() {
       const timer = setTimeout(() => {
         timersRef.current.delete(leadId);
         const latestLead = activeLeadsMapRef.current.get(leadId);
+
+        // ─── Reshow ke waqt bhi advisor match check ───────────────
         if (
           latestLead &&
           isNewStatus(latestLead.status) &&
@@ -134,13 +142,25 @@ export default function GlobalLeadPopup() {
     });
   }, [closePopup, scheduleReshow]);
 
-  // ─── Sirf ek baar fetch — no polling ─────────────────────────────────────
+  // ─── Polling — sirf Travel Advisor ke liye ───────────────────────────────
   useEffect(() => {
     if (!currentUser || !isTravelAdvisor) return;
+
     dispatch(fetchMyAssignedLeads(1));
+
+    pollIntervalRef.current = setInterval(() => {
+      dispatch(fetchMyAssignedLeads(1));
+    }, POLL_INTERVAL_MS);
+
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+    };
   }, [currentUser, isTravelAdvisor, dispatch]);
 
-  // ─── Process leads from Redux ─────────────────────────────────────────────
+  // ─── Process leads from Redux — sirf Travel Advisor ke liye ──────────────
   useEffect(() => {
     if (!currentUser || !isTravelAdvisor || !leads || leads.length === 0)
       return;
@@ -150,6 +170,8 @@ export default function GlobalLeadPopup() {
       leads.forEach((l) => {
         const id = String(l.id);
         baseline.add(id);
+
+        // ─── Sirf apne leads activeMap mein rakho ─────────────────
         if (
           isNewStatus(l.status) &&
           String(l.advisor_id) === String(currentUser.id)
@@ -165,6 +187,7 @@ export default function GlobalLeadPopup() {
       const id = String(l.id);
       const isNew = isNewStatus(l.status);
 
+      // ─── Advisor match nahi to skip ───────────────────────────────
       if (String(l.advisor_id) !== String(currentUser.id)) {
         activeLeadsMapRef.current.delete(id);
         return;
@@ -202,9 +225,14 @@ export default function GlobalLeadPopup() {
       initialSeenRef.current = null;
       timersRef.current.forEach((t) => clearTimeout(t));
       timersRef.current.clear();
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
     }
   }, [currentUser, isTravelAdvisor]);
 
+  // ─── Render — sirf Travel Advisor ko popup dikhao ────────────────────────
   if (!lead || !currentUser || !isTravelAdvisor) return null;
 
   return (
@@ -223,6 +251,7 @@ export default function GlobalLeadPopup() {
         }}
         className="relative w-full max-w-2xl mx-4"
       >
+        {/* Green outer wrapper */}
         <div
           className="rounded-3xl p-[3px] shadow-2xl"
           style={{
@@ -234,7 +263,7 @@ export default function GlobalLeadPopup() {
             {/* Header */}
             <div className="flex items-center justify-between mb-5">
               <div className="flex items-center gap-3">
-                <Bell className="w-6 h-6 text-white " />
+                <Bell className="w-6 h-6 text-white animate-bounce" />
                 <h2 className="text-2xl font-extrabold text-white">
                   🚀 New Lead Arrived!
                 </h2>
@@ -357,37 +386,68 @@ export default function GlobalLeadPopup() {
                     </span>
                   </div>
                   <div className="grid grid-cols-2 gap-2">
-                    {[
-                      {
-                        label: "Start Date",
-                        value: formatDate(lead.pickupDateTime),
-                      },
-                      {
-                        label: "End Date",
-                        value: formatDate(lead.dropDateTime),
-                      },
-                      { label: "Duration", value: `${lead.days} days` },
-                      { label: "Pax", value: `${lead.passengerTotal} pax` },
-                    ].map((item) => (
-                      <div
-                        key={item.label}
-                        className="rounded-xl p-3"
-                        style={{
-                          background: "#f0fdf4",
-                          border: "0.5px solid #bbf7d0",
-                        }}
-                      >
-                        <div className="text-xs text-gray-500 mb-1">
-                          {item.label}
-                        </div>
-                        <div
-                          className="text-sm font-semibold"
-                          style={{ color: "#15803d" }}
-                        >
-                          {item.value}
-                        </div>
+                    <div
+                      className="rounded-xl p-3"
+                      style={{
+                        background: "#f0fdf4",
+                        border: "0.5px solid #bbf7d0",
+                      }}
+                    >
+                      <div className="text-xs text-gray-500 mb-1">
+                        Start Date
                       </div>
-                    ))}
+                      <div
+                        className="text-sm font-semibold"
+                        style={{ color: "#15803d" }}
+                      >
+                        {formatDate(lead.pickupDateTime)}
+                      </div>
+                    </div>
+                    <div
+                      className="rounded-xl p-3"
+                      style={{
+                        background: "#f0fdf4",
+                        border: "0.5px solid #bbf7d0",
+                      }}
+                    >
+                      <div className="text-xs text-gray-500 mb-1">End Date</div>
+                      <div
+                        className="text-sm font-semibold"
+                        style={{ color: "#15803d" }}
+                      >
+                        {formatDate(lead.dropDateTime)}
+                      </div>
+                    </div>
+                    <div
+                      className="rounded-xl p-3"
+                      style={{
+                        background: "#f0fdf4",
+                        border: "0.5px solid #bbf7d0",
+                      }}
+                    >
+                      <div className="text-xs text-gray-500 mb-1">Duration</div>
+                      <div
+                        className="text-sm font-semibold"
+                        style={{ color: "#15803d" }}
+                      >
+                        {lead.days} days
+                      </div>
+                    </div>
+                    <div
+                      className="rounded-xl p-3"
+                      style={{
+                        background: "#f0fdf4",
+                        border: "0.5px solid #bbf7d0",
+                      }}
+                    >
+                      <div className="text-xs text-gray-500 mb-1">Pax</div>
+                      <div
+                        className="text-sm font-semibold"
+                        style={{ color: "#15803d" }}
+                      >
+                        {lead.passengerTotal} pax
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

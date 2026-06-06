@@ -8,10 +8,14 @@ let socket: Socket | null = null;
 export const getSocket = (): Socket => {
   if (!socket) {
     socket = io(SOCKET_URL, {
-      transports: ["polling"],
-      upgrade: false,
+      // ✅ WebSocket pehle try karo, polling fallback rakho
+      transports: ["websocket"],
+      upgrade: true, // ✅ websocket pe upgrade hone do
       withCredentials: true,
       autoConnect: false,
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 3000,
     });
 
     socket.on("connect_error", (err) => {
@@ -23,29 +27,24 @@ export const getSocket = (): Socket => {
 };
 
 export const connectSocket = (user?: any) => {
-  // ✅ SAFETY
   if (!user?.id) {
     console.log("❌ Invalid user for socket");
-
     return;
   }
 
   const s = getSocket();
-
   s.off("connect");
 
   s.on("connect", () => {
     console.log("✅ Socket connected:", s.id);
+    console.log("🔌 Transport used:", s.io.engine.transport.name); // ← check karo websocket aaya ya nahi
 
     s.emit("joinRooms", {
       id: user.id,
       fullName: user.fullName,
       role_id: user.role_id,
-
       region_ids: user.region_ids || [],
-
       zone_ids: user.zone_ids || [],
-
       city_ids: user.city_ids || [],
     });
 

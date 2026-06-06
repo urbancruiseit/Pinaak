@@ -12,8 +12,6 @@ export const initSocket = (server) => {
       credentials: true,
       methods: ["GET", "POST"],
     },
-    pingTimeout: 60000,
-    pingInterval: 30000,
   });
 
   io.on("connection", (socket) => {

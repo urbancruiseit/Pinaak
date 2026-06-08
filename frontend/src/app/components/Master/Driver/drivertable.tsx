@@ -130,7 +130,6 @@ const DriverTable: React.FC<DriverTableProps> = ({ onEdit, onView }) => {
     try {
       setEditLoading(true);
       const driverData = await dispatch(getDriverByIdThunk(driver.id)).unwrap();
-      console.log("Fetched Driver Data for Edit:", driverData);
       setSelectedDriver(driverData);
       setShowEditForm(true);
       onEdit?.(driverData);
@@ -148,7 +147,6 @@ const DriverTable: React.FC<DriverTableProps> = ({ onEdit, onView }) => {
     try {
       setViewLoading(true);
       const driverData = await dispatch(getDriverByIdThunk(driver.id)).unwrap();
-      console.log("Fetched Driver Data for View:", driverData);
       setSelectedDriver(driverData);
       setShowViewModal(true); // Open modal
       onView?.(driverData);

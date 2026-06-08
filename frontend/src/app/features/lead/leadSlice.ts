@@ -220,7 +220,6 @@ const leadSlice = createSlice({
       })
       .addCase(fetchLeads.fulfilled, (state, action) => {
         state.loading = false;
-        console.log("action paload ", action.payload);
         state.leads = action.payload.leads;
         state.total = action.payload.total;
         state.page = action.payload.page;

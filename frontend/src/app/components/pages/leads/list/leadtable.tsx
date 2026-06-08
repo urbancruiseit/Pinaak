@@ -143,7 +143,6 @@ export default function LeadsTable() {
     listenToPresalesLeads((lead) => {
       dispatch(addRealtimeLead(lead));
 
-      console.log("realtime lead check mismatch", lead);
     });
 
     listenToLeadUpdated((updatedLead) => {

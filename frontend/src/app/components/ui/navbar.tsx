@@ -234,6 +234,9 @@ interface NavbarProps {
   onEmployeeReports?: () => void;
   onTimeEnquiryReports?: () => void;
   onDateEmployeeReports?: () => void;
+  onMonthlyLeadsTwo?: () => void;
+  onLongWeekendLeads?: () => void;
+
   showWebsiteMenu?: boolean;
   activeWebsiteKey?: string | null;
   onWebsiteMenuSelect?: (key: string) => void;
@@ -304,6 +307,8 @@ export function Navbar({
   onEmployeeReports,
   onTimeEnquiryReports,
   onDateEmployeeReports,
+  onMonthlyLeadsTwo,
+  onLongWeekendLeads,
 }: NavbarProps) {
   // ✅ Redux se currentUser lo
   const dispatch = useDispatch<AppDispatch>();
@@ -811,7 +816,17 @@ export function Navbar({
                                   <span className="w-1 h-1 rounded-full bg-green-300"></span>
                                   Monthly Enquiry (MER)
                                 </li>
-
+                                <li
+                                  onClick={() => {
+                                    onMonthlyLeadsTwo?.();
+                                    setOpenMenu(null);
+                                    setMobileOpen(false);
+                                  }}
+                                  className="px-3 py-2.5 md:py-2 text-sm transition-all hover:bg-green-50 hover:text-green-700 hover:pl-4 cursor-pointer text-gray-700 flex items-center gap-2"
+                                >
+                                  <span className="w-1 h-1 rounded-full bg-green-300"></span>
+                                  MER 2 (MER 2)
+                                </li>
                                 <li
                                   onClick={() => {
                                     onMonthlyDistribution?.();
@@ -822,6 +837,18 @@ export function Navbar({
                                 >
                                   <span className="w-1 h-1 rounded-full bg-green-300"></span>
                                   Lead Distribution PS (LDR)
+                                </li>
+
+                                <li
+                                  onClick={() => {
+                                    onLongWeekendLeads?.();
+                                    setOpenMenu(null);
+                                    setMobileOpen(false);
+                                  }}
+                                  className="px-3 py-2.5 md:py-2 text-sm transition-all hover:bg-green-50 hover:text-green-700 hover:pl-4 cursor-pointer text-gray-700 flex items-center gap-2"
+                                >
+                                  <span className="w-1 h-1 rounded-full bg-green-300"></span>
+                                  Long Weekend Distribution (LWD)
                                 </li>
 
                                 <li
@@ -857,7 +884,7 @@ export function Navbar({
                                   className="px-3 py-2.5 md:py-2 text-sm transition-all hover:bg-green-50 hover:text-green-700 hover:pl-4 cursor-pointer text-gray-700 flex items-center gap-2"
                                 >
                                   <span className="w-1 h-1 rounded-full bg-green-300"></span>
-                                  Time Enquiry Reports (TER)
+                                  Time Enquiry Reports -PS (TER)
                                 </li>
 
                                 <li

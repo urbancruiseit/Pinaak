@@ -4,6 +4,7 @@ import {
   getLeadCountByDateForYearController,
   getMonthlyDateWiseStatusReportController,
   getMonthlyStatusWiseReportController,
+  longWeekendReport,
   monthlyEnquiryReport,
   timeEnquiryReport,
 } from "./report.controller.js";
@@ -31,5 +32,6 @@ router.get(
 );
 
 router.get("/time-enquiry", timeEnquiryReport);
+router.get("/longweekend", longWeekendReport);
 
 export default router;

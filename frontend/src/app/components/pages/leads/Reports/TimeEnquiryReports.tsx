@@ -3,20 +3,22 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch, RootState } from "../../../../redux/store";
-import { fetchTimeEnquiry } from "../../../../features/Reports/monthlyReport/monthlyReportSlice"; // Updated import
+import { fetchTimeEnquiry } from "../../../../features/Reports/monthlyReport/monthlyReportSlice";
 
 const timeSlots = [
+  { label: "00:00-06:00", start: 0, end: 6 },
+  { label: "06:00-10:00", start: 6, end: 10 },
   { label: "10:00-17:00", start: 10, end: 17 },
   { label: "17:00-21:30", start: 17, end: 21.5 },
   { label: "21:30-00:00", start: 21.5, end: 24 },
-  { label: "00:00-10:00", start: 0, end: 10 },
 ];
 
 function getTimeSlotFromHour(hour: number): string {
   if (hour >= 10 && hour < 17) return "10:00-17:00";
   if (hour >= 17 && hour < 21.5) return "17:00-21:30";
   if (hour >= 21.5 && hour < 24) return "21:30-00:00";
-  if (hour >= 0 && hour < 10) return "00:00-10:00";
+  if (hour >= 0 && hour < 6) return "00:00-06:00";
+  if (hour >= 6 && hour < 10) return "06:00-10:00";
   return "Unknown";
 }
 
@@ -55,11 +57,17 @@ interface TimeEnquiryRecord {
   total: number;
 }
 
+const getSlotDataColor = (label: string): string => {
+  if (label === "10:00-17:00" || label === "17:00-21:30") {
+    return "bg-blue-300";
+  }
+  return "bg-gray-200";
+};
+
 export default function MonthlyEnquiryReport() {
   const dispatch = useDispatch<AppDispatch>();
 
   const { timeEnquiry } = useSelector((state: RootState) => state.report);
-
   const { data: reportData, loading, error } = timeEnquiry;
 
   const [selectedMonth, setSelectedMonth] = useState(getCurrentMonthName());
@@ -87,6 +95,7 @@ export default function MonthlyEnquiryReport() {
   const monthInfo = getMonthInfo(selectedMonth, yearNum);
   const compareMonthInfo = getMonthInfo(compareMonth, yearNum);
 
+  // ── Main month data ──────────────────────────────────────
   const timeData = useMemo(() => {
     const slotData = timeSlots.map((slot) => ({
       label: slot.label,
@@ -101,12 +110,9 @@ export default function MonthlyEnquiryReport() {
 
     monthRecords.forEach((record) => {
       const dayIndex = record.day - 1;
-
       if (dayIndex >= 0 && dayIndex < monthInfo.days) {
         const slotLabel = getTimeSlotFromHour(record.hour);
-
         const slotIdx = timeSlots.findIndex((s) => s.label === slotLabel);
-
         if (slotIdx !== -1) {
           slotData[slotIdx].daily[dayIndex] += record.total;
           slotData[slotIdx].total += record.total;
@@ -121,28 +127,19 @@ export default function MonthlyEnquiryReport() {
     return slotData;
   }, [reportData, monthInfo]);
 
-  /* ==============================
-      DAILY TOTAL
-  ============================== */
-
   const dailyTotals = useMemo(() => {
     const totals = Array(monthInfo.days).fill(0);
-
     timeData.forEach((slot) => {
       slot.daily.forEach((val, i) => {
         totals[i] += val;
       });
     });
-
     return totals;
   }, [timeData, monthInfo.days]);
 
   const grandTotal = dailyTotals.reduce((a, b) => a + b, 0);
 
-  /* ==============================
-      COMPARE MONTH
-  ============================== */
-
+  // ── Compare month data ───────────────────────────────────
   const compareTimeData = useMemo(() => {
     const slotData = timeSlots.map((slot) => ({
       label: slot.label,
@@ -157,12 +154,9 @@ export default function MonthlyEnquiryReport() {
 
     monthRecords.forEach((record) => {
       const dayIndex = record.day - 1;
-
       if (dayIndex >= 0 && dayIndex < compareMonthInfo.days) {
         const slotLabel = getTimeSlotFromHour(record.hour);
-
         const slotIdx = timeSlots.findIndex((s) => s.label === slotLabel);
-
         if (slotIdx !== -1) {
           slotData[slotIdx].daily[dayIndex] += record.total;
           slotData[slotIdx].total += record.total;
@@ -179,13 +173,11 @@ export default function MonthlyEnquiryReport() {
 
   const compareDailyTotals = useMemo(() => {
     const totals = Array(compareMonthInfo.days).fill(0);
-
     compareTimeData.forEach((slot) => {
       slot.daily.forEach((val, i) => {
         totals[i] += val;
       });
     });
-
     return totals;
   }, [compareTimeData, compareMonthInfo.days]);
 
@@ -204,36 +196,28 @@ export default function MonthlyEnquiryReport() {
           ((grandTotal - compareGrandTotal) / compareGrandTotal) * 100,
         );
 
-  /* ==============================
-      UI
-  ============================== */
-
-  if (loading) return <div className="p-6">Loading...</div>;
-
-  if (error) return <div className="p-6 text-red-600">Error : {error}</div>;
-
-  // Check if there's any data at all
   const hasAnyData = reportData && reportData.length > 0;
-
-  // Get current month name for display
   const currentMonthName = getCurrentMonthName();
   const currentYear = getCurrentYear();
 
-  return (
-    <div className="p-6 ">
-      {/* Header */}
+  if (loading) return <div className="p-6 text-2xl font-bold">Loading...</div>;
+  if (error)
+    return (
+      <div className="p-6 text-red-600 text-xl font-bold">Error: {error}</div>
+    );
 
-      <div className="mb-4 bg-orange-100 shadow-lg rounded-md flex justify-between items-center">
+  return (
+    <div className="p-6">
+      {/* Header */}
+      <div className="mb-4 bg-orange-100 shadow-lg rounded-md">
         <div className="sticky top-0 z-10 bg-orange-100 p-3 rounded-md w-full">
           <div className="flex items-center">
-            {/* LEFT TITLE - Updated to show current month and year */}
             <div className="pl-4 border-l-8 border-orange-500 bg-white px-3 rounded-md shadow-md">
               <h2 className="text-4xl font-bold text-left py-4 text-orange-600 p-2">
-                Time Enquiry Reports – {currentMonthName} {currentYear}
+                Time Enquiry Reports PS – {currentMonthName} {currentYear}
               </h2>
             </div>
 
-            {/* RIGHT FILTERS */}
             <div className="flex gap-3 flex-wrap ml-auto">
               <select
                 value={selectedMonth}
@@ -254,22 +238,12 @@ export default function MonthlyEnquiryReport() {
                   <option key={m.name}>{m.name}</option>
                 ))}
               </select>
-
-              <select
-                value={year}
-                onChange={(e) => setYear(e.target.value)}
-                className="border px-3 py-2 font-semibold"
-              >
-                {["2024", "2025", "2026", "2027"].map((y) => (
-                  <option key={y}>{y}</option>
-                ))}
-              </select>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Main Table - Always visible */}
+      {/* Main Table */}
       <div className="overflow-x-auto bg-white shadow-lg rounded-lg border">
         {hasAnyData ? (
           <table className="border-collapse w-full text-center font-semibold">
@@ -281,48 +255,58 @@ export default function MonthlyEnquiryReport() {
                     {i + 1}
                   </th>
                 ))}
-                <th className="border bg-green-950 text-white">TOTAL</th>
-                <th className="border bg-green-950 text-white">AVG</th>
-                <th className="border bg-green-950 text-white">%</th>
+                <th className="border  p-2">TOTAL</th>
+                <th className="border p-2">AVG</th>
+                <th className="border p-2">%</th>
               </tr>
             </thead>
 
             <tbody>
               {timeData.map((slot, idx) => (
                 <tr key={idx}>
-                  <td className="border p-2 bg-gray-200 font-bold">
+                  {/* ✅ Label cell — same bg as row */}
+                  {/* Time Slot Column */}
+                  <td className="border p-2 font-bold bg-gray-200">
                     {slot.label}
                   </td>
+
+                  {/* Date-wise Data */}
                   {slot.daily.map((v, i) => (
-                    <td key={i} className="border p-1">
-                      {v}
+                    <td
+                      key={i}
+                      className={`border border-gray-400 p-1 ${getSlotDataColor(slot.label)}`}
+                    >
+                      {v > 0 ? v : "-"}
                     </td>
                   ))}
-                  <td className="border border-white bg-amber-200 font-bold">
-                    {slot.total}
+
+                  <td className="border bg-amber-200 font-bold p-2 text-blue-900">
+                    {slot.total > 0 ? slot.total : "-"}
                   </td>
-                  <td className="border border-white bg-amber-200 font-bold">
-                    {slot.avg}
+
+                  <td className="border bg-amber-200 font-bold p-2 text-blue-900">
+                    {slot.avg > 0 ? slot.avg : "-"}
                   </td>
-                  <td className="border border-white bg-amber-200 font-bold">
+
+                  <td className="border bg-amber-200 font-bold p-2 text-blue-900">
                     {getPercent(slot.total)}%
                   </td>
                 </tr>
               ))}
 
-              {/* Total row */}
+              {/* Total Row */}
               <tr className="bg-green-800 text-white font-bold">
                 <td className="border p-2">TOTAL</td>
                 {dailyTotals.map((v, i) => (
                   <td key={i} className="border p-1">
-                    {v}
+                    {v > 0 ? v : "-"}
                   </td>
                 ))}
-                <td className="border">{grandTotal}</td>
-                <td className="border">
+                <td className="border p-2">{grandTotal}</td>
+                <td className="border p-2">
                   {Math.round(grandTotal / monthInfo.days)}
                 </td>
-                <td className="border">100%</td>
+                <td className="border p-2">100%</td>
               </tr>
             </tbody>
           </table>
@@ -338,42 +322,6 @@ export default function MonthlyEnquiryReport() {
           </div>
         )}
       </div>
-
-      {/* Month Comparison - Only show if data exists */}
-      {hasAnyData && (
-        <div className="mt-8 bg-white shadow-xl rounded-lg p-6 border">
-          <h3 className="text-2xl font-bold text-center mb-6 text-purple-700">
-            📊 Month Comparison Analysis
-          </h3>
-          <div className="grid md:grid-cols-3 gap-6 text-center font-bold">
-            <div className="bg-green-100 p-6 rounded-lg shadow">
-              <h4 className="text-xl text-green-700 mb-2">
-                {selectedMonth} {year}
-              </h4>
-              <p>Total Leads: {grandTotal}</p>
-              <p>Average Leads: {Math.round(grandTotal / monthInfo.days)}</p>
-            </div>
-            <div className="bg-blue-100 p-6 rounded-lg shadow">
-              <h4 className="text-xl text-blue-700 mb-2">
-                {compareMonth} {year}
-              </h4>
-              <p>Total Leads: {compareGrandTotal}</p>
-              <p>Average Leads: {compareAvg}</p>
-            </div>
-            <div
-              className={`p-6 rounded-lg shadow text-white ${
-                growth >= 0 ? "bg-green-600" : "bg-red-600"
-              }`}
-            >
-              <h4 className="text-xl mb-2">Growth</h4>
-              <p className="text-3xl">
-                {growth >= 0 ? "▲" : "▼"} {Math.abs(growth)}%
-              </p>
-              <p>{growth >= 0 ? "Lead Increased" : "Lead Decreased"}</p>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

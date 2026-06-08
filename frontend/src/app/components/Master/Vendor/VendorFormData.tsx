@@ -195,8 +195,6 @@ const VendorForm: React.FC<VendorFormProps> = ({
 
   // Debug: Log selectedVendor to see what's coming from Redux
   useEffect(() => {
-    console.log("Selected Vendor from Redux:", selectedVendor);
-    console.log("Vendor Status:", vendorStatus);
   }, [selectedVendor, vendorStatus]);
 
   const { cities = [], loading: stateLoading = false } = stateSlice || {};
@@ -278,7 +276,6 @@ const VendorForm: React.FC<VendorFormProps> = ({
 
     // The selectedVendor might already be the vendor object or might have a nested structure
     const vendorData = selectedVendor.vendor || selectedVendor;
-    console.log("Vendor data to map:", vendorData);
 
     const mapped: VendorFormData = {
       id: vendorData.id,

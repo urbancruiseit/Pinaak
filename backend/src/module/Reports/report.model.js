@@ -542,3 +542,55 @@ export const getMonthlyDateWiseStatusReport = async (cityIds, month, year) => {
     teamTotal,
   };
 };
+
+export const getLongWeekendReport = async (year) => {
+  try {
+    const parsedYear = parseInt(year);
+    if (isNaN(parsedYear) || parsedYear < 2000 || parsedYear > 2100) {
+      throw new Error(`Invalid year: ${year}`);
+    }
+
+    const [tables] = await pool.query("SHOW TABLES LIKE 'leads'");
+    if (tables.length === 0) return [];
+
+    const query = `
+      SELECT 
+        MONTH(pickupDateTime) AS month,
+        DAY(pickupDateTime)   AS day,
+        COUNT(id)             AS total
+      FROM leads
+      WHERE YEAR(pickupDateTime) = ?
+      GROUP BY MONTH(pickupDateTime), DAY(pickupDateTime)
+      ORDER BY month, day
+    `;
+
+    const [rows] = await pool.execute(query, [parsedYear]);
+
+    if (rows.length > 0) {
+      console.log("📝 Sample record:", rows[0]);
+    }
+
+    // ── getMonthlyEnquiry jaisa hi avg logic ──
+    const monthMap = {};
+
+    rows.forEach((row) => {
+      const m = row.month;
+      if (!monthMap[m]) {
+        monthMap[m] = { days: 0, total: 0 };
+      }
+      monthMap[m].days += 1;
+      monthMap[m].total += Number(row.total);
+    });
+
+    const result = rows.map((row) => {
+      const { days, total } = monthMap[row.month];
+      const avg = days > 0 ? Math.round(total / days) : 0;
+      return { ...row, avg };
+    });
+
+    return result;
+  } catch (error) {
+    console.error("❌ Model Error:", error.message);
+    throw error;
+  }
+};

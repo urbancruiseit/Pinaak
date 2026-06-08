@@ -1,5 +1,6 @@
 import {
   getLeadCountByDateForYear,
+  getLongWeekendReport,
   getMonthlyDateWiseStatusReport,
   getMonthlyEnquiry,
   getMonthlyStatusWiseReport,
@@ -21,7 +22,6 @@ export const monthlyEnquiryReport = asyncHandler(async (req, res) => {
   }
 
   const data = await getMonthlyEnquiry(year);
-  console.log(" data", data);
   return res
     .status(200)
     .json(
@@ -209,3 +209,25 @@ export const getMonthlyDateWiseStatusReportController = asyncHandler(
     });
   },
 );
+
+export const longWeekendReport = asyncHandler(async (req, res) => {
+  const year = req.query.year
+    ? parseInt(req.query.year)
+    : new Date().getFullYear();
+
+  if (isNaN(year) || year < 2000 || year > 2100) {
+    throw new ApiError(400, "Invalid year parameter");
+  }
+
+  const data = await getLongWeekendReport(year); // ✅ sirf year pass ho
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        { year, data: data || [] },
+        "Long weekend report fetched successfully",
+      ),
+    );
+});

@@ -10,6 +10,7 @@ import {
   TeamTotal,
   getTimeEnquiryApi,
   getStatusWiseDateReportApi,
+  getLongWeekendReportApi,
 } from "./monthlyReportApi";
 
 interface MonthlyEnquiryState {
@@ -45,6 +46,12 @@ interface MonthlyEnquiryState {
     data: any[];
     teamTotal: any;
     month: number | null;
+    year: number | null;
+    loading: boolean;
+    error: string | null;
+  };
+  longWeekend: {
+    data: any[];
     year: number | null;
     loading: boolean;
     error: string | null;
@@ -85,6 +92,12 @@ const initialState: MonthlyEnquiryState = {
     data: [],
     teamTotal: {},
     month: null,
+    year: null,
+    loading: false,
+    error: null,
+  },
+  longWeekend: {
+    data: [],
     year: null,
     loading: false,
     error: null,
@@ -152,6 +165,17 @@ export const fetchStatusWiseDateReport = createAsyncThunk(
   ) => {
     try {
       return await getStatusWiseDateReportApi(params);
+    } catch (error: any) {
+      return rejectWithValue(error.message);
+    }
+  },
+);
+
+export const fetchLongWeekendReport = createAsyncThunk(
+  "report/fetchLongWeekendReport",
+  async (year: number, { rejectWithValue }) => {
+    try {
+      return await getLongWeekendReportApi(year);
     } catch (error: any) {
       return rejectWithValue(error.message);
     }
@@ -265,6 +289,25 @@ const monthlyReportSlice = createSlice({
       .addCase(fetchStatusWiseDateReport.rejected, (state, action) => {
         state.statusDateReport.loading = false;
         state.statusDateReport.error = action.payload as string;
+      })
+      // Long Weekend Report
+      .addCase(fetchLongWeekendReport.pending, (state) => {
+        state.longWeekend.loading = true;
+        state.longWeekend.error = null;
+      })
+
+      .addCase(fetchLongWeekendReport.fulfilled, (state, action) => {
+        state.longWeekend.loading = false;
+
+        state.longWeekend.data = action.payload.data;
+
+        state.longWeekend.year = action.payload.year;
+      })
+
+      .addCase(fetchLongWeekendReport.rejected, (state, action) => {
+        state.longWeekend.loading = false;
+
+        state.longWeekend.error = action.payload as string;
       });
   },
 });

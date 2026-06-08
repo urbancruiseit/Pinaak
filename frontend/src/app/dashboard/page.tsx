@@ -159,6 +159,16 @@ const TimeEnquiryReportsModule = dynamic(
   { ssr: false, loading: LoadingPanel },
 );
 
+const MonthlyLeadsTwoModule = dynamic(
+  () => import("../components/pages/leads/Reports/MereReportTwo"),
+  { ssr: false, loading: LoadingPanel },
+);
+
+const LongWeekendLeadsModule = dynamic(
+  () => import("../components/pages/leads/Reports/LongWeekendReport"),
+  { ssr: false, loading: LoadingPanel },
+);
+
 const DateEmployeeReportsModule = dynamic(
   () => import("../components/pages/leads/Reports/EmployeeDateReport"),
   { ssr: false, loading: LoadingPanel },
@@ -346,6 +356,10 @@ export default function DashboardPage() {
 
   const [showDateEmployeeReports, setShowDateEmployeeReports] =
     useState<boolean>(false);
+  const [showMonthlyLeadsTwo, setShowMonthlyLeadsTwo] =
+    useState<boolean>(false);
+  const [showLongWeekendLeads, setShowLongWeekendLeads] =
+    useState<boolean>(false);
 
   const resetAllReportStates = () => {
     setShowMonthlyEnquiry(false);
@@ -354,6 +368,8 @@ export default function DashboardPage() {
     setShowEmployeeReports(false);
     setShowTimeEnquiryReports(false);
     setShowDateEmployeeReports(false);
+    setShowMonthlyLeadsTwo(false);
+    setShowLongWeekendLeads(false);
   };
 
   const dispatch = useDispatch<AppDispatch>();
@@ -630,6 +646,20 @@ export default function DashboardPage() {
     setActiveLeadView("dashboard");
   };
 
+  const handleMonthlyLeadsTwo = () => {
+    resetAllReportStates();
+    setShowMonthlyLeadsTwo(true);
+    setActiveSection("leads");
+    setActiveLeadView("dashboard");
+  };
+
+  const handleLongWeekendLeads = () => {
+    resetAllReportStates();
+    setShowLongWeekendLeads(true);
+    setActiveSection("leads");
+    setActiveLeadView("dashboard");
+  };
+
   const handleDateEmployeeReports = () => {
     resetAllReportStates();
     setShowDateEmployeeReports(true);
@@ -714,6 +744,22 @@ export default function DashboardPage() {
         return (
           <div className="space-y-6">
             <TimeEnquiryReportsModule />
+          </div>
+        );
+      }
+
+      if (showLongWeekendLeads) {
+        return (
+          <div className="space-y-6">
+            <LongWeekendLeadsModule />
+          </div>
+        );
+      }
+
+      if (showMonthlyLeadsTwo) {
+        return (
+          <div className="space-y-6">
+            <MonthlyLeadsTwoModule />
           </div>
         );
       }
@@ -901,6 +947,8 @@ export default function DashboardPage() {
         onTimeEnquiryReports={handleTimeEnquiryReports}
         onDateEmployeeReports={handleDateEmployeeReports}
         onDsrSelect={handleDsrLeadSelect}
+        onMonthlyLeadsTwo={handleMonthlyLeadsTwo}
+        onLongWeekendLeads={handleLongWeekendLeads}
         onMasterSelect={(key) => {
           const targeted = permittedMasterTabs.find((tab) => tab.key === key);
           setActiveSection("master");

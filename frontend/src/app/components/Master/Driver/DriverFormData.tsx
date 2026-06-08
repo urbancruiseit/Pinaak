@@ -553,7 +553,6 @@ const DriverForm: React.FC<DriverFormProps> = ({
           documents: formData.documents,
         };
 
-        console.log("Submitting data:", submissionData);
 
         if (mode === "edit" && initialData?.id) {
           await dispatch(

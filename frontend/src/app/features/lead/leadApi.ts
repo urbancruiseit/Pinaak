@@ -12,8 +12,6 @@ export const createLeadApi = async (
   leadData: Partial<LeadRecord>,
 ): Promise<LeadRecord> => {
   try {
-    console.log("API leadData:", leadData);
-
     const response = await axiosInstance.post<ApiResponse<LeadRecord>>(
       "/lead",
       leadData,
@@ -87,7 +85,6 @@ export const getLeadApi = async (
     });
 
     const data: PaginatedLeadsResponse = response.data.data;
-    console.log("API Response Data:", data.leads);
     return {
       leads: data.leads || [],
       total: data.total || 0,
@@ -127,8 +124,6 @@ export const updateLeadApi = async (
   leadData: Partial<LeadRecord>,
 ): Promise<LeadRecord> => {
   try {
-    console.log("API update leadDatasss:", id, leadData);
-
     const response = await axiosInstance.put<ApiResponse<LeadRecord>>(
       `/lead/updatelead/${id}`,
       leadData,
@@ -153,11 +148,7 @@ export const markUnwantedApi = async (
   },
 ) => {
   try {
-    console.log("🚀 Marking unwanted - ID:", id, "Data:", data);
-
     const response = await axiosInstance.patch(`/lead/unwanted/${id}`, data);
-
-    console.log("✅ Success:", response.data);
     return response.data.data;
   } catch (error: any) {
     console.error("❌ API Error:", error.response?.data || error.message);

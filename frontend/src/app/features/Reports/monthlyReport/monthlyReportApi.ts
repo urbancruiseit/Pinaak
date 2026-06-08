@@ -210,7 +210,6 @@ export const getLeadDistributionApi = async (
     });
 
     const res = response?.data?.data;
-    console.log("responce ", response?.data?.data);
     if (!res) throw new Error("Invalid response from server");
 
     const now = new Date();
@@ -320,6 +319,19 @@ export const getStatusWiseDateReportApi = async (params = {}) => {
   } catch (error: any) {
     throw new Error(
       error?.response?.data?.message || "Failed to fetch date wise report",
+    );
+  }
+};
+
+export const getLongWeekendReportApi = async (year: number) => {
+  try {
+    const response = await axiosInstance.get("/reports/longweekend", {
+      params: { year },
+    });
+    return response.data.data; 
+  } catch (error: any) {
+    throw new Error(
+      error?.response?.data?.message || "Failed to fetch long weekend report",
     );
   }
 };

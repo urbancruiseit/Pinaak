@@ -379,10 +379,6 @@ const CustomerPersonal: React.FC<CustomerPersonalProps> = ({
 
     if (!validateForm()) return;
 
-    // Debug: Check what data is being sent
-    console.log("Submitting customer data:", JSON.stringify(formData, null, 2));
-    console.log("State value being sent:", formData.state);
-    console.log("City value being sent:", formData.city);
 
     try {
       setIsLoading(true);
@@ -412,7 +408,6 @@ const CustomerPersonal: React.FC<CustomerPersonalProps> = ({
         countryName: formData.countryName,
       };
 
-      console.log("Final payload:", payload);
 
       if (isEditMode && editCustomerId) {
         await dispatch(

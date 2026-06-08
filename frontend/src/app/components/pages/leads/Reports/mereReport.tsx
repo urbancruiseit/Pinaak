@@ -172,20 +172,24 @@ export default function MonthlyEnquiryReport() {
   return (
     <div className="p-4">
       <style>{`
-        .high-value {
-          display: inline-block;
-          color: #be123c;
-          font-weight: 900;
-        }
-        .sunday-cell {
-          color: #000000;
-          font-weight: 900;
-        }
-        .sunday-high {
-          color: #be123c;
-          font-weight: 900;
-        }
-      `}</style>
+  .high-value {
+    display: inline-block;
+    color: #be123c;
+    font-weight: 900;
+    font-family: "Arial Black", Arial, sans-serif;
+  }
+
+  .sunday-cell {
+    color: #000000;
+    font-weight: 900;
+  }
+
+  .sunday-high {
+    color: #be123c;
+    font-weight: 900;
+    font-family: "Arial Black", Arial, sans-serif;
+  }
+`}</style>
 
       {/* ── Header ── */}
       <div className="sticky top-0 z-10 bg-orange-100 p-3 rounded-md mb-4 border border-orange-200 shadow-sm">
@@ -253,22 +257,6 @@ export default function MonthlyEnquiryReport() {
             </div>
           </div>
         )}
-
-        {/* ── Legend ── */}
-        <div className="flex gap-4 mt-2 pl-1 text-sm font-semibold">
-          <span className="flex items-center gap-1">
-            <span className="inline-block w-4 h-4 rounded bg-gray-300 border border-gray-500" />
-            Sunday
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="inline-block w-4 h-4 rounded bg-green-300 border border-green-500" />
-            <span style={{ color: "#be123c" }}>Enquiry &gt; 50</span>
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="inline-block w-4 h-4 rounded bg-gray-300 border border-gray-500" />
-            <span style={{ color: "#be123c" }}>Sunday + &gt; 50</span>
-          </span>
-        </div>
       </div>
 
       {/* ── No Data Warning ── */}
@@ -323,7 +311,7 @@ export default function MonthlyEnquiryReport() {
                       monthIndex,
                       dayNumber,
                     );
-                    const highValue = value > 50;
+                    const highValue = value >= 50;
 
                     const cellBg = sunday ? "!bg-gray-300" : "";
 

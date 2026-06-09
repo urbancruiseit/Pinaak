@@ -11,6 +11,7 @@ import {
   getTimeEnquiryApi,
   getStatusWiseDateReportApi,
   getLongWeekendReportApi,
+  getMonthlyReportTwoApi,
 } from "./monthlyReportApi";
 
 interface MonthlyEnquiryState {
@@ -56,9 +57,14 @@ interface MonthlyEnquiryState {
     loading: boolean;
     error: string | null;
   };
+    monthlyReportTwo: {  // ← Add this
+    data: any[];
+    year: number | null;
+    loading: boolean;
+    error: string | null;
+  };
 }
 
-// ✅ FIXED initial state
 const initialState: MonthlyEnquiryState = {
   data: [],
   year: null,
@@ -102,8 +108,13 @@ const initialState: MonthlyEnquiryState = {
     loading: false,
     error: null,
   },
+  monthlyReportTwo: {
+    data: [],
+    year: null,
+    loading: false,
+    error: null,
+  },
 };
-
 // ─── Thunks ──────────────────────────────────────────────────────────
 
 export const fetchMonthlyEnquiry = createAsyncThunk(
@@ -181,6 +192,18 @@ export const fetchLongWeekendReport = createAsyncThunk(
     }
   },
 );
+
+export const fetchMonthlyReportTwo = createAsyncThunk(
+  "reportTwo/fetchMonthlyReportTwo",
+  async (year: number, { rejectWithValue }) => {
+    try {
+      return await getMonthlyReportTwoApi(year);
+    } catch (error: any) {
+      return rejectWithValue(error.message);
+    }
+  },
+);
+
 // ─── Slice ───────────────────────────────────────────────────────────
 
 const monthlyReportSlice = createSlice({
@@ -308,6 +331,19 @@ const monthlyReportSlice = createSlice({
         state.longWeekend.loading = false;
 
         state.longWeekend.error = action.payload as string;
+      })
+      .addCase(fetchMonthlyReportTwo.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchMonthlyReportTwo.fulfilled, (state, action) => {
+        state.loading = false;
+        state.data = action.payload.data;
+        state.year = action.payload.year;
+      })
+      .addCase(fetchMonthlyReportTwo.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
       });
   },
 });

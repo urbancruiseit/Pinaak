@@ -594,3 +594,70 @@ export const getLongWeekendReport = async (year) => {
     throw error;
   }
 };
+
+export const getMonthlyReportTwo = async (year) => {
+  try {
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth();
+
+    const months = [
+      "JAN",
+      "FEB",
+      "MAR",
+      "APR",
+      "MAY",
+      "JUN",
+      "JUL",
+      "AUG",
+      "SEP",
+      "OCT",
+      "NOV",
+      "DEC",
+    ];
+
+    let reportData = [];
+
+    // Current month + next 5 months (total 6 months)
+    for (let i = 0; i < 6; i++) {
+      const monthIndex = (currentMonth + i) % 12;
+      const targetYear = year + Math.floor((currentMonth + i) / 12);
+
+      const query = `
+        SELECT 
+          DAY(pickupDateTime) AS day,
+          COUNT(*) AS leadCount
+        FROM leads
+        WHERE 
+          MONTH(pickupDateTime) = ?
+          AND YEAR(pickupDateTime) = ?
+        GROUP BY DAY(pickupDateTime)
+        ORDER BY DAY(pickupDateTime)
+      `;
+
+      // ✅ CHANGE: db.query se pool.query karo
+      const [rows] = await pool.query(query, [monthIndex + 1, targetYear]);
+
+      // Initialize 1–31 days with 0
+      const dates = {};
+      for (let d = 1; d <= 31; d++) {
+        dates[d] = 0;
+      }
+
+      // Set lead count according to pickupDate
+      rows.forEach((row) => {
+        dates[row.day] = row.leadCount;
+      });
+
+      reportData.push({
+        month: months[monthIndex],
+        year: targetYear,
+        dates,
+      });
+    }
+
+    return reportData;
+  } catch (error) {
+    console.log("getMonthlyReportTwo error", error);
+    throw new Error("Failed to fetch monthly report two: " + error.message);
+  }
+};

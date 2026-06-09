@@ -84,7 +84,6 @@ const MASTER_MENU_SECTIONS: MenuSection[] = [
       { label: "Vehicle Registration Form", value: "vehicle-registration" },
       { label: "Vehicles Master", value: "vehicles" },
       { label: "Vehicle Options", value: "vehicle-category" },
-
       { label: "Vehicle Add Form", value: "vehicle-add" },
     ],
   },
@@ -98,12 +97,6 @@ const MASTER_MENU_SECTIONS: MenuSection[] = [
   },
 ];
 
-const LEADS_MENU: MenuSection = {
-  key: "leads-menu",
-  label: "Leads List",
-  items: [{ label: "Lead Manager", value: "lead-table" }],
-};
-
 const ACCESS_MENU: MenuSection = {
   key: "access-menu",
   label: "Access Level",
@@ -115,12 +108,6 @@ const ACCESS_MENU: MenuSection = {
   ],
 };
 
-const LEADS_TRACK: MenuSection = {
-  key: "lead-track",
-  label: "Lead Track",
-  items: [{ label: "Lead Track", value: "lead-track" }],
-};
-
 const YEAR_MENU: MenuSection = {
   key: "year-menu",
   label: "Year",
@@ -130,14 +117,7 @@ const YEAR_MENU: MenuSection = {
   ],
 };
 
-const SALES_MENU: MenuSection = {
-  key: "sales-menu",
-  label: "SALES",
-  items: [{ label: "Sales Lead Manager", value: "sales-lead-table" }],
-};
-
-// Fallback static data (used only when user data not available)
-const FALLBACK_REGIONS = ["North", "South", "East", "West"];
+// Fallback static data
 const FALLBACK_ZONES = ["DL-NCR", "MH-West", "KA-South", "WB-East"];
 const FALLBACK_CITIES_BY_REGION: Record<string, string[]> = {
   North: ["Delhi", "Jaipur", "Chandigarh"],
@@ -188,11 +168,7 @@ const getDashboardMenu = (userRole?: string): MenuSection => {
     ];
   }
 
-  return {
-    key: "dashboard-menu",
-    label: "Dashboards",
-    items: allowedItems,
-  };
+  return { key: "dashboard-menu", label: "Dashboards", items: allowedItems };
 };
 
 interface NavbarProps {
@@ -236,12 +212,9 @@ interface NavbarProps {
   onDateEmployeeReports?: () => void;
   onMonthlyLeadsTwo?: () => void;
   onLongWeekendLeads?: () => void;
-
   showWebsiteMenu?: boolean;
   activeWebsiteKey?: string | null;
   onWebsiteMenuSelect?: (key: string) => void;
-
-  // ℹ️ Region/Zone/City ab Redux se directly lete hain — props ki zarurat nahi
 }
 
 const getMenuIcon = (menuKey: string, label: string) => {
@@ -310,37 +283,29 @@ export function Navbar({
   onMonthlyLeadsTwo,
   onLongWeekendLeads,
 }: NavbarProps) {
-  // ✅ Redux se currentUser lo
   const dispatch = useDispatch<AppDispatch>();
   const { currentUser } = useSelector((state: RootState) => state.user);
   const router = useRouter();
 
-  useEffect(() => {
-    if (!currentUser) {
-      dispatch(currentUserThunk());
-    }
-  }, [currentUser]);
+  // ✅ Navbar khud dispatch NAHI karega — DashboardPage already karta hai
+  // Guest fallback bhi hata diya — agar currentUser nahi hai toh DashboardPage Access Denied dikhayega
 
-  useEffect(() => {
-    if (currentUser) {
-      console.log("Current User Data:", JSON.stringify(currentUser, null, 2));
-    }
-  }, [currentUser]);
-
-  // ✅ currentUser se region, zone, city nikalo
+  // currentUser se data nikalo
   const userRegionNames = (currentUser as any)?.region_names ?? [];
   const userZoneNames = (currentUser as any)?.zone_names ?? [];
   const userCityNames = (currentUser as any)?.city_names ?? [];
   const userCityIds = (currentUser as any)?.city_ids ?? [];
 
-  // ✅ currentUser se email, department, subDepartment nikalo
   const rawUser = (currentUser as any) ?? {};
   const userData = rawUser?.data ?? rawUser;
+
   const userEmail =
     rawUser?.personalEmail ??
     userData?.personalEmail ??
     rawUser?.user_email ??
     "";
+
+  // ✅ "Guest" fallback hata diya
   const userAliasName =
     rawUser?.aliasName ??
     userData?.aliasName ??
@@ -354,6 +319,7 @@ export function Navbar({
     rawUser?.dept_name ??
     userData?.dept_name ??
     "";
+
   const userSubDepartment =
     rawUser?.subDepartment_name ??
     userData?.subDepartment_name ??
@@ -363,7 +329,6 @@ export function Navbar({
     userData?.subdept_name ??
     "";
 
-  // ✅ Extract admin role from currentUser (for SUPER_ADMIN and MANAGER check)
   const adminRole =
     rawUser?.access_role ??
     userData?.access_role ??
@@ -376,6 +341,7 @@ export function Navbar({
     rawUser?.adminRole ??
     userData?.adminRole ??
     "";
+
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const navbarRef = useRef<HTMLDivElement>(null);
@@ -385,7 +351,6 @@ export function Navbar({
     [permittedMasterKeys],
   );
 
-  // ✅ Fallback city options (used only when userCityNames not provided)
   const fallbackCityOptions = useMemo(() => {
     if (!selectedRegion) {
       return Object.values(FALLBACK_CITIES_BY_REGION).reduce<string[]>(
@@ -418,49 +383,41 @@ export function Navbar({
     setOpenMenu(null);
     setMobileOpen(false);
   };
-
   const handleLeadSelect = (value: string) => {
     onLeadSelect?.(value);
     setOpenMenu(null);
     setMobileOpen(false);
   };
-
   const handleDashboardSelect = (value: string) => {
     onDashboardSelect?.(value);
     setOpenMenu(null);
     setMobileOpen(false);
   };
-
   const handleYearSelect = (value: string) => {
     onYearSelect?.(value);
     setOpenMenu(null);
     setMobileOpen(false);
   };
-
   const handleSalesLeadSelect = (value: string) => {
     onSalesLeadSelect?.(value);
     setOpenMenu(null);
     setMobileOpen(false);
   };
-
   const handleDsrSelect = (value: string) => {
     onDsrSelect?.(value);
     setOpenMenu(null);
     setMobileOpen(false);
   };
-
   const handleSalesEditFormSelect = (value: string) => {
     onSalesEditFormSelect?.(value);
     setOpenMenu(null);
     setMobileOpen(false);
   };
-
   const handleTlTablesSelect = (value: string) => {
     onTlTablesSelect?.(value);
     setOpenMenu(null);
     setMobileOpen(false);
   };
-
   const handleAccessSelect = (value: string) => {
     onAccessSelect?.(value);
     setOpenMenu(null);
@@ -476,7 +433,6 @@ export function Navbar({
     setOpenMenu(null);
     setMobileOpen(false);
   };
-
   const handleUnwantedLeads = () => {
     onUnwantedLeads?.();
     setOpenMenu(null);
@@ -487,16 +443,14 @@ export function Navbar({
     try {
       await dispatch(logoutEmployeeThunk()).unwrap();
       toast.success("Logout successfully");
-
       setTimeout(() => {
-        router.push("/"); // ✅ Next.js navigation
+        router.push("/");
       }, 500);
     } catch (err) {
       toast.error("Logout failed");
     }
   };
 
-  // Check if user is SUPER_ADMIN or MANAGER
   const shouldShowLeadManagerDropdown =
     adminRole?.toLowerCase() === "super_admin" ||
     adminRole?.toLowerCase() === "manager";
@@ -528,8 +482,9 @@ export function Navbar({
               className="object-cover border-2 border-orange-500 rounded-full"
             />
             <div className="text-left">
+              {/* ✅ Guest hata diya — sirf actual name dikhega */}
               <p className="text-sm font-semibold text-gray-800">
-                {userAliasName ?? "Guest"}
+                {userAliasName}
               </p>
               <p className="text-[11px] uppercase text-gray-500">{roleLabel}</p>
             </div>
@@ -554,6 +509,7 @@ export function Navbar({
                 className="rounded-xl hidden sm:block flex-shrink-0"
               />
             </div>
+
             {/* MASTER SECTION */}
             {showMaster && (
               <>
@@ -562,20 +518,15 @@ export function Navbar({
                     ? menu.items.filter((item) => masterKeySet.has(item.value))
                     : menu.items;
                   if (visibleItems.length === 0) return null;
-
                   const isOpen = openMenu === menu.key;
                   const menuIcon = getMenuIcon(menu.key, menu.label);
-
                   return (
                     <div key={menu.key} className="relative w-full md:w-auto">
                       <button
                         type="button"
                         className={`w-full md:w-auto flex items-center justify-between gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200 
-                          ${
-                            isOpen
-                              ? "bg-orange-600 text-white shadow-lg md:scale-105"
-                              : "bg-white text-orange-700 border-2 border-orange-300 hover:border-orange-500 hover:shadow-md hover:scale-[1.02]"
-                          } md:min-w-[100px] md:h-9 md:py-2`}
+                          ${isOpen ? "bg-orange-600 text-white shadow-lg md:scale-105" : "bg-white text-orange-700 border-2 border-orange-300 hover:border-orange-500 hover:shadow-md hover:scale-[1.02]"}
+                          md:min-w-[100px] md:h-9 md:py-2`}
                         onClick={() =>
                           setOpenMenu((prev) =>
                             prev === menu.key ? null : menu.key,
@@ -592,7 +543,6 @@ export function Navbar({
                           className={`transition-transform duration-200 flex-shrink-0 ${isOpen ? "rotate-180" : ""}`}
                         />
                       </button>
-
                       {openMenu === menu.key && (
                         <ul className="w-full md:absolute md:left-0 z-50 py-1 mt-1 bg-white border-2 border-orange-300 rounded-lg shadow-xl md:top-full md:w-56 max-h-80 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
                           {visibleItems.map((item) => {
@@ -602,11 +552,7 @@ export function Navbar({
                                 key={item.value}
                                 onClick={() => handleMasterSelect(item.value)}
                                 className={`px-3 py-2.5 md:py-2 text-sm transition-all cursor-pointer flex items-center gap-2
-                                  ${
-                                    isActive
-                                      ? "bg-orange-600 text-white font-semibold"
-                                      : "text-gray-700 hover:bg-orange-50 hover:text-orange-700 hover:pl-4"
-                                  }`}
+                                  ${isActive ? "bg-orange-600 text-white font-semibold" : "text-gray-700 hover:bg-orange-50 hover:text-orange-700 hover:pl-4"}`}
                               >
                                 <span
                                   className={`w-1 h-1 rounded-full ${isActive ? "bg-white" : "bg-orange-300"} transition-all`}
@@ -622,9 +568,10 @@ export function Navbar({
                 })}
               </>
             )}
+
+            {/* LEADS MENU */}
             {showLeadsMenu && (
               <>
-                {/* Existing New Lead button */}
                 {userRole?.toLowerCase() !== "sales" &&
                   !roleLabel?.toLowerCase().includes("travel") &&
                   !roleLabel?.toLowerCase().includes("advisor") && (
@@ -640,13 +587,11 @@ export function Navbar({
                     </div>
                   )}
 
-                {/* Lead Manager Button with conditional dropdown for SUPER_ADMIN or MANAGER */}
                 {userRole?.toLowerCase() !== "sales" &&
                   !roleLabel?.toLowerCase().includes("travel") &&
                   !roleLabel?.toLowerCase().includes("advisor") && (
                     <>
                       {shouldShowLeadManagerDropdown ? (
-                        // SUPER_ADMIN or MANAGER: Show dropdown with both options
                         <div className="relative w-full md:w-auto">
                           <button
                             type="button"
@@ -666,17 +611,11 @@ export function Navbar({
                             <span className="truncate">Lead Manager</span>
                             <ChevronDown
                               size={14}
-                              className={`transition-transform duration-200 flex-shrink-0 ${
-                                openMenu === "lead-manager-superadmin"
-                                  ? "rotate-180"
-                                  : ""
-                              }`}
+                              className={`transition-transform duration-200 flex-shrink-0 ${openMenu === "lead-manager-superadmin" ? "rotate-180" : ""}`}
                             />
                           </button>
-
                           {openMenu === "lead-manager-superadmin" && (
                             <ul className="w-full md:absolute md:left-0 z-50 py-1 mt-1 bg-white border-2 border-emerald-300 rounded-lg shadow-xl md:top-full md:w-64 max-h-80 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
-                              {/* Presales Lead Manager */}
                               <li
                                 onClick={() => {
                                   handleLeadSelect("lead-table");
@@ -686,7 +625,6 @@ export function Navbar({
                                 <span className="w-1 h-1 rounded-full bg-emerald-300"></span>
                                 Presales Lead Manager
                               </li>
-                              {/* Telesales Lead Manager */}
                               <li
                                 onClick={() => {
                                   handleSalesLeadSelect("sales-lead-table");
@@ -700,7 +638,6 @@ export function Navbar({
                           )}
                         </div>
                       ) : (
-                        // Non SUPER_ADMIN/MANAGER users: Show simple button
                         <div className="relative w-full md:w-auto">
                           <button
                             type="button"
@@ -718,10 +655,7 @@ export function Navbar({
                     </>
                   )}
 
-                {/* Existing TL Tables button */}
-                {(userRole?.toLowerCase() === "team leader" ||
-                  userRole?.toLowerCase() === "teamleader" ||
-                  userRole?.toLowerCase() === "admin") && (
+                {userRole?.toLowerCase() === "team leader" && (
                   <div className="relative w-full md:w-auto">
                     <button
                       type="button"
@@ -734,14 +668,7 @@ export function Navbar({
                   </div>
                 )}
 
-                {/* Existing Sales Lead Manager button */}
-
-                {(userRole?.toLowerCase() === "sales" ||
-                  userRole?.toLowerCase() === "admin" ||
-                  userRole?.toLowerCase() === "travel advisor" ||
-                  userRole?.toLowerCase() === "travel" ||
-                  roleLabel?.toLowerCase().includes("travel") ||
-                  roleLabel?.toLowerCase().includes("advisor")) && (
+                {userRole?.toLowerCase() === "travel advisor" && (
                   <div className="relative flex flex-col md:flex-row gap-3 w-full md:w-auto">
                     <button
                       type="button"
@@ -751,7 +678,6 @@ export function Navbar({
                       <FileText size={16} className="mr-1.5 flex-shrink-0" />
                       <span className="truncate">Sales Lead Manager</span>
                     </button>
-
                     <button
                       type="button"
                       className="w-full md:w-auto flex items-center justify-center gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200 bg-white text-emerald-700 border-2 border-emerald-300 hover:border-emerald-500 hover:shadow-md hover:scale-[1.02] md:min-w-[100px] md:h-9 md:py-2"
@@ -763,167 +689,144 @@ export function Navbar({
                   </div>
                 )}
 
-                {/* ✅ TRACKING MENU - HIDDEN FOR TRAVEL ADVISOR */}
-                {userRole?.toLowerCase() !== "travel advisor" &&
-                  userRole?.toLowerCase() !== "travel" &&
-                  !roleLabel?.toLowerCase().includes("travel") &&
-                  !roleLabel?.toLowerCase().includes("advisor") && (
-                    <div className="relative w-full md:w-auto">
-                      {(() => {
-                        const isOpen = openMenu === "lead-track-menu";
-                        return (
-                          <>
-                            <button
-                              type="button"
-                              className={`w-full md:w-auto flex items-center justify-between gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200
-                  ${
-                    isOpen
-                      ? "bg-green-600 text-white shadow-lg md:scale-105"
-                      : "bg-white text-green-700 border-2 border-green-300 hover:border-green-500 hover:shadow-md hover:scale-[1.02] hover:bg-green-50"
-                  } md:min-w-[100px] md:h-9 md:py-2`}
-                              onClick={() => {
-                                setOpenMenu((prev) =>
-                                  prev === "lead-track-menu"
-                                    ? null
-                                    : "lead-track-menu",
-                                );
-                              }}
-                              aria-expanded={openMenu === "lead-track-menu"}
-                            >
-                              <span className="flex z-50 items-center truncate">
-                                <MapPin
-                                  size={16}
-                                  className="mr-1.5 flex-shrink-0"
-                                />
-                                Tracking
-                              </span>
-                              <ChevronDown
-                                size={14}
-                                className={`transition-transform duration-200 flex-shrink-0 ${isOpen ? "rotate-180" : ""}`}
-                              />
-                            </button>
+                {/* TRACKING MENU */}
+                <div className="relative w-full md:w-auto">
+                  {(() => {
+                    const isOpen = openMenu === "lead-track-menu";
 
-                            {openMenu === "lead-track-menu" && (
-                              <ul className="w-full md:absolute md:left-0 z-50 py-1 mt-1 bg-white border-2 border-green-300 rounded-lg shadow-xl md:top-full md:w-56 max-h-80 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
-                                <li
-                                  onClick={() => {
-                                    onMonthlyEnquiry?.();
-                                    setOpenMenu(null);
-                                    setMobileOpen(false);
-                                  }}
-                                  className="px-3 py-2.5 md:py-2 text-sm transition-all hover:bg-green-50 hover:text-green-700 hover:pl-4 cursor-pointer text-gray-700 flex items-center gap-2"
-                                >
-                                  <span className="w-1 h-1 rounded-full bg-green-300"></span>
-                                  Monthly Enquiry (MER)
-                                </li>
-                                <li
-                                  onClick={() => {
-                                    onMonthlyLeadsTwo?.();
-                                    setOpenMenu(null);
-                                    setMobileOpen(false);
-                                  }}
-                                  className="px-3 py-2.5 md:py-2 text-sm transition-all hover:bg-green-50 hover:text-green-700 hover:pl-4 cursor-pointer text-gray-700 flex items-center gap-2"
-                                >
-                                  <span className="w-1 h-1 rounded-full bg-green-300"></span>
-                                  MER 2 (MER 2)
-                                </li>
-                                <li
-                                  onClick={() => {
-                                    onMonthlyDistribution?.();
-                                    setOpenMenu(null);
-                                    setMobileOpen(false);
-                                  }}
-                                  className="px-3 py-2.5 md:py-2 text-sm transition-all hover:bg-green-50 hover:text-green-700 hover:pl-4 cursor-pointer text-gray-700 flex items-center gap-2"
-                                >
-                                  <span className="w-1 h-1 rounded-full bg-green-300"></span>
-                                  Lead Distribution PS (LDR)
-                                </li>
+                    const role = userRole?.toLowerCase().trim() ?? "";
 
-                                <li
-                                  onClick={() => {
-                                    onLongWeekendLeads?.();
-                                    setOpenMenu(null);
-                                    setMobileOpen(false);
-                                  }}
-                                  className="px-3 py-2.5 md:py-2 text-sm transition-all hover:bg-green-50 hover:text-green-700 hover:pl-4 cursor-pointer text-gray-700 flex items-center gap-2"
-                                >
-                                  <span className="w-1 h-1 rounded-full bg-green-300"></span>
-                                  Long Weekend Distribution (LWD)
-                                </li>
+                    const isPresalesExecutive = role === "pre-sales executive";
+                    const isTravelAdvisor = role === "travel advisor";
+                    const isTeamLeader = role === "team leader";
+                    const isCityManager = role === "city manager";
+                    const isSuperAdmin = role === "superadmin";
 
-                                <li
-                                  onClick={() => {
-                                    onEmployeeReports?.();
-                                    setOpenMenu(null);
-                                    setMobileOpen(false);
-                                  }}
-                                  className="px-3 py-2.5 md:py-2 text-sm transition-all hover:bg-green-50 hover:text-green-700 hover:pl-4 cursor-pointer text-gray-700 flex items-center gap-2"
-                                >
-                                  <span className="w-1 h-1 rounded-full bg-green-300"></span>
-                                  Employee Performance - TS (EP-TS)
-                                </li>
+                    const trackingItems = [
+                      {
+                        label: "Monthly Enquiry (MER)",
+                        fn: onMonthlyEnquiry,
+                        show: true,
+                      },
+                      {
+                        label: "Monthly Enquiry PS 2 (MER 2)",
+                        fn: onMonthlyLeadsTwo,
+                        show:
+                          isSuperAdmin ||
+                          isPresalesExecutive ||
+                          isTeamLeader ||
+                          isCityManager,
+                      },
+                      {
+                        label: "Lead Distribution PS (LDR)",
+                        fn: onMonthlyDistribution,
+                        show:
+                          isSuperAdmin || isPresalesExecutive || isCityManager,
+                      },
+                      {
+                        label: "Long Weekend Distribution (LWD)",
+                        fn: onLongWeekendLeads,
+                        show:
+                          isSuperAdmin ||
+                          isTravelAdvisor ||
+                          isTeamLeader ||
+                          isCityManager,
+                      },
+                      {
+                        label: "Employee Performance - TS (EP-TS)",
+                        fn: onEmployeeReports,
+                        show:
+                          isSuperAdmin ||
+                          isTravelAdvisor ||
+                          isTeamLeader ||
+                          isCityManager,
+                      },
+                      {
+                        label: "Employee Performance - PS (EP-PS)",
+                        fn: onDateEmployeeReports,
+                        show:
+                          isSuperAdmin || isPresalesExecutive || isCityManager,
+                      },
+                      // {
+                      //   label: "Time Enquiry Reports - PS (TER)",
+                      //   fn: onTimeEnquiryReports,
+                      //   show: isSuperAdmin || isTeamLeader || isCityManager,
+                      // },
+                      {
+                        label: "Unwanted Leads (ULR)",
+                        fn: onUnwantedLeads,
+                        show: isPresalesExecutive,
+                      },
+                    ].filter((item) => item.show);
 
-                                <li
-                                  onClick={() => {
-                                    onDateEmployeeReports?.();
-                                    setOpenMenu(null);
-                                    setMobileOpen(false);
-                                  }}
-                                  className="px-3 py-2.5 md:py-2 text-sm transition-all hover:bg-green-50 hover:text-green-700 hover:pl-4 cursor-pointer text-gray-700 flex items-center gap-2"
-                                >
-                                  <span className="w-1 h-1 rounded-full bg-green-300"></span>
-                                  Employee Performance - PS (EP-PS)
-                                </li>
+                    if (trackingItems.length === 0) return null;
 
-                                <li
-                                  onClick={() => {
-                                    onTimeEnquiryReports?.();
-                                    setOpenMenu(null);
-                                    setMobileOpen(false);
-                                  }}
-                                  className="px-3 py-2.5 md:py-2 text-sm transition-all hover:bg-green-50 hover:text-green-700 hover:pl-4 cursor-pointer text-gray-700 flex items-center gap-2"
-                                >
-                                  <span className="w-1 h-1 rounded-full bg-green-300"></span>
-                                  Time Enquiry Reports -PS (TER)
-                                </li>
-
-                                <li
-                                  onClick={() => {
-                                    onUnwantedLeads?.();
-                                    setOpenMenu(null);
-                                    setMobileOpen(false);
-                                  }}
-                                  className="px-3 py-2.5 md:py-2 text-sm transition-all hover:bg-green-50 hover:text-green-700 hover:pl-4 cursor-pointer text-gray-700 flex items-center gap-2"
-                                >
-                                  <span className="w-1 h-1 rounded-full bg-green-300"></span>
-                                  Unwanted Leads (ULR)
-                                </li>
-                              </ul>
-                            )}
-                          </>
-                        );
-                      })()}
-                    </div>
-                  )}
+                    return (
+                      <>
+                        <button
+                          type="button"
+                          className={`w-full md:w-auto flex items-center justify-between gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200
+            ${isOpen ? "bg-green-600 text-white shadow-lg md:scale-105" : "bg-white text-green-700 border-2 border-green-300 hover:border-green-500 hover:shadow-md hover:scale-[1.02] hover:bg-green-50"}
+            md:min-w-[100px] md:h-9 md:py-2`}
+                          onClick={() =>
+                            setOpenMenu((prev) =>
+                              prev === "lead-track-menu"
+                                ? null
+                                : "lead-track-menu",
+                            )
+                          }
+                          aria-expanded={openMenu === "lead-track-menu"}
+                        >
+                          <span className="flex z-50 items-center truncate">
+                            <MapPin
+                              size={16}
+                              className="mr-1.5 flex-shrink-0"
+                            />
+                            Tracking
+                          </span>
+                          <ChevronDown
+                            size={14}
+                            className={`transition-transform duration-200 flex-shrink-0 ${isOpen ? "rotate-180" : ""}`}
+                          />
+                        </button>
+                        {openMenu === "lead-track-menu" && (
+                          <ul className="w-full md:absolute md:left-0 z-50 py-1 mt-1 bg-white border-2 border-green-300 rounded-lg shadow-xl md:top-full md:w-56 max-h-80 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
+                            {trackingItems.map(({ label, fn }) => (
+                              <li
+                                key={label}
+                                onClick={() => {
+                                  fn?.();
+                                  setOpenMenu(null);
+                                  setMobileOpen(false);
+                                }}
+                                className="px-3 py-2.5 md:py-2 text-sm transition-all hover:bg-green-50 hover:text-green-700 hover:pl-4 cursor-pointer text-gray-700 flex items-center gap-2"
+                              >
+                                <span className="w-1 h-1 rounded-full bg-green-300"></span>
+                                {label}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
               </>
             )}
+
             {/* DASHBOARD MENU */}
             {showDashboardMenu &&
               (() => {
                 const dashboardMenu = getDashboardMenu(userRole);
                 if (dashboardMenu.items.length === 0) return null;
                 const isOpen = openMenu === dashboardMenu.key;
-
                 return (
                   <div className="relative w-full md:w-auto">
                     <button
                       type="button"
                       className={`w-full md:w-auto flex items-center justify-between gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200
-                        ${
-                          isOpen
-                            ? "bg-green-600 text-white shadow-lg md:scale-105"
-                            : "bg-white text-green-700 border-2 border-green-300 hover:border-green-500 hover:shadow-md hover:scale-[1.02] hover:bg-green-50"
-                        } md:min-w-[100px] md:h-9 md:py-2`}
+                      ${isOpen ? "bg-green-600 text-white shadow-lg md:scale-105" : "bg-white text-green-700 border-2 border-green-300 hover:border-green-500 hover:shadow-md hover:scale-[1.02] hover:bg-green-50"}
+                      md:min-w-[100px] md:h-9 md:py-2`}
                       onClick={() =>
                         setOpenMenu((prev) =>
                           prev === dashboardMenu.key ? null : dashboardMenu.key,
@@ -943,7 +846,6 @@ export function Navbar({
                         className={`transition-transform duration-200 flex-shrink-0 ${isOpen ? "rotate-180" : ""}`}
                       />
                     </button>
-
                     {openMenu === dashboardMenu.key && (
                       <ul className="w-full md:absolute md:left-0 z-50 py-1 mt-1 bg-white border-2 border-green-300 rounded-lg shadow-xl md:top-full md:w-60 max-h-80 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
                         {dashboardMenu.items.map((item) => {
@@ -953,11 +855,7 @@ export function Navbar({
                               key={item.value}
                               onClick={() => handleDashboardSelect(item.value)}
                               className={`px-3 py-2.5 md:py-2 text-sm transition-all cursor-pointer flex items-center gap-2
-                                ${
-                                  isActive
-                                    ? "bg-green-600 text-white font-semibold"
-                                    : "text-gray-700 hover:bg-green-50 hover:text-green-700 hover:pl-4"
-                                }`}
+                              ${isActive ? "bg-green-600 text-white font-semibold" : "text-gray-700 hover:bg-green-50 hover:text-green-700 hover:pl-4"}`}
                             >
                               <span
                                 className={`w-1 h-1 rounded-full ${isActive ? "bg-white" : "bg-green-300"} transition-all`}
@@ -971,6 +869,7 @@ export function Navbar({
                   </div>
                 );
               })()}
+
             {/* ACCESS MENU */}
             {showAccess && (
               <div className="relative w-full md:w-auto">
@@ -985,11 +884,8 @@ export function Navbar({
                       <button
                         type="button"
                         className={`w-full md:w-auto flex items-center justify-between gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200
-                          ${
-                            isOpen
-                              ? "bg-yellow-600 text-white shadow-lg md:scale-105"
-                              : "bg-white text-yellow-700 border-2 border-yellow-300 hover:border-yellow-500 hover:shadow-md hover:scale-[1.02] hover:bg-yellow-50"
-                          } md:min-w-[100px] md:h-9 md:py-2`}
+                          ${isOpen ? "bg-yellow-600 text-white shadow-lg md:scale-105" : "bg-white text-yellow-700 border-2 border-yellow-300 hover:border-yellow-500 hover:shadow-md hover:scale-[1.02] hover:bg-yellow-50"}
+                          md:min-w-[100px] md:h-9 md:py-2`}
                         onClick={() =>
                           setOpenMenu((prev) =>
                             prev === ACCESS_MENU.key ? null : ACCESS_MENU.key,
@@ -1006,7 +902,6 @@ export function Navbar({
                           className={`transition-transform duration-200 flex-shrink-0 ${isOpen ? "rotate-180" : ""}`}
                         />
                       </button>
-
                       {openMenu === ACCESS_MENU.key && (
                         <ul className="w-full md:absolute md:left-0 z-50 py-1 mt-1 bg-white border-2 border-yellow-300 rounded-lg shadow-xl md:top-full md:w-56 max-h-80 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
                           {ACCESS_MENU.items.map((item) => {
@@ -1016,11 +911,7 @@ export function Navbar({
                                 key={item.value}
                                 onClick={() => handleAccessSelect(item.value)}
                                 className={`px-3 py-2.5 md:py-2 text-sm transition-all cursor-pointer flex items-center gap-2
-                                  ${
-                                    isActive
-                                      ? "bg-yellow-600 text-white font-semibold"
-                                      : "text-gray-700 hover:bg-yellow-50 hover:text-yellow-700 hover:pl-4"
-                                  }`}
+                                  ${isActive ? "bg-yellow-600 text-white font-semibold" : "text-gray-700 hover:bg-yellow-50 hover:text-yellow-700 hover:pl-4"}`}
                               >
                                 <span
                                   className={`w-1 h-1 rounded-full ${isActive ? "bg-white" : "bg-yellow-300"} transition-all`}
@@ -1036,6 +927,8 @@ export function Navbar({
                 })()}
               </div>
             )}
+
+            {/* WEBSITE MENU */}
             {showWebsiteMenu && (
               <div className="relative w-full md:w-auto">
                 {(() => {
@@ -1045,11 +938,8 @@ export function Navbar({
                       <button
                         type="button"
                         className={`w-full md:w-auto flex items-center justify-between gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200
-              ${
-                isOpen
-                  ? "bg-blue-600 text-white shadow-lg md:scale-105"
-                  : "bg-white text-blue-700 border-2 border-blue-300 hover:border-blue-500 hover:shadow-md hover:scale-[1.02] hover:bg-blue-50"
-              } md:min-w-[100px] md:h-9 md:py-2`}
+                          ${isOpen ? "bg-blue-600 text-white shadow-lg md:scale-105" : "bg-white text-blue-700 border-2 border-blue-300 hover:border-blue-500 hover:shadow-md hover:scale-[1.02] hover:bg-blue-50"}
+                          md:min-w-[100px] md:h-9 md:py-2`}
                         onClick={() =>
                           setOpenMenu((prev) =>
                             prev === "website-menu" ? null : "website-menu",
@@ -1066,46 +956,28 @@ export function Navbar({
                           className={`transition-transform duration-200 flex-shrink-0 ${isOpen ? "rotate-180" : ""}`}
                         />
                       </button>
-
                       {isOpen && (
                         <ul className="w-full md:absolute md:left-0 z-50 py-1 mt-1 bg-white border-2 border-blue-300 rounded-lg shadow-xl md:top-full md:w-56 max-h-80 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
-                          <li
-                            onClick={() => {
-                              onWebsiteMenuSelect?.("gac");
-                              setOpenMenu(null);
-                              setMobileOpen(false);
-                            }}
-                            className={`px-3 py-2.5 md:py-2 text-sm transition-all cursor-pointer flex items-center gap-2
-                  ${
-                    activeWebsiteKey === "gac"
-                      ? "bg-blue-600 text-white font-semibold"
-                      : "text-gray-700 hover:bg-blue-50 hover:text-blue-700 hover:pl-4"
-                  }`}
-                          >
-                            <span
-                              className={`w-1 h-1 rounded-full ${activeWebsiteKey === "gac" ? "bg-white" : "bg-blue-300"}`}
-                            ></span>
-                            GAC Table
-                          </li>
-
-                          <li
-                            onClick={() => {
-                              onWebsiteMenuSelect?.("gaq");
-                              setOpenMenu(null);
-                              setMobileOpen(false);
-                            }}
-                            className={`px-3 py-2.5 md:py-2 text-sm transition-all cursor-pointer flex items-center gap-2
-                  ${
-                    activeWebsiteKey === "gaq"
-                      ? "bg-blue-600 text-white font-semibold"
-                      : "text-gray-700 hover:bg-blue-50 hover:text-blue-700 hover:pl-4"
-                  }`}
-                          >
-                            <span
-                              className={`w-1 h-1 rounded-full ${activeWebsiteKey === "gaq" ? "bg-white" : "bg-blue-300"}`}
-                            ></span>
-                            GAQ Table
-                          </li>
+                          {[
+                            { key: "gac", label: "GAC Table" },
+                            { key: "gaq", label: "GAQ Table" },
+                          ].map(({ key, label }) => (
+                            <li
+                              key={key}
+                              onClick={() => {
+                                onWebsiteMenuSelect?.(key);
+                                setOpenMenu(null);
+                                setMobileOpen(false);
+                              }}
+                              className={`px-3 py-2.5 md:py-2 text-sm transition-all cursor-pointer flex items-center gap-2
+                                ${activeWebsiteKey === key ? "bg-blue-600 text-white font-semibold" : "text-gray-700 hover:bg-blue-50 hover:text-blue-700 hover:pl-4"}`}
+                            >
+                              <span
+                                className={`w-1 h-1 rounded-full ${activeWebsiteKey === key ? "bg-white" : "bg-blue-300"}`}
+                              ></span>
+                              {label}
+                            </li>
+                          ))}
                         </ul>
                       )}
                     </>
@@ -1115,6 +987,7 @@ export function Navbar({
             )}
           </div>
 
+          {/* Right Section */}
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:ml-auto md:gap-2 lg:gap-3">
             <div className="relative group w-full md:w-28 lg:w-32">
               <select
@@ -1123,7 +996,6 @@ export function Navbar({
                 className="w-full px-3 py-2.5 pr-8 text-sm font-semibold text-gray-700 bg-white border border-orange-500 rounded-full focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-200 appearance-none cursor-pointer hover:border-orange-300 transition-all md:h-9 md:py-2"
               >
                 <option value="">Region</option>
-
                 {userRegionNames?.length > 0 ? (
                   userRegionNames.map((region: string) => (
                     <option key={region} value={region}>
@@ -1134,7 +1006,6 @@ export function Navbar({
                   <option disabled>No Region Assigned</option>
                 )}
               </select>
-
               <MapPin
                 size={14}
                 className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none group-hover:text-orange-500 transition-colors"
@@ -1212,11 +1083,12 @@ export function Navbar({
               </div>
             )}
 
+            {/* User Profile Dropdown */}
             <div className="relative">
               <button
                 onClick={() => setOpenMenu(openMenu === "user" ? null : "user")}
                 className={`flex items-center gap-2 rounded-full bg-white px-2 py-1 text-xs font-semibold text-gray-700 shadow-sm border-2 transition-all duration-200 hover:shadow-md hover:scale-[1.02]
-                    ${openMenu === "user" ? "border-orange-500 shadow-md" : "border-orange-300 hover:border-orange-500"}`}
+                  ${openMenu === "user" ? "border-orange-500 shadow-md" : "border-orange-300 hover:border-orange-500"}`}
               >
                 <Image
                   src={userAvatar}
@@ -1226,11 +1098,12 @@ export function Navbar({
                   className="object-cover border-2 border-orange-500 rounded-full flex-shrink-0"
                 />
                 <div className="text-left hidden lg:block">
+                  {/* ✅ "Guest" fallback hata diya */}
                   <p className="text-sm font-semibold text-gray-800">
-                    {userAliasName || userName || "Guest"}
+                    {userAliasName || userName}
                   </p>
                   <p className="text-[11px] uppercase text-gray-500">
-                    {roleLabel}
+                    {adminRole || roleLabel || "-"}
                   </p>
                 </div>
                 <ChevronDown
@@ -1243,13 +1116,13 @@ export function Navbar({
                 <div className="absolute right-0 z-50 mt-2 w-72 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
                   <div className="p-4 border-b border-gray-100">
                     <div className="flex flex-col gap-2">
+                      {/* ✅ "Guest" fallback hata diya */}
                       <p className="text-sm font-semibold text-gray-900">
-                        {userAliasName ?? "Guest"}
+                        {userAliasName}
                       </p>
                       <p className="text-xs text-gray-500 truncate">
-                        {userEmail || "guest@email.com"}
+                        {userEmail}
                       </p>
-
                       <div className="flex flex-wrap gap-1.5 mt-2">
                         {userDepartment && (
                           <span className="text-[11px] px-2 py-[2px] bg-blue-100 text-blue-700 rounded-full">
@@ -1261,10 +1134,9 @@ export function Navbar({
                             {userSubDepartment}
                           </span>
                         )}
-
                         {roleLabel && (
                           <span className="text-[11px] px-2 py-[2px] bg-green-100 text-green-700 rounded-full">
-                            {roleLabel}
+                            {adminRole || roleLabel || "-"}{" "}
                           </span>
                         )}
                       </div>
@@ -1274,40 +1146,35 @@ export function Navbar({
                     <div className="flex justify-between">
                       <span className="text-gray-500">Role</span>
                       <span className="text-gray-800 font-medium">
-                        {roleLabel || "-"}
+                        {adminRole || roleLabel || "-"}
                       </span>
                     </div>
-
                     <div className="flex justify-between">
                       <span className="text-gray-500">Department</span>
                       <span className="text-gray-800 font-medium">
                         {userDepartment || "-"}
                       </span>
                     </div>
-
                     <div className="flex justify-between">
                       <span className="text-gray-500">Sub Dept</span>
                       <span className="text-gray-800 font-medium">
                         {userSubDepartment || "-"}
                       </span>
                     </div>
-
                     <div className="flex justify-between">
                       <span className="text-gray-500">Region</span>
                       <span className="text-gray-800 font-medium">
                         {userRegionNames || "-"}
                       </span>
                     </div>
-
                     <div className="flex justify-between">
                       <span className="text-gray-500">Zone</span>
                       <span className="text-gray-800 font-medium">
                         {userZoneNames?.length ? userZoneNames.join(", ") : "-"}
                       </span>
                     </div>
-
                     <div className="flex justify-between">
-                      <span className="text-gray-500">City : </span>
+                      <span className="text-gray-500">City</span>
                       <span className="text-gray-800 font-medium">
                         {userCityNames?.length ? userCityNames.join(", ") : "-"}
                       </span>
@@ -1321,11 +1188,10 @@ export function Navbar({
                       }}
                       className="w-full px-4 py-2.5 md:py-2 text-sm text-left text-gray-700 hover:bg-orange-50 hover:text-orange-700 transition-all hover:pl-6 flex items-center gap-2"
                     >
-                      {" "}
-                      <span className="w-1 h-1 rounded-full bg-orange-300"></span>{" "}
-                      Sign out{" "}
+                      <span className="w-1 h-1 rounded-full bg-orange-300"></span>
+                      Sign out
                     </button>
-                  )}{" "}
+                  )}
                 </div>
               )}
             </div>

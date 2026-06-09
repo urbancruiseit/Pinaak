@@ -113,6 +113,18 @@ export interface TimeEnquiryResponse {
   year?: number;
   data: TimeEnquiryRecord[];
 }
+
+export interface MonthlyReportTwoRecord {
+  month: string; // "JAN", "FEB", etc.
+  year: number;
+  dates: Record<number, number>; // { 1: 0, 2: 3, ... 31: 0 }
+}
+
+export interface MonthlyReportTwoResponse {
+  success: boolean;
+  year: number;
+  data: MonthlyReportTwoRecord[];
+}
 // ─── Error Handler ───────────────────────────────────────────────────
 
 const handleAxiosError = (error: any, context: string): never => {
@@ -328,10 +340,40 @@ export const getLongWeekendReportApi = async (year: number) => {
     const response = await axiosInstance.get("/reports/longweekend", {
       params: { year },
     });
-    return response.data.data; 
+    return response.data.data;
   } catch (error: any) {
     throw new Error(
       error?.response?.data?.message || "Failed to fetch long weekend report",
     );
+  }
+};
+
+export const getMonthlyReportTwoApi = async (
+  year: number,
+): Promise<MonthlyReportTwoResponse> => {
+  try {
+    const response = await axiosInstance.get<{
+      statusCode: number;
+      success: boolean;
+      message: string;
+      data: {
+        year: number;
+        data: MonthlyReportTwoRecord[];
+      };
+    }>("/reports/monthlyreporttwo", {
+      params: { year },
+      timeout: 10000,
+    });
+
+    const res = response.data;
+    const payload = res.data;
+
+    return {
+      success: res.success,
+      year: payload.year ?? year,
+      data: Array.isArray(payload.data) ? payload.data : [],
+    };
+  } catch (error) {
+    throw handleAxiosError(error, "getMonthlyReportTwoApi");
   }
 };

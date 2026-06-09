@@ -3,6 +3,7 @@ import {
   getLongWeekendReport,
   getMonthlyDateWiseStatusReport,
   getMonthlyEnquiry,
+  getMonthlyReportTwo,
   getMonthlyStatusWiseReport,
   getPreSalesLeadAssignmentReport,
   getTimeEnquiryReport,
@@ -230,4 +231,41 @@ export const longWeekendReport = asyncHandler(async (req, res) => {
         "Long weekend report fetched successfully",
       ),
     );
+});
+
+export const monthlyreporttwo = asyncHandler(async (req, res) => {
+  const year = req.query.year
+    ? parseInt(req.query.year)
+    : new Date().getFullYear();
+
+  if (isNaN(year) || year < 2000 || year > 2100) {
+    return res.status(400).json({
+      success: false,
+      statusCode: 400,
+      message: "Invalid year parameter",
+      data: null,
+    });
+  }
+
+  try {
+    const data = await getMonthlyReportTwo(year);
+
+    return res.status(200).json({
+      success: true,
+      statusCode: 200,
+      data: {
+        year,
+        data: data || [],
+      },
+      message: "Monthly report two fetched successfully",
+    });
+  } catch (error) {
+    console.error("Error in monthlyreporttwo:", error);
+    return res.status(500).json({
+      success: false,
+      statusCode: 500,
+      message: error.message || "Failed to fetch monthly report two",
+      data: null,
+    });
+  }
 });

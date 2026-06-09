@@ -6,6 +6,7 @@ import {
   getMonthlyStatusWiseReportController,
   longWeekendReport,
   monthlyEnquiryReport,
+  monthlyreporttwo,
   timeEnquiryReport,
 } from "./report.controller.js";
 import { verifyJWT } from "../../middlewares/auth.middleware.js";
@@ -33,5 +34,6 @@ router.get(
 
 router.get("/time-enquiry", timeEnquiryReport);
 router.get("/longweekend", longWeekendReport);
+router.get("/monthlyreporttwo", monthlyreporttwo);
 
 export default router;

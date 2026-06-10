@@ -704,9 +704,13 @@ export function Navbar({
 
                     const trackingItems = [
                       {
-                        label: "Monthly Enquiry (MER)",
+                        label: "Monthly Enquiry PS (MER)",
                         fn: onMonthlyEnquiry,
-                        show: true,
+                        show:
+                          isSuperAdmin ||
+                          isPresalesExecutive ||
+                          isTeamLeader ||
+                          isCityManager,
                       },
                       {
                         label: "Monthly Enquiry PS 2 (MER 2)",
@@ -1103,7 +1107,7 @@ export function Navbar({
                     {userAliasName || userName}
                   </p>
                   <p className="text-[11px] uppercase text-gray-500">
-                    {adminRole || roleLabel || "-"}
+                    {roleLabel || adminRole || "-"}
                   </p>
                 </div>
                 <ChevronDown
@@ -1136,7 +1140,7 @@ export function Navbar({
                         )}
                         {roleLabel && (
                           <span className="text-[11px] px-2 py-[2px] bg-green-100 text-green-700 rounded-full">
-                            {adminRole || roleLabel || "-"}{" "}
+                            {roleLabel || adminRole || "-"}
                           </span>
                         )}
                       </div>
@@ -1146,7 +1150,7 @@ export function Navbar({
                     <div className="flex justify-between">
                       <span className="text-gray-500">Role</span>
                       <span className="text-gray-800 font-medium">
-                        {adminRole || roleLabel || "-"}
+                        {roleLabel || adminRole || "-"}
                       </span>
                     </div>
                     <div className="flex justify-between">

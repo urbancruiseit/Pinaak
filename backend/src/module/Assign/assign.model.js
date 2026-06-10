@@ -24,9 +24,7 @@ export const findTravelAdvisorsByCityId = async (cityId) => {
 
     return rows.map((user) => ({
       id: user.id,
-      fullName: [user.aliasName,]
-        .filter(Boolean)
-        .join(" "),
+      fullName: [user.aliasName].filter(Boolean).join(" "),
     }));
   } catch (error) {
     console.error("findTravelAdvisorsByCityId error:", error);
@@ -55,7 +53,6 @@ export const assignTravelAdvisorToLead = async (leadId, travelAdvisorId) => {
   }
 };
 
-
 export const getLeadsByAdvisorId = async (
   advisorId,
   page,
@@ -64,7 +61,7 @@ export const getLeadsByAdvisorId = async (
   search,
   month,
   year,
-  status  // ✅ add kiya
+  status, // ✅ add kiya
 ) => {
   try {
     const pageNumber = parseInt(page, 10) || 1;
@@ -172,12 +169,12 @@ export const getLeadsByAdvisorId = async (
     const statusList = ["NEW", "RFQ", "KYC", "HOT", "VEH-N", "LOST", "BOOK"];
 
     // ✅ statusCounts hamesha bina status filter ke aayega
-    const statusCountWhereClause = status && status.trim()
-      ? whereClause.replace(` AND UPPER(l.status) = ?`, "")
-      : whereClause;
-    const statusCountValues = status && status.trim()
-      ? values.slice(0, -1)
-      : values;
+    const statusCountWhereClause =
+      status && status.trim()
+        ? whereClause.replace(` AND UPPER(l.status) = ?`, "")
+        : whereClause;
+    const statusCountValues =
+      status && status.trim() ? values.slice(0, -1) : values;
 
     const statusQuery = `
       SELECT l.status, COUNT(*) as count
@@ -189,7 +186,9 @@ export const getLeadsByAdvisorId = async (
     const [statusResult] = await pool.query(statusQuery, statusCountValues);
 
     const statusCounts = {};
-    statusList.forEach((s) => { statusCounts[s] = 0; });
+    statusList.forEach((s) => {
+      statusCounts[s] = 0;
+    });
     statusResult.forEach((s) => {
       const key = (s.status || "").toUpperCase();
       if (statusCounts.hasOwnProperty(key)) {
@@ -234,12 +233,16 @@ export const getLeadsByAdvisorId = async (
       GROUP BY DATE_FORMAT(pickupDateTime, '%Y-%m'), MONTHNAME(pickupDateTime), YEAR(pickupDateTime)
       ORDER BY month ASC
       `,
-      monthlyStatsValues
+      monthlyStatsValues,
     );
 
     // ── Advisor + Presales names ──────────────────────────────────────────
-    const advisorIds = leads.map((l) => l.advisor_id).filter((id) => id != null);
-    const presalesIds = leads.map((l) => l.presales_id).filter((id) => id != null);
+    const advisorIds = leads
+      .map((l) => l.advisor_id)
+      .filter((id) => id != null);
+    const presalesIds = leads
+      .map((l) => l.presales_id)
+      .filter((id) => id != null);
     const allUserIds = [...new Set([...advisorIds, ...presalesIds])];
     let userMap = {};
 
@@ -248,9 +251,11 @@ export const getLeadsByAdvisorId = async (
         const placeholders = allUserIds.map(() => "?").join(",");
         const [users] = await hrmsPool.query(
           `SELECT id, aliasName, firstName, middleName, lastName, shortName FROM users WHERE id IN (${placeholders})`,
-          allUserIds
+          allUserIds,
         );
-        users.forEach((u) => { userMap[u.id] = u; });
+        users.forEach((u) => {
+          userMap[u.id] = u;
+        });
       } catch (err) {
         console.error("hrmsPool user fetch failed:", err.message);
       }
@@ -259,7 +264,8 @@ export const getLeadsByAdvisorId = async (
     const getName = (userId, type) => {
       const user = userMap[userId];
       if (!user) return null;
-      const first = type === "advisor" ? user.aliasName || "" : user.shortName || "";
+      const first =
+        type === "advisor" ? user.aliasName || "" : user.shortName || "";
       return `${first} `.trim() || null;
     };
 
@@ -277,7 +283,7 @@ export const getLeadsByAdvisorId = async (
       hasNextPage: pageNumber < Math.ceil(countResult[0].total / limitNumber),
       selectedMonth,
       selectedYear,
-      selectedStatus: status ? status.trim().toUpperCase() : null,  // ✅ add kiya
+      selectedStatus: status ? status.trim().toUpperCase() : null, // ✅ add kiya
       statusCounts,
       totalLeads,
       monthlyStats,
@@ -287,7 +293,6 @@ export const getLeadsByAdvisorId = async (
     throw error;
   }
 };
-
 
 export const getLeadStatusCountByPresalesId = async (presalesId) => {
   const [rows] = await pool.query(

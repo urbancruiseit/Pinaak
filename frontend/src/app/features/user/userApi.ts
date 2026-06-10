@@ -27,15 +27,20 @@ export const loginUser = async (data: LoginData): Promise<User> => {
 export const currentUser = async (): Promise<User> => {
   try {
     const response = await axiosInstance.get<User>("/user/current-user");
-
+    console.log("Current User Response:", response.data.data);
     return response.data.data;
   } catch (error: any) {
     const status = error?.response?.status;
     if (status !== 401) {
-      const detail = error?.response?.data?.message ?? error?.message ?? JSON.stringify(error);
+      const detail =
+        error?.response?.data?.message ??
+        error?.message ??
+        JSON.stringify(error);
       console.warn("Current user check failed:", detail);
     }
-    throw new Error(error?.response?.data?.message ?? error?.message ?? "Unauthorized");
+    throw new Error(
+      error?.response?.data?.message ?? error?.message ?? "Unauthorized",
+    );
   }
 };
 

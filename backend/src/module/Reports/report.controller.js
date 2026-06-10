@@ -14,21 +14,22 @@ import { asyncHandler } from "../../utils/asyncHandler.js";
 import { hrmsPool } from "../../config/mySqlDB.js";
 
 export const monthlyEnquiryReport = asyncHandler(async (req, res) => {
-  const year = req.query.year
-    ? parseInt(req.query.year)
-    : new Date().getFullYear();
+  const year = req.query.year ? parseInt(req.query.year) : null; // ✅ null = all years
 
-  if (isNaN(year) || year < 2000 || year > 2100) {
+  if (year !== null && (isNaN(year) || year < 2000 || year > 2100)) {
     throw new ApiError(400, "Invalid year parameter");
   }
 
-  const data = await getMonthlyEnquiry(year);
+  // ✅ req.user se city_ids lo
+  const cityIds = req.user?.city_ids || [];
+
+  const data = await getMonthlyEnquiry(year, cityIds);
   return res
     .status(200)
     .json(
       new ApiResponse(
         200,
-        { year, data: data || [] },
+        { year: year ?? "all", data: data || [] },
         "Monthly enquiry report fetched successfully",
       ),
     );
@@ -100,9 +101,16 @@ export const getMonthlyStatusWiseReportController = asyncHandler(
     const user = req.user;
 
     let cityIds = [];
+    let advisorId = null; // ✅ add kiya
 
     // ---------------- CITY FILTER ----------------
-    if (user.subDepartment === "Tele-Sales" && user.role === "City Manager") {
+    if (user.role === "Travel Advisor") {
+      // ✅ sirf khud ka data
+      advisorId = user.id;
+    } else if (
+      user.subDepartment === "Tele-Sales" &&
+      user.role === "City Manager"
+    ) {
       const zoneIds = user.zone_ids ?? [];
 
       if (!zoneIds.length) {
@@ -112,7 +120,6 @@ export const getMonthlyStatusWiseReportController = asyncHandler(
       }
 
       const placeholders = zoneIds.map(() => "?").join(",");
-
       const [cities] = await hrmsPool.query(
         `SELECT id FROM city WHERE zone_id IN (${placeholders})`,
         zoneIds,
@@ -133,6 +140,7 @@ export const getMonthlyStatusWiseReportController = asyncHandler(
       cityIds,
       month ? Number(month) : undefined,
       year ? Number(year) : undefined,
+      advisorId, // ✅ pass kiya
     );
 
     return res.status(200).json(new ApiResponse(200, result, "Success"));
@@ -220,7 +228,10 @@ export const longWeekendReport = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Invalid year parameter");
   }
 
-  const data = await getLongWeekendReport(year); // ✅ sirf year pass ho
+  // ✅ req.user se city_ids lo
+  const cityIds = req.user?.city_ids || [];
+
+  const data = await getLongWeekendReport(year, cityIds);
 
   return res
     .status(200)

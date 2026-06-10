@@ -12,23 +12,23 @@ import {
 import { verifyJWT } from "../../middlewares/auth.middleware.js";
 
 const router = express.Router();
-
+router.use(verifyJWT);
 router.get("/monthly-enquiry", monthlyEnquiryReport);
 router.get("/leads/count-by-date", getLeadCountByDateForYearController);
 router.get(
   "/adviser-report",
-  verifyJWT,
+
   getLeadCountByAdviserForMonthController,
 );
 router.get(
   "/status-wise-report",
-  verifyJWT,
+
   getMonthlyStatusWiseReportController,
 );
 
 router.get(
   "/status-wise-date-report",
-  verifyJWT,
+
   getMonthlyDateWiseStatusReportController,
 );
 

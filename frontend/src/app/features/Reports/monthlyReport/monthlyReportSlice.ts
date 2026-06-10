@@ -57,7 +57,8 @@ interface MonthlyEnquiryState {
     loading: boolean;
     error: string | null;
   };
-    monthlyReportTwo: {  // ← Add this
+  monthlyReportTwo: {
+    // ← Add this
     data: any[];
     year: number | null;
     loading: boolean;
@@ -194,7 +195,7 @@ export const fetchLongWeekendReport = createAsyncThunk(
 );
 
 export const fetchMonthlyReportTwo = createAsyncThunk(
-  "reportTwo/fetchMonthlyReportTwo",
+  "report/fetchMonthlyReportTwo",
   async (year: number, { rejectWithValue }) => {
     try {
       return await getMonthlyReportTwoApi(year);

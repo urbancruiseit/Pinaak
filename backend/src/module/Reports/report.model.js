@@ -1,11 +1,20 @@
 import { hrmsPool, pool } from "../../config/mySqlDB.js";
 
-export const getMonthlyEnquiry = async (year) => {
+export const getMonthlyEnquiry = async (year, cityIds = []) => {
   try {
-    // Check if table exists
     const [tables] = await pool.query("SHOW TABLES LIKE 'leads'");
-    if (tables.length === 0) {
-      return [];
+    if (tables.length === 0) return [];
+
+    let whereClause = `WHERE enquiryTime IS NOT NULL`;
+    let values = [];
+    if (year) {
+      whereClause += ` AND YEAR(enquiryTime) = ?`;
+      values.push(year);
+    }
+    if (cityIds && cityIds.length > 0) {
+      const placeholders = cityIds.map(() => "?").join(",");
+      whereClause += ` AND city_id IN (${placeholders})`;
+      values.push(...cityIds);
     }
 
     const query = `
@@ -14,20 +23,17 @@ export const getMonthlyEnquiry = async (year) => {
         DAY(enquiryTime)   AS day,
         COUNT(id)          AS total
       FROM leads
-      WHERE YEAR(enquiryTime) = ?
+      ${whereClause}
       GROUP BY MONTH(enquiryTime), DAY(enquiryTime)
       ORDER BY month, day
     `;
 
-    const [rows] = await pool.execute(query, [year]);
+    const [rows] = await pool.execute(query, values);
 
-    const monthMap = {}; // { [monthNumber]: { days, total } }
-
+    const monthMap = {};
     rows.forEach((row) => {
       const m = row.month;
-      if (!monthMap[m]) {
-        monthMap[m] = { days: 0, total: 0 };
-      }
+      if (!monthMap[m]) monthMap[m] = { days: 0, total: 0 };
       monthMap[m].days += 1;
       monthMap[m].total += Number(row.total);
     });
@@ -92,15 +98,10 @@ export const getPreSalesLeadAssignmentReport = async (cityIds, month, year) => {
 
   const totalDaysInMonth = new Date(year, month, 0).getDate();
 
-  // Step 1 — City IDs directly req.user se
-
   if (!cityIds || cityIds.length === 0) {
     return { success: false, message: "No cities assigned to this user" };
   }
-
   const cityPlaceholders = cityIds.map(() => "?").join(",");
-
-  // Step 2 — In cities ke travel advisers HRMS se nikalo
   const [advisorUsers] = await hrmsPool.execute(
     `SELECT 
      u.id,
@@ -226,30 +227,46 @@ export const getPreSalesLeadAssignmentReport = async (cityIds, month, year) => {
   };
 };
 
-export const getMonthlyStatusWiseReport = async (cityIds, month, year) => {
+export const getMonthlyStatusWiseReport = async (
+  cityIds,
+  month,
+  year,
+  advisorId = null,
+) => {
   month = month || new Date().getMonth() + 1;
   year = year || new Date().getFullYear();
 
-  if (!cityIds || cityIds.length === 0) {
-    return { success: false, message: "No cities assigned" };
+  let advisors = [];
+
+  if (advisorId) {
+    // ✅ Travel Advisor — sirf khud ka
+    const [rows] = await hrmsPool.execute(
+      `SELECT id, CONCAT_WS(' ', aliasName) AS adviser_name FROM users WHERE id = ?`,
+      [advisorId],
+    );
+    advisors = rows;
+  } else {
+    // ✅ Manager/Others — city wise advisors
+    if (!cityIds || cityIds.length === 0) {
+      return { success: false, message: "No cities assigned" };
+    }
+
+    const cityPlaceholders = cityIds.map(() => "?").join(",");
+    const [rows] = await hrmsPool.execute(
+      `SELECT 
+          u.id,
+          CONCAT_WS(' ', u.aliasName) AS adviser_name
+       FROM users u
+       INNER JOIN roles r ON u.role_id = r.id
+       INNER JOIN access_control ac ON ac.employee_id = u.id
+       INNER JOIN access_control_cities acc ON acc.access_control_id = ac.id
+       WHERE r.role_name = 'Travel Advisor'
+         AND acc.city_id IN (${cityPlaceholders})
+         AND u.is_active = 1`,
+      cityIds,
+    );
+    advisors = rows;
   }
-
-  const cityPlaceholders = cityIds.map(() => "?").join(",");
-
-  // ---------------- ADVISORS ----------------
-  const [advisors] = await hrmsPool.execute(
-    `SELECT 
-        u.id,
-        CONCAT_WS(' ', u.aliasName) AS adviser_name
-     FROM users u
-     INNER JOIN roles r ON u.role_id = r.id
-     INNER JOIN access_control ac ON ac.employee_id = u.id
-     INNER JOIN access_control_cities acc ON acc.access_control_id = ac.id
-     WHERE r.role_name = 'Travel Advisor'
-       AND acc.city_id IN (${cityPlaceholders})
-       AND u.is_active = 1`,
-    cityIds,
-  );
 
   if (!advisors.length) {
     return { success: true, data: [], teamTotal: {} };
@@ -275,22 +292,18 @@ export const getMonthlyStatusWiseReport = async (cityIds, month, year) => {
 
   // ---------------- STRUCTURE ----------------
   const map = {};
-
   advisors.forEach((a) => {
     map[a.id] = {
       adviser_id: a.id,
       adviser_name: a.adviser_name,
-
-      // ✅ All 7 statuses from statusList
       new: 0,
       kyc: 0,
       rfq: 0,
       hot: 0,
-      vehn: 0, // VEH-N
+      vehn: 0,
       lost: 0,
       book: 0,
       blank: 0,
-
       total: 0,
     };
   });
@@ -318,7 +331,6 @@ export const getMonthlyStatusWiseReport = async (cityIds, month, year) => {
   // ---------------- FINAL FORMAT ----------------
   const data = Object.values(map).map((a) => ({
     ...a,
-    // con = conversion % based on BOOK / total
     con: a.total ? ((a.book / a.total) * 100).toFixed(0) + "%" : "0%",
   }));
 
@@ -543,7 +555,7 @@ export const getMonthlyDateWiseStatusReport = async (cityIds, month, year) => {
   };
 };
 
-export const getLongWeekendReport = async (year) => {
+export const getLongWeekendReport = async (year, cityIds = []) => {
   try {
     const parsedYear = parseInt(year);
     if (isNaN(parsedYear) || parsedYear < 2000 || parsedYear > 2100) {
@@ -553,31 +565,36 @@ export const getLongWeekendReport = async (year) => {
     const [tables] = await pool.query("SHOW TABLES LIKE 'leads'");
     if (tables.length === 0) return [];
 
+    let whereClause = `WHERE YEAR(pickupDateTime) = ?`;
+    let values = [parsedYear];
+
+    if (cityIds && cityIds.length > 0) {
+      const placeholders = cityIds.map(() => "?").join(",");
+      whereClause += ` AND city_id IN (${placeholders})`;
+      values.push(...cityIds);
+    }
+
     const query = `
       SELECT 
         MONTH(pickupDateTime) AS month,
         DAY(pickupDateTime)   AS day,
         COUNT(id)             AS total
       FROM leads
-      WHERE YEAR(pickupDateTime) = ?
+      ${whereClause}
       GROUP BY MONTH(pickupDateTime), DAY(pickupDateTime)
       ORDER BY month, day
     `;
 
-    const [rows] = await pool.execute(query, [parsedYear]);
+    const [rows] = await pool.execute(query, values);
 
     if (rows.length > 0) {
       console.log("📝 Sample record:", rows[0]);
     }
 
-    // ── getMonthlyEnquiry jaisa hi avg logic ──
     const monthMap = {};
-
     rows.forEach((row) => {
       const m = row.month;
-      if (!monthMap[m]) {
-        monthMap[m] = { days: 0, total: 0 };
-      }
+      if (!monthMap[m]) monthMap[m] = { days: 0, total: 0 };
       monthMap[m].days += 1;
       monthMap[m].total += Number(row.total);
     });
@@ -597,9 +614,6 @@ export const getLongWeekendReport = async (year) => {
 
 export const getMonthlyReportTwo = async (year) => {
   try {
-    const currentDate = new Date();
-    const currentMonth = currentDate.getMonth();
-
     const months = [
       "JAN",
       "FEB",
@@ -617,10 +631,9 @@ export const getMonthlyReportTwo = async (year) => {
 
     let reportData = [];
 
-    // Current month + next 5 months (total 6 months)
-    for (let i = 0; i < 6; i++) {
-      const monthIndex = (currentMonth + i) % 12;
-      const targetYear = year + Math.floor((currentMonth + i) / 12);
+    // JAN to DEC fixed
+    for (let i = 0; i < 12; i++) {
+      const monthIndex = i;
 
       const query = `
         SELECT 
@@ -634,23 +647,23 @@ export const getMonthlyReportTwo = async (year) => {
         ORDER BY DAY(pickupDateTime)
       `;
 
-      // ✅ CHANGE: db.query se pool.query karo
-      const [rows] = await pool.query(query, [monthIndex + 1, targetYear]);
+      const [rows] = await pool.query(query, [monthIndex + 1, year]);
 
-      // Initialize 1–31 days with 0
+      // 1–31 default 0
       const dates = {};
+
       for (let d = 1; d <= 31; d++) {
         dates[d] = 0;
       }
 
-      // Set lead count according to pickupDate
+      // DB data overwrite
       rows.forEach((row) => {
         dates[row.day] = row.leadCount;
       });
 
       reportData.push({
         month: months[monthIndex],
-        year: targetYear,
+        year,
         dates,
       });
     }

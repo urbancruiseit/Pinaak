@@ -348,8 +348,23 @@ export const getLongWeekendReportApi = async (year: number) => {
   }
 };
 
+// types पहले update करो
+export interface PickupMonthSummary {
+  total: number;
+  activeDays: number;
+  avg: number;
+}
+
+export interface MonthlyReportTwoResponse {
+  success: boolean;
+  year: number;
+  rows: MonthlyReportTwoRecord[];
+  pickupMonthSummary: Record<string, PickupMonthSummary>;
+}
+
+// ✅ updated API function
 export const getMonthlyReportTwoApi = async (
-  year: number,
+  params: MonthlyReportTwoParams,
 ): Promise<MonthlyReportTwoResponse> => {
   try {
     const response = await axiosInstance.get<{
@@ -357,21 +372,28 @@ export const getMonthlyReportTwoApi = async (
       success: boolean;
       message: string;
       data: {
-        year: number;
-        data: MonthlyReportTwoRecord[];
+        year: number | "all";
+        data: {
+          // ✅ nested data
+          rows: MonthlyReportTwoDayRecord[];
+          pickupMonthSummary: Record<string, PickupMonthSummary>;
+        };
       };
     }>("/reports/monthlyreporttwo", {
-      params: { year },
+      params,
       timeout: 10000,
     });
 
     const res = response.data;
-    const payload = res.data;
+    const payload = res.data; // { year, data: { rows, pickupMonthSummary } }
+    const innerData = payload.data; // { rows, pickupMonthSummary }
 
     return {
       success: res.success,
-      year: payload.year ?? year,
-      data: Array.isArray(payload.data) ? payload.data : [],
+      year: payload.year ?? params.year ?? "all",
+      rows: Array.isArray(innerData?.rows) ? innerData.rows : [], // ✅
+      pickupMonthSummary: innerData?.pickupMonthSummary ?? {}, // ✅
+      cityIds: Array.isArray(params.cityIds) ? params.cityIds : [],
     };
   } catch (error) {
     throw handleAxiosError(error, "getMonthlyReportTwoApi");

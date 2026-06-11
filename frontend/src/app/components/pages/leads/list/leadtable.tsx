@@ -14,6 +14,7 @@ import LeadDetailsModel from "../../../DetailModel/LeadModel/leadTabledetailsmod
 import UnwantedModal from "../../../DetailModel/LeadModel/UnwantedModal";
 import Pagination from "../../../ui/pagination";
 import AssignSalesModal from "../../../DetailModel/LeadModel/AssignSalesModal";
+import SwapSalesModal from "../../../DetailModel/LeadModel/SwapModel";
 import EditLeadForm from "./EditForm/editleadform";
 
 import {
@@ -106,6 +107,7 @@ export default function LeadsTable() {
   const [selectedUnwantedLead, setSelectedUnwantedLead] =
     useState<LeadRecord | null>(null);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [isSwapModalOpen, setIsSwapModalOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState<LeadRecord | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 50;
@@ -142,7 +144,6 @@ export default function LeadsTable() {
     connectSocket(currentUser);
     listenToPresalesLeads((lead) => {
       dispatch(addRealtimeLead(lead));
-
     });
 
     listenToLeadUpdated((updatedLead) => {
@@ -168,8 +169,14 @@ export default function LeadsTable() {
     setIsAssignModalOpen(true);
   };
 
+  const handleSwapClick = (lead: LeadRecord) => {
+    setSelectedLead(lead);
+    setIsSwapModalOpen(true);
+  };
+
   const handleCloseModal = () => {
     setIsAssignModalOpen(false);
+    setIsSwapModalOpen(false);
     setSelectedLead(null);
   };
 
@@ -215,6 +222,17 @@ export default function LeadsTable() {
     };
     window.addEventListener("assignLead", handleAssignLead);
     return () => window.removeEventListener("assignLead", handleAssignLead);
+  }, []);
+
+  useEffect(() => {
+    const handleSwapLead = (event: Event) => {
+      const customEvent = event as CustomEvent<LeadRecord>;
+      if (customEvent.detail) {
+        handleSwapClick(customEvent.detail);
+      }
+    };
+    window.addEventListener("swapLead", handleSwapLead);
+    return () => window.removeEventListener("swapLead", handleSwapLead);
   }, []);
 
   const togglePax = () => {
@@ -822,6 +840,15 @@ export default function LeadsTable() {
       {isAssignModalOpen && selectedLead && (
         <AssignSalesModal
           isOpen={isAssignModalOpen}
+          onClose={handleCloseModal}
+          leadId={selectedLead.id}
+          cityId={selectedLead.city_id}
+        />
+      )}
+
+      {isSwapModalOpen && selectedLead && (
+        <SwapSalesModal
+          isOpen={isSwapModalOpen}
           onClose={handleCloseModal}
           leadId={selectedLead.id}
           cityId={selectedLead.city_id}

@@ -12,6 +12,9 @@ import {
   getStatusWiseDateReportApi,
   getLongWeekendReportApi,
   getMonthlyReportTwoApi,
+  MonthlyReportTwoParams,
+  MonthlyReportTwoDayRecord,
+  PickupMonthSummary, // ✅ नया import
 } from "./monthlyReportApi";
 
 interface MonthlyEnquiryState {
@@ -58,9 +61,12 @@ interface MonthlyEnquiryState {
     error: string | null;
   };
   monthlyReportTwo: {
-    // ← Add this
-    data: any[];
-    year: number | null;
+    data: {
+      rows: MonthlyReportTwoDayRecord[]; // ✅ rows अलग
+      pickupMonthSummary: Record<string, PickupMonthSummary>; // ✅ summary अलग
+    };
+    year: number | "all" | null;
+    cityIds: number[];
     loading: boolean;
     error: string | null;
   };
@@ -110,12 +116,17 @@ const initialState: MonthlyEnquiryState = {
     error: null,
   },
   monthlyReportTwo: {
-    data: [],
+    data: {
+      rows: [], // ✅
+      pickupMonthSummary: {}, // ✅
+    },
     year: null,
+    cityIds: [],
     loading: false,
     error: null,
   },
 };
+
 // ─── Thunks ──────────────────────────────────────────────────────────
 
 export const fetchMonthlyEnquiry = createAsyncThunk(
@@ -158,8 +169,7 @@ export const fetchTimeEnquiry = createAsyncThunk(
   "report/fetchTimeEnquiry",
   async (year: number, { rejectWithValue }) => {
     try {
-      const response = await getTimeEnquiryApi(year);
-      return response;
+      return await getTimeEnquiryApi(year);
     } catch (error: any) {
       return rejectWithValue(error.message);
     }
@@ -169,10 +179,7 @@ export const fetchTimeEnquiry = createAsyncThunk(
 export const fetchStatusWiseDateReport = createAsyncThunk(
   "report/fetchStatusWiseDateReport",
   async (
-    params: {
-      month?: number;
-      year?: number;
-    } = {},
+    params: { month?: number; year?: number } = {},
     { rejectWithValue },
   ) => {
     try {
@@ -196,9 +203,9 @@ export const fetchLongWeekendReport = createAsyncThunk(
 
 export const fetchMonthlyReportTwo = createAsyncThunk(
   "report/fetchMonthlyReportTwo",
-  async (year: number, { rejectWithValue }) => {
+  async (params: MonthlyReportTwoParams = {}, { rejectWithValue }) => {
     try {
-      return await getMonthlyReportTwoApi(year);
+      return await getMonthlyReportTwoApi(params);
     } catch (error: any) {
       return rejectWithValue(error.message);
     }
@@ -224,7 +231,18 @@ const monthlyReportSlice = createSlice({
       state.timeEnquiry.data = [];
       state.timeEnquiry.year = null;
       state.timeEnquiry.error = null;
-      // Keep loading as false
+    },
+    resetMonthlyReportTwo: (state) => {
+      state.monthlyReportTwo = {
+        data: {
+          rows: [], // ✅
+          pickupMonthSummary: {}, // ✅
+        },
+        year: null,
+        cityIds: [],
+        loading: false,
+        error: null,
+      };
     },
   },
   extraReducers: (builder) => {
@@ -293,62 +311,65 @@ const monthlyReportSlice = createSlice({
         state.timeEnquiry.loading = false;
         state.timeEnquiry.error = action.payload as string;
       })
+
       // Status Date Report
       .addCase(fetchStatusWiseDateReport.pending, (state) => {
         state.statusDateReport.loading = true;
         state.statusDateReport.error = null;
       })
-
       .addCase(fetchStatusWiseDateReport.fulfilled, (state, action) => {
         state.statusDateReport.loading = false;
         state.statusDateReport.data = action.payload.data;
-
         state.statusDateReport.teamTotal = action.payload.teamTotal;
-
         state.statusDateReport.month = action.payload.month;
-
         state.statusDateReport.year = action.payload.year;
       })
-
       .addCase(fetchStatusWiseDateReport.rejected, (state, action) => {
         state.statusDateReport.loading = false;
         state.statusDateReport.error = action.payload as string;
       })
+
       // Long Weekend Report
       .addCase(fetchLongWeekendReport.pending, (state) => {
         state.longWeekend.loading = true;
         state.longWeekend.error = null;
       })
-
       .addCase(fetchLongWeekendReport.fulfilled, (state, action) => {
         state.longWeekend.loading = false;
-
         state.longWeekend.data = action.payload.data;
-
         state.longWeekend.year = action.payload.year;
       })
-
       .addCase(fetchLongWeekendReport.rejected, (state, action) => {
         state.longWeekend.loading = false;
-
         state.longWeekend.error = action.payload as string;
       })
+
+      // Monthly Report Two
       .addCase(fetchMonthlyReportTwo.pending, (state) => {
-        state.loading = true;
-        state.error = null;
+        state.monthlyReportTwo.loading = true;
+        state.monthlyReportTwo.error = null;
       })
       .addCase(fetchMonthlyReportTwo.fulfilled, (state, action) => {
-        state.loading = false;
-        state.data = action.payload.data;
-        state.year = action.payload.year;
+        state.monthlyReportTwo.loading = false;
+        state.monthlyReportTwo.data = {
+          rows: action.payload.rows, // ✅
+          pickupMonthSummary: action.payload.pickupMonthSummary, // ✅
+        };
+        state.monthlyReportTwo.year = action.payload.year;
+        state.monthlyReportTwo.cityIds = action.payload.cityIds ?? [];
       })
       .addCase(fetchMonthlyReportTwo.rejected, (state, action) => {
-        state.loading = false;
-        state.error = action.payload as string;
+        state.monthlyReportTwo.loading = false;
+        state.monthlyReportTwo.error = action.payload as string;
       });
   },
 });
 
-export const { resetMonthlyEnquiry, resetTimeEnquiry, resetAllTimeEnquiry } =
-  monthlyReportSlice.actions;
+export const {
+  resetMonthlyEnquiry,
+  resetTimeEnquiry,
+  resetAllTimeEnquiry,
+  resetMonthlyReportTwo,
+} = monthlyReportSlice.actions;
+
 export default monthlyReportSlice.reducer;

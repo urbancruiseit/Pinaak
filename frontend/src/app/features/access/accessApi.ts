@@ -18,6 +18,52 @@ interface ApiResponse<T> {
   message?: string;
 }
 
+export interface MonthlyStats {
+  month: string;
+  monthName: string;
+  year: number;
+  leadCount: number;
+}
+
+export interface ZoneAdvisor {
+  name: string;
+  id: number;
+}
+
+export interface StatusCounts {
+  NEW: number;
+  RFQ: number;
+  KYC: number;
+  HOT: number;
+  "VEH-N": number;
+  LOST: number;
+  BOOK: number;
+}
+
+export interface AssignedLeadsResponse {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  selectedMonth: number;
+  selectedYear: number;
+  selectedStatus: string | null;
+  statusCounts: StatusCounts;
+  totalLeads: number;
+  leads: LeadRecord[];
+  monthlyStats: MonthlyStats[];
+  zoneAdvisors: ZoneAdvisor[]; // ✅ fixed
+}
+
+export interface SwapLeadsResponse {
+  success: boolean;
+  leadId: number;
+  travelAdvisorId: number;
+}
+export interface SwapLeadsResponse extends AssignedLeadsResponse {
+  // Add any additional properties specific to swap leads if needed
+}
 // ✅ 1. Get Travel Advisors by City
 export const getTravelAdvisorsByCityApi = async (
   cityId: number,
@@ -84,46 +130,6 @@ export const assignTravelAdvisorApi = async (
   }
 };
 
-
-
-
-export interface MonthlyStats {
-  month: string;
-  monthName: string;
-  year: number;
-  leadCount: number;
-}
-
-export interface ZoneAdvisor{
-  name:string,
-  id:number
-}
-
-export interface StatusCounts {
-  NEW: number;
-  RFQ: number;
-  KYC: number;
-  HOT: number;
-  "VEH-N": number;
-  LOST: number;
-  BOOK: number;
-}
-
-export interface AssignedLeadsResponse {
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
-  hasNextPage: boolean;
-  selectedMonth: number;
-  selectedYear: number;
-  selectedStatus: string | null;
-  statusCounts: StatusCounts;
-  totalLeads: number;
-  leads: LeadRecord[];
-  monthlyStats: MonthlyStats[];
-  zoneAdvisors: ZoneAdvisor[];  // ✅ fixed
-}
 export const getMyAssignedLeadsApi = async (
   page: number = 1,
   filters?: {
@@ -132,8 +138,8 @@ export const getMyAssignedLeadsApi = async (
     month?: number | null;
     year?: number | null;
     advisorId?: number | null;
-    status?: string | null;  // ✅ add kiya
-  }
+    status?: string | null; // ✅ add kiya
+  },
 ): Promise<AssignedLeadsResponse> => {
   try {
     const params = new URLSearchParams();
@@ -155,10 +161,12 @@ export const getMyAssignedLeadsApi = async (
       params.append("advisorId", String(filters.advisorId));
     }
     if (filters?.status != null) {
-      params.append("status", filters.status);  // ✅ add kiya
+      params.append("status", filters.status); // ✅ add kiya
     }
 
-    const response = await axiosInstance.get(`/assign/myleads?${params.toString()}`);
+    const response = await axiosInstance.get(
+      `/assign/myleads?${params.toString()}`,
+    );
 
     const data: AssignedLeadsResponse = response?.data?.data;
     if (!data) throw new Error("Invalid response from server");
@@ -169,6 +177,83 @@ export const getMyAssignedLeadsApi = async (
   }
 };
 // api/leadsApi.ts
+
+export const swapTravelAdvisorApi = async (
+  leadId: number,
+  travelAdvisorId: number,
+): Promise<SwapLeadsResponse> => {
+  if (!leadId) throw new Error("Lead ID is required");
+  if (!travelAdvisorId) throw new Error("Travel Advisor ID is required");
+
+  try {
+    const response = await axiosInstance.patch<ApiResponse<SwapLeadsResponse>>(
+      `/assign/swap-travel-advisor/${leadId}`, // ✅ leadId URL mein
+      {
+        travelAdvisorId, // ✅ sirf advisorId body mein
+      },
+    );
+
+    const data = response?.data?.data;
+    if (!data) throw new Error("Invalid response from server");
+
+    return data;
+  } catch (error: any) {
+    const errorMessage =
+      error?.response?.data?.message ||
+      error?.response?.data?.error ||
+      error.message ||
+      "Failed to assign travel advisor";
+
+    throw new Error(errorMessage);
+  }
+};
+
+export const getMySwapLeadsApi = async (
+  page: number = 1,
+  filters?: {
+    cityIds?: number[];
+    search?: string;
+    month?: number | null;
+    year?: number | null;
+    advisorId?: number | null;
+    status?: string | null; // ✅ add kiya
+  },
+): Promise<SwapLeadsResponse> => {
+  try {
+    const params = new URLSearchParams();
+    params.append("page", String(page));
+
+    if (filters?.cityIds && filters.cityIds.length > 0) {
+      params.append("cityIds", filters.cityIds.join(","));
+    }
+    if (filters?.search && filters.search.trim()) {
+      params.append("search", filters.search.trim());
+    }
+    if (filters?.month != null) {
+      params.append("month", String(filters.month));
+    }
+    if (filters?.year != null) {
+      params.append("year", String(filters.year));
+    }
+    if (filters?.advisorId != null) {
+      params.append("advisorId", String(filters.advisorId));
+    }
+    if (filters?.status != null) {
+      params.append("status", filters.status); // ✅ add kiya
+    }
+
+    const response = await axiosInstance.get(
+      `/assign/swap-leads?${params.toString()}`,
+    );
+    console.log("swap leads response", response.data);
+    const data: SwapLeadsResponse = response?.data?.data;
+    if (!data) throw new Error("Invalid response from server");
+
+    return data;
+  } catch (error: any) {
+    throw new Error(error?.response?.data?.message || error.message);
+  }
+};
 
 export const getMyLeadStatusCountApi = async () => {
   try {
@@ -185,7 +270,9 @@ export const getMyLeadStatusCountApi = async () => {
 
 export const getPresalesLeadStatusCountApi = async () => {
   try {
-    const response = await axiosInstance.get(`/assign/leads/status-count-by-presales`);
+    const response = await axiosInstance.get(
+      `/assign/leads/status-count-by-presales`,
+    );
 
     const data = response?.data?.data;
     if (!data) throw new Error("Invalid response from server");
@@ -195,4 +282,3 @@ export const getPresalesLeadStatusCountApi = async () => {
     throw new Error(error?.response?.data?.message || error.message);
   }
 };
-

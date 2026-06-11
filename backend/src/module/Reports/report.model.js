@@ -612,65 +612,128 @@ export const getLongWeekendReport = async (year, cityIds = []) => {
   }
 };
 
-export const getMonthlyReportTwo = async (year) => {
+export const getMonthlyReportTwo = async (year, cityIds = []) => {
   try {
-    const months = [
-      "JAN",
-      "FEB",
-      "MAR",
-      "APR",
-      "MAY",
-      "JUN",
-      "JUL",
-      "AUG",
-      "SEP",
-      "OCT",
-      "NOV",
-      "DEC",
+    const [tables] = await pool.query("SHOW TABLES LIKE 'leads'");
+    if (tables.length === 0) return [];
+
+    const monthNames = [
+      "",
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
     ];
 
-    let reportData = [];
+    let whereClause = `WHERE enquiryTime IS NOT NULL`;
+    let values = [];
 
-    // JAN to DEC fixed
-    for (let i = 0; i < 12; i++) {
-      const monthIndex = i;
-
-      const query = `
-        SELECT 
-          DAY(pickupDateTime) AS day,
-          COUNT(*) AS leadCount
-        FROM leads
-        WHERE 
-          MONTH(pickupDateTime) = ?
-          AND YEAR(pickupDateTime) = ?
-        GROUP BY DAY(pickupDateTime)
-        ORDER BY DAY(pickupDateTime)
-      `;
-
-      const [rows] = await pool.query(query, [monthIndex + 1, year]);
-
-      // 1–31 default 0
-      const dates = {};
-
-      for (let d = 1; d <= 31; d++) {
-        dates[d] = 0;
-      }
-
-      // DB data overwrite
-      rows.forEach((row) => {
-        dates[row.day] = row.leadCount;
-      });
-
-      reportData.push({
-        month: months[monthIndex],
-        year,
-        dates,
-      });
+    if (year) {
+      whereClause += ` AND YEAR(enquiryTime) = ?`;
+      values.push(year);
+    }
+    if (cityIds && cityIds.length > 0) {
+      const placeholders = cityIds.map(() => "?").join(",");
+      whereClause += ` AND city_id IN (${placeholders})`;
+      values.push(...cityIds);
     }
 
-    return reportData;
+    const totalQuery = `
+      SELECT 
+        MONTH(enquiryTime) AS month,
+        DAY(enquiryTime)   AS day,
+        COUNT(id)          AS total
+      FROM leads
+      ${whereClause}
+      GROUP BY MONTH(enquiryTime), DAY(enquiryTime)
+      ORDER BY month, day
+    `;
+
+    const pickupQuery = `
+      SELECT 
+        MONTH(enquiryTime)    AS month,
+        DAY(enquiryTime)      AS day,
+        MONTH(pickupDateTime) AS pickupMonth,
+        COUNT(id)             AS pickupCount
+      FROM leads
+      ${whereClause}
+        AND pickupDateTime IS NOT NULL
+      GROUP BY MONTH(enquiryTime), DAY(enquiryTime), MONTH(pickupDateTime)
+      ORDER BY month, day, pickupMonth
+    `;
+
+    // ✅ New query — har pickup month ka total active days or total count
+    const pickupMonthSummaryQuery = `
+      SELECT
+        MONTH(pickupDateTime)               AS pickupMonth,
+        DAY(enquiryTime)                    AS enquiryDay,
+        COUNT(id)                           AS pickupCount
+      FROM leads
+      ${whereClause}
+        AND pickupDateTime IS NOT NULL
+      GROUP BY MONTH(pickupDateTime), DAY(enquiryTime)
+      ORDER BY pickupMonth, enquiryDay
+    `;
+
+    const [[totalRows], [pickupRows], [pickupSummaryRows]] = await Promise.all([
+      pool.execute(totalQuery, values),
+      pool.execute(pickupQuery, [...values]),
+      pool.execute(pickupMonthSummaryQuery, [...values]),
+    ]);
+
+    // pickupMap — day wise counts
+    const pickupMap = {};
+    pickupRows.forEach((row) => {
+      const key = `${row.month}-${row.day}`;
+      if (!pickupMap[key]) pickupMap[key] = {};
+      const monthName = monthNames[row.pickupMonth];
+      pickupMap[key][monthName] = Number(row.pickupCount);
+    });
+
+    // ✅ pickupMonthSummary — har pickup month ka total or avg
+    // { "Jun": { total: 10, activeDays: 1, avg: 10 }, "Aug": { total: 1, activeDays: 1, avg: 1 } }
+    const pickupMonthSummary = {};
+    pickupSummaryRows.forEach((row) => {
+      const monthName = monthNames[row.pickupMonth];
+      if (!pickupMonthSummary[monthName]) {
+        pickupMonthSummary[monthName] = { total: 0, activeDays: 0 };
+      }
+      pickupMonthSummary[monthName].total += Number(row.pickupCount);
+      pickupMonthSummary[monthName].activeDays += 1;
+    });
+
+    // avg calculate karo
+    Object.keys(pickupMonthSummary).forEach((monthName) => {
+      const { total, activeDays } = pickupMonthSummary[monthName];
+      pickupMonthSummary[monthName].avg =
+        activeDays > 0 ? Math.round(total / activeDays) : 0;
+    });
+
+    const result = totalRows.map((row) => {
+      const key = `${row.month}-${row.day}`;
+      return {
+        month: monthNames[row.month],
+        day: row.day,
+        total: Number(row.total),
+        pickupMonthCounts: pickupMap[key] || {},
+      };
+    });
+
+    return {
+      rows: result,
+      // ✅ { "Jun": { total: 10, activeDays: 1, avg: 10 }, "Aug": { total: 1, activeDays: 1, avg: 1 } }
+      pickupMonthSummary,
+    };
   } catch (error) {
-    console.log("getMonthlyReportTwo error", error);
-    throw new Error("Failed to fetch monthly report two: " + error.message);
+    console.error("❌ Model Error:", error.message);
+    throw error;
   }
 };

@@ -1,6 +1,6 @@
 // E:\Pinnak\PINAK_FRONTEND\src\types\leads\leadTableColumns.tsx
 import React, { useMemo } from "react";
-import { Eye, Edit, UserPlus } from "lucide-react";
+import { Eye, Edit, UserPlus, RefreshCw } from "lucide-react";
 import type { LeadRecord } from "../types";
 
 // Import keywords from keywords.ts
@@ -255,6 +255,19 @@ export const useLeadColumns = ({
                 title="Assign"
               >
                 <UserPlus size={16} />
+              </button>
+
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  window.dispatchEvent(
+                    new CustomEvent("swapLead", { detail: lead }),
+                  );
+                }}
+                className="p-1 text-white bg-green-600 rounded hover:bg-green-700"
+                title="Swap"
+              >
+                <RefreshCw size={16} />
               </button>
             </div>
           );

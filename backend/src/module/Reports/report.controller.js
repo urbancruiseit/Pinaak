@@ -245,38 +245,29 @@ export const longWeekendReport = asyncHandler(async (req, res) => {
 });
 
 export const monthlyreporttwo = asyncHandler(async (req, res) => {
-  const year = req.query.year
-    ? parseInt(req.query.year)
-    : new Date().getFullYear();
+  const year = req.query.year ? parseInt(req.query.year) : null;
 
-  if (isNaN(year) || year < 2000 || year > 2100) {
-    return res.status(400).json({
-      success: false,
-      statusCode: 400,
-      message: "Invalid year parameter",
-      data: null,
-    });
+  if (year !== null && (isNaN(year) || year < 2000 || year > 2100)) {
+    throw new ApiError(400, "Invalid year parameter");
   }
 
-  try {
-    const data = await getMonthlyReportTwo(year);
+  // req.user se city_ids lo
+  const cityIds = req.user?.city_ids || [];
+  console.log(
+    "📊 Fetching Monthly Report Two for year:",
+    year,
+    "and cityIds:",
+    cityIds,
+  );
+  const data = await getMonthlyReportTwo(year, cityIds);
 
-    return res.status(200).json({
-      success: true,
-      statusCode: 200,
-      data: {
-        year,
-        data: data || [],
-      },
-      message: "Monthly report two fetched successfully",
-    });
-  } catch (error) {
-    console.error("Error in monthlyreporttwo:", error);
-    return res.status(500).json({
-      success: false,
-      statusCode: 500,
-      message: error.message || "Failed to fetch monthly report two",
-      data: null,
-    });
-  }
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        { year: year ?? "all", data: data || [] },
+        "Monthly report two fetched successfully",
+      ),
+    );
 });

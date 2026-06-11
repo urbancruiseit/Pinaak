@@ -325,3 +325,24 @@ export const getLeadStatusCountByPresalesId = async (presalesId) => {
     },
   };
 };
+
+export const swapTravelAdvisorForLead = async (leadId, travelAdvisorId) => {
+  if (!leadId) throw new Error("Lead ID is required");
+  if (!travelAdvisorId) throw new Error("New Travel Advisor ID is required");
+
+  try {
+    const [result] = await pool.execute(
+      `UPDATE leads SET advisor_id = ? WHERE id = ?`,
+      [travelAdvisorId, leadId],
+    );
+
+    if (result.affectedRows === 0) {
+      throw new Error("Lead not found");
+    }
+
+    return { success: true, leadId, travelAdvisorId };
+  } catch (error) {
+    console.error("swapTravelAdvisorForLead error:", error);
+    throw error;
+  }
+};

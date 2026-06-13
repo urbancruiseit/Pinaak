@@ -108,24 +108,6 @@ const ACCESS_MENU: MenuSection = {
   ],
 };
 
-const YEAR_MENU: MenuSection = {
-  key: "year-menu",
-  label: "Year",
-  items: [
-    { label: "FY 26", value: "2026" },
-    { label: "FY 27", value: "2027" },
-  ],
-};
-
-// Fallback static data
-const FALLBACK_ZONES = ["DL-NCR", "MH-West", "KA-South", "WB-East"];
-const FALLBACK_CITIES_BY_REGION: Record<string, string[]> = {
-  North: ["Delhi", "Jaipur", "Chandigarh"],
-  South: ["Bengaluru", "Chennai", "Hyderabad"],
-  East: ["Kolkata", "Patna", "Bhubaneswar"],
-  West: ["Mumbai", "Pune", "Ahmedabad"],
-};
-
 const getDashboardMenu = (userRole?: string): MenuSection => {
   const allItems: MenuItem[] = [
     { label: "Leads Dashboard", value: "leads-dashboard" },
@@ -197,9 +179,9 @@ interface NavbarProps {
   selectedRegion?: string;
   selectedCity?: string;
   selectedZone?: string;
-  onRegionChange?: (region: string) => void;
-  onCityChange?: (cityId: string) => void;
-  onZoneChange?: (zone: string) => void;
+  // onRegionChange?: (region: string) => void;
+  // onCityChange?: (cityId: string) => void;
+  // onZoneChange?: (zone: string) => void;
   userName?: string;
   roleLabel?: string;
   userRole?: string;
@@ -264,12 +246,12 @@ export function Navbar({
   onAccessSelect,
   onDsrSelect,
   permittedMasterKeys,
-  selectedRegion = "",
-  selectedCity = "",
-  selectedZone = "",
-  onRegionChange,
-  onCityChange,
-  onZoneChange,
+  // selectedRegion = "",
+  // selectedCity = "",
+  // selectedZone = "",
+  // onRegionChange,
+  // onCityChange,
+  // onZoneChange,
   userName,
   roleLabel,
   userRole,
@@ -287,79 +269,33 @@ export function Navbar({
   const { currentUser } = useSelector((state: RootState) => state.user);
   const router = useRouter();
 
-  // ✅ Navbar khud dispatch NAHI karega — DashboardPage already karta hai
-  // Guest fallback bhi hata diya — agar currentUser nahi hai toh DashboardPage Access Denied dikhayega
-
-  // currentUser se data nikalo
   const userRegionNames = (currentUser as any)?.region_names ?? [];
   const userZoneNames = (currentUser as any)?.zone_names ?? [];
   const userCityNames = (currentUser as any)?.city_names ?? [];
   const userCityIds = (currentUser as any)?.city_ids ?? [];
-
   const rawUser = (currentUser as any) ?? {};
   const userData = rawUser?.data ?? rawUser;
-
-  const userEmail =
-    rawUser?.personalEmail ??
-    userData?.personalEmail ??
-    rawUser?.user_email ??
-    "";
-
-  // ✅ "Guest" fallback hata diya
-  const userAliasName =
-    rawUser?.aliasName ??
-    userData?.aliasName ??
-    rawUser?.alias_name ??
-    userData?.alias_name ??
-    "";
-
-  const userDepartment =
-    rawUser?.department ??
-    userData?.department ??
-    rawUser?.dept_name ??
-    userData?.dept_name ??
-    "";
+  const userEmail = rawUser?.officeEmail ?? userData?.officeEmail ?? "";
+  const userAliasName = rawUser?.aliasName ?? userData?.aliasName ?? "";
+  const userDepartment = rawUser?.department ?? userData?.department ?? "";
 
   const userSubDepartment =
-    rawUser?.subDepartment_name ??
-    userData?.subDepartment_name ??
-    rawUser?.sub_department ??
-    userData?.sub_department ??
-    rawUser?.subdept_name ??
-    userData?.subdept_name ??
-    "";
+    rawUser?.subDepartment ?? userData?.subDepartment ?? "";
 
   const adminRole =
     rawUser?.access_role ??
     userData?.access_role ??
-    rawUser?.accessRole ??
-    userData?.accessRole ??
-    rawUser?.admin_role ??
-    userData?.admin_role ??
     rawUser?.role ??
     userData?.role ??
-    rawUser?.adminRole ??
-    userData?.adminRole ??
     "";
 
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const navbarRef = useRef<HTMLDivElement>(null);
-
   const masterKeySet = useMemo(
     () => (permittedMasterKeys ? new Set(permittedMasterKeys) : null),
     [permittedMasterKeys],
   );
-
-  const fallbackCityOptions = useMemo(() => {
-    if (!selectedRegion) {
-      return Object.values(FALLBACK_CITIES_BY_REGION).reduce<string[]>(
-        (acc, group) => acc.concat(group),
-        [],
-      );
-    }
-    return FALLBACK_CITIES_BY_REGION[selectedRegion] ?? [];
-  }, [selectedRegion]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -393,11 +329,11 @@ export function Navbar({
     setOpenMenu(null);
     setMobileOpen(false);
   };
-  const handleYearSelect = (value: string) => {
-    onYearSelect?.(value);
-    setOpenMenu(null);
-    setMobileOpen(false);
-  };
+  // const handleYearSelect = (value: string) => {
+  //   onYearSelect?.(value);
+  //   setOpenMenu(null);
+  //   setMobileOpen(false);
+  // };
   const handleSalesLeadSelect = (value: string) => {
     onSalesLeadSelect?.(value);
     setOpenMenu(null);
@@ -993,100 +929,6 @@ export function Navbar({
 
           {/* Right Section */}
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:ml-auto md:gap-2 lg:gap-3">
-            <div className="relative group w-full md:w-28 lg:w-32">
-              <select
-                value={selectedRegion}
-                onChange={(e) => onRegionChange?.(e.target.value)}
-                className="w-full px-3 py-2.5 pr-8 text-sm font-semibold text-gray-700 bg-white border border-orange-500 rounded-full focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-200 appearance-none cursor-pointer hover:border-orange-300 transition-all md:h-9 md:py-2"
-              >
-                <option value="">Region</option>
-                {userRegionNames?.length > 0 ? (
-                  userRegionNames.map((region: string) => (
-                    <option key={region} value={region}>
-                      {region}
-                    </option>
-                  ))
-                ) : (
-                  <option disabled>No Region Assigned</option>
-                )}
-              </select>
-              <MapPin
-                size={14}
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none group-hover:text-orange-500 transition-colors"
-              />
-            </div>
-
-            <div className="relative group w-full md:w-28 lg:w-32">
-              <select
-                value={selectedZone}
-                onChange={(e) => onZoneChange?.(e.target.value)}
-                className="w-full px-3 py-2.5 pr-8 text-sm font-semibold text-gray-700 bg-white border border-orange-500 rounded-full focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-200 appearance-none cursor-pointer hover:border-orange-300 transition-all md:h-9 md:py-2"
-              >
-                <option value="">Zone</option>
-                {(userZoneNames && userZoneNames.length > 0
-                  ? userZoneNames
-                  : FALLBACK_ZONES
-                ).map((zone: string) => (
-                  <option key={zone} value={zone}>
-                    {zone}
-                  </option>
-                ))}
-              </select>
-              <MapPin
-                size={14}
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none group-hover:text-orange-500 transition-colors"
-              />
-            </div>
-
-            <div className="relative group w-full md:w-28 lg:w-32">
-              <select
-                value={selectedCity}
-                onChange={(e) => onCityChange?.(e.target.value)}
-                className="w-full px-3 py-2.5 pr-8 text-sm font-semibold text-gray-700 bg-white border border-orange-500 rounded-full focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-200 appearance-none cursor-pointer hover:border-orange-300 transition-all md:h-9 md:py-2"
-              >
-                <option value="">City</option>
-                {userCityNames && userCityNames.length > 0
-                  ? userCityNames.map((city: string, index: number) => (
-                      <option
-                        key={userCityIds?.[index] ?? city}
-                        value={String(userCityIds?.[index] ?? city)}
-                      >
-                        {city}
-                      </option>
-                    ))
-                  : fallbackCityOptions.map((city: string) => (
-                      <option key={city} value={city}>
-                        {city}
-                      </option>
-                    ))}
-              </select>
-              <Building2
-                size={14}
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none group-hover:text-orange-500 transition-colors"
-              />
-            </div>
-
-            {showYearMenu && (
-              <div className="relative group w-full md:w-24 lg:w-28">
-                <select
-                  value={activeYearKey || ""}
-                  onChange={(e) => handleYearSelect(e.target.value)}
-                  className="w-full px-3 py-2.5 pr-8 text-sm font-semibold text-gray-700 bg-white border border-orange-500 rounded-full focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-200 appearance-none cursor-pointer hover:border-orange-300 transition-all md:h-9 md:py-2"
-                >
-                  <option value="">Year</option>
-                  {YEAR_MENU.items.map((item) => (
-                    <option key={item.value} value={item.value}>
-                      {item.label}
-                    </option>
-                  ))}
-                </select>
-                <Calendar
-                  size={14}
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none group-hover:text-orange-500 transition-colors"
-                />
-              </div>
-            )}
-
             {/* User Profile Dropdown */}
             <div className="relative">
               <button

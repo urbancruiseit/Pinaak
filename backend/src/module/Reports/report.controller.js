@@ -12,18 +12,26 @@ import { ApiError } from "../../utils/ApiError.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { hrmsPool } from "../../config/mySqlDB.js";
+import { getCityIdsByZoneIds } from "./report.service.js";
 
 export const monthlyEnquiryReport = asyncHandler(async (req, res) => {
-  const year = req.query.year ? parseInt(req.query.year) : null; // ✅ null = all years
-
+  const year = req.query.year ? parseInt(req.query.year) : null;
   if (year !== null && (isNaN(year) || year < 2000 || year > 2100)) {
     throw new ApiError(400, "Invalid year parameter");
   }
 
-  // ✅ req.user se city_ids lo
-  const cityIds = req.user?.city_ids || [];
+  let cityIds = req.user?.city_ids || [];
+
+  const isCityManager = req.user?.role_name === "City Manager";
+  const isTeleSales = req.user?.subDepartment_name === "Tele-Sales";
+
+  if (isCityManager && isTeleSales) {
+    const zoneIds = req.user?.zone_ids || [];
+    cityIds = await getCityIdsByZoneIds(zoneIds);
+  }
 
   const data = await getMonthlyEnquiry(year, cityIds);
+
   return res
     .status(200)
     .json(

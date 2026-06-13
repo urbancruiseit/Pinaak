@@ -87,11 +87,9 @@ interface FetchMyAssignedLeadsArgs {
   year?: number | null;
   status?: string | null;
   advisorId?: number | null;
+  zoneId?: number | null;
 }
 
-//
-// 🔹 Initial State
-//
 const initialState: TravelAdvisorState = {
   advisors: [],
   loading: false,
@@ -159,9 +157,7 @@ export const fetchTravelAdvisors = createAsyncThunk<
   }
 });
 
-//
-// 🔹 Assign Travel Advisor
-//
+
 export const assignTravelAdvisor = createAsyncThunk<
   { success: boolean; leadId: number; travelAdvisorId: number },
   { leadId: number; travelAdvisorId: number },
@@ -197,9 +193,7 @@ export const swapTravelAdvisor = createAsyncThunk<
   },
 );
 
-//
-// 🔹 Fetch My Assigned Leads
-//
+
 export const fetchMyAssignedLeads = createAsyncThunk<
   AssignedLeadsResponse,
   FetchMyAssignedLeadsArgs,
@@ -207,12 +201,13 @@ export const fetchMyAssignedLeads = createAsyncThunk<
 >(
   "access/fetchMyAssignedLeads",
   async (
-    { page = 1, cityIds, search, month, year, advisorId, status },
+    { page = 1, cityIds, zoneId, search, month, year, advisorId, status },
     { rejectWithValue },
   ) => {
     try {
       return await getMyAssignedLeadsApi(page, {
         cityIds,
+        zoneId,
         search,
         month,
         year,
@@ -227,9 +222,7 @@ export const fetchMyAssignedLeads = createAsyncThunk<
   },
 );
 
-//
-// 🔹 Fetch My Swap Leads
-//
+
 export const fetchMySwapLeads = createAsyncThunk<
   AssignedLeadsResponse,
   FetchMyAssignedLeadsArgs,

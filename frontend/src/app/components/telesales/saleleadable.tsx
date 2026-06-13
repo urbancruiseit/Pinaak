@@ -35,6 +35,7 @@ import {
   listenToLeadUpdated,
   removeLeadListeners,
 } from "@/app/socket/leadsocket";
+import { useAppSelector } from "@/hooks/useRedux";
 
 const CITY_OPTIONS = [
   "Delhi",
@@ -97,7 +98,6 @@ export default function LeadsTable() {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const rowsPerPage = 50;
-
   const paxBtnRef = useRef<HTMLButtonElement>(null);
   const daysBtnRef = useRef<HTMLButtonElement>(null);
   const daysDropdownRef = useRef<HTMLDivElement>(null);
@@ -105,12 +105,15 @@ export default function LeadsTable() {
   const [rateQuotationLead, setRateQuotationLead] = useState<LeadRecord | null>(
     null,
   );
+
   const [paxDropdownStyle, setPaxDropdownStyle] = useState<React.CSSProperties>(
     {},
   );
   const [daysDropdownStyle, setDaysDropdownStyle] =
     useState<React.CSSProperties>({});
-
+  // State add karo
+  const [selectedZoneId, setSelectedZoneId] = useState<number | null>(null);
+  const [selectedZone, setSelectedZone] = useState<string | null>(null);
   const dispatch = useDispatch<AppDispatch>();
 
   const { assignedLeads } = useSelector(
@@ -143,6 +146,7 @@ export default function LeadsTable() {
     yearFilter,
     selectedAdvisorId,
     statusFilter,
+    selectedZoneId,
   ]);
 
   useEffect(() => {
@@ -176,6 +180,7 @@ export default function LeadsTable() {
       year: yearFilter !== "All" ? parseInt(yearFilter) : null,
       advisorId: selectedAdvisorId ?? undefined,
       status: statusFilter !== "All" ? statusFilter : undefined,
+      zoneId: selectedZoneId ?? null,
     }),
     [
       debouncedSearch,
@@ -184,6 +189,7 @@ export default function LeadsTable() {
       yearFilter,
       selectedAdvisorId,
       statusFilter,
+      selectedZoneId,
     ],
   );
 
@@ -902,6 +908,37 @@ export default function LeadsTable() {
                         {advisor.name}
                       </option>
                     ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Zone dropdown */}
+              {/* Zone dropdown */}
+              {currentUser?.zone_names?.length > 0 && (
+                <div className="flex-shrink-0">
+                  <select
+                    value={selectedZoneId ?? ""}
+                    onChange={(e) => {
+                      const idx = e.target.selectedIndex - 1; // -1 for "All Zones" option
+                      const zoneId =
+                        idx >= 0 ? currentUser.zone_ids[idx] : null;
+                      setSelectedZoneId(zoneId);
+                      setSelectedAdvisorId(null); // zone change hone par advisor reset karo
+                      setCurrentPage(1);
+                    }}
+                    className="px-3 py-2 h-9 text-sm font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  >
+                    <option value="">All Zones</option>
+                    {currentUser.zone_names.map(
+                      (zone: string, index: number) => (
+                        <option
+                          key={currentUser.zone_ids[index]}
+                          value={currentUser.zone_ids[index]}
+                        >
+                          {zone}
+                        </option>
+                      ),
+                    )}
                   </select>
                 </div>
               )}

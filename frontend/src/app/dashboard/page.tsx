@@ -5,6 +5,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentType } from "react";
 import Navbar from "../components/ui/navbar";
 import Sidebar from "../components/ui/sidebar";
+import { AllRegionZoneCityFilter } from "../components/ui/AllRegionZoneCityFilter";
+import { HIDE_FILTER_ON_PAGES } from "../components/ui/HideFilterOnPage.";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../redux/store";
 import { currentUserThunk } from "../features/user/userSlice";
@@ -335,7 +337,10 @@ export default function DashboardPage() {
     useState<LeadRecord | null>(null);
   const [selectedLeadForRateQuotation, setSelectedLeadForRateQuotation] =
     useState<LeadRecord | null>(null);
-
+  const [selectedZone, setSelectedZone] = useState<string>("");
+  const handleZoneChange = (zone: string) => {
+    setSelectedZone(zone);
+  };
   // DSR lead data state
   const [selectedLeadForDsr, setSelectedLeadForDsr] =
     useState<LeadRecord | null>(null);
@@ -674,6 +679,17 @@ export default function DashboardPage() {
     resetAllReportStates();
   };
 
+  const shouldHideFilter = () => {
+    return HIDE_FILTER_ON_PAGES.some((page) => {
+      if (page.section === "master" && page.view) {
+        return activeSection === "master" && activeMaster === page.view;
+      }
+      if (page.view) {
+        return activeSection === page.section && activeLeadView === page.view;
+      }
+      return activeSection === page.section;
+    });
+  };
   const ActiveMasterComponent = useMemo(() => {
     if (activeSection !== "master") return null;
     return (
@@ -933,8 +949,10 @@ export default function DashboardPage() {
         activeAccessKey={activeAccessKey}
         selectedRegion={selectedRegion}
         selectedCity={selectedCity}
-        onRegionChange={handleRegionChange}
-        onCityChange={handleCityChange}
+        // onRegionChange={handleRegionChange}
+        // onZoneChange={handleZoneChange}
+        // selectedZone={selectedZone}
+        // onCityChange={handleCityChange}
         onDashboardSelect={handleDashboardSelect}
         onYearSelect={handleYearSelect}
         onAccessSelect={handleAccessSelect}
@@ -976,7 +994,19 @@ export default function DashboardPage() {
         userRole={userRole}
         onLogout={handleLogout}
       />
-
+      {/* Conditionally render filter */}
+      {!shouldHideFilter() && (
+        <div className="px-4 py-2 bg-white border-b border-gray-200 shadow-sm">
+          <AllRegionZoneCityFilter
+            selectedRegion={selectedRegion}
+            selectedZone={selectedZone}
+            selectedCity={selectedCity}
+            onRegionChange={handleRegionChange}
+            onZoneChange={handleZoneChange}
+            onCityChange={handleCityChange}
+          />
+        </div>
+      )}
       <div className="flex flex-1 overflow-hidden">
         <Sidebar
           activeItem={activeSection}

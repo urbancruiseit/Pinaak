@@ -217,11 +217,6 @@ const getMyAssignedLeads = asyncHandler(async (req, res) => {
 const LeadStatusCountByPresalesId = asyncHandler(async (req, res) => {
   const presaleId = req.user.id;
 
-  // if (req.user.role_name === "Travel Advisor") {
-  //   advisorId = req.user.id; // ✅ Current user ka id
-  // } else {
-  //   advisorId = req.params.advisorId; // ✅ Params se
-  // }
   const data = await getLeadStatusCountByPresalesId(presaleId);
 
   return res
@@ -230,50 +225,30 @@ const LeadStatusCountByPresalesId = asyncHandler(async (req, res) => {
 });
 
 export const swapTravelAdvisor = asyncHandler(async (req, res) => {
-  console.log(
-    "---------------------------------------------------------------",
-  );
   const { leadId } = req.params;
-  console.log(`🔄 Request to swap travel advisor for lead ${leadId} received`);
   const { travelAdvisorId } = req.body;
-  console.log(
-    `🔄 Swapping to travel advisor ID: ${travelAdvisorId} for lead ${leadId}`,
-  );
   if (!travelAdvisorId) {
     throw new ApiError(400, "travelAdvisorId is required");
   }
-  console.log(
-    `🔄 Swapping lead ${leadId} to travel advisor ${travelAdvisorId} `,
-  );
   const result = await swapTravelAdvisorForLead(leadId, travelAdvisorId);
-
   if (!result.success) {
     throw new ApiError(404, "Lead not found");
   }
-
   const fullLead = await getLeadById(leadId);
-
   try {
     const io = getIO();
-
     emitToHierarchy({
       io,
       eventName: "leadUpdated",
       lead: fullLead ?? result,
       userIdKey: "advisor_id",
     });
-
-    // ✅ Advisor — adviserLeadAssigned (naya row add)
     if (fullLead?.advisor_id) {
       io.to(`user_${fullLead.advisor_id}`).emit("adviserLeadswapped", fullLead);
-      console.log(
-        `📡 adviserLeadswapped emitted to user_${fullLead.advisor_id}`,
-      );
     }
   } catch (err) {
     console.error("⚠️ Socket emit failed:", err.message);
   }
-
   return res
     .status(200)
     .json(new ApiResponse(200, result, "Travel Advisor swapped successfully"));
@@ -282,19 +257,16 @@ export const swapTravelAdvisor = asyncHandler(async (req, res) => {
 const getMySwapLeads = asyncHandler(async (req, res) => {
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const limit = 50;
-
   const cityIds = req.query.cityIds
     ? req.query.cityIds.split(",").map(Number)
     : [];
   const search = req.query.search || "";
   const month = req.query.month || null;
   const year = req.query.year || null;
-  const status = req.query.status || null; // ✅ already tha
-
+  const status = req.query.status || null;
   const roleName = req.user.role_name?.toLowerCase();
   let advisorId = null;
   let zoneAdvisors = [];
-
   if (roleName === "travel advisor") {
     advisorId = req.user.id;
   } else if (roleName === "city manager") {
@@ -308,7 +280,6 @@ const getMySwapLeads = asyncHandler(async (req, res) => {
     if (zoneIds && zoneIds.length > 0) {
       try {
         const placeholders = zoneIds.map(() => "?").join(",");
-
         const [acRows] = await hrmsPool.query(
           `SELECT DISTINCT access_control_id
            FROM access_control_zones

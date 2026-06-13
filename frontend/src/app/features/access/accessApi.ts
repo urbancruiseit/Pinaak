@@ -62,9 +62,8 @@ export interface SwapLeadsResponse {
   travelAdvisorId: number;
 }
 export interface SwapLeadsResponse extends AssignedLeadsResponse {
-  // Add any additional properties specific to swap leads if needed
 }
-// ✅ 1. Get Travel Advisors by City
+
 export const getTravelAdvisorsByCityApi = async (
   cityId: number,
 ): Promise<TravelAdvisor[]> => {
@@ -111,7 +110,7 @@ export const assignTravelAdvisorApi = async (
     const response = await axiosInstance.patch<ApiResponse<AssignResponse>>(
       `/assign/assign-travel-advisor/${leadId}`, // ✅ leadId URL mein
       {
-        travelAdvisorId, // ✅ sirf advisorId body mein
+        travelAdvisorId, 
       },
     );
 
@@ -134,6 +133,7 @@ export const getMyAssignedLeadsApi = async (
   page: number = 1,
   filters?: {
     cityIds?: number[];
+    zoneId?: number | null;
     search?: string;
     month?: number | null;
     year?: number | null;
@@ -148,22 +148,31 @@ export const getMyAssignedLeadsApi = async (
     if (filters?.cityIds && filters.cityIds.length > 0) {
       params.append("cityIds", filters.cityIds.join(","));
     }
+
     if (filters?.search && filters.search.trim()) {
       params.append("search", filters.search.trim());
     }
+
     if (filters?.month != null) {
       params.append("month", String(filters.month));
     }
+
     if (filters?.year != null) {
       params.append("year", String(filters.year));
     }
+
     if (filters?.advisorId != null) {
       params.append("advisorId", String(filters.advisorId));
     }
-    if (filters?.status != null) {
-      params.append("status", filters.status); // ✅ add kiya
+
+    if (filters?.zoneId != null) {
+      params.append("zoneId", String(filters.zoneId));
     }
 
+    if (filters?.status != null) {
+      params.append("status", filters.status);
+    }
+    console.log("assigned leads params", params.toString());
     const response = await axiosInstance.get(
       `/assign/myleads?${params.toString()}`,
     );
@@ -176,7 +185,6 @@ export const getMyAssignedLeadsApi = async (
     throw new Error(error?.response?.data?.message || error.message);
   }
 };
-// api/leadsApi.ts
 
 export const swapTravelAdvisorApi = async (
   leadId: number,

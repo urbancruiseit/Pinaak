@@ -236,8 +236,17 @@ export const longWeekendReport = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Invalid year parameter");
   }
 
-  // ✅ req.user se city_ids lo
-  const cityIds = req.user?.city_ids || [];
+  const isCityManager = req.user?.role_name === "City Manager";
+  const isTeleSales = req.user?.subDepartment_name === "Tele-Sales";
+
+  let cityIds;
+
+  if (isCityManager && isTeleSales) {
+    const zoneIds = req.user?.zone_ids || [];
+    cityIds = await getCityIdsByZoneIds(zoneIds);
+  } else {
+    cityIds = req.user?.city_ids || [];
+  }
 
   const data = await getLongWeekendReport(year, cityIds);
 
@@ -259,14 +268,19 @@ export const monthlyreporttwo = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Invalid year parameter");
   }
 
-  // req.user se city_ids lo
-  const cityIds = req.user?.city_ids || [];
-  console.log(
-    "📊 Fetching Monthly Report Two for year:",
-    year,
-    "and cityIds:",
-    cityIds,
-  );
+  const isCityManager = req.user?.role_name === "City Manager";
+  const isTeleSales = req.user?.subDepartment_name === "Tele-Sales";
+
+  let cityIds;
+
+  if (isCityManager && isTeleSales) {
+    const zoneIds = req.user?.zone_ids || [];
+
+    cityIds = await getCityIdsByZoneIds(zoneIds);
+  } else {
+    cityIds = req.user?.city_ids || [];
+  }
+
   const data = await getMonthlyReportTwo(year, cityIds);
 
   return res

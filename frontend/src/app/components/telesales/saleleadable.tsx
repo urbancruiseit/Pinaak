@@ -36,6 +36,7 @@ import {
   removeLeadListeners,
 } from "@/app/socket/leadsocket";
 import { useAppSelector } from "@/hooks/useRedux";
+import { AllRegionZoneCityFilter } from "../ui/AllRegionZoneCityFilter";
 
 const CITY_OPTIONS = [
   "Delhi",
@@ -105,6 +106,8 @@ export default function LeadsTable() {
   const [rateQuotationLead, setRateQuotationLead] = useState<LeadRecord | null>(
     null,
   );
+  const [selectedRegion, setSelectedRegion] = useState("");
+  const [selectedCity, setSelectedCity] = useState("");
 
   const [paxDropdownStyle, setPaxDropdownStyle] = useState<React.CSSProperties>(
     {},
@@ -198,15 +201,17 @@ export default function LeadsTable() {
     dispatch(fetchMyAssignedLeads(buildFetchArgs(currentPage)));
   }, [dispatch, currentPage, buildFetchArgs]);
 
-  // ─── Polling every 60s ──────────────────────────────────────────────────────
-  // useEffect(() => {
-  //   const interval = setInterval(() => {
-  //     dispatch(fetchMyAssignedLeads(buildFetchArgs(currentPage)));
-  //   }, 60000);
-  //   return () => clearInterval(interval);
-  // }, [dispatch, currentPage, buildFetchArgs]);
+  const handleRegionChange = (region: string) => {
+    setSelectedRegion(region);
+  };
 
-  // ─── Re-fetch after lead submitted event ──────────────────────────────────
+  const handleZoneChange = (zone: string) => {
+    setSelectedZone(zone);
+  };
+
+  const handleCityChange = (city: string) => {
+    setSelectedCity(city);
+  };
   useEffect(() => {
     const handleLeadSubmitted = () => {
       dispatch(fetchMyAssignedLeads({ page: 1 }));
@@ -653,6 +658,18 @@ export default function LeadsTable() {
                 );
               })}
             </div>
+
+            {/* Conditionally render filter */}
+            <div className="px-4 py-2">
+              <AllRegionZoneCityFilter
+                selectedRegion={selectedRegion}
+                selectedZone={selectedZone}
+                selectedCity={selectedCity}
+                onRegionChange={handleRegionChange}
+                onZoneChange={handleZoneChange}
+                onCityChange={handleCityChange}
+              />
+            </div>
           </div>
         </div>
 
@@ -912,7 +929,6 @@ export default function LeadsTable() {
                 </div>
               )}
 
-              {/* Zone dropdown */}
               {/* Zone dropdown */}
               {currentUser?.zone_names?.length > 0 && (
                 <div className="flex-shrink-0">

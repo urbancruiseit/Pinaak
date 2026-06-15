@@ -176,7 +176,8 @@ export interface User {
   fullName?: string;
   city_names?: string;
   city_ids?: string;
-  // Add other fields as needed
+  zone_ids?: number[];
+  zone_names?: string[];
 }
 
 export interface countryData {
@@ -287,5 +288,5 @@ export interface DsrRecord {
   transactionId?: string;
   remarksAmountReceived?: string;
   vendor_amount?: JSON;
-  customer_amount?:JSON;
+  customer_amount?: JSON;
 }

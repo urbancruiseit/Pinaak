@@ -3,6 +3,7 @@ import { getIO } from "../../socket/socket.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
+import { getCityIdsByZoneIds } from "../Reports/report.service.js";
 import {
   getLeads,
   insertLead,
@@ -108,7 +109,18 @@ const createLeads = asyncHandler(async (req, res) => {
 
 const listLeads = asyncHandler(async (req, res) => {
   const user = req.user;
-  const userCityIds = user.city_ids || [];
+
+  const isCityManager = user?.role_name === "City Manager";
+  const isTeleSales = user?.subDepartment_name === "Tele-Sales";
+
+  let userCityIds;
+
+  if (isCityManager && isTeleSales) {
+    const zoneIds = user?.zone_ids || [];
+    userCityIds = await getCityIdsByZoneIds(zoneIds);
+  } else {
+    userCityIds = user?.city_ids || [];
+  }
 
   // ✅ Sirf "Pre-Sales Executive" role ho tab presalesId pass karo
   const presalesId = user.role_name === "Pre-Sales Executive" ? user.id : null;

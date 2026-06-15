@@ -565,14 +565,7 @@ export const getLongWeekendReport = async (year, cityIds = []) => {
     const [tables] = await pool.query("SHOW TABLES LIKE 'leads'");
     if (tables.length === 0) return [];
 
-    let whereClause = `WHERE YEAR(pickupDateTime) = ?`;
-    let values = [parsedYear];
-
-    if (cityIds && cityIds.length > 0) {
-      const placeholders = cityIds.map(() => "?").join(",");
-      whereClause += ` AND city_id IN (${placeholders})`;
-      values.push(...cityIds);
-    }
+    const hasCityFilter = Array.isArray(cityIds) && cityIds.length > 0;
 
     const query = `
       SELECT 
@@ -580,21 +573,22 @@ export const getLongWeekendReport = async (year, cityIds = []) => {
         DAY(pickupDateTime)   AS day,
         COUNT(id)             AS total
       FROM leads
-      ${whereClause}
+      WHERE YEAR(pickupDateTime) = ?
+      ${hasCityFilter ? `AND city_id IN (${cityIds.map(() => "?").join(", ")})` : ""}
       GROUP BY MONTH(pickupDateTime), DAY(pickupDateTime)
       ORDER BY month, day
     `;
 
-    const [rows] = await pool.execute(query, values);
-
-    if (rows.length > 0) {
-      console.log("📝 Sample record:", rows[0]);
-    }
+    const params = hasCityFilter ? [parsedYear, ...cityIds] : [parsedYear];
+    const [rows] = await pool.execute(query, params);
 
     const monthMap = {};
+
     rows.forEach((row) => {
       const m = row.month;
-      if (!monthMap[m]) monthMap[m] = { days: 0, total: 0 };
+      if (!monthMap[m]) {
+        monthMap[m] = { days: 0, total: 0 };
+      }
       monthMap[m].days += 1;
       monthMap[m].total += Number(row.total);
     });
@@ -611,7 +605,6 @@ export const getLongWeekendReport = async (year, cityIds = []) => {
     throw error;
   }
 };
-
 export const getMonthlyReportTwo = async (year, cityIds = []) => {
   try {
     const [tables] = await pool.query("SHOW TABLES LIKE 'leads'");

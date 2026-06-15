@@ -41,15 +41,6 @@ export function AllRegionZoneCityFilter({
   zoneOptions,
   cityOptions,
 
-// const YEAR_MENU: MenuSection = {
-//   key: "year-menu",
-//   label: "Year",
-//   items: [
-//     { label: "FY 26", value: "2026" },
-//     { label: "FY 27", value: "2027" },
-//   ],
-// }
-  
   showYearMenu = true,
 }: AllRegionZoneCityFilterProps) {
   const { currentUser } = useSelector((state: RootState) => state.user);
@@ -76,18 +67,19 @@ export function AllRegionZoneCityFilter({
   }, []);
 
   const selectClass =
-    "w-full px-3 py-1 pr-12 text-sm font-semibold text-gray-700 bg-white border border-orange-500 rounded-full focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-200 appearance-none cursor-pointer hover:border-orange-300 transition-all h-8";
+    "w-full px-3 py-1 pr-12 text-sm font-semibold text-gray-700  border border-orange-500 rounded-full focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-200 appearance-none cursor-pointer hover:border-orange-300 transition-all h-8";
 
   return (
-    <div className="w-full flex justify-end">
-      <div className="flex items-center gap-2  py-1 overflow-x-auto">
+    <div className="w-full flex justify-end ">
+      <div className="flex items-center gap-2  py-1 overflow-x-auto ">
         {/* Region */}
         <div className="relative group w-auto">
           <select
             value={selectedRegion}
             onChange={(e) => onRegionChange(e.target.value)}
             className={selectClass}
-            disabled={finalRegionOptions.length === 0}>
+            disabled={finalRegionOptions.length === 0}
+          >
             <option value="">Region</option>
             {finalRegionOptions.map((region: string) => (
               <option key={region} value={region}>
@@ -144,7 +136,6 @@ export function AllRegionZoneCityFilter({
           />
         </div>
 
-      
         {showYearMenu && (
           <div className="relative group w-auto">
             <select

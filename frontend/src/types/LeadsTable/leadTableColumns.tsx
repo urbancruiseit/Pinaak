@@ -1,11 +1,12 @@
+// E:\Pinnak\PINAK_FRONTEND\src\types\leads\leadTableColumns.tsx
 import React, { useMemo } from "react";
 import { Eye, Edit, UserPlus, RefreshCw } from "lucide-react";
 import type { LeadRecord } from "../types";
-import { useSelector } from "react-redux";
-import { RootState } from "@/app/redux/store";
 
+// Import keywords from keywords.ts
 import { ADDRESS_KEYWORDS, ITINERARY_KEYWORDS } from "../keywords";
 
+// Import table constants
 import {
   TABLE_BANNER_COLUMNS,
   statusClassMap,
@@ -168,20 +169,6 @@ export const formatTripType = (tripType: any): string => {
   return tripTypeMap[tripType] ?? String(tripType);
 };
 
-// ============ SWAP BUTTON VISIBILITY HELPER ============
-
-const canShowSwapButton = (currentUser: any): boolean => {
-  if (!currentUser) return false;
-
-  const isTeamLeaderSales =
-    currentUser.role_name === "Team Leader-Sales" || currentUser.role_id === 33;
-
-  const isCityManager =
-    currentUser.role_name === "City Manager" || currentUser.role_id === 32;
-
-  return isTeamLeaderSales || isCityManager;
-};
-
 // ============ COLUMN TYPE ============
 
 export type LeadColumn = {
@@ -197,7 +184,6 @@ interface UseLeadColumnsProps {
   handleViewLead: (lead: LeadRecord) => void;
   setEditLead: (lead: LeadRecord | null) => void;
   handleRateQuotation?: (lead: LeadRecord, e: React.MouseEvent) => void;
-  currentUser?: any;
 }
 
 // ============ MAIN HOOK ============
@@ -206,13 +192,9 @@ export const useLeadColumns = ({
   handleUnwantedClick,
   handleViewLead,
   setEditLead,
-  currentUser,
   handleRateQuotation,
 }: UseLeadColumnsProps) => {
   return useMemo<LeadColumn[]>(() => {
-    // Compute once for all rows
-    const showSwapButton = canShowSwapButton(currentUser);
-
     return TABLE_BANNER_COLUMNS.map((col) => ({
       key: col.key,
       label: col.label,
@@ -262,24 +244,31 @@ export const useLeadColumns = ({
               >
                 <Edit size={16} />
               </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  window.dispatchEvent(
+                    new CustomEvent("assignLead", { detail: lead }),
+                  );
+                }}
+                className="p-1 text-white bg-black rounded hover:bg-gray-800"
+                title="Assign"
+              >
+                <UserPlus size={16} />
+              </button>
 
-              {/* ✅ SWAP BUTTON: sirf Team Leader-Sales + Sales dept + Tele-Sales sub_dept ko dikhega */}
-              {showSwapButton && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    window.dispatchEvent(
-                      new CustomEvent("swapLead", {
-                        detail: lead,
-                      }),
-                    );
-                  }}
-                  className="p-1 text-white bg-green-600 rounded hover:bg-green-700"
-                  title="Swap"
-                >
-                  <RefreshCw size={16} />
-                </button>
-              )}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  window.dispatchEvent(
+                    new CustomEvent("swapLead", { detail: lead }),
+                  );
+                }}
+                className="p-1 text-white bg-green-600 rounded hover:bg-green-700"
+                title="Swap"
+              >
+                <RefreshCw size={16} />
+              </button>
             </div>
           );
         }
@@ -350,6 +339,7 @@ export const useLeadColumns = ({
               >
                 {dateTimeStr}
               </span>
+              {/* ✅ Upar dikhega — bottom-full */}
               <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-[9999] w-auto bg-slate-800 text-white rounded-lg shadow-xl px-3 py-2 whitespace-nowrap">
                 <div className="text-xs font-semibold text-slate-300 mb-1">
                   Pickup Time (IST)
@@ -369,6 +359,7 @@ export const useLeadColumns = ({
               <span className="text-slate-800 hover:text-blue-600 transition-colors">
                 {dateTimeStr}
               </span>
+              {/* ✅ Upar dikhega — bottom-full */}
               <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 hidden group-hover:block z-[9999] w-auto bg-slate-800 text-white rounded-lg shadow-xl px-3 py-2 whitespace-nowrap">
                 <div className="text-xs font-semibold text-slate-300 mb-1">
                   Drop Time (IST)
@@ -611,6 +602,7 @@ export const useLeadColumns = ({
               <span className="font-semibold text-slate-800 hover:text-blue-600 transition-colors">
                 {String(val)}
               </span>
+              {/* ✅ Upar dikhega */}
               <div className="absolute left-0 bottom-full mb-1 hidden group-hover:block z-[9999] w-48 bg-slate-800 text-white rounded-lg shadow-xl p-3">
                 <div className="font-semibold mb-1 border-b border-slate-600 pb-1">
                   {String(val)}
@@ -632,6 +624,7 @@ export const useLeadColumns = ({
               <span className="font-semibold text-slate-800 hover:text-blue-600 transition-colors">
                 {String(val)}
               </span>
+              {/* ✅ Upar dikhega */}
               <div className="absolute left-0 bottom-full mb-1 hidden group-hover:block z-[9999] w-48 bg-slate-800 text-white rounded-lg shadow-xl p-3">
                 <div className="font-semibold mb-1 border-b border-slate-600 pb-1">
                   {String(val)}
@@ -672,6 +665,8 @@ export const useLeadColumns = ({
               <span className="font-semibold text-slate-800 hover:text-blue-600 transition-colors">
                 {highlightAddressIfKeyword(addressText)}
               </span>
+
+              {/* Hover tooltip - upar dikhega */}
               <div className="absolute left-0 bottom-full mb-1 hidden group-hover:block z-[9999] w-48 bg-slate-800 text-white rounded-lg shadow-xl p-3">
                 <div className="font-semibold mb-1 border-b border-slate-600 pb-1">
                   {addressText}
@@ -698,6 +693,8 @@ export const useLeadColumns = ({
               <span className="font-semibold text-slate-800 hover:text-blue-600 transition-colors">
                 {highlightAddressIfKeyword(addressText)}
               </span>
+
+              {/* Hover tooltip - upar dikhega */}
               <div className="absolute left-0 bottom-full mb-1 hidden group-hover:block z-[9999] w-48 bg-slate-800 text-white rounded-lg shadow-xl p-3">
                 <div className="font-semibold mb-1 border-b border-slate-600 pb-1">
                   {addressText}
@@ -712,7 +709,6 @@ export const useLeadColumns = ({
             </div>
           );
         }
-
         return val !== undefined && val !== null && val !== ""
           ? String(val)
           : "—";
@@ -725,11 +721,5 @@ export const useLeadColumns = ({
       },
       sticky: false,
     }));
-  }, [
-    handleUnwantedClick,
-    handleViewLead,
-    setEditLead,
-    handleRateQuotation,
-    currentUser,
-  ]);
+  }, [handleUnwantedClick, handleViewLead, setEditLead, handleRateQuotation]);
 };

@@ -708,7 +708,7 @@ export const useLeadColumns = ({
               </div>
             </div>
           );
-        }
+        }   
         return val !== undefined && val !== null && val !== ""
           ? String(val)
           : "—";

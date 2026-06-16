@@ -738,44 +738,30 @@ const LeadsForm: React.FC = () => {
                 <label className="block text-md font-extrabold text-gray-700 mb-1">
                   City
                 </label>
-
                 <div className="relative group">
                   <Info
                     size={15}
                     className="absolute -top-4 right-0 text-blue-500 cursor-help"
                   />
-
                   <select
                     {...register("city_id", { valueAsNumber: true })}
                     className="w-full py-2 border bg-white px-12 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Select City</option>
-
-                    {Array.isArray(currentUser?.zone_names) &&
-                    currentUser.zone_names.length > 0 ? (
-                      currentUser.zone_names.map(
-                        (zoneName: string, zoneIndex: number) => (
-                          <optgroup
-                            key={currentUser.zone_ids?.[zoneIndex]}
-                            label={zoneName}
-                          >
-                            {Array.isArray(currentUser?.city_ids) &&
-                              currentUser.city_ids.map(
-                                (cityId: number, cityIndex: number) => (
-                                  <option key={cityId} value={cityId}>
-                                    {currentUser.city_names?.[cityIndex] ||
-                                      `City ${cityId}`}
-                                  </option>
-                                ),
-                              )}
-                          </optgroup>
-                        ),
-                      )
+                    {Array.isArray(currentUser?.city_ids) &&
+                    currentUser.city_ids.length > 0 ? (
+                      currentUser.city_ids.map((id: number, index: number) => (
+                        <option key={id} value={id}>
+                          {Array.isArray(currentUser?.city_names) &&
+                          currentUser.city_names[index]
+                            ? currentUser.city_names[index]
+                            : `City ${id}`}
+                        </option>
+                      ))
                     ) : (
                       <option disabled>No cities available</option>
                     )}
                   </select>
-
                   <FileText
                     className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-600"
                     size={20}

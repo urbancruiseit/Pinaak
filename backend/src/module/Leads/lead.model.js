@@ -61,6 +61,7 @@ export const LEAD_COLUMNS = {
   VEHICLE3QUANTITY: "vehicle3Quantity",
   CREATED_AT: "created_at",
   UPDATED_AT: "updated_at",
+  LIVE_OR_EXPIRY: "liveorexpiry",
 };
 
 export const insertLead = async (data) => {
@@ -117,6 +118,11 @@ export const insertLead = async (data) => {
     // INTEGER SAFE
     const int = (v) => Number(v) || 0;
 
+    const liveorexpiry =
+      pickupDateTime && new Date(pickupDateTime) <= new Date()
+        ? "EXPIRY"
+        : "LIVE";
+
     const values = [
       leadUuid,
       int(customer_id),
@@ -159,6 +165,7 @@ export const insertLead = async (data) => {
       int(vehicle1Quantity),
       int(vehicle2Quantity),
       int(vehicle3Quantity),
+      liveorexpiry,
     ];
 
     const sql = `
@@ -203,7 +210,8 @@ export const insertLead = async (data) => {
          ${LEAD_COLUMNS.CITY},
         ${LEAD_COLUMNS.VEHICLE1QUANTITY},
         ${LEAD_COLUMNS.VEHICLE2QUANTITY},
-        ${LEAD_COLUMNS.VEHICLE3QUANTITY}
+        ${LEAD_COLUMNS.VEHICLE3QUANTITY},
+        ${LEAD_COLUMNS.LIVE_OR_EXPIRY}
       )
       VALUES (${values.map(() => "?").join(", ")})
     `;
@@ -336,6 +344,10 @@ export const getLeads = async (
   month,
   year,
   status,
+  pickupDateTime,
+  dropDateTime,
+  liveorexpiry,
+  ageFilter,
 ) => {
   const pageNumber = parseInt(page, 10);
   const limitNumber = parseInt(limit, 10);
@@ -345,21 +357,14 @@ export const getLeads = async (
   const selectedMonth = month ? parseInt(month, 10) : null;
   const selectedYear = year ? parseInt(year, 10) : now.getFullYear();
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // WHERE CLAUSE BUILD (index-friendly)
-  // ─────────────────────────────────────────────────────────────────────────
   let whereClause = `WHERE (l.unwanted_status IS NULL OR l.unwanted_status != 'unwanted')`;
   let values = [];
 
-  // ── Presales filter ───────────────────────────────────────────────────────
   if (presalesId && Number(presalesId) > 0) {
     whereClause += ` AND l.presales_id = ?`;
     values.push(presalesId);
   }
 
-  // ── Month + Year filter (FIXED: range instead of MONTH()/YEAR() functions)
-  // MONTH()/YEAR() functions prevent index usage → full table scan hoti thi
-  // Range query index use karti hai → 3x faster
   if (selectedMonth) {
     const startDate = new Date(selectedYear, selectedMonth - 1, 1);
     const endDate = new Date(selectedYear, selectedMonth, 1);
@@ -367,14 +372,12 @@ export const getLeads = async (
     values.push(startDate, endDate);
   }
 
-  // ── City filter ───────────────────────────────────────────────────────────
   if (cityIds && cityIds.length > 0) {
     const placeholders = cityIds.map(() => "?").join(",");
     whereClause += ` AND l.city_id IN (${placeholders})`;
     values.push(...cityIds);
   }
 
-  // ── Search filter ─────────────────────────────────────────────────────────
   if (search && search.trim()) {
     const like = `%${search.trim()}%`;
     whereClause += ` AND (
@@ -386,9 +389,6 @@ export const getLeads = async (
     values.push(like, like, like, like);
   }
 
-  // ── Status filter (FIXED: value pehle uppercase, UPPER() function nahi)
-  // UPPER(l.status) index bypass karta tha → slow query
-  // Ab direct compare → index use hoga
   let statusWhereClause = "";
   if (status && status.trim()) {
     statusWhereClause = ` AND l.status = ?`;
@@ -396,9 +396,41 @@ export const getLeads = async (
     values.push(status.trim().toUpperCase());
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // STATUS COUNT WHERE CLAUSE (bina status filter ke)
-  // ─────────────────────────────────────────────────────────────────────────
+  if (liveorexpiry && liveorexpiry.trim()) {
+    if (liveorexpiry.trim().toUpperCase() === "LIVE") {
+      whereClause += ` AND l.pickupDateTime > NOW()`;
+    } else if (liveorexpiry.trim().toUpperCase() === "EXPIRY") {
+      whereClause += ` AND l.pickupDateTime <= NOW()`;
+    }
+  }
+
+  if (ageFilter) {
+    switch (ageFilter) {
+      case "0-5":
+        whereClause += ` AND DATEDIFF(CURDATE(), l.date) BETWEEN 0 AND 5`;
+        break;
+
+      case "6-10":
+        whereClause += ` AND DATEDIFF(CURDATE(), l.date) BETWEEN 6 AND 10`;
+        break;
+
+      case "11+":
+        whereClause += ` AND DATEDIFF(CURDATE(), l.date) >= 11`;
+        break;
+    }
+  }
+
+  if (pickupDateTime && dropDateTime) {
+    whereClause += ` AND DATE(l.pickupDateTime) BETWEEN ? AND ?`;
+    values.push(pickupDateTime, dropDateTime);
+  } else if (pickupDateTime) {
+    whereClause += ` AND DATE(l.pickupDateTime) >= ?`;
+    values.push(pickupDateTime);
+  } else if (dropDateTime) {
+    whereClause += ` AND DATE(l.pickupDateTime) <= ?`;
+    values.push(dropDateTime);
+  }
+
   const statusCountWhereClause = statusWhereClause
     ? whereClause.replace(statusWhereClause, "")
     : whereClause;
@@ -406,9 +438,6 @@ export const getLeads = async (
   const statusCountValues =
     status && status.trim() ? values.slice(0, -1) : values;
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // QUERY 1: Main leads data
-  // ─────────────────────────────────────────────────────────────────────────
   const leadsQuery = `
     SELECT 
       l.id,
@@ -459,6 +488,13 @@ export const getLeads = async (
       l.lost_reason,
       l.lostReasonDetails,
       l.followUp,
+        DATEDIFF(CURDATE(), l.date) AS aged,
+
+CASE
+  WHEN l.pickupDateTime <= NOW()
+  THEN 'EXPIRY'
+  ELSE 'LIVE'
+END AS liveorexpiry,
       c.uuid AS customer_uuid,
       CONCAT_WS(' ', c.firstName, c.middleName, c.lastName) AS fullName,
       c.firstName,
@@ -485,7 +521,6 @@ export const getLeads = async (
     LIMIT ? OFFSET ?
   `;
 
-
   const combinedCountQuery = `
     SELECT 
       COUNT(*) AS total,
@@ -501,13 +536,11 @@ export const getLeads = async (
     ${statusCountWhereClause}
   `;
 
-
   const [[leads], [countResult]] = await Promise.all([
     pool.query(leadsQuery, [...values, limitNumber, offset]),
     pool.query(combinedCountQuery, statusCountValues),
   ]);
 
-  
   const row = countResult[0];
   const statusCounts = {
     NEW: parseInt(row.new_count, 10) || 0,
@@ -647,7 +680,6 @@ export const updateLeadById = async (leadId, data) => {
   const fields = Object.keys(data);
   if (fields.length === 0) return null;
 
-  // ✅ Array/Object values ko JSON string mein convert karo
   const sanitizedData = {};
   for (const [key, value] of Object.entries(data)) {
     if (Array.isArray(value) || (typeof value === "object" && value !== null)) {
@@ -660,19 +692,15 @@ export const updateLeadById = async (leadId, data) => {
   const sanitizedFields = Object.keys(sanitizedData);
   const setClause = sanitizedFields.map((key) => `\`${key}\` = ?`).join(", ");
   const values = [...Object.values(sanitizedData), leadId];
-
   const [result] = await pool.query(
     `UPDATE leads SET ${setClause} WHERE id = ?`,
     values,
   );
-
   if (result.affectedRows === 0) return null;
-
   const [rows] = await pool.query(`SELECT * FROM leads WHERE id = ?`, [leadId]);
   return rows[0];
 };
 
-// Customer ko id se update karo
 export const updateCustomerById = async (customerId, data) => {
   if (!customerId) throw new Error("Customer ID is required");
 

@@ -87,7 +87,12 @@ const getMyAssignedLeads = asyncHandler(async (req, res) => {
   const month = req.query.month || null;
   const year = req.query.year || null;
   const status = req.query.status || null; // ✅ already tha
+  const ageFilter = req.query.ageFilter || null; // ✅ add
+  const liveorexpiry = req.query.liveorexpiry || null; // ✅ ADD
 
+  // ✅ Debug logs
+  console.log("Full req.query =", req.query);
+  console.log("ageFilter =", ageFilter);
   const roleName = req.user.role_name?.toLowerCase();
   let advisorId = null;
   let zoneAdvisors = [];
@@ -187,6 +192,7 @@ const getMyAssignedLeads = asyncHandler(async (req, res) => {
     month,
     year,
     status,
+    ageFilter,
   ); // ✅ status pass kiya
 
   return res.status(200).json(
@@ -361,6 +367,8 @@ const getMySwapLeads = asyncHandler(async (req, res) => {
     month,
     year,
     status,
+    ageFilter,
+    liveorexpiry,
   ); // ✅ status pass kiya
 
   return res.status(200).json(

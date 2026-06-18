@@ -61,8 +61,7 @@ export interface SwapLeadsResponse {
   leadId: number;
   travelAdvisorId: number;
 }
-export interface SwapLeadsResponse extends AssignedLeadsResponse {
-}
+export interface SwapLeadsResponse extends AssignedLeadsResponse {}
 
 export const getTravelAdvisorsByCityApi = async (
   cityId: number,
@@ -110,7 +109,7 @@ export const assignTravelAdvisorApi = async (
     const response = await axiosInstance.patch<ApiResponse<AssignResponse>>(
       `/assign/assign-travel-advisor/${leadId}`, // ✅ leadId URL mein
       {
-        travelAdvisorId, 
+        travelAdvisorId,
       },
     );
 
@@ -138,6 +137,9 @@ export const getMyAssignedLeadsApi = async (
     month?: number | null;
     year?: number | null;
     advisorId?: number | null;
+    ageFilter?: string | null;
+    liveorexpiry?: string | null; // ✅ ADD
+
     status?: string | null; // ✅ add kiya
   },
 ): Promise<AssignedLeadsResponse> => {
@@ -172,6 +174,14 @@ export const getMyAssignedLeadsApi = async (
     if (filters?.status != null) {
       params.append("status", filters.status);
     }
+
+    if (filters?.ageFilter != null) {
+      params.append("ageFilter", filters.ageFilter);
+    }
+    if (filters?.liveorexpiry && filters.liveorexpiry !== "All") {
+      params.append("liveorexpiry", filters.liveorexpiry); // ✅
+    }
+
     console.log("assigned leads params", params.toString());
     const response = await axiosInstance.get(
       `/assign/myleads?${params.toString()}`,

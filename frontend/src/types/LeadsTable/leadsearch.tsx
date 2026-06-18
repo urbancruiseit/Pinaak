@@ -45,6 +45,11 @@ export interface SearchFiltersProps {
   onStartTypeChange: (type: string) => void;
   endType: string;
   onEndTypeChange: (type: string) => void;
+  // ─── Live / Expiry ────────────────────────────────────────────────────────
+  liveorexpiryFilter: string;
+  onLiveorexpiryChange: (value: string) => void;
+  ageFilter: string;
+  onAgeFilterChange: (value: string) => void;
 }
 
 export function LeadSearchFilters({
@@ -83,6 +88,10 @@ export function LeadSearchFilters({
   onStartTypeChange,
   endType,
   onEndTypeChange,
+  liveorexpiryFilter,
+  onLiveorexpiryChange,
+  ageFilter,
+  onAgeFilterChange,
 }: SearchFiltersProps) {
   const dispatch = useAppDispatch();
   const { leads } = useSelector((state: RootState) => state.lead);
@@ -210,67 +219,30 @@ export function LeadSearchFilters({
           ))}
         </select>
       </div>
-
-      {/* City Filter */}
       <div className="flex flex-col gap-1">
         <select
-          value={cityFilter}
-          onChange={(e) => onCityChange(e.target.value)}
-          className="w-full px-3 py-2 text-sm font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+          value={ageFilter}
+          onChange={(e) => onAgeFilterChange(e.target.value)}
+          className="border rounded px-3 py-2"
         >
-          <option value="All">All City</option>
-          {cityOptions.map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
+          <option value="">All Age</option>
+          <option value="0-5">0-5 Days</option>
+          <option value="6-10">6-10 Days</option>
+          <option value="11+">11+ Days</option>
         </select>
       </div>
 
-      {/* Pax Filter Dropdown */}
-      <div className="relative flex flex-col gap-1">
-        <button
-          ref={paxBtnRef as React.RefObject<HTMLButtonElement>}
-          onClick={onPaxToggle}
-          className="w-full px-3 h-9 text-sm font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 text-left flex justify-between items-center bg-white"
+      {/* Live / Expiry Filter */}
+      <div className="flex flex-col gap-1">
+        <select
+          value={liveorexpiryFilter}
+          onChange={(e) => onLiveorexpiryChange(e.target.value)}
+          className="w-full px-3 py-2 text-sm font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
         >
-          {selectedPax.length > 0
-            ? `${selectedPax.length} Pax Selected`
-            : "Select Pax"}
-          <span>▾</span>
-        </button>
-        {paxOpen &&
-          typeof document !== "undefined" &&
-          createPortal(
-            <div
-              ref={paxDropdownRef as React.RefObject<HTMLDivElement>}
-              className="absolute z-[9999] bg-white border rounded-lg shadow max-h-60 overflow-y-auto"
-              style={paxDropdownStyle}
-            >
-              <label className="flex items-center gap-2 px-3 py-2 hover:bg-slate-100 cursor-pointer">
-                <button
-                  onClick={handleClearPax}
-                  className="text-sm text-red-600 font-semibold hover:underline"
-                >
-                  Clear All
-                </button>
-              </label>
-              {Array.from({ length: 100 }, (_, i) => i + 1).map((num) => (
-                <label
-                  key={num}
-                  className="flex items-center gap-2 px-3 py-2 hover:bg-slate-100 cursor-pointer"
-                >
-                  <input
-                    type="checkbox"
-                    checked={selectedPax.includes(num)}
-                    onChange={() => handlePaxCheckbox(num)}
-                  />
-                  <span className="text-sm text-black">{num} Pax</span>
-                </label>
-              ))}
-            </div>,
-            document.body,
-          )}
+          <option value="All">Live & Expiry</option>
+          <option value="LIVE">🟢 Live</option>
+          <option value="EXPIRY">🔴 Expiry</option>
+        </select>
       </div>
 
       {/* Days Filter Dropdown */}
@@ -364,7 +336,7 @@ export function LeadSearchFilters({
           })}
         </div>
 
-        {/* ─── Date Range + Download Buttons ─────────────────────────────── */}
+        {/* ─── Date Range ─────────────────────────────────────────────────── */}
         <div className="flex gap-2 w-full md:w-auto items-center">
           <input
             type={startType}
@@ -387,7 +359,51 @@ export function LeadSearchFilters({
             onBlur={() => handleDateBlur(endMonth, onEndTypeChange)}
             className="px-3 h-9 text-md font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white flex-1"
           />
-
+        </div>
+        {/* Pax Filter Dropdown */}
+        <div className="relative flex flex-col gap-1">
+          <button
+            ref={paxBtnRef as React.RefObject<HTMLButtonElement>}
+            onClick={onPaxToggle}
+            className="w-full px-3 h-9 text-sm font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 text-left flex justify-between items-center bg-white"
+          >
+            {selectedPax.length > 0
+              ? `${selectedPax.length} Pax Selected`
+              : "Select Pax"}
+            <span>▾</span>
+          </button>
+          {paxOpen &&
+            typeof document !== "undefined" &&
+            createPortal(
+              <div
+                ref={paxDropdownRef as React.RefObject<HTMLDivElement>}
+                className="absolute z-[9999] bg-white border rounded-lg shadow max-h-60 overflow-y-auto"
+                style={paxDropdownStyle}
+              >
+                <label className="flex items-center gap-2 px-3 py-2 hover:bg-slate-100 cursor-pointer">
+                  <button
+                    onClick={handleClearPax}
+                    className="text-sm text-red-600 font-semibold hover:underline"
+                  >
+                    Clear All
+                  </button>
+                </label>
+                {Array.from({ length: 100 }, (_, i) => i + 1).map((num) => (
+                  <label
+                    key={num}
+                    className="flex items-center gap-2 px-3 py-2 hover:bg-slate-100 cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selectedPax.includes(num)}
+                      onChange={() => handlePaxCheckbox(num)}
+                    />
+                    <span className="text-sm text-black">{num} Pax</span>
+                  </label>
+                ))}
+              </div>,
+              document.body,
+            )}
         </div>
       </div>
     </div>

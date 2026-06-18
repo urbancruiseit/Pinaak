@@ -8,6 +8,7 @@ import {
   addRealtimeLead,
   fetchLeads,
   setStatus,
+  setMonthYear,
   updateRealtimeLead,
 } from "@/app/features/lead/leadSlice";
 import LeadDetailsModel from "../../../DetailModel/LeadModel/leadTabledetailsmodel";
@@ -96,9 +97,11 @@ export default function LeadsTable() {
   const paxBtnRef = useRef<HTMLButtonElement>(null);
   const daysBtnRef = useRef<HTMLButtonElement>(null);
   const [daysOpen, setDaysOpen] = useState(false);
+  const [ageFilter, setAgeFilter] = useState("");
   const [paxDropdownStyle, setPaxDropdownStyle] = useState<React.CSSProperties>(
     {},
   );
+  const [liveorexpiryFilter, setLiveorexpiryFilter] = useState<string>("All");
   const [daysDropdownStyle, setDaysDropdownStyle] =
     useState<React.CSSProperties>({});
   const paxDropdownRef = useRef<HTMLDivElement>(null);
@@ -117,7 +120,6 @@ export default function LeadsTable() {
   const {
     leads,
     loading,
-
     totalPages,
     total,
     selectedMonth: reduxMonth,
@@ -128,6 +130,7 @@ export default function LeadsTable() {
 
   const { currentUser } = useSelector((state: RootState) => state.user);
 
+  // ✅ FIX 1: ageFilter + liveorexpiryFilter dependency array mein add kiye
   useEffect(() => {
     dispatch(
       fetchLeads({
@@ -135,9 +138,24 @@ export default function LeadsTable() {
         month: reduxMonth,
         year: reduxYear,
         status: reduxStatus ?? undefined,
+        pickupDateTime: startMonth || undefined,
+        dropDateTime: endMonth || undefined,
+        liveorexpiry:
+          liveorexpiryFilter === "All" ? undefined : liveorexpiryFilter,
+        ageFilter: ageFilter || undefined, // ✅ backend ko ja raha hai
       }),
     );
-  }, [dispatch, currentPage, reduxMonth, reduxYear, reduxStatus]);
+  }, [
+    dispatch,
+    currentPage,
+    reduxMonth,
+    reduxYear,
+    reduxStatus,
+    startMonth,
+    endMonth,
+    liveorexpiryFilter, // ✅ ADD
+    ageFilter, // ✅ ADD
+  ]);
 
   useEffect(() => {
     if (!currentUser) return;
@@ -145,11 +163,9 @@ export default function LeadsTable() {
     listenToPresalesLeads((lead) => {
       dispatch(addRealtimeLead(lead));
     });
-
     listenToLeadUpdated((updatedLead) => {
       dispatch(updateRealtimeLead(updatedLead));
     });
-
     return () => {
       removeLeadListeners();
     };
@@ -206,7 +222,7 @@ export default function LeadsTable() {
     const handleLeadSubmitted = () => {
       setEditLead(null);
       setDetailLead(null);
-      setCurrentPage(1); // ← sirf yeh karo, fetchLeads nahi
+      setCurrentPage(1);
     };
     window.addEventListener("leadSubmitted", handleLeadSubmitted);
     return () =>
@@ -335,7 +351,6 @@ export default function LeadsTable() {
       const ths = Array.from(headerRow.querySelectorAll("th"));
       setColWidths(ths.map((th) => th.getBoundingClientRect().width));
     };
-
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
@@ -343,7 +358,7 @@ export default function LeadsTable() {
 
   const calcStickyLeft = useCallback(
     (colIndex: number): number => {
-      if (colWidths.length === 0) return colIndex * 120; // fallback before first paint
+      if (colWidths.length === 0) return colIndex * 120;
       return colWidths.slice(0, colIndex).reduce((acc, w) => acc + w, 0);
     },
     [colWidths],
@@ -407,10 +422,12 @@ export default function LeadsTable() {
     if (current) groups.push(current);
     return groups;
   };
+
   const bannerGroups = useMemo(
     () => buildBannerGroups(bannerColumnsMeta),
     [bannerColumnsMeta],
   );
+
   const statusOptions: ("All" | LeadRecord["status"])[] = [
     "All",
     ...LEAD_STATUS_OPTIONS,
@@ -419,22 +436,36 @@ export default function LeadsTable() {
     "All",
     ...CITY_OPTIONS,
   ];
+
+  // ✅ FIX 2: ageFilter logic add kiya + dependency array mein bhi add kiya
   const filteredLeads = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
     const startDate = startMonth ? new Date(startMonth) : null;
     const endDate = endMonth ? new Date(`${endMonth}T23:59:59`) : null;
+    const now = new Date();
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
     return leads.filter((lead) => {
+      // ── City ────────────────────────────────────────────────────────────────
       if (cityFilter !== "All" && lead.city !== cityFilter) return false;
+
+      // ── Year ────────────────────────────────────────────────────────────────
       if (yearFilter !== "All") {
         const leadYear = new Date(lead.date).getFullYear().toString();
         if (leadYear !== yearFilter) return false;
       }
+
+      // ── Month (enquiry date) ─────────────────────────────────────────────────
       if (selectedMonth) {
         const enquiryDate = new Date(lead.date);
         if (isNaN(enquiryDate.getTime())) return false;
         const enquiryMonth = enquiryDate.getMonth() + 1;
         if (enquiryMonth !== parseInt(selectedMonth)) return false;
       }
+
+      // ── Search term ──────────────────────────────────────────────────────────
       if (term) {
         const haystack = [
           lead.fullName,
@@ -465,18 +496,47 @@ export default function LeadsTable() {
         if (!haystack.some((v) => v && v.toLowerCase().includes(term)))
           return false;
       }
+
+      // ── Date range ───────────────────────────────────────────────────────────
       if (startDate || endDate) {
         const leadDate = new Date(`${lead.date}T00:00`);
         if (startDate && leadDate < startDate) return false;
         if (endDate && leadDate > endDate) return false;
       }
+
+      // ── Pax ──────────────────────────────────────────────────────────────────
       if (
         selectedPax.length > 0 &&
         !selectedPax.includes(Number(lead.passengerTotal))
       )
         return false;
+
+      // ── Days ─────────────────────────────────────────────────────────────────
       if (selectedDays.length > 0 && !selectedDays.includes(Number(lead.days)))
         return false;
+
+      // ── Live / Expiry ─────────────────────────────────────────────────────────
+      if (liveorexpiryFilter !== "All") {
+        if (!lead.pickupDateTime) return false;
+        const pickup = new Date(lead.pickupDateTime);
+        if (liveorexpiryFilter === "LIVE" && pickup <= now) return false;
+        if (liveorexpiryFilter === "EXPIRY" && pickup > now) return false;
+      }
+
+      // ✅ FIX: Age Filter logic add kiya
+      if (ageFilter) {
+        if (!lead.date) return false;
+        const enquiryDate = new Date(lead.date);
+        if (isNaN(enquiryDate.getTime())) return false;
+        const diffDays = Math.floor(
+          (now.getTime() - enquiryDate.getTime()) / (1000 * 60 * 60 * 24),
+        );
+        if (ageFilter === "0-5" && (diffDays < 0 || diffDays > 5)) return false;
+        if (ageFilter === "6-10" && (diffDays < 6 || diffDays > 10))
+          return false;
+        if (ageFilter === "11+" && diffDays < 11) return false;
+      }
+
       return true;
     });
   }, [
@@ -489,12 +549,15 @@ export default function LeadsTable() {
     endMonth,
     selectedPax,
     selectedDays,
+    liveorexpiryFilter,
+    ageFilter, // ✅ ADD
   ]);
 
   const statusPercentages: LeadStatusPercentages = useMemo(
     () => calculateLeadStatusPercentages(statusCounts),
     [statusCounts],
   );
+
   if (editLead) {
     return (
       <div className="w-full">
@@ -517,6 +580,7 @@ export default function LeadsTable() {
       </div>
     );
   }
+
   return (
     <>
       <div className="w-full">
@@ -649,6 +713,10 @@ export default function LeadsTable() {
             onStartTypeChange={setStartType}
             endType={endType}
             onEndTypeChange={setEndType}
+            liveorexpiryFilter={liveorexpiryFilter}
+            onLiveorexpiryChange={setLiveorexpiryFilter}
+            ageFilter={ageFilter}
+            onAgeFilterChange={setAgeFilter}
           />
         </div>
 
@@ -667,7 +735,7 @@ export default function LeadsTable() {
                 style={{ position: "sticky", top: 0, zIndex: 20 }}
               >
                 <tr>
-                  {bannerGroups.map((group, gi) => {
+                  {bannerGroups.map((group) => {
                     const bgClass = group.label
                       ? (BANNER_GROUP_BG_CLASS[group.label] ?? "bg-slate-900")
                       : "bg-white";
@@ -777,14 +845,14 @@ export default function LeadsTable() {
                             <td
                               key={column.key}
                               className={`border border-white text-slate-800 p-[3px_6px]
-    ${
-      column.key === "itinerary"
-        ? "whitespace-normal break-words max-w-[300px]"
-        : "whitespace-nowrap"
-    }
-    ${isAddress ? "text-[12px] !font-normal" : "text-sm font-extrabold"}
-    ${isFrozen ? "" : column.headerBgClass}
-  `}
+                                ${
+                                  column.key === "itinerary"
+                                    ? "whitespace-normal break-words max-w-[300px]"
+                                    : "whitespace-nowrap"
+                                }
+                                ${isAddress ? "text-[12px] !font-normal" : "text-sm font-extrabold"}
+                                ${isFrozen ? "" : column.headerBgClass}
+                              `}
                               style={{
                                 ...(isFrozen
                                   ? {

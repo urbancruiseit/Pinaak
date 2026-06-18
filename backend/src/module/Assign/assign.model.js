@@ -9,7 +9,8 @@ export const findTravelAdvisorsByCityId = async (cityId) => {
          u.id,
          u.aliasName,
          u.middleName,
-         u.lastName
+         u.lastName,
+         u.is_online
        FROM users u
        INNER JOIN roles r ON u.role_id = r.id
        INNER JOIN sub_department sd ON u.subDepartment_id = sd.id
@@ -25,6 +26,7 @@ export const findTravelAdvisorsByCityId = async (cityId) => {
     return rows.map((user) => ({
       id: user.id,
       fullName: [user.aliasName].filter(Boolean).join(" "),
+      is_online: user.is_online,
     }));
   } catch (error) {
     console.error("findTravelAdvisorsByCityId error:", error);
@@ -62,6 +64,8 @@ export const getLeadsByAdvisorId = async (
   month,
   year,
   status, // ✅ add kiya
+  ageFilter,
+  liveorexpiry,
 ) => {
   try {
     const pageNumber = parseInt(page, 10) || 1;
@@ -89,6 +93,22 @@ export const getLeadsByAdvisorId = async (
       values.push(Number(advisorId));
     } else {
       whereClause += ` AND l.advisor_id IS NOT NULL`;
+    }
+
+    if (ageFilter) {
+      switch (ageFilter) {
+        case "0-5":
+          whereClause += ` AND DATEDIFF(CURDATE(), l.date) BETWEEN 0 AND 5`;
+          break;
+
+        case "6-10":
+          whereClause += ` AND DATEDIFF(CURDATE(), l.date) BETWEEN 6 AND 10`;
+          break;
+
+        case "11+":
+          whereClause += ` AND DATEDIFF(CURDATE(), l.date) >= 11`;
+          break;
+      }
     }
 
     // ── Year filter ───────────────────────────────────────────────────────
@@ -125,11 +145,26 @@ export const getLeadsByAdvisorId = async (
       values.push(status.trim().toUpperCase());
     }
 
+    // ✅ Live/Expiry filter — YAHAN lagao
+    if (liveorexpiry && liveorexpiry.trim() && liveorexpiry !== "All") {
+      if (liveorexpiry.trim().toUpperCase() === "LIVE") {
+        whereClause += ` AND l.pickupDateTime > NOW()`;
+      } else if (liveorexpiry.trim().toUpperCase() === "EXPIRY") {
+        whereClause += ` AND l.pickupDateTime <= NOW()`;
+      }
+    }
+
     // ── Main query ────────────────────────────────────────────────────────
     const query = `
       SELECT 
         l.*,
         c.uuid AS customer_uuid,
+          DATEDIFF(CURDATE(), l.date) AS aged,
+          CASE
+  WHEN l.pickupDateTime <= NOW()
+  THEN 'EXPIRY'
+  ELSE 'LIVE'
+END AS liveorexpiry,
         CONCAT_WS(' ', c.firstName, c.middleName, c.lastName) AS fullName,
         c.firstName,
         c.middleName,

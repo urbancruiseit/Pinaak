@@ -71,7 +71,11 @@ export const getLeadApi = async (
   search: string = "",
   month?: number,
   year?: number,
-  status?: string, // ✅
+  status?: string,
+  pickupDateTime?: string,
+  dropDateTime?: string,
+  liveorexpiry?: string,
+  ageFilter?: string, // ADD
 ): Promise<PaginatedLeadsResponse> => {
   try {
     const response = await axiosInstance.get("/lead", {
@@ -80,7 +84,15 @@ export const getLeadApi = async (
         ...(search && { search }),
         ...(month && { month }),
         ...(year && { year }),
-        ...(status && { status }), // ✅
+        ...(status && { status }),
+        ...(pickupDateTime?.trim() && {
+          pickupDateTime: pickupDateTime.trim(),
+        }),
+        ...(dropDateTime?.trim() && { dropDateTime: dropDateTime.trim() }),
+        ...(liveorexpiry?.trim() && { liveorexpiry: liveorexpiry.trim() }), // ← ADD KARO
+        ...(ageFilter?.trim() && {
+          ageFilter: ageFilter.trim(),
+        }),
       },
     });
 

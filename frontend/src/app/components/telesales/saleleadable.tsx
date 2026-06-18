@@ -106,6 +106,13 @@ export default function LeadsTable() {
   const [rateQuotationLead, setRateQuotationLead] = useState<LeadRecord | null>(
     null,
   );
+
+  // ─── Live/Expiry filter state ──────────────────────────────────────────────
+  const [liveorexpiryFilter, setLiveorexpiryFilter] = useState<string>("All");
+
+  // ✅ Age filter state
+  const [ageFilter, setAgeFilter] = useState<string>("");
+
   const [selectedRegion, setSelectedRegion] = useState("");
   const [selectedCity, setSelectedCity] = useState("");
 
@@ -114,7 +121,7 @@ export default function LeadsTable() {
   );
   const [daysDropdownStyle, setDaysDropdownStyle] =
     useState<React.CSSProperties>({});
-  // State add karo
+
   const [selectedZoneId, setSelectedZoneId] = useState<number | null>(null);
   const [selectedZone, setSelectedZone] = useState<string | null>(null);
   const dispatch = useDispatch<AppDispatch>();
@@ -140,6 +147,8 @@ export default function LeadsTable() {
     const t = setTimeout(() => setDebouncedSearch(searchTerm), 400);
     return () => clearTimeout(t);
   }, [searchTerm]);
+
+  // ✅ ageFilter added to page-reset effect
   useEffect(() => {
     setCurrentPage(1);
   }, [
@@ -150,6 +159,7 @@ export default function LeadsTable() {
     selectedAdvisorId,
     statusFilter,
     selectedZoneId,
+    ageFilter,
   ]);
 
   useEffect(() => {
@@ -157,20 +167,20 @@ export default function LeadsTable() {
 
     connectSocket(currentUser);
 
-    // New Lead
     listenToAdviserLeads((lead) => {
       dispatch(addRealtimeAssignedLead(lead));
     });
 
-    // Lead Updated
     listenToLeadUpdated((updatedLead) => {
-      dispatch(updateRealtimeAssignedLead(updatedLead)); // ← sirf ye change karo
+      dispatch(updateRealtimeAssignedLead(updatedLead));
     });
+
     return () => {
       removeLeadListeners();
     };
   }, [currentUser, dispatch]);
 
+  // ✅ ageFilter added to buildFetchArgs — goes to backend
   const buildFetchArgs = useCallback(
     (page: number) => ({
       page,
@@ -184,6 +194,8 @@ export default function LeadsTable() {
       advisorId: selectedAdvisorId ?? undefined,
       status: statusFilter !== "All" ? statusFilter : undefined,
       zoneId: selectedZoneId ?? null,
+      ageFilter: ageFilter || undefined,
+      liveorexpiry: liveorexpiryFilter !== "All" ? liveorexpiryFilter : null,
     }),
     [
       debouncedSearch,
@@ -193,6 +205,8 @@ export default function LeadsTable() {
       selectedAdvisorId,
       statusFilter,
       selectedZoneId,
+      ageFilter,
+      liveorexpiryFilter,
     ],
   );
 
@@ -212,6 +226,7 @@ export default function LeadsTable() {
   const handleCityChange = (city: string) => {
     setSelectedCity(city);
   };
+
   useEffect(() => {
     const handleLeadSubmitted = () => {
       dispatch(fetchMyAssignedLeads({ page: 1 }));
@@ -229,7 +244,10 @@ export default function LeadsTable() {
     dispatch(setAssignedStatus(val));
     setCurrentPage(1);
   };
-
+  const handleLiveorexpiryChange = (value: string) => {
+    setLiveorexpiryFilter(value);
+    setCurrentPage(1);
+  };
   const togglePax = () => {
     if (!paxOpen) {
       const rect = paxBtnRef.current?.getBoundingClientRect();
@@ -283,13 +301,19 @@ export default function LeadsTable() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [paxOpen]);
 
+  // ─── Stabilise callbacks passed to useLeadColumns ────────────────────────
+  const handleUnwantedClick = useCallback(() => {}, []);
+  const handleViewLead = useCallback(() => {}, []);
+  const setEditLead = useCallback(() => {}, []);
+
   // ─── Columns ──────────────────────────────────────────────────────────────
   const hookColumns = useLeadColumns({
-    handleUnwantedClick: () => {},
-    handleViewLead: () => {},
-    setEditLead: () => {},
+    handleUnwantedClick,
+    handleViewLead,
+    setEditLead,
   });
 
+  // Stabilise the actions column – it's defined outside, so it's already stable.
   const actionsColumn: LeadColumn = {
     key: "actions",
     label: "Actions",
@@ -354,10 +378,11 @@ export default function LeadsTable() {
     sticky: false,
   };
 
+  // ─── Memoise columns – remove detailLead from deps because not used ─────
   const columns: LeadColumn[] = useMemo(() => {
     const withoutActions = hookColumns.filter((col) => col.key !== "actions");
     return [actionsColumn, ...withoutActions];
-  }, [hookColumns, detailLead]);
+  }, [hookColumns]); // ← removed detailLead
 
   // ─── Banner columns meta ───────────────────────────────────────────────────
   const bannerColumnsMeta = useMemo(() => {
@@ -394,10 +419,10 @@ export default function LeadsTable() {
   const theadRef = useRef<HTMLTableSectionElement>(null);
   const [colWidths, setColWidths] = useState<number[]>([]);
 
+  // ─── Measurement effect – now stable dependencies ──────────────────────
   useEffect(() => {
     const measure = () => {
       if (!theadRef.current) return;
-      // Second <tr> has the per-column <th> cells
       const headerRow = theadRef.current.querySelectorAll("tr")[1];
       if (!headerRow) return;
       const ths = Array.from(headerRow.querySelectorAll("th"));
@@ -407,11 +432,11 @@ export default function LeadsTable() {
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
-  }, [bannerColumnsMeta, freezeIndex]);
+  }, [bannerColumnsMeta, freezeIndex]); // these are now stable
 
   const calcStickyLeft = useCallback(
     (colIndex: number): number => {
-      if (colWidths.length === 0) return colIndex * 120; // fallback before first paint
+      if (colWidths.length === 0) return colIndex * 120;
       return colWidths.slice(0, colIndex).reduce((acc, w) => acc + w, 0);
     },
     [colWidths],
@@ -479,28 +504,50 @@ export default function LeadsTable() {
     ...CITY_OPTIONS,
   ];
 
-  // ─── Client-side only filters (date range, pax, days) ─────────────────────
+  // ─── Client-side filters: date range + pax + days + liveorexpiry ──────────
   const filteredLeads = useMemo(() => {
     const startDate = startMonth ? new Date(startMonth) : null;
     const endDate = endMonth ? new Date(`${endMonth}T23:59:59`) : null;
+    const now = new Date();
 
     return leads.filter((lead) => {
+      // Date range filter
       if (startDate || endDate) {
         if (!lead.pickupDateTime) return false;
         const pickupDate = new Date(lead.pickupDateTime);
         if (startDate && pickupDate < startDate) return false;
         if (endDate && pickupDate > endDate) return false;
       }
+
+      // Pax filter
       if (
         selectedPax.length > 0 &&
         !selectedPax.includes(Number(lead.passengerTotal))
       )
         return false;
+
+      // Days filter
       if (selectedDays.length > 0 && !selectedDays.includes(Number(lead.days)))
         return false;
+
+      // Live / Expiry filter
+      if (liveorexpiryFilter !== "All") {
+        if (!lead.pickupDateTime) return false;
+        const pickup = new Date(lead.pickupDateTime);
+        if (liveorexpiryFilter === "LIVE" && pickup <= now) return false;
+        if (liveorexpiryFilter === "EXPIRY" && pickup > now) return false;
+      }
+
       return true;
     });
-  }, [leads, startMonth, endMonth, selectedPax, selectedDays]);
+  }, [
+    leads,
+    startMonth,
+    endMonth,
+    selectedPax,
+    selectedDays,
+    liveorexpiryFilter,
+  ]);
 
   // ─── Stats ────────────────────────────────────────────────────────────────
   const totalLeadsCount = total || 0;
@@ -704,155 +751,99 @@ export default function LeadsTable() {
               </select>
             </div>
 
-            {/* City */}
+            {/* Age Filter */}
             <div className="flex flex-col gap-1">
               <select
-                value={cityFilter}
-                onChange={(e) =>
-                  setCityFilter(e.target.value as typeof cityFilter)
-                }
+                value={ageFilter}
+                onChange={(e) => {
+                  setAgeFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
                 className="w-full px-3 py-2 text-sm font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
               >
-                <option value="All">All City</option>
-                {cityOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
+                <option value="">All Age</option>
+                <option value="0-5">0-5 Days</option>
+                <option value="6-10">6-10 Days</option>
+                <option value="11+">11+ Days</option>
               </select>
             </div>
 
-            {/* Pax */}
-            <div className="relative flex flex-col gap-1">
-              <button
-                ref={paxBtnRef}
-                onClick={togglePax}
-                className="w-full px-3 h-9 text-sm font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 text-left flex justify-between items-center bg-white"
-              >
-                {selectedPax.length > 0
-                  ? `${selectedPax.length} Pax Selected`
-                  : "Select Pax"}
-                <span>▾</span>
-              </button>
-              {paxOpen &&
-                typeof document !== "undefined" &&
-                createPortal(
-                  <div
-                    ref={paxDropdownRef}
-                    className="absolute z-[9999] bg-white border rounded-lg shadow max-h-60 overflow-y-auto"
-                    style={paxDropdownStyle}
-                  >
-                    <label className="flex items-center gap-2 px-3 py-2 hover:bg-slate-100 cursor-pointer">
-                      <button
-                        onClick={() => setSelectedPax([])}
-                        className="text-sm text-red-600 font-semibold hover:underline"
-                      >
-                        Clear All
-                      </button>
-                    </label>
-                    {Array.from({ length: 100 }, (_, i) => i + 1).map((num) => (
-                      <label
-                        key={num}
-                        className="flex items-center gap-2 px-3 py-2 hover:bg-slate-100 cursor-pointer"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedPax.includes(num)}
-                          onChange={() =>
-                            setSelectedPax((prev) =>
-                              prev.includes(num)
-                                ? prev.filter((v) => v !== num)
-                                : [...prev, num],
-                            )
-                          }
-                        />
-                        <span className="text-sm text-black">{num} Pax</span>
-                      </label>
-                    ))}
-                  </div>,
-                  document.body,
-                )}
-            </div>
-
-            {/* Days */}
-            <div className="relative flex flex-col gap-1">
-              <button
-                ref={daysBtnRef}
-                onClick={toggleDays}
-                className="w-full px-3 h-9 text-sm font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 text-left flex justify-between items-center bg-white"
-              >
-                {selectedDays.length > 0
-                  ? `${selectedDays.length} Days Selected`
-                  : "Select Days"}
-                <span>▾</span>
-              </button>
-              {daysOpen &&
-                typeof document !== "undefined" &&
-                createPortal(
-                  <div
-                    ref={daysDropdownRef}
-                    className="absolute z-[9999] bg-white border rounded-lg shadow max-h-60 overflow-y-auto"
-                    style={daysDropdownStyle}
-                  >
-                    <label className="flex items-center gap-2 px-3 py-2 hover:bg-slate-100 cursor-pointer">
-                      <button
-                        onClick={() => setSelectedDays([])}
-                        className="text-sm text-red-600 font-semibold hover:underline"
-                      >
-                        Clear All
-                      </button>
-                    </label>
-                    {Array.from({ length: 100 }, (_, i) => i + 1).map((num) => (
-                      <label
-                        key={num}
-                        className="flex items-center gap-2 px-3 py-2 hover:bg-slate-100 cursor-pointer"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selectedDays.includes(num)}
-                          onChange={() =>
-                            setSelectedDays((prev) =>
-                              prev.includes(num)
-                                ? prev.filter((v) => v !== num)
-                                : [...prev, num],
-                            )
-                          }
-                        />
-                        <span className="text-sm text-black">{num} Days</span>
-                      </label>
-                    ))}
-                  </div>,
-                  document.body,
-                )}
-            </div>
-
-            {/* Freeze Columns */}
+            {/* Live / Expiry Filter */}
             <div className="flex flex-col gap-1">
               <select
-                value={freezeKey ?? "none"}
-                onChange={(e) =>
-                  setFreezeKey(
-                    e.target.value === "none" ? null : e.target.value,
-                  )
-                }
+                value={liveorexpiryFilter}
+                onChange={(e) => handleLiveorexpiryChange(e.target.value)}
                 className="w-full px-3 py-2 text-sm font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
               >
-                <option value="none">Freeze Columns</option>
-                {columns.map((column) => (
-                  <option key={column.key} value={column.key}>
-                    {column.label}
-                  </option>
-                ))}
+                <option value="All">Live & Expiry</option>
+                <option value="LIVE">🟢 Live</option>
+                <option value="EXPIRY">🔴 Expiry</option>
               </select>
             </div>
 
-            {/* Month + Year + Zone Advisor + Date range row */}
-            <div className="flex flex-col md:flex-row items-start md:items-center gap-4 lg:col-span-6 mt-2">
+            {/* Date range */}
+            <div className="flex gap-2 lg:col-span-2">
+              <input
+                type={startType}
+                value={startMonth}
+                onChange={(e) => setStartMonth(e.target.value)}
+                placeholder="Start Date"
+                onFocus={(e) => {
+                  setStartType("date");
+                  setTimeout(() => {
+                    try {
+                      e.currentTarget.showPicker();
+                    } catch {}
+                  }, 0);
+                }}
+                onClick={(e) => {
+                  setStartType("date");
+                  setTimeout(() => {
+                    try {
+                      e.currentTarget.showPicker();
+                    } catch {}
+                  }, 0);
+                }}
+                onBlur={() => {
+                  if (!startMonth) setStartType("text");
+                }}
+                className="px-3 h-9 text-sm font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white flex-1 min-w-0"
+              />
+              <input
+                type={endType}
+                value={endMonth}
+                min={startMonth}
+                onChange={(e) => setEndMonth(e.target.value)}
+                placeholder="End Date"
+                onFocus={(e) => {
+                  setEndType("date");
+                  setTimeout(() => {
+                    try {
+                      e.currentTarget.showPicker();
+                    } catch {}
+                  }, 0);
+                }}
+                onClick={(e) => {
+                  setEndType("date");
+                  setTimeout(() => {
+                    try {
+                      e.currentTarget.showPicker();
+                    } catch {}
+                  }, 0);
+                }}
+                onBlur={() => {
+                  if (!endMonth) setEndType("text");
+                }}
+                className="px-3 h-9 text-sm font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white flex-1 min-w-0"
+              />
+            </div>
+
+            {/* Row 2 — Month buttons + all secondary filters */}
+            <div className="flex flex-col md:flex-row items-start md:items-center gap-3 lg:col-span-6 mt-1 flex-wrap">
               {/* Month buttons */}
-              <div className="flex gap-3 overflow-x-auto pb-2">
+              <div className="flex gap-2 overflow-x-auto pb-1 flex-shrink-0">
                 {MONTH_OPTIONS.map((month) => {
                   const isActive = selectedMonth === month.value;
-
                   const monthLeadCount = monthlyStats
                     .filter((stat) => {
                       const [statYear, statMonth] = stat.month.split("-");
@@ -869,7 +860,7 @@ export default function LeadsTable() {
                       onClick={() =>
                         setSelectedMonth(isActive ? null : month.value)
                       }
-                      className={`text-md font-extrabold rounded-lg transition-all shadow-sm min-w-[50px] h-9 px-2 ${
+                      className={`text-sm font-extrabold rounded-lg transition-all shadow-sm min-w-[50px] h-9 px-2 flex-shrink-0 ${
                         isActive
                           ? "bg-green-600 text-white"
                           : "bg-slate-100 text-slate-700 border border-slate-300 hover:bg-slate-200"
@@ -897,7 +888,7 @@ export default function LeadsTable() {
                   onChange={(e) =>
                     setYearFilter(e.target.value as typeof yearFilter)
                   }
-                  className="px-3 py-2 h-9 text-sm font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                  className="px-3 h-9 text-sm font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                 >
                   {YEAR_OPTIONS.map((yr) => (
                     <option key={yr} value={yr}>
@@ -917,7 +908,7 @@ export default function LeadsTable() {
                       setSelectedAdvisorId(val ? Number(val) : null);
                       setCurrentPage(1);
                     }}
-                    className="px-3 py-2 h-9 text-sm font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    className="px-3 h-9 text-sm font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                   >
                     <option value="">All Advisors</option>
                     {zonesAdvisors.map((advisor) => (
@@ -929,96 +920,140 @@ export default function LeadsTable() {
                 </div>
               )}
 
-              {/* Zone dropdown */}
-              {currentUser?.zone_names?.length > 0 && (
-                <div className="flex-shrink-0">
-                  <select
-                    value={selectedZoneId ?? ""}
-                    onChange={(e) => {
-                      const idx = e.target.selectedIndex - 1; // -1 for "All Zones" option
-                      const zoneId =
-                        idx >= 0 ? currentUser.zone_ids[idx] : null;
-                      setSelectedZoneId(zoneId);
-                      setSelectedAdvisorId(null); // zone change hone par advisor reset karo
-                      setCurrentPage(1);
-                    }}
-                    className="px-3 py-2 h-9 text-sm font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                  >
-                    <option value="">All Zones</option>
-                    {currentUser.zone_names.map(
-                      (zone: string, index: number) => (
-                        <option
-                          key={currentUser.zone_ids[index]}
-                          value={currentUser.zone_ids[index]}
+              {/* Days */}
+              <div className="relative flex-shrink-0">
+                <button
+                  ref={daysBtnRef}
+                  onClick={toggleDays}
+                  className="px-3 h-9 text-sm font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 text-left flex justify-between items-center bg-white gap-2"
+                >
+                  {selectedDays.length > 0
+                    ? `${selectedDays.length} Days Selected`
+                    : "Select Days"}
+                  <span>▾</span>
+                </button>
+                {daysOpen &&
+                  typeof document !== "undefined" &&
+                  createPortal(
+                    <div
+                      ref={daysDropdownRef}
+                      className="absolute z-[9999] bg-white border rounded-lg shadow max-h-60 overflow-y-auto"
+                      style={daysDropdownStyle}
+                    >
+                      <label className="flex items-center gap-2 px-3 py-2 hover:bg-slate-100 cursor-pointer">
+                        <button
+                          onClick={() => setSelectedDays([])}
+                          className="text-sm text-red-600 font-semibold hover:underline"
                         >
-                          {zone}
-                        </option>
-                      ),
-                    )}
-                  </select>
-                </div>
-              )}
+                          Clear All
+                        </button>
+                      </label>
+                      {Array.from({ length: 100 }, (_, i) => i + 1).map(
+                        (num) => (
+                          <label
+                            key={num}
+                            className="flex items-center gap-2 px-3 py-2 hover:bg-slate-100 cursor-pointer"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedDays.includes(num)}
+                              onChange={() =>
+                                setSelectedDays((prev) =>
+                                  prev.includes(num)
+                                    ? prev.filter((v) => v !== num)
+                                    : [...prev, num],
+                                )
+                              }
+                            />
+                            <span className="text-sm text-black">
+                              {num} Days
+                            </span>
+                          </label>
+                        ),
+                      )}
+                    </div>,
+                    document.body,
+                  )}
+              </div>
 
-              {/* Date range */}
-              <div className="flex gap-4 w-full md:w-auto">
-                <input
-                  type={startType}
-                  value={startMonth}
-                  onChange={(e) => setStartMonth(e.target.value)}
-                  placeholder="Start Date"
-                  onFocus={(e) => {
-                    setStartType("date");
-                    setTimeout(() => {
-                      try {
-                        e.currentTarget.showPicker();
-                      } catch {}
-                    }, 0);
-                  }}
-                  onClick={(e) => {
-                    setStartType("date");
-                    setTimeout(() => {
-                      try {
-                        e.currentTarget.showPicker();
-                      } catch {}
-                    }, 0);
-                  }}
-                  onBlur={() => {
-                    if (!startMonth) setStartType("text");
-                  }}
-                  className="px-3 h-9 text-md font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white flex-1"
-                />
-                <input
-                  type={endType}
-                  value={endMonth}
-                  min={startMonth}
-                  onChange={(e) => setEndMonth(e.target.value)}
-                  placeholder="End Date"
-                  onFocus={(e) => {
-                    setEndType("date");
-                    setTimeout(() => {
-                      try {
-                        e.currentTarget.showPicker();
-                      } catch {}
-                    }, 0);
-                  }}
-                  onClick={(e) => {
-                    setEndType("date");
-                    setTimeout(() => {
-                      try {
-                        e.currentTarget.showPicker();
-                      } catch {}
-                    }, 0);
-                  }}
-                  onBlur={() => {
-                    if (!endMonth) setEndType("text");
-                  }}
-                  className="px-3 h-9 text-md font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white flex-1"
-                />
+              {/* Pax */}
+              <div className="relative flex-shrink-0">
+                <button
+                  ref={paxBtnRef}
+                  onClick={togglePax}
+                  className="px-3 h-9 text-sm font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 text-left flex justify-between items-center bg-white gap-2"
+                >
+                  {selectedPax.length > 0
+                    ? `${selectedPax.length} Pax Selected`
+                    : "Select Pax"}
+                  <span>▾</span>
+                </button>
+                {paxOpen &&
+                  typeof document !== "undefined" &&
+                  createPortal(
+                    <div
+                      ref={paxDropdownRef}
+                      className="absolute z-[9999] bg-white border rounded-lg shadow max-h-60 overflow-y-auto"
+                      style={paxDropdownStyle}
+                    >
+                      <label className="flex items-center gap-2 px-3 py-2 hover:bg-slate-100 cursor-pointer">
+                        <button
+                          onClick={() => setSelectedPax([])}
+                          className="text-sm text-red-600 font-semibold hover:underline"
+                        >
+                          Clear All
+                        </button>
+                      </label>
+                      {Array.from({ length: 100 }, (_, i) => i + 1).map(
+                        (num) => (
+                          <label
+                            key={num}
+                            className="flex items-center gap-2 px-3 py-2 hover:bg-slate-100 cursor-pointer"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selectedPax.includes(num)}
+                              onChange={() =>
+                                setSelectedPax((prev) =>
+                                  prev.includes(num)
+                                    ? prev.filter((v) => v !== num)
+                                    : [...prev, num],
+                                )
+                              }
+                            />
+                            <span className="text-sm text-black">
+                              {num} Pax
+                            </span>
+                          </label>
+                        ),
+                      )}
+                    </div>,
+                    document.body,
+                  )}
+              </div>
+
+              {/* Freeze Columns */}
+              <div className="flex-shrink-0">
+                <select
+                  value={freezeKey ?? "none"}
+                  onChange={(e) =>
+                    setFreezeKey(
+                      e.target.value === "none" ? null : e.target.value,
+                    )
+                  }
+                  className="px-3 h-9 text-sm font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                >
+                  <option value="none">Freeze Columns</option>
+                  {columns.map((column) => (
+                    <option key={column.key} value={column.key}>
+                      {column.label}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
           </div>
         </div>
-
         {/* ── Table Container ── */}
         <div className="mt-2 bg-white border shadow-sm rounded-3xl border-white w-full flex flex-col">
           <div
@@ -1030,7 +1065,6 @@ export default function LeadsTable() {
             }}
           >
             <table className="min-w-full text-xs border-collapse border border-white sm:text-sm">
-              {/* ── Single thead — sticky top:0 ── */}
               <thead
                 ref={theadRef}
                 style={{ position: "sticky", top: 0, zIndex: 20 }}
@@ -1105,7 +1139,6 @@ export default function LeadsTable() {
                 </tr>
               </thead>
 
-              {/* ── Single tbody — this scrolls ── */}
               <tbody>
                 {loading ? (
                   <tr>
@@ -1148,7 +1181,6 @@ export default function LeadsTable() {
                             column.key === "dropAddress" ||
                             column.key === "itinerary";
 
-                          // Frozen cells: use actual column bg color (not white)
                           const frozenBgColor = isFrozen
                             ? (BG_CLASS_TO_HEX[column.headerBgClass] ??
                               rowBaseHex)
@@ -1158,14 +1190,14 @@ export default function LeadsTable() {
                             <td
                               key={column.key}
                               className={`border border-white text-slate-800 p-[3px_6px]
-    ${
-      column.key === "itinerary"
-        ? "whitespace-normal break-words max-w-[300px]"
-        : "whitespace-nowrap"
-    }
-    ${isAddress ? "text-[12px] !font-normal" : "text-sm font-extrabold"}
-    ${isFrozen ? "" : column.headerBgClass}
-  `}
+                                ${
+                                  column.key === "itinerary"
+                                    ? "whitespace-normal break-words max-w-[300px]"
+                                    : "whitespace-nowrap"
+                                }
+                                ${isAddress ? "text-[12px] !font-normal" : "text-sm font-extrabold"}
+                                ${isFrozen ? "" : column.headerBgClass}
+                              `}
                               style={{
                                 ...(isFrozen
                                   ? {
@@ -1212,7 +1244,6 @@ export default function LeadsTable() {
         />
       )}
 
-      {/* Rate Quotation Modal */}
       {/* Rate Quotation Modal */}
       {rateQuotationLead && (
         <RateQuotationModel

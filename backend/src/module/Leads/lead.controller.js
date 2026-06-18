@@ -108,6 +108,7 @@ const createLeads = asyncHandler(async (req, res) => {
 });
 
 const listLeads = asyncHandler(async (req, res) => {
+  console.log("Full req.query =", req.query);
   const user = req.user;
 
   const isCityManager = user?.role_name === "City Manager";
@@ -131,6 +132,12 @@ const listLeads = asyncHandler(async (req, res) => {
   const month = req.query.month || null;
   const year = req.query.year || null;
   const status = req.query.status || "";
+  const pickupDateTime = req.query.pickupDateTime?.trim() || null;
+  const dropDateTime = req.query.dropDateTime?.trim() || null;
+  const liveorexpiry = req.query.liveorexpiry?.trim() || null;
+  const ageFilter = req.query.ageFilter?.trim() || null;
+
+ 
 
   const leadsData = await getLeads(
     page,
@@ -141,6 +148,10 @@ const listLeads = asyncHandler(async (req, res) => {
     month,
     year,
     status,
+    pickupDateTime,
+    dropDateTime,
+    liveorexpiry,
+    ageFilter,
   );
 
   res

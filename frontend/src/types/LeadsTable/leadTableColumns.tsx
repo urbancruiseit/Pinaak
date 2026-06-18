@@ -374,24 +374,24 @@ export const useLeadColumns = ({
         if (col.key === "tripType")
           return formatTripType(val as any) || String(val);
 
-        // Aged Column
-        if (col.key === "aged") {
-          const leadDate = new Date(lead.date);
-          const currentDate = new Date();
-          const diffTime = currentDate.getTime() - leadDate.getTime();
-          const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-          const age = diffDays >= 0 ? diffDays : 0;
+        // // Aged Column
+        // if (col.key === "aged") {
+        //   const leadDate = new Date(lead.date);
+        //   const currentDate = new Date();
+        //   const diffTime = currentDate.getTime() - leadDate.getTime();
+        //   const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        //   const age = diffDays >= 0 ? diffDays : 0;
 
-          let bgClass = "";
-          if (age >= 0 && age <= 5)
-            bgClass = "bg-green-500 text-white px-2 py-1 rounded";
-          else if (age >= 6 && age <= 10)
-            bgClass = "bg-orange-500 text-white px-2 py-1 rounded";
-          else if (age >= 11)
-            bgClass = "bg-red-900 text-white px-2 py-1 rounded";
+        //   let bgClass = "";
+        //   if (age >= 0 && age <= 5)
+        //     bgClass = "bg-green-500 text-white px-2 py-1 rounded";
+        //   else if (age >= 6 && age <= 10)
+        //     bgClass = "bg-orange-500 text-white px-2 py-1 rounded";
+        //   else if (age >= 11)
+        //     bgClass = "bg-red-900 text-white px-2 py-1 rounded";
 
-          return <span className={bgClass}>{String(age)}</span>;
-        }
+        //   return <span className={bgClass}>{String(age)}</span>;
+        // }
 
         // Live/Expiry Column
         if (col.key === "liveorexpiry") {
@@ -708,7 +708,7 @@ export const useLeadColumns = ({
               </div>
             </div>
           );
-        }   
+        }
         return val !== undefined && val !== null && val !== ""
           ? String(val)
           : "—";

@@ -88,6 +88,8 @@ interface FetchMyAssignedLeadsArgs {
   status?: string | null;
   advisorId?: number | null;
   zoneId?: number | null;
+  ageFilter?: string | null; // ✅ ADD
+  liveorexpiry?: string | null; // ✅ ADD
 }
 
 const initialState: TravelAdvisorState = {
@@ -157,7 +159,6 @@ export const fetchTravelAdvisors = createAsyncThunk<
   }
 });
 
-
 export const assignTravelAdvisor = createAsyncThunk<
   { success: boolean; leadId: number; travelAdvisorId: number },
   { leadId: number; travelAdvisorId: number },
@@ -193,7 +194,6 @@ export const swapTravelAdvisor = createAsyncThunk<
   },
 );
 
-
 export const fetchMyAssignedLeads = createAsyncThunk<
   AssignedLeadsResponse,
   FetchMyAssignedLeadsArgs,
@@ -201,7 +201,18 @@ export const fetchMyAssignedLeads = createAsyncThunk<
 >(
   "access/fetchMyAssignedLeads",
   async (
-    { page = 1, cityIds, zoneId, search, month, year, advisorId, status },
+    {
+      page = 1,
+      cityIds,
+      zoneId,
+      search,
+      month,
+      year,
+      advisorId,
+      status,
+      ageFilter,
+      liveorexpiry, // ✅ ADD
+    },
     { rejectWithValue },
   ) => {
     try {
@@ -213,6 +224,8 @@ export const fetchMyAssignedLeads = createAsyncThunk<
         year,
         advisorId,
         status,
+        ageFilter, // ✅
+        liveorexpiry, // ✅ ADD
       });
     } catch (error: any) {
       return rejectWithValue(
@@ -221,7 +234,6 @@ export const fetchMyAssignedLeads = createAsyncThunk<
     }
   },
 );
-
 
 export const fetchMySwapLeads = createAsyncThunk<
   AssignedLeadsResponse,

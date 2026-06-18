@@ -161,7 +161,7 @@ const AssignSalesModal = ({ isOpen, onClose, leadId, cityId }: any) => {
                     />
                   </button>
 
-                  {/* Dropdown Menu - Using relative positioning that pushes content down */}
+                  {/* Dropdown Menu */}
                   <div
                     className={`transition-all duration-200 overflow-hidden ${
                       isDropdownOpen
@@ -171,21 +171,44 @@ const AssignSalesModal = ({ isOpen, onClose, leadId, cityId }: any) => {
                   >
                     <div className="border border-gray-200 rounded-lg bg-white shadow-lg overflow-hidden">
                       <div className="max-h-48 overflow-y-auto">
-                        {advisors.map((advisor: any) => (
-                          <button
-                            key={advisor.id}
-                            onClick={() => {
-                              setSelectedAdvisorId(advisor.id);
-                              setIsDropdownOpen(false);
-                            }}
-                            className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition"
-                          >
-                            <span>{advisor.fullName || advisor.name}</span>
-                            {selectedAdvisorId === advisor.id && (
-                              <Check size={16} className="text-blue-600" />
-                            )}
-                          </button>
-                        ))}
+                        {advisors.map((advisor: any) => {
+                          // Backend se is_online directly advisor object pe aati hai
+                          const isOnline = !!advisor.is_online;
+
+                          return (
+                            <button
+                              key={advisor.id}
+                              onClick={() => {
+                                setSelectedAdvisorId(advisor.id);
+                                setIsDropdownOpen(false);
+                              }}
+                              className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition"
+                            >
+                              <div className="flex items-center gap-2">
+                                {/* Status Dot */}
+                                <span
+                                  className={`h-2.5 w-2.5 rounded-full ${
+                                    isOnline ? "bg-green-500" : "bg-red-500"
+                                  }`}
+                                />
+
+                                <span>{advisor.fullName || advisor.name}</span>
+
+                                <span
+                                  className={`text-xs ${
+                                    isOnline ? "text-green-600" : "text-red-600"
+                                  }`}
+                                >
+                                  {isOnline ? "Online" : "Offline"}
+                                </span>
+                              </div>
+
+                              {selectedAdvisorId === advisor.id && (
+                                <Check size={16} className="text-blue-600" />
+                              )}
+                            </button>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
@@ -193,7 +216,7 @@ const AssignSalesModal = ({ isOpen, onClose, leadId, cityId }: any) => {
               </div>
             )}
 
-            {/* Buttons - These will naturally move down when dropdown expands */}
+            {/* Buttons */}
             <div
               className={`mt-8 flex items-center justify-end gap-3 transition-all duration-200 ${
                 isDropdownOpen ? "mt-6" : "mt-8"

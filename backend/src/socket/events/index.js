@@ -3,7 +3,7 @@ import socketRooms from "./socketRooms.js";
 import telesalesAdviserSocket from "./telesalesAdviser.socket.js";
 
 const registerSocketEvents = (socket, io) => {
-  socketRooms(socket);
+  socketRooms(socket, io);
 
   presalesSocket(socket, io);
   telesalesAdviserSocket(socket, io);

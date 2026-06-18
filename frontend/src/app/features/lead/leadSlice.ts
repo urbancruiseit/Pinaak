@@ -8,6 +8,16 @@ import {
   getAllUnwantedLeadsApi,
 } from "./leadApi";
 
+interface StatusCounts {
+  NEW: number;
+  RFQ: number;
+  KYC: number;
+  HOT: number;
+  "VEH-N": number;
+  LOST: number;
+  BOOK: number;
+}
+
 interface LeadState {
   leads: LeadRecord[];
   total: number;
@@ -20,7 +30,7 @@ interface LeadState {
 
   selectedMonth: number;
   selectedYear: number;
-  selectedStatus: string | null; // ✅
+  selectedStatus: string | null;
   statusCounts: StatusCounts;
   totalLeads: number;
   search: string;
@@ -30,7 +40,9 @@ interface LeadState {
   unwantedLeadsTotal: number;
   unwantedLeadsError: string | null;
 }
+
 const now = new Date();
+
 const initialState: LeadState = {
   leads: [],
   total: 0,
@@ -43,7 +55,7 @@ const initialState: LeadState = {
 
   selectedMonth: now.getMonth() + 1,
   selectedYear: now.getFullYear(),
-  selectedStatus: null, // ✅
+  selectedStatus: null,
   statusCounts: {
     NEW: 0,
     RFQ: 0,
@@ -72,17 +84,36 @@ export const fetchLeads = createAsyncThunk(
       month,
       year,
       status,
+      pickupDateTime,
+      dropDateTime,
+      liveorexpiry,
+      ageFilter, // ✅ accept karo
     }: {
       page?: number;
       search?: string;
       month?: number;
       year?: number;
       status?: string;
+      pickupDateTime?: string;
+      dropDateTime?: string;
+      liveorexpiry?: string;
+      ageFilter?: string; // ✅
     },
     { rejectWithValue },
   ) => {
     try {
-      return await getLeadApi(page, search, month, year, status);
+      // ✅ ageFilter ab getLeadApi ko pass ho raha hai
+      return await getLeadApi(
+        page,
+        search,
+        month,
+        year,
+        status,
+        pickupDateTime,
+        dropDateTime,
+        liveorexpiry,
+        ageFilter, // ✅ FIX — pehle missing tha
+      );
     } catch (error: any) {
       return rejectWithValue(error.message);
     }
@@ -160,15 +191,14 @@ const leadSlice = createSlice({
     },
     setSearch(state, action) {
       state.search = action.payload;
-      state.page = 1; // ← search change hone pe page reset
+      state.page = 1;
     },
     setMonthYear(state, action) {
       state.selectedMonth = action.payload.month;
       state.selectedYear = action.payload.year;
-      state.page = 1; // ← month change hone pe page reset
+      state.page = 1;
     },
     setStatus(state, action) {
-      // ✅
       state.selectedStatus = action.payload;
       state.page = 1;
     },
@@ -177,35 +207,22 @@ const leadSlice = createSlice({
       state.page = 1;
       state.total = 0;
       state.search = "";
-      state.selectedStatus = null; // ✅
+      state.selectedStatus = null;
     },
-    // ================================
-    // REALTIME ADD
-    // ================================
-
     addRealtimeLead(state, action) {
       const newLead = action.payload;
-
       const exists = state.leads.some(
         (lead) => String(lead.id) === String(newLead.id),
       );
-
       if (!exists) {
         state.leads.unshift(newLead);
       }
     },
-
-    // ================================
-    // REALTIME UPDATE
-    // ================================
-
     updateRealtimeLead(state, action) {
       const updatedLead = action.payload;
-
       const index = state.leads.findIndex(
         (lead) => String(lead.id) === String(updatedLead.id),
       );
-
       if (index !== -1) {
         state.leads[index] = updatedLead;
       }
@@ -213,7 +230,6 @@ const leadSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-
       .addCase(fetchLeads.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -237,7 +253,7 @@ const leadSlice = createSlice({
         state.createLoading = true;
         state.error = null;
       })
-      .addCase(createLead.fulfilled, (state, action) => {
+      .addCase(createLead.fulfilled, (state) => {
         state.createLoading = false;
       })
       .addCase(createLead.rejected, (state, action) => {
@@ -245,7 +261,6 @@ const leadSlice = createSlice({
         state.error = action.payload as string;
       })
 
-      /* ---------- UPDATE LEAD ---------- */
       .addCase(updateLead.pending, (state) => {
         state.createLoading = true;
         state.error = null;
@@ -264,21 +279,16 @@ const leadSlice = createSlice({
         state.error = action.payload as string;
       })
 
-      /* ---------- MARK UNWANTED ---------- */
       .addCase(markUnwanted.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(markUnwanted.fulfilled, (state, action) => {
         state.loading = false;
-
         const { id, unwanted_status } = action.meta.arg;
-
-        // ✅ String aur Number dono se compare karo
         const index = state.leads.findIndex(
           (lead) => String(lead.id) === String(id),
         );
-
         if (index !== -1) {
           state.leads[index].unwanted_status = unwanted_status;
         }
@@ -307,6 +317,7 @@ export const {
   setLimit,
   resetLeads,
   setStatus,
+  setMonthYear,
   addRealtimeLead,
   updateRealtimeLead,
 } = leadSlice.actions;

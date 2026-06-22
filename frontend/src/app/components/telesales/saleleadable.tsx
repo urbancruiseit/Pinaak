@@ -112,15 +112,11 @@ export default function LeadsTable() {
 
   // ✅ Age filter state
   const [ageFilter, setAgeFilter] = useState<string>("");
+  const [daysFilter, setDaysFilter] = useState<string>("");
+  const [paxFilter, setPaxFilter] = useState<string>("");
 
   const [selectedRegion, setSelectedRegion] = useState("");
   const [selectedCity, setSelectedCity] = useState("");
-
-  const [paxDropdownStyle, setPaxDropdownStyle] = useState<React.CSSProperties>(
-    {},
-  );
-  const [daysDropdownStyle, setDaysDropdownStyle] =
-    useState<React.CSSProperties>({});
 
   const [selectedZoneId, setSelectedZoneId] = useState<number | null>(null);
   const [selectedZone, setSelectedZone] = useState<string | null>(null);
@@ -160,6 +156,8 @@ export default function LeadsTable() {
     statusFilter,
     selectedZoneId,
     ageFilter,
+    daysFilter,
+    paxFilter,
   ]);
 
   useEffect(() => {
@@ -195,6 +193,8 @@ export default function LeadsTable() {
       status: statusFilter !== "All" ? statusFilter : undefined,
       zoneId: selectedZoneId ?? null,
       ageFilter: ageFilter || undefined,
+      daysFilter: daysFilter || undefined,
+      paxFilter: paxFilter || undefined,
       liveorexpiry: liveorexpiryFilter !== "All" ? liveorexpiryFilter : null,
     }),
     [
@@ -206,6 +206,8 @@ export default function LeadsTable() {
       statusFilter,
       selectedZoneId,
       ageFilter,
+      daysFilter,
+      paxFilter,
       liveorexpiryFilter,
     ],
   );
@@ -589,7 +591,7 @@ export default function LeadsTable() {
       <div className="w-full overflow-auto">
         {/* ── Stats Header ── */}
         <div className="p-3 bg-orange-100 rounded-md">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+          <div className="flex justify-evenly items-center ">
             <div className="border-l-8 border rounded-lg border-orange-500 bg-white px-3">
               <h2 className="text-2xl md:text-4xl font-bold text-left text-orange-600 whitespace-nowrap">
                 Lead Manager
@@ -599,11 +601,10 @@ export default function LeadsTable() {
               </p>
             </div>
 
-            <div className="grid grid-cols-4 md:grid-cols-8 gap-2 w-full md:w-auto items-center mr-28">
-              {/* Total */}
+            <div className="grid grid-cols-4 md:grid-cols-8 gap-5 w-full md:w-auto items-center ">
               <div
                 onClick={() => handleStatusChange("All")}
-                className={`flex flex-col items-center justify-center bg-black px-2 py-2 mr-6 rounded-lg shadow-md border min-w-[80px] h-20 cursor-pointer transition-all hover:scale-105 hover:shadow-lg
+                className={`flex flex-col items-center justify-center bg-black px-2 py-2  rounded-lg shadow-md border min-w-[80px] h-20 cursor-pointer transition-all hover:scale-105 hover:shadow-lg
                   ${statusFilter === "All" ? "ring-4 ring-offset-2 ring-orange-400 scale-105 border-orange-400" : "border-white"}`}
               >
                 <div className="font-extrabold text-sm text-white">
@@ -612,7 +613,7 @@ export default function LeadsTable() {
                 <div className="text-lg font-extrabold text-white">
                   {totalLeadsCount}
                 </div>
-                <div className="text-md text-white">(100.0%)</div>
+                <div className="text-md text-white">(100.0)</div>
               </div>
 
               {[
@@ -700,14 +701,14 @@ export default function LeadsTable() {
                       {label}
                     </div>
                     <div className={`font-extrabold ${text}`}>{count}</div>
-                    <div className={`text-md ${text}`}>{p}%</div>
+                    <div className={`text-md ${text}`}>{p}</div>
                   </div>
                 );
               })}
             </div>
 
             {/* Conditionally render filter */}
-            <div className="px-4 py-2">
+            <div className=" ">
               <AllRegionZoneCityFilter
                 selectedRegion={selectedRegion}
                 selectedZone={selectedZone}
@@ -762,9 +763,12 @@ export default function LeadsTable() {
                 className="w-full px-3 py-2 text-sm font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
               >
                 <option value="">All Age</option>
-                <option value="0-5">0-5 Days</option>
-                <option value="6-10">6-10 Days</option>
-                <option value="11+">11+ Days</option>
+                <option value="0-5">0-5 Age</option>
+                <option value="6-10">6-10 Age</option>
+                <option value="11-15">11-15 Age</option>
+                <option value="16-30">16-30 Age</option>
+                <option value="31-60">31-60 Age</option>
+                <option value="60+">60+ Age</option>
               </select>
             </div>
 
@@ -920,116 +924,53 @@ export default function LeadsTable() {
                 </div>
               )}
 
-              {/* Days */}
-              <div className="relative flex-shrink-0">
-                <button
-                  ref={daysBtnRef}
-                  onClick={toggleDays}
-                  className="px-3 h-9 text-sm font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 text-left flex justify-between items-center bg-white gap-2"
+              <div className="flex flex-col gap-1">
+                <select
+                  value={daysFilter}
+                  onChange={(e) => {
+                    setDaysFilter(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="w-full px-3 py-2 text-sm font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                 >
-                  {selectedDays.length > 0
-                    ? `${selectedDays.length} Days Selected`
-                    : "Select Days"}
-                  <span>▾</span>
-                </button>
-                {daysOpen &&
-                  typeof document !== "undefined" &&
-                  createPortal(
-                    <div
-                      ref={daysDropdownRef}
-                      className="absolute z-[9999] bg-white border rounded-lg shadow max-h-60 overflow-y-auto"
-                      style={daysDropdownStyle}
-                    >
-                      <label className="flex items-center gap-2 px-3 py-2 hover:bg-slate-100 cursor-pointer">
-                        <button
-                          onClick={() => setSelectedDays([])}
-                          className="text-sm text-red-600 font-semibold hover:underline"
-                        >
-                          Clear All
-                        </button>
-                      </label>
-                      {Array.from({ length: 100 }, (_, i) => i + 1).map(
-                        (num) => (
-                          <label
-                            key={num}
-                            className="flex items-center gap-2 px-3 py-2 hover:bg-slate-100 cursor-pointer"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={selectedDays.includes(num)}
-                              onChange={() =>
-                                setSelectedDays((prev) =>
-                                  prev.includes(num)
-                                    ? prev.filter((v) => v !== num)
-                                    : [...prev, num],
-                                )
-                              }
-                            />
-                            <span className="text-sm text-black">
-                              {num} Days
-                            </span>
-                          </label>
-                        ),
-                      )}
-                    </div>,
-                    document.body,
-                  )}
+                  <option value="">All Days</option>
+                  <option value="1">1 Day</option>
+                  <option value="2">2 Day</option>
+                  <option value="3">3 Day</option>
+                  <option value="4">4 Day</option>
+                  <option value="5">5 Day</option>
+                  <option value="6">6 Day</option>
+                  <option value="7">7 Day</option>
+                  <option value="8">8 Day</option>
+                  <option value="9">9 Day</option>
+                  <option value="10">10 Day</option>
+                  <option value="11-15">11-15 Day</option>
+                  <option value="16-30">16-30 Day</option>
+                  <option value="31-60">31-60 Day</option>
+                  <option value="60+">60+ Day</option>
+                </select>
               </div>
 
-              {/* Pax */}
-              <div className="relative flex-shrink-0">
-                <button
-                  ref={paxBtnRef}
-                  onClick={togglePax}
-                  className="px-3 h-9 text-sm font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 text-left flex justify-between items-center bg-white gap-2"
+              <div className="flex flex-col gap-1">
+                <select
+                  value={paxFilter}
+                  onChange={(e) => {
+                    setPaxFilter(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="w-full px-3 py-2 text-sm font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
                 >
-                  {selectedPax.length > 0
-                    ? `${selectedPax.length} Pax Selected`
-                    : "Select Pax"}
-                  <span>▾</span>
-                </button>
-                {paxOpen &&
-                  typeof document !== "undefined" &&
-                  createPortal(
-                    <div
-                      ref={paxDropdownRef}
-                      className="absolute z-[9999] bg-white border rounded-lg shadow max-h-60 overflow-y-auto"
-                      style={paxDropdownStyle}
-                    >
-                      <label className="flex items-center gap-2 px-3 py-2 hover:bg-slate-100 cursor-pointer">
-                        <button
-                          onClick={() => setSelectedPax([])}
-                          className="text-sm text-red-600 font-semibold hover:underline"
-                        >
-                          Clear All
-                        </button>
-                      </label>
-                      {Array.from({ length: 100 }, (_, i) => i + 1).map(
-                        (num) => (
-                          <label
-                            key={num}
-                            className="flex items-center gap-2 px-3 py-2 hover:bg-slate-100 cursor-pointer"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={selectedPax.includes(num)}
-                              onChange={() =>
-                                setSelectedPax((prev) =>
-                                  prev.includes(num)
-                                    ? prev.filter((v) => v !== num)
-                                    : [...prev, num],
-                                )
-                              }
-                            />
-                            <span className="text-sm text-black">
-                              {num} Pax
-                            </span>
-                          </label>
-                        ),
-                      )}
-                    </div>,
-                    document.body,
-                  )}
+                  <option value="">All Pax</option>
+                  <option value="1-4">1-4 Pax</option>
+                  <option value="5-7">5-7 Pax</option>
+                  <option value="8-13">8-13 Pax</option>
+                  <option value="14-20">14-20 Pax</option>
+                  <option value="21-30">21-30 Pax</option>
+                  <option value="31-40">31-40 Pax</option>
+                  <option value="41-50">41-50 Pax</option>
+                  <option value="51-60">51-60 Pax</option>
+                  <option value="60+">60+ Pax</option>
+                </select>
               </div>
 
               {/* Freeze Columns */}

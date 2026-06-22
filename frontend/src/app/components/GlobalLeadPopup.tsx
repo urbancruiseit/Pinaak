@@ -36,7 +36,7 @@ const formatDateTime = (date?: string) => {
 };
 
 const isNewStatus = (status?: string) => {
-  const s = (status ?? "").trim();
+  const s = (status ?? "").trim().toUpperCase();
   return s === "-" || s === "NEW";
 };
 
@@ -52,6 +52,7 @@ export default function GlobalLeadPopup() {
 
   const activeLeadsMapRef = useRef<Map<string, LeadRecord>>(new Map());
   const initialSeenRef = useRef<Set<string> | null>(null);
+  const prevStatusRef = useRef<Map<string, string>>(new Map());
   const currentLeadIdRef = useRef<string | null>(null);
   const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(
     new Map(),
@@ -150,6 +151,7 @@ export default function GlobalLeadPopup() {
       leads.forEach((l) => {
         const id = String(l.id);
         baseline.add(id);
+        prevStatusRef.current.set(id, (l.status ?? "").trim());
         if (
           isNewStatus(l.status) &&
           String(l.advisor_id) === String(currentUser.id)
@@ -164,9 +166,12 @@ export default function GlobalLeadPopup() {
     leads.forEach((l) => {
       const id = String(l.id);
       const isNew = isNewStatus(l.status);
+      const currentStatus = (l.status ?? "").trim();
+      const prevStatus = prevStatusRef.current.get(id);
 
       if (String(l.advisor_id) !== String(currentUser.id)) {
         activeLeadsMapRef.current.delete(id);
+        prevStatusRef.current.set(id, currentStatus);
         return;
       }
 
@@ -180,14 +185,21 @@ export default function GlobalLeadPopup() {
           clearTimeout(t);
           timersRef.current.delete(id);
         }
+        prevStatusRef.current.set(id, currentStatus);
         return;
       }
 
+      // Trigger popup if: (a) this id was never seen before, OR
+      // (b) its status just transitioned into a "new" status from something else.
       const isReallyNew = !initialSeenRef.current!.has(id);
+      const statusJustBecameNew =
+        prevStatus !== undefined && prevStatus !== currentStatus;
+
       activeLeadsMapRef.current.set(id, l);
       initialSeenRef.current!.add(id);
+      prevStatusRef.current.set(id, currentStatus);
 
-      if (isReallyNew) {
+      if (isReallyNew || statusJustBecameNew) {
         showLead(l);
       }
     });
@@ -200,6 +212,7 @@ export default function GlobalLeadPopup() {
       currentLeadIdRef.current = null;
       activeLeadsMapRef.current.clear();
       initialSeenRef.current = null;
+      prevStatusRef.current.clear();
       timersRef.current.forEach((t) => clearTimeout(t));
       timersRef.current.clear();
     }

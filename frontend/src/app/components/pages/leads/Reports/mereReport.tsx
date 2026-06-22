@@ -8,6 +8,7 @@ import { RootState, AppDispatch } from "@/app/redux/store";
 import { Eye, X, ChevronDown } from "lucide-react";
 import Image from "next/image";
 import employee from "../../../../assets/monthyview.png";
+import { AllRegionZoneCityFilter } from "@/app/components/ui/AllRegionZoneCityFilter";
 
 const getDaysInMonth = (year: number, month: number) => {
   return new Date(year, month + 1, 0).getDate();
@@ -97,6 +98,9 @@ const YEAR_OPTIONS = Array.from({ length: 5 }, (_, i) =>
 export default function MonthlyEnquiryReport() {
   const [year, setYear] = useState(CURRENT_YEAR.toString());
   const [showImageModal, setShowImageModal] = useState(false);
+  const [selectedRegion, setSelectedRegion] = useState("");
+  const [selectedZone, setSelectedZone] = useState("");
+  const [selectedCity, setSelectedCity] = useState("");
 
   const dispatch = useDispatch<AppDispatch>();
 
@@ -200,7 +204,7 @@ export default function MonthlyEnquiryReport() {
             </h2>
           </div>
 
-          <div className="flex gap-4">
+          <div className="flex items-center gap-4">
             <button
               onClick={() => setShowImageModal(true)}
               className="p-1 rounded-full hover:bg-orange-50 border-2 border-orange-400 shadow-sm transition-colors"
@@ -208,17 +212,18 @@ export default function MonthlyEnquiryReport() {
             >
               <Eye className="w-6 h-6 text-orange-600" />
             </button>
-            <select
-              value={year}
-              onChange={(e) => setYear(e.target.value)}
-              className="border border-gray-600 p-2 rounded bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {YEAR_OPTIONS.map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
+
+            <AllRegionZoneCityFilter
+              selectedRegion={selectedRegion}
+              selectedZone={selectedZone}
+              selectedCity={selectedCity}
+              selectedYear={year}
+              onRegionChange={setSelectedRegion}
+              onZoneChange={setSelectedZone}
+              onCityChange={setSelectedCity}
+              onYearChange={setYear}
+              layout="row"
+            />
           </div>
         </div>
 

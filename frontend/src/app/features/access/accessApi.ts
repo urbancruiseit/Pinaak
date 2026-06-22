@@ -138,6 +138,8 @@ export const getMyAssignedLeadsApi = async (
     year?: number | null;
     advisorId?: number | null;
     ageFilter?: string | null;
+    daysFilter?: string | null;
+    paxFilter?: string | null;
     liveorexpiry?: string | null; // ✅ ADD
 
     status?: string | null; // ✅ add kiya
@@ -178,11 +180,18 @@ export const getMyAssignedLeadsApi = async (
     if (filters?.ageFilter != null) {
       params.append("ageFilter", filters.ageFilter);
     }
+    if (filters?.daysFilter != null) {
+      params.append("daysFilter", filters.daysFilter);
+    }
+    if (filters?.paxFilter != null) {
+      params.append("paxFilter", filters.paxFilter);
+    }
+
     if (filters?.liveorexpiry && filters.liveorexpiry !== "All") {
       params.append("liveorexpiry", filters.liveorexpiry); // ✅
     }
 
-    console.log("assigned leads params", params.toString());
+   
     const response = await axiosInstance.get(
       `/assign/myleads?${params.toString()}`,
     );

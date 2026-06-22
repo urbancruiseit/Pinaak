@@ -89,6 +89,8 @@ interface FetchMyAssignedLeadsArgs {
   advisorId?: number | null;
   zoneId?: number | null;
   ageFilter?: string | null; // ✅ ADD
+  daysFilter?: string | null;
+  paxFilter?: string | null;
   liveorexpiry?: string | null; // ✅ ADD
 }
 
@@ -211,6 +213,8 @@ export const fetchMyAssignedLeads = createAsyncThunk<
       advisorId,
       status,
       ageFilter,
+      daysFilter,
+      paxFilter,
       liveorexpiry, // ✅ ADD
     },
     { rejectWithValue },
@@ -224,8 +228,10 @@ export const fetchMyAssignedLeads = createAsyncThunk<
         year,
         advisorId,
         status,
-        ageFilter, // ✅
-        liveorexpiry, // ✅ ADD
+        ageFilter, 
+        daysFilter,
+        paxFilter,
+        liveorexpiry, 
       });
     } catch (error: any) {
       return rejectWithValue(

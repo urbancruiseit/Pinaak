@@ -24,6 +24,8 @@ export interface AllRegionZoneCityFilterProps {
   }>;
 
   showYearMenu?: boolean;
+
+  layout?: "grid" | "row";
 }
 
 export function AllRegionZoneCityFilter({
@@ -42,8 +44,13 @@ export function AllRegionZoneCityFilter({
   cityOptions,
 
   showYearMenu = true,
+  layout = "grid",
 }: AllRegionZoneCityFilterProps) {
   const { currentUser } = useSelector((state: RootState) => state.user);
+  const roleName = (currentUser as any)?.role_name?.toLowerCase() || "";
+
+  const isCityManager = roleName === "city manager";
+  const isTeamLeader = roleName === "team leader-sales";
 
   const userRegionNames = (currentUser as any)?.region_names ?? [];
   const userZoneNames = (currentUser as any)?.zone_names ?? [];
@@ -72,50 +79,60 @@ export function AllRegionZoneCityFilter({
 
   return (
     <div className="w-full flex justify-end">
-      <div className="grid grid-cols-2 gap-2 w-full max-w-md">
+      <div
+        className={
+          layout === "row"
+            ? "flex items-center gap-2 flex-nowrap"
+            : "grid grid-cols-2 gap-2 w-full max-w-md"
+        }
+      >
         {/* Region */}
-        <div className="relative w-full">
-          <select
-            value={selectedRegion}
-            onChange={(e) => onRegionChange(e.target.value)}
-            className={selectClass}
-            disabled={finalRegionOptions.length === 0}
-          >
-            <option value="">Region</option>
-            {finalRegionOptions.map((region: string) => (
-              <option key={region} value={region}>
-                {region}
-              </option>
-            ))}
-          </select>
+        {!isCityManager && !isTeamLeader && (
+          <div className="relative w-full">
+            <select
+              value={selectedRegion}
+              onChange={(e) => onRegionChange(e.target.value)}
+              className={selectClass}
+              disabled={finalRegionOptions.length === 0}
+            >
+              <option value="">Region</option>
+              {finalRegionOptions.map((region: string) => (
+                <option key={region} value={region}>
+                  {region}
+                </option>
+              ))}
+            </select>
 
-          <MapPin
-            size={14}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-          />
-        </div>
+            <MapPin
+              size={14}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+            />
+          </div>
+        )}
 
         {/* Zone */}
-        <div className="relative w-full">
-          <select
-            value={selectedZone}
-            onChange={(e) => onZoneChange(e.target.value)}
-            className={selectClass}
-            disabled={finalZoneOptions.length === 0}
-          >
-            <option value="">Zone</option>
-            {finalZoneOptions.map((zone: string) => (
-              <option key={zone} value={zone}>
-                {zone}
-              </option>
-            ))}
-          </select>
+        {!isTeamLeader && (
+          <div className="relative w-full">
+            <select
+              value={selectedZone}
+              onChange={(e) => onZoneChange(e.target.value)}
+              className={selectClass}
+              disabled={finalZoneOptions.length === 0}
+            >
+              <option value="">Zone</option>
+              {finalZoneOptions.map((zone: string) => (
+                <option key={zone} value={zone}>
+                  {zone}
+                </option>
+              ))}
+            </select>
 
-          <MapPin
-            size={14}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
-          />
-        </div>
+            <MapPin
+              size={14}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+            />
+          </div>
+        )}
 
         {/* City */}
         <div className="relative w-full">

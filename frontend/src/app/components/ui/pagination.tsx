@@ -20,7 +20,7 @@ export default function Pagination({
 
   return (
     <div className="flex flex-col sm:flex-row items-center justify-between px-2">
-      <p className="text-sm font-semibold text-gray-600">
+      <p className="text-md font-semibold text-gray-600">
         Page {currentPage} of {totalPages || 1} • Total {totalItems} items •
         Showing {startItem} - {endItem} of {totalItems} items
       </p>
@@ -39,7 +39,7 @@ export default function Pagination({
             const nextPage = currentPage >= totalPages ? 1 : currentPage + 1;
             onPageChange(nextPage);
           }}
-          className="w-8 h-8 flex items-center justify-center rounded-full bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition-colors"
+          className="w-8 h-8 flex items-center justify-center rounded-full bg-blue-600 text-white text-md font-medium hover:bg-blue-700 transition-colors"
         >
           {currentPage}
         </button>
@@ -52,11 +52,7 @@ export default function Pagination({
         >
           →
         </button>
-
-        
       </div>
     </div>
   );
 }
-
-

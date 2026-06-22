@@ -65,6 +65,8 @@ export const getLeadsByAdvisorId = async (
   year,
   status, // ✅ add kiya
   ageFilter,
+  daysFilter,
+  paxFilter,
   liveorexpiry,
 ) => {
   try {
@@ -104,9 +106,72 @@ export const getLeadsByAdvisorId = async (
         case "6-10":
           whereClause += ` AND DATEDIFF(CURDATE(), l.date) BETWEEN 6 AND 10`;
           break;
+        case "6-10":
+          whereClause += ` AND DATEDIFF(CURDATE(), l.date) BETWEEN 6 AND 10`;
+          break;
+        case "11-15":
+          whereClause += ` AND DATEDIFF(CURDATE(), l.date) BETWEEN 11 AND 15`;
+          break;
+        case "16-30":
+          whereClause += ` AND DATEDIFF(CURDATE(), l.date) BETWEEN 16 AND 30`;
+          break;
+        case "31-60":
+          whereClause += ` AND DATEDIFF(CURDATE(), l.date) BETWEEN 31 AND 60`;
+          break;
 
-        case "11+":
-          whereClause += ` AND DATEDIFF(CURDATE(), l.date) >= 11`;
+        case "60+":
+          whereClause += ` AND DATEDIFF(CURDATE(), l.date) >= 60`;
+          break;
+      }
+    }
+
+    if (daysFilter) {
+      if (
+        ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"].includes(daysFilter)
+      ) {
+        whereClause += ` AND l.days = ${Number(daysFilter)}`;
+      } else if (daysFilter === "11-15") {
+        whereClause += ` AND l.days BETWEEN 11 AND 15`;
+      } else if (daysFilter === "16-30") {
+        whereClause += ` AND l.days BETWEEN 16 AND 30`;
+      } else if (daysFilter === "31-60") {
+        whereClause += ` AND l.days BETWEEN 31 AND 60`;
+      } else if (daysFilter === "60+") {
+        whereClause += ` AND l.days > 60`;
+      }
+    }
+
+    if (paxFilter) {
+      switch (paxFilter) {
+        case "1-4":
+          whereClause += ` AND l.passengerTotal BETWEEN 1 AND 4`;
+          break;
+
+        case "5-7":
+          whereClause += ` AND l.passengerTotal BETWEEN 5 AND 7`;
+          break;
+
+        case "8-13":
+          whereClause += ` AND l.passengerTotal BETWEEN 8 AND 13`;
+          break;
+        case "14-20":
+          whereClause += ` AND l.passengerTotal BETWEEN 14 AND 20`;
+          break;
+        case "21-30":
+          whereClause += ` AND l.passengerTotal BETWEEN 21 AND 30`;
+          break;
+        case "31-40":
+          whereClause += ` AND l.passengerTotal BETWEEN 31 AND 40`;
+          break;
+        case "41-50":
+          whereClause += ` AND l.passengerTotal BETWEEN 41 AND 50`;
+          break;
+        case "51-60":
+          whereClause += ` AND l.passengerTotal BETWEEN 51 AND 60`;
+          break;
+
+        case "60+":
+          whereClause += ` AND l.passengerTotal > 60`;
           break;
       }
     }

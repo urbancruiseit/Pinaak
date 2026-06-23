@@ -115,11 +115,13 @@ export default function LeadsTable() {
   const [daysFilter, setDaysFilter] = useState<string>("");
   const [paxFilter, setPaxFilter] = useState<string>("");
 
+  // ─── States (type fix + naya cityId state) ─────────────────────────────────
   const [selectedRegion, setSelectedRegion] = useState("");
-  const [selectedCity, setSelectedCity] = useState("");
+  const [selectedCity, setSelectedCity] = useState(""); // dropdown value (string id)
+  const [selectedCityId, setSelectedCityId] = useState<number | null>(null); // backend ke liye number
 
+  const [selectedZone, setSelectedZone] = useState(""); // ✅ string rakho (pehle string|null tha — type mismatch tha)
   const [selectedZoneId, setSelectedZoneId] = useState<number | null>(null);
-  const [selectedZone, setSelectedZone] = useState<string | null>(null);
   const dispatch = useDispatch<AppDispatch>();
 
   const { assignedLeads } = useSelector(
@@ -145,20 +147,7 @@ export default function LeadsTable() {
   }, [searchTerm]);
 
   // ✅ ageFilter added to page-reset effect
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [
-    debouncedSearch,
-    cityFilter,
-    selectedMonth,
-    yearFilter,
-    selectedAdvisorId,
-    statusFilter,
-    selectedZoneId,
-    ageFilter,
-    daysFilter,
-    paxFilter,
-  ]);
+  // ─── Page reset effect ──────────────────────────────────────────────────────
 
   useEffect(() => {
     if (!currentUser) return;
@@ -179,19 +168,21 @@ export default function LeadsTable() {
   }, [currentUser, dispatch]);
 
   // ✅ ageFilter added to buildFetchArgs — goes to backend
+  // ─── buildFetchArgs (yahi backend tak data bhejta hai) ─────────────────────
   const buildFetchArgs = useCallback(
     (page: number) => ({
       page,
       search: debouncedSearch.trim() || undefined,
-      cityIds:
-        cityFilter !== "All" && CITY_ID_MAP[cityFilter]
-          ? [CITY_ID_MAP[cityFilter]]
+      cityIds: selectedCityId
+        ? [selectedCityId] // ✅ dropdown se selected city
+        : cityFilter !== "All" && CITY_ID_MAP[cityFilter]
+          ? [CITY_ID_MAP[cityFilter]] // fallback: purana hardcoded filter
           : undefined,
       month: selectedMonth ? parseInt(selectedMonth) : null,
       year: yearFilter !== "All" ? parseInt(yearFilter) : null,
       advisorId: selectedAdvisorId ?? undefined,
       status: statusFilter !== "All" ? statusFilter : undefined,
-      zoneId: selectedZoneId ?? null,
+      zoneId: selectedZoneId ?? null, // ✅ dropdown se selected zone
       ageFilter: ageFilter || undefined,
       daysFilter: daysFilter || undefined,
       paxFilter: paxFilter || undefined,
@@ -200,11 +191,12 @@ export default function LeadsTable() {
     [
       debouncedSearch,
       cityFilter,
+      selectedCityId, // ✅ add
+      selectedZoneId,
       selectedMonth,
       yearFilter,
       selectedAdvisorId,
       statusFilter,
-      selectedZoneId,
       ageFilter,
       daysFilter,
       paxFilter,
@@ -212,21 +204,41 @@ export default function LeadsTable() {
     ],
   );
 
+  // ─── Page reset effect ──────────────────────────────────────────────────────
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    debouncedSearch,
+    cityFilter,
+    selectedCityId, // ✅ add
+    selectedZoneId,
+    selectedMonth,
+    yearFilter,
+    selectedAdvisorId,
+    statusFilter,
+    ageFilter,
+    daysFilter,
+    paxFilter,
+  ]);
+
   // ─── Main fetch ─────────────────────────────────────────────────────────────
+  // ─── Main fetch effect — already theek hai, kyuki buildFetchArgs use ho raha hai
   useEffect(() => {
     dispatch(fetchMyAssignedLeads(buildFetchArgs(currentPage)));
   }, [dispatch, currentPage, buildFetchArgs]);
-
+  // ─── Handlers ────────────────────────────────────────────────────────────
   const handleRegionChange = (region: string) => {
     setSelectedRegion(region);
   };
 
   const handleZoneChange = (zone: string) => {
     setSelectedZone(zone);
+    setSelectedZoneId(zone ? Number(zone) : null); // ✅ id backend ke liye taiyar
   };
 
   const handleCityChange = (city: string) => {
     setSelectedCity(city);
+    setSelectedCityId(city ? Number(city) : null); // ✅ id backend ke liye taiyar
   };
 
   useEffect(() => {

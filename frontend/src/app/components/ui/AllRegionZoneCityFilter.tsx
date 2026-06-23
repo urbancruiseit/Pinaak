@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
-import { useSelector } from "react-redux";
+import { useEffect, useMemo } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { MapPin, Building2, Calendar } from "lucide-react";
-import { RootState } from "@/app/redux/store";
+import { AppDispatch, RootState } from "@/app/redux/store";
+import { fetchCitiesByZone } from "@/app/features/access/accessSlice";
 
 export interface AllRegionZoneCityFilterProps {
   selectedRegion: string;
@@ -17,7 +18,10 @@ export interface AllRegionZoneCityFilterProps {
   onYearChange?: (year: string) => void;
 
   regionOptions?: string[];
-  zoneOptions?: string[];
+  zoneOptions?: Array<{
+    id: string;
+    name: string;
+  }>;
   cityOptions?: Array<{
     id: string;
     name: string;
@@ -47,27 +51,71 @@ export function AllRegionZoneCityFilter({
   layout = "grid",
 }: AllRegionZoneCityFilterProps) {
   const { currentUser } = useSelector((state: RootState) => state.user);
+  const dispatch = useDispatch<AppDispatch>();
+  const { citiesByZone } = useSelector(
+    (state: RootState) => state.travelAdvisor, // ya jo bhi slice naam ho
+  );
+  console.log("citiesByZone ", citiesByZone);
+  // ✅ Zone select hone par cities fetch karo
+  useEffect(() => {
+    if (selectedZone) {
+      dispatch(fetchCitiesByZone(Number(selectedZone)));
+    }
+  }, [selectedZone, dispatch]);
+
   const roleName = (currentUser as any)?.role_name?.toLowerCase() || "";
 
   const isCityManager = roleName === "city manager";
   const isTeamLeader = roleName === "team leader-sales";
+  const isTravelAdvisor = roleName === "travel advisor";
 
   const userRegionNames = (currentUser as any)?.region_names ?? [];
   const userZoneNames = (currentUser as any)?.zone_names ?? [];
+  const userZoneIds = (currentUser as any)?.zone_ids ?? [];
   const userCityNames = (currentUser as any)?.city_names ?? [];
   const userCityIds = (currentUser as any)?.city_ids ?? [];
 
   const finalRegionOptions = regionOptions ?? userRegionNames;
-  const finalZoneOptions = zoneOptions ?? userZoneNames;
 
-  const finalCityOptions =
-    cityOptions ??
-    (userCityNames.length > 0
-      ? userCityNames.map((name: string, idx: number) => ({
-          id: String(userCityIds?.[idx] ?? name),
-          name,
-        }))
-      : []);
+  // ✅ Zone ids + names ko zip karo — value me id jaaye, display me name
+  const finalZoneOptions = useMemo(() => {
+    if (zoneOptions) return zoneOptions;
+
+    if (userZoneNames.length > 0) {
+      return userZoneNames.map((name: string, idx: number) => ({
+        id: String(userZoneIds?.[idx] ?? name),
+        name,
+      }));
+    }
+
+    return [];
+  }, [zoneOptions, userZoneNames, userZoneIds]);
+
+  // ✅ Priority order: explicit cityOptions > zone se aayi cities (API) > user ke default cities
+  // ✅ Priority order: explicit cityOptions > zone se aayi cities (API) > user ke default cities
+  const finalCityOptions = useMemo(() => {
+    if (cityOptions) return cityOptions;
+
+    if (
+      selectedZone &&
+      citiesByZone?.cities &&
+      citiesByZone.cities.length > 0
+    ) {
+      return citiesByZone.cities.map((city: any) => ({
+        id: String(city.id),
+        name: city.city_name, // ✅ fix: city_name, not name
+      }));
+    }
+
+    if (userCityNames.length > 0) {
+      return userCityNames.map((name: string, idx: number) => ({
+        id: String(userCityIds?.[idx] ?? name),
+        name,
+      }));
+    }
+
+    return [];
+  }, [cityOptions, selectedZone, citiesByZone, userCityNames, userCityIds]);
 
   const yearOptions = useMemo(() => {
     const currentYear = new Date().getFullYear();
@@ -75,7 +123,7 @@ export function AllRegionZoneCityFilter({
   }, []);
 
   const selectClass =
-    "w-full px-3 py-1 pr-10 text-sm font-semibold text-gray-700 border border-orange-500 rounded-full focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-200 appearance-none cursor-pointer hover:border-orange-300 transition-all h-9";
+    "w-full px-3 py-1 pr-10 text-sm font-semibold text-black bg-white border border-orange-500 rounded-full focus:border-orange-500 focus:outline-none focus:ring-1 focus:ring-orange-200 appearance-none cursor-pointer hover:border-orange-300 transition-all h-9";
 
   return (
     <div className="w-full flex justify-end">
@@ -87,7 +135,7 @@ export function AllRegionZoneCityFilter({
         }
       >
         {/* Region */}
-        {!isCityManager && !isTeamLeader && (
+        {!isCityManager && !isTeamLeader && !isTravelAdvisor && (
           <div className="relative w-full">
             <select
               value={selectedRegion}
@@ -111,18 +159,21 @@ export function AllRegionZoneCityFilter({
         )}
 
         {/* Zone */}
-        {!isTeamLeader && (
+        {!isTeamLeader && !isTravelAdvisor && (
           <div className="relative w-full">
             <select
               value={selectedZone}
-              onChange={(e) => onZoneChange(e.target.value)}
+              onChange={(e) => {
+                onZoneChange(e.target.value);
+                onCityChange(""); // ✅ zone change hone par purani city reset
+              }}
               className={selectClass}
               disabled={finalZoneOptions.length === 0}
             >
               <option value="">Zone</option>
-              {finalZoneOptions.map((zone: string) => (
-                <option key={zone} value={zone}>
-                  {zone}
+              {finalZoneOptions.map((zone: { id: string; name: string }) => (
+                <option key={zone.id} value={zone.id}>
+                  {zone.name}
                 </option>
               ))}
             </select>
@@ -135,11 +186,13 @@ export function AllRegionZoneCityFilter({
         )}
 
         {/* City */}
+        {/* City */}
+        {/* City */}
         <div className="relative w-full">
           <select
             value={selectedCity}
             onChange={(e) => onCityChange(e.target.value)}
-            className={selectClass}
+            className={`${selectClass} text-black bg-white`}
             disabled={finalCityOptions.length === 0}
           >
             <option value="">City</option>
@@ -150,7 +203,6 @@ export function AllRegionZoneCityFilter({
               </option>
             ))}
           </select>
-
           <Building2
             size={14}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"

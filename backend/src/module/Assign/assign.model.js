@@ -446,3 +446,12 @@ export const swapTravelAdvisorForLead = async (leadId, travelAdvisorId) => {
     throw error;
   }
 };
+
+export const findCitiesByZoneIds = async (zoneId) => {
+  const [rows] = await hrmsPool.execute(
+    `SELECT id, city_name FROM city WHERE zone_id = ?`,
+    [zoneId],
+  );
+
+  return rows;
+};

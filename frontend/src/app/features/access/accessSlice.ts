@@ -9,6 +9,7 @@ import {
   swapTravelAdvisorApi,
   getMySwapLeadsApi,
   ZoneAdvisor,
+  getCityByZoneIdApi,
 } from "./accessApi";
 
 import type { LeadRecord } from "@/types/types";
@@ -71,12 +72,21 @@ interface TravelAdvisorState {
   assignSuccess: boolean;
   assignedLeads: AssignedLeadsState;
   leadStatus: LeadStatusState;
+  citiesByZone: {
+    cities: CityOption[];
+    loading: boolean;
+    error: string | null;
+  };
 }
 
 export interface SwapLeadsResponse {
   success: boolean;
   leadId: number;
   travelAdvisorId: number;
+}
+interface CityOption {
+  id: number;
+  name: string;
 }
 
 interface FetchMyAssignedLeadsArgs {
@@ -141,6 +151,12 @@ const initialState: TravelAdvisorState = {
       LOST: 0,
       BOOK: 0,
     },
+    loading: false,
+    error: null,
+  },
+
+  citiesByZone: {
+    cities: [],
     loading: false,
     error: null,
   },
@@ -228,10 +244,10 @@ export const fetchMyAssignedLeads = createAsyncThunk<
         year,
         advisorId,
         status,
-        ageFilter, 
+        ageFilter,
         daysFilter,
         paxFilter,
-        liveorexpiry, 
+        liveorexpiry,
       });
     } catch (error: any) {
       return rejectWithValue(
@@ -298,6 +314,21 @@ export const fetchPresalesLeadStatusCount = createAsyncThunk<
     }
   },
 );
+
+//
+// 🔹 Fetch Cities by Zone
+//
+export const fetchCitiesByZone = createAsyncThunk<
+  CityOption[],
+  number,
+  { rejectValue: string }
+>("travelAdvisor/fetchCitiesByZone", async (zoneId, { rejectWithValue }) => {
+  try {
+    return await getCityByZoneIdApi(zoneId);
+  } catch (error: any) {
+    return rejectWithValue(error?.message || "Failed to fetch cities");
+  }
+});
 
 //
 // 🔹 Slice
@@ -449,6 +480,23 @@ const travelAdvisorSlice = createSlice({
 
         state.assignedLeads.error =
           action.payload || "Failed to fetch assigned leads";
+      })
+      //
+      // Cities by Zone
+      //
+      .addCase(fetchCitiesByZone.pending, (state) => {
+        state.citiesByZone.loading = true;
+        state.citiesByZone.error = null;
+      })
+
+      .addCase(fetchCitiesByZone.fulfilled, (state, action) => {
+        state.citiesByZone.loading = false;
+        state.citiesByZone.cities = action.payload;
+      })
+
+      .addCase(fetchCitiesByZone.rejected, (state, action) => {
+        state.citiesByZone.loading = false;
+        state.citiesByZone.error = action.payload || "Failed to fetch cities";
       });
   },
 });

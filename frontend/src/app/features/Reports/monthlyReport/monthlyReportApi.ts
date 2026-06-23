@@ -125,6 +125,7 @@ export interface MonthlyReportTwoResponse {
   year: number;
   data: MonthlyReportTwoRecord[];
 }
+
 // ─── Error Handler ───────────────────────────────────────────────────
 
 const handleAxiosError = (error: any, context: string): never => {
@@ -161,8 +162,6 @@ export const getMonthlyEnquiryApi = async (
       { params: { year }, timeout: 10000 },
     );
 
-    // Backend structure:
-    // response.data = { statusCode, success, message, data: { year, data: [...] } }
     const res = response.data;
     const payload = res.data;
 

@@ -55,6 +55,15 @@ export interface AssignedLeadsResponse {
   monthlyStats: MonthlyStats[];
   zoneAdvisors: ZoneAdvisor[]; // ✅ fixed
 }
+export interface City {
+  id: number;
+  city_name: string;
+}
+
+export interface CityByZoneResponse {
+  success: boolean;
+  data: City[];
+}
 
 export interface SwapLeadsResponse {
   success: boolean;
@@ -191,7 +200,6 @@ export const getMyAssignedLeadsApi = async (
       params.append("liveorexpiry", filters.liveorexpiry); // ✅
     }
 
-   
     const response = await axiosInstance.get(
       `/assign/myleads?${params.toString()}`,
     );
@@ -301,11 +309,28 @@ export const getPresalesLeadStatusCountApi = async () => {
       `/assign/leads/status-count-by-presales`,
     );
 
-    const data = response?.data?.data;
+   const data = response?.data?.data;
     if (!data) throw new Error("Invalid response from server");
-
+ 
     return data;
   } catch (error: any) {
+    throw new Error(error?.response?.data?.message || error.message);
+  }
+};
+export const getCityByZoneIdApi = async (
+  zoneId: number,
+): Promise<CityByZoneResponse> => {
+  try {
+    const response = await axiosInstance.get("/assign/cities-by-zone", {
+      params: { zoneId },
+      timeout: 10000,
+    });
+
+     const data = response?.data?.data;
+    if (!data) throw new Error("Invalid response from server");
+
+   return data
+  } catch (error) {
     throw new Error(error?.response?.data?.message || error.message);
   }
 };

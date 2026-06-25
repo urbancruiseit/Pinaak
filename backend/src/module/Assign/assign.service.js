@@ -2,6 +2,7 @@ import { hrmsPool } from "../../config/mySqlDB.js";
 
 export const findZoneCityRegion = async (req) => {
   const roleName = req.user.role_name?.toLowerCase();
+  const sub_department = req.user.subDepartment_name?.toLowerCase();
 
   let result = {
     advisorId: null,
@@ -10,19 +11,60 @@ export const findZoneCityRegion = async (req) => {
     cityIds: [],
     accessDenied: false,
   };
+  if (sub_department === "pre-sales") {
+    if (roleName === "pre-sales executive") {
+      let cityIds = req.user.city_ids || [];
+      const paramCityId = req.query.cityId
+        ? parseInt(req.query.cityId, 10)
+        : null;
 
-  if (roleName === "travel advisor") {
+      if (paramCityId) {
+        cityIds = [paramCityId];
+      }
+
+      result.cityIds = cityIds;
+
+      return result;
+    }
+  } else if (roleName === "travel advisor") {
     result.advisorId = req.user.id;
-    return result;
-  }
 
-  if (roleName === "city manager") {
-    const zoneIds = req.user.zone_ids;
+    const paramCityId = req.query.cityId
+      ? parseInt(req.query.cityId, 10)
+      : null;
+
+    if (paramCityId) {
+      result.cityIds = [paramCityId];
+    }
+
+    return result;
+  } else if (roleName === "city manager") {
+    // Default: user ke assigned zones
+    let zoneIds = req.user.zone_ids;
+
+    // Frontend se zone filter
+    const paramZoneId = req.query.zoneId
+      ? parseInt(req.query.zoneId, 10)
+      : null;
+
+    if (paramZoneId) {
+      const allowedZones = Array.isArray(req.user.zone_ids)
+        ? req.user.zone_ids
+        : [req.user.zone_ids];
+
+      // User ke assigned zone ke bahar ka zone access na ho
+      if (!allowedZones.includes(paramZoneId)) {
+        result.accessDenied = true;
+        return result;
+      }
+
+      zoneIds = [paramZoneId];
+    }
 
     const { zoneAdvisorIds, zoneAdvisors } =
       await findAdvisorsByZoneIds(zoneIds);
 
-    // Assigned zones ki saari cities
+    // Zone ki cities
     let cityIds = await findCitiesByZoneId(zoneIds);
 
     // Frontend se city filter
@@ -34,11 +76,15 @@ export const findZoneCityRegion = async (req) => {
       cityIds = [paramCityId];
     }
 
+    result.zoneIds = zoneIds;
     result.zoneAdvisorIds = zoneAdvisorIds;
     result.zoneAdvisors = zoneAdvisors;
     result.cityIds = cityIds;
+
+    // Default sab advisors
     result.advisorId = zoneAdvisorIds;
 
+    // Frontend se advisor filter
     const paramAdvisorId = req.query.advisorId
       ? parseInt(req.query.advisorId, 10)
       : null;
@@ -54,24 +100,23 @@ export const findZoneCityRegion = async (req) => {
 
     return result;
   }
-
   return result;
 };
+
 export const findCitiesByZoneId = async (zoneIds) => {
   try {
     const ids = Array.isArray(zoneIds) ? zoneIds : [zoneIds];
 
     const [rows] = await hrmsPool.query(
-      `SELECT * FROM city WHERE zone_id IN (?)`,
+      `SELECT id FROM city WHERE zone_id IN (?)`,
       [ids],
     );
 
-    return rows;
+    return rows.map((row) => row.id);
   } catch (error) {
     throw error;
   }
 };
-// models/accessControl.model.js (ya jaha aap models rakhte ho)
 
 export const findAdvisorsByZoneIds = async (zoneIds) => {
   try {

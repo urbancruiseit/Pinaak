@@ -7,6 +7,7 @@ import Image from "next/image";
 import { Eye, X, ChevronDown } from "lucide-react";
 
 import employeeDistb from "../../../../assets/leaddstbimage.png";
+import { AllRegionZoneCityFilter } from "@/app/components/ui/AllRegionZoneCityFilter";
 
 const monthsList = [
   { name: "Jan", num: 1 },
@@ -38,13 +39,31 @@ export default function DailyLeadReport() {
 
   const [selectedMonthNum, setSelectedMonthNum] = useState(currentMonth);
   const [year, setYear] = useState(currentYear);
-
+  const [selectedRegion, setSelectedRegion] = useState("");
+  const [selectedZone, setSelectedZone] = useState("");
+  const [selectedCity, setSelectedCity] = useState("");
   const dispatch = useDispatch<AppDispatch>();
   const { distribution } = useSelector((state: RootState) => state.report);
+  console.log(" distribution ", distribution);
   const [showImageModal, setShowImageModal] = useState(false);
   useEffect(() => {
-    dispatch(fetchLeadDistribution({ month: selectedMonthNum, year }));
-  }, [selectedMonthNum, year, dispatch]);
+    dispatch(
+      fetchLeadDistribution({
+        month: selectedMonthNum,
+        year,
+        regionId: selectedRegion || undefined,
+        zoneId: selectedZone || undefined,
+        cityId: selectedCity || undefined,
+      }),
+    );
+  }, [
+    selectedMonthNum,
+    year,
+    selectedRegion,
+    selectedZone,
+    selectedCity,
+    dispatch,
+  ]);
 
   // API se data
   const apiData = distribution?.data ?? [];
@@ -110,6 +129,18 @@ export default function DailyLeadReport() {
             >
               <Eye className="w-6 h-6 text-orange-600" />
             </button>
+            <AllRegionZoneCityFilter
+              selectedRegion={selectedRegion}
+              selectedZone={selectedZone}
+              selectedCity={selectedCity}
+              selectedYear={year}
+              onRegionChange={setSelectedRegion}
+              onZoneChange={setSelectedZone}
+              onCityChange={setSelectedCity}
+              onYearChange={setYear}
+              layout="row"
+            />
+
             {/* Month Select */}
             <div className="relative">
               <select

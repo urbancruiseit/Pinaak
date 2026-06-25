@@ -133,18 +133,23 @@ export const getPreSalesLeadAssignmentReport = async (cityIds, month, year) => {
   // Step 3 — Har adviser ko date-wise kitne leads aaye
   const [leadRows] = await pool.execute(
     `SELECT 
-       l.advisor_id,
-       DAY(l.enquiryTime)                                   AS day,
-       COUNT(l.id)                                          AS total_leads,
-       SUM(CASE WHEN l.status = 'Book' THEN 1 ELSE 0 END)  AS booked_leads
-     FROM leads l
-     WHERE 
-       MONTH(l.enquiryTime) = ?
-       AND YEAR(l.enquiryTime) = ?
-       AND l.advisor_id IN (${advisorPlaceholders})
-     GROUP BY l.advisor_id, DAY(l.enquiryTime)
-     ORDER BY l.advisor_id ASC, DAY(l.enquiryTime) ASC`,
-    [month, year, ...advisorIds],
+      l.advisor_id,
+      DAY(l.enquiryTime) AS day,
+      COUNT(l.id) AS total_leads,
+      SUM(CASE WHEN l.status = 'Book' THEN 1 ELSE 0 END) AS booked_leads
+   FROM leads l
+   WHERE 
+      MONTH(l.enquiryTime) = ?
+      AND YEAR(l.enquiryTime) = ?
+      AND l.advisor_id IN (${advisorPlaceholders})
+      AND l.city_id IN (${cityPlaceholders})
+   GROUP BY 
+      l.advisor_id,
+      DAY(l.enquiryTime)
+   ORDER BY 
+      l.advisor_id ASC,
+      DAY(l.enquiryTime) ASC`,
+    [month, year, ...advisorIds, ...cityIds],
   );
 
   // Step 4 — Har adviser ka base structure
@@ -217,6 +222,7 @@ export const getPreSalesLeadAssignmentReport = async (cityIds, month, year) => {
         data.reduce((s, a) => s + (Number(a.days[i].booked) || 0), 0) || "-",
     })),
   };
+
   return {
     success: true,
     month,
@@ -239,11 +245,19 @@ export const getMonthlyStatusWiseReport = async (
   let advisors = [];
 
   if (advisorId) {
-    // ✅ Travel Advisor — sirf khud ka
+    const advisorIds = Array.isArray(advisorId) ? advisorId : [advisorId];
+
+    const placeholders = advisorIds.map(() => "?").join(",");
+
     const [rows] = await hrmsPool.execute(
-      `SELECT id, CONCAT_WS(' ', aliasName) AS adviser_name FROM users WHERE id = ?`,
-      [advisorId],
+      `SELECT 
+        id,
+        CONCAT_WS(' ', aliasName) AS adviser_name
+     FROM users
+     WHERE id IN (${placeholders})`,
+      advisorIds,
     );
+
     advisors = rows;
   } else {
     // ✅ Manager/Others — city wise advisors
@@ -274,22 +288,33 @@ export const getMonthlyStatusWiseReport = async (
 
   const advisorIds = advisors.map((a) => a.id);
   const advisorPlaceholders = advisorIds.map(() => "?").join(",");
-
+  const cityPlaceholders = cityIds.map(() => "?").join(",");
   // ---------------- STATUS WISE LEADS ----------------
-  const [rows] = await pool.execute(
-    `SELECT 
-        l.advisor_id,
-        l.status,
-        COUNT(l.id) AS total
-     FROM leads l
-     WHERE 
-        MONTH(l.pickupDateTime) = ?
-        AND YEAR(l.pickupDateTime) = ?
-        AND l.advisor_id IN (${advisorPlaceholders})
-     GROUP BY l.advisor_id, l.status`,
-    [month, year, ...advisorIds],
-  );
+  let whereCity = "";
+  let params = [month, year, ...advisorIds];
 
+  if (cityIds && cityIds.length > 0) {
+    const cityPlaceholders = cityIds.map(() => "?").join(",");
+    whereCity = `AND l.city_id IN (${cityPlaceholders})`;
+    params.push(...cityIds);
+  }
+
+  const [rows] = await pool.execute(
+    `SELECT
+      l.advisor_id,
+      l.status,
+      COUNT(l.id) AS total
+   FROM leads l
+   WHERE
+      MONTH(l.pickupDateTime) = ?
+      AND YEAR(l.pickupDateTime) = ?
+      AND l.advisor_id IN (${advisorPlaceholders})
+      ${whereCity}
+   GROUP BY
+      l.advisor_id,
+      l.status`,
+    params,
+  );
   // ---------------- STRUCTURE ----------------
   const map = {};
   advisors.forEach((a) => {
@@ -427,22 +452,23 @@ export const getMonthlyDateWiseStatusReport = async (cityIds, month, year) => {
   // ---------------- DATE + STATUS + ADVISOR QUERY ----------------
   const [rows] = await pool.execute(
     `SELECT
-        l.advisor_id,
-        DAY(l.enquiryTime) AS day,
-        l.status,
-        COUNT(l.id) AS total
-     FROM leads l
-     WHERE MONTH(l.enquiryTime) = ?
-       AND YEAR(l.enquiryTime) = ?
-       AND l.advisor_id IN (${advisorPlaceholders})
-     GROUP BY
-       l.advisor_id,
-       DAY(l.enquiryTime),
-       l.status
-     ORDER BY
-       l.advisor_id ASC,
-       DAY(l.enquiryTime) ASC`,
-    [month, year, ...advisorIds],
+      l.advisor_id,
+      DAY(l.enquiryTime) AS day,
+      l.status,
+      COUNT(l.id) AS total
+   FROM leads l
+   WHERE MONTH(l.enquiryTime) = ?
+     AND YEAR(l.enquiryTime) = ?
+     AND l.advisor_id IN (${advisorPlaceholders})
+     AND l.city_id IN (${cityPlaceholders})
+   GROUP BY
+     l.advisor_id,
+     DAY(l.enquiryTime),
+     l.status
+   ORDER BY
+     l.advisor_id ASC,
+     DAY(l.enquiryTime) ASC`,
+    [month, year, ...advisorIds, ...cityIds],
   );
 
   // ---------------- CREATE ADVISOR STRUCTURE ----------------

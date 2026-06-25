@@ -16,6 +16,7 @@ import {
   Users,
   Filter,
 } from "lucide-react";
+import { AllRegionZoneCityFilter } from "@/app/components/ui/AllRegionZoneCityFilter";
 
 const MONTH_MAP = {
   APR: 4,
@@ -52,6 +53,9 @@ const AVAILABLE_YEARS = ["2023", "2024", "2025", "2026", "2027", "2028"];
 const Empreport = () => {
   const dispatch = useDispatch<AppDispatch>();
   const [selectedYear, setSelectedYear] = useState("2026");
+  const [selectedRegion, setSelectedRegion] = useState("");
+  const [selectedZone, setSelectedZone] = useState("");
+  const [selectedCity, setSelectedCity] = useState("");
   const [ALL_MONTHSData, setALL_MONTHSData] = useState<Record<string, any[]>>(
     {},
   );
@@ -143,6 +147,9 @@ const Empreport = () => {
               fetchStatusWiseReport({
                 month: MONTH_MAP[month as keyof typeof MONTH_MAP],
                 year: Number(selectedYear),
+                regionId: selectedRegion || undefined,
+                zoneId: selectedZone || undefined,
+                cityId: selectedCity || undefined,
               }),
             ).unwrap();
             return { month, data: result?.data || [] };
@@ -164,7 +171,7 @@ const Empreport = () => {
       }
     };
     fetchALL_MONTHSData();
-  }, [selectedYear, dispatch]);
+  }, [selectedYear, selectedRegion, selectedZone, selectedCity, dispatch]);
 
   useEffect(() => {
     if (!Object.keys(ALL_MONTHSData).length) return;
@@ -281,6 +288,20 @@ const Empreport = () => {
               📊 Employee Performance TS – {selectedYear}
             </h2>
             <div className="flex items-center gap-3">
+              <AllRegionZoneCityFilter
+                selectedRegion={selectedRegion}
+                selectedZone={selectedZone}
+                selectedCity={selectedCity}
+                selectedYear={selectedYear}
+                onRegionChange={setSelectedRegion}
+                onZoneChange={setSelectedZone}
+                onCityChange={setSelectedCity}
+                onYearChange={(y: string) => {
+                  setSelectedYear(y);
+                  setExpandedCard(null);
+                }}
+                layout="row"
+              />
               {/* Eye Button */}
               <button
                 onClick={() => setShowImageModal(true)}
@@ -291,28 +312,6 @@ const Empreport = () => {
               </button>
 
               {/* Year Select */}
-              <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-slate-200 shadow-sm">
-                <Filter className="w-4 h-4 text-slate-500" />
-                <label
-                  htmlFor="yearSelect"
-                  className="text-sm font-medium text-slate-700"
-                >
-                  Select Year:
-                </label>
-                <select
-                  id="yearSelect"
-                  value={selectedYear}
-                  onChange={handleYearChange}
-                  className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm font-medium text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-orange-500 cursor-pointer hover:bg-slate-50 transition-colors"
-                  disabled={loading}
-                >
-                  {AVAILABLE_YEARS.map((year) => (
-                    <option key={year} value={year}>
-                      {year}
-                    </option>
-                  ))}
-                </select>
-              </div>
             </div>
           </div>
         </div>
@@ -332,7 +331,7 @@ const Empreport = () => {
                 <h3 className="text-lg font-bold text-orange-700">
                   Employee Performance TS – {selectedYear}
                 </h3>
-              <button
+                <button
                   onClick={() => setShowImageModal(false)}
                   className="w-10 h-10 flex items-center justify-center rounded-full bg-[#EE0000] hover:bg-red-700 transition-colors"
                 >

@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { fetchLongWeekendReport } from "../../../../features/Reports/monthlyReport/monthlyReportSlice";
 import { useAppDispatch, useAppSelector } from "@/hooks/useRedux";
+import { AllRegionZoneCityFilter } from "@/app/components/ui/AllRegionZoneCityFilter";
 
 const MONTHS: { label: string; month: number }[] = [
   { label: "APR", month: 4 },
@@ -27,18 +28,24 @@ export default function LongWeekendReport() {
   const dispatch = useAppDispatch();
   const currentYear = new Date().getFullYear();
   const [year, setYear] = useState<string>(currentYear.toString());
+  const [selectedRegion, setSelectedRegion] = useState("");
+  const [selectedZone, setSelectedZone] = useState("");
+  const [selectedCity, setSelectedCity] = useState("");
 
   const { data, loading, error } = useAppSelector(
     (state) => state.report.longWeekend,
   );
 
   useEffect(() => {
-    dispatch(fetchLongWeekendReport(Number(year)));
-  }, [dispatch, year]);
-
-  const handleYearChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setYear(e.target.value);
-  };
+    dispatch(
+      fetchLongWeekendReport({
+        year: Number(year),
+        regionId: selectedRegion,
+        zoneId: selectedZone,
+        cityId: selectedCity,
+      }),
+    );
+  }, [dispatch, year, selectedRegion, selectedZone, selectedCity]);
 
   const dataMap = (data ?? []).reduce<DataMap>((acc, row) => {
     if (!acc[row.month]) acc[row.month] = {};
@@ -122,17 +129,17 @@ export default function LongWeekendReport() {
             🏖️ Long Weekend Report – {year}
           </h2>
 
-          <select
-            value={year}
-            onChange={handleYearChange}
-            className="border border-gray-600 p-2 rounded bg-white shadow-sm"
-          >
-            {["2024", "2025", "2026", "2027"].map((yr) => (
-              <option key={yr} value={yr}>
-                {yr}
-              </option>
-            ))}
-          </select>
+          <AllRegionZoneCityFilter
+            selectedRegion={selectedRegion}
+            selectedZone={selectedZone}
+            selectedCity={selectedCity}
+            selectedYear={year}
+            onRegionChange={setSelectedRegion}
+            onZoneChange={setSelectedZone}
+            onCityChange={setSelectedCity}
+            onYearChange={setYear}
+            layout="row"
+          />
         </div>
       </div>
 

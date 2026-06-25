@@ -590,10 +590,41 @@ END AS liveorexpiry,
     return name.trim() || null;
   };
 
+  // Fetch city names from hrmsPool using city_id present in leads
+  const leadCityIds = leads
+    .map((l) => l.city_id)
+    .filter((id) => id !== null && id !== undefined);
+
+  const uniqueCityIds = [...new Set(leadCityIds)];
+  let cityMap = {};
+
+  if (uniqueCityIds.length > 0) {
+    try {
+      const placeholders = uniqueCityIds.map(() => "?").join(",");
+      const [cities] = await hrmsPool.query(
+        `SELECT id, city_name
+         FROM city
+         WHERE id IN (${placeholders})`,
+        uniqueCityIds,
+      );
+      cities.forEach((c) => {
+        cityMap[c.id] = c.city_name;
+      });
+    } catch (err) {
+      console.error("hrmsPool city fetch failed:", err.message);
+    }
+  }
+
+  const getCityName = (cityId) => {
+    if (cityId === null || cityId === undefined) return null;
+    return cityMap[cityId] || null;
+  };
+
   const leadsWithNames = leads.map((lead) => ({
     ...lead,
     advisorFullName: getName(lead.advisor_id, "advisor"),
     presalesFullName: getName(lead.presales_id, "presales"),
+    cityName: getCityName(lead.city_id),
   }));
 
   return {

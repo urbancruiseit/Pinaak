@@ -131,11 +131,23 @@ const initialState: MonthlyEnquiryState = {
 
 export const fetchMonthlyEnquiry = createAsyncThunk(
   "report/fetchMonthlyEnquiry",
-  async (year: number, { rejectWithValue }) => {
+  async (
+    params: {
+      year: number;
+      regionId?: string;
+      zoneId?: string;
+      cityId?: string;
+    },
+    { rejectWithValue },
+  ) => {
     try {
-      return await getMonthlyEnquiryApi(year);
+      const { year, regionId, zoneId, cityId } = params;
+      const result = await getMonthlyEnquiryApi(year, regionId, zoneId, cityId);
+      return result;
     } catch (error: any) {
-      return rejectWithValue(error.message);
+      return rejectWithValue(
+        error?.message ?? "Failed to fetch monthly enquiry",
+      );
     }
   },
 );
@@ -154,7 +166,13 @@ export const fetchLeadDistribution = createAsyncThunk(
 export const fetchStatusWiseReport = createAsyncThunk(
   "report/fetchStatusWiseReport",
   async (
-    params: { month?: number; year?: number } = {},
+    params: {
+      month?: number;
+      year?: number;
+      regionId?: string;
+      zoneId?: string;
+      cityId?: string;
+    } = {},
     { rejectWithValue },
   ) => {
     try {
@@ -164,7 +182,6 @@ export const fetchStatusWiseReport = createAsyncThunk(
     }
   },
 );
-
 export const fetchTimeEnquiry = createAsyncThunk(
   "report/fetchTimeEnquiry",
   async (year: number, { rejectWithValue }) => {
@@ -175,11 +192,16 @@ export const fetchTimeEnquiry = createAsyncThunk(
     }
   },
 );
-
 export const fetchStatusWiseDateReport = createAsyncThunk(
   "report/fetchStatusWiseDateReport",
   async (
-    params: { month?: number; year?: number } = {},
+    params: {
+      month?: number;
+      year?: number;
+      regionId?: string | number;
+      zoneId?: string | number;
+      cityId?: string | number;
+    } = {},
     { rejectWithValue },
   ) => {
     try {
@@ -192,9 +214,17 @@ export const fetchStatusWiseDateReport = createAsyncThunk(
 
 export const fetchLongWeekendReport = createAsyncThunk(
   "report/fetchLongWeekendReport",
-  async (year: number, { rejectWithValue }) => {
+  async (
+    params: {
+      year?: number;
+      regionId?: string | number;
+      zoneId?: string | number;
+      cityId?: string | number;
+    },
+    { rejectWithValue },
+  ) => {
     try {
-      return await getLongWeekendReportApi(year);
+      return await getLongWeekendReportApi(params);
     } catch (error: any) {
       return rejectWithValue(error.message);
     }
@@ -203,7 +233,15 @@ export const fetchLongWeekendReport = createAsyncThunk(
 
 export const fetchMonthlyReportTwo = createAsyncThunk(
   "report/fetchMonthlyReportTwo",
-  async (params: MonthlyReportTwoParams = {}, { rejectWithValue }) => {
+  async (
+    params: {
+      year?: number;
+      regionId?: string | number;
+      zoneId?: string | number;
+      cityId?: string | number;
+    },
+    { rejectWithValue },
+  ) => {
     try {
       return await getMonthlyReportTwoApi(params);
     } catch (error: any) {

@@ -127,7 +127,7 @@ export default function LeadsTable() {
     selectedStatus: reduxStatus,
     statusCounts,
   } = useSelector((state: RootState) => state.lead);
-
+  console.log("leads ", leads);
   const { currentUser } = useSelector((state: RootState) => state.user);
 
   // ✅ FIX 1: ageFilter + liveorexpiryFilter dependency array mein add kiye

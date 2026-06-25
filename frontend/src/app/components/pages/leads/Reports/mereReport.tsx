@@ -111,8 +111,15 @@ export default function MonthlyEnquiryReport() {
   } = useSelector((s: RootState) => s.report);
 
   useEffect(() => {
-    dispatch(fetchMonthlyEnquiry(Number(year)));
-  }, [year, dispatch]);
+    dispatch(
+      fetchMonthlyEnquiry({
+        year: Number(year),
+        regionId: selectedRegion || undefined,
+        zoneId: selectedZone || undefined,
+        cityId: selectedCity || undefined,
+      }),
+    );
+  }, [year, selectedRegion, selectedZone, selectedCity, dispatch]);
 
   const reportData = useMemo(() => {
     const monthsData = getMonthsData(Number(year));

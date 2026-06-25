@@ -13,6 +13,7 @@ import { ApiResponse } from "../../utils/ApiResponse.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { hrmsPool } from "../../config/mySqlDB.js";
 import { getCityIdsByZoneIds } from "./report.service.js";
+import { findZoneCityRegion } from "../Assign/assign.service.js";
 
 export const monthlyEnquiryReport = asyncHandler(async (req, res) => {
   const year = req.query.year ? parseInt(req.query.year) : null;
@@ -20,18 +21,12 @@ export const monthlyEnquiryReport = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Invalid year parameter");
   }
 
-  let cityIds = req.user?.city_ids || [];
+  const { cityIds: scopedCityIds } = await findZoneCityRegion(req);
 
-  const isCityManager = req.user?.role_name === "City Manager";
-  const isTeleSales = req.user?.subDepartment_name === "Tele-Sales";
-
-  if (isCityManager && isTeleSales) {
-    const zoneIds = req.user?.zone_ids || [];
-    cityIds = await getCityIdsByZoneIds(zoneIds);
-  }
+  const cityIds =
+    scopedCityIds?.length > 0 ? scopedCityIds : req.user?.city_ids || [];
 
   const data = await getMonthlyEnquiry(year, cityIds);
-
   return res
     .status(200)
     .json(
@@ -43,55 +38,11 @@ export const monthlyEnquiryReport = asyncHandler(async (req, res) => {
     );
 });
 
-export const getLeadCountByDateForYearController = asyncHandler(
-  async (req, res) => {
-    const { year } = req.query;
-
-    const result = await getLeadCountByDateForYear(
-      year ? parseInt(year) : undefined,
-    );
-
-    res
-      .status(200)
-      .json(new ApiResponse(200, result, "Lead count fetched successfully"));
-  },
-);
-
 export const getLeadCountByAdviserForMonthController = asyncHandler(
   async (req, res) => {
     const { month, year } = req.query;
-    const preSalesUser = req.user;
 
-    let cityIds = [];
-
-    if (
-      preSalesUser.subDepartment === "Tele-Sales" &&
-      preSalesUser.role === "City Manager" // ✅ FIXED
-    ) {
-      const zoneIds = preSalesUser.zone_ids ?? [];
-
-      if (zoneIds.length === 0) {
-        return res
-          .status(400)
-          .json(new ApiResponse(400, null, "Zone IDs not found for this user"));
-      }
-
-      const placeholders = zoneIds.map(() => "?").join(",");
-      const [cities] = await hrmsPool.query(
-        `SELECT id FROM city WHERE zone_id IN (${placeholders})`,
-        zoneIds,
-      );
-
-      cityIds = cities.map((c) => c.id);
-
-      if (cityIds.length === 0) {
-        return res
-          .status(200)
-          .json(new ApiResponse(200, [], "No cities found in these zones"));
-      }
-    } else {
-      cityIds = preSalesUser.city_ids ?? [];
-    }
+    const { cityIds } = await findZoneCityRegion(req);
 
     const data = await getPreSalesLeadAssignmentReport(
       cityIds,
@@ -106,49 +57,15 @@ export const getLeadCountByAdviserForMonthController = asyncHandler(
 export const getMonthlyStatusWiseReportController = asyncHandler(
   async (req, res) => {
     const { month, year } = req.query;
-    const user = req.user;
 
-    let cityIds = [];
-    let advisorId = null; // ✅ add kiya
-
-    // ---------------- CITY FILTER ----------------
-    if (user.role === "Travel Advisor") {
-      // ✅ sirf khud ka data
-      advisorId = user.id;
-    } else if (
-      user.subDepartment === "Tele-Sales" &&
-      user.role === "City Manager"
-    ) {
-      const zoneIds = user.zone_ids ?? [];
-
-      if (!zoneIds.length) {
-        return res
-          .status(400)
-          .json(new ApiResponse(400, null, "Zone IDs not found"));
-      }
-
-      const placeholders = zoneIds.map(() => "?").join(",");
-      const [cities] = await hrmsPool.query(
-        `SELECT id FROM city WHERE zone_id IN (${placeholders})`,
-        zoneIds,
-      );
-
-      cityIds = cities.map((c) => c.id);
-
-      if (!cityIds.length) {
-        return res
-          .status(200)
-          .json(new ApiResponse(200, [], "No cities found"));
-      }
-    } else {
-      cityIds = user.city_ids ?? [];
-    }
+    const { advisorId: scopeAdvisorId = null, cityIds = [] } =
+      await findZoneCityRegion(req);
 
     const result = await getMonthlyStatusWiseReport(
       cityIds,
       month ? Number(month) : undefined,
       year ? Number(year) : undefined,
-      advisorId, // ✅ pass kiya
+      scopeAdvisorId,
     );
 
     return res.status(200).json(new ApiResponse(200, result, "Success"));
@@ -187,32 +104,8 @@ export const timeEnquiryReport = async (req, res) => {
 export const getMonthlyDateWiseStatusReportController = asyncHandler(
   async (req, res) => {
     const { month, year } = req.query;
-    const user = req.user;
 
-    let cityIds = [];
-
-    if (user.subDepartment === "Tele-Sales" && user.role === "City Manager") {
-      const zoneIds = user.zone_ids ?? [];
-
-      if (!zoneIds.length) {
-        return res.status(400).json({
-          message: "Zone IDs not found",
-        });
-      }
-
-      const placeholders = zoneIds.map(() => "?").join(",");
-
-      const [cities] = await hrmsPool.query(
-        `SELECT id 
-         FROM city 
-         WHERE zone_id IN (${placeholders})`,
-        zoneIds,
-      );
-
-      cityIds = cities.map((c) => c.id);
-    } else {
-      cityIds = user.city_ids ?? [];
-    }
+    const { cityIds } = await findZoneCityRegion(req);
 
     const result = await getMonthlyDateWiseStatusReport(
       cityIds,
@@ -235,18 +128,7 @@ export const longWeekendReport = asyncHandler(async (req, res) => {
   if (isNaN(year) || year < 2000 || year > 2100) {
     throw new ApiError(400, "Invalid year parameter");
   }
-
-  const isCityManager = req.user?.role_name === "City Manager";
-  const isTeleSales = req.user?.subDepartment_name === "Tele-Sales";
-
-  let cityIds;
-
-  if (isCityManager && isTeleSales) {
-    const zoneIds = req.user?.zone_ids || [];
-    cityIds = await getCityIdsByZoneIds(zoneIds);
-  } else {
-    cityIds = req.user?.city_ids || [];
-  }
+  const { cityIds } = await findZoneCityRegion(req);
 
   const data = await getLongWeekendReport(year, cityIds);
 
@@ -268,18 +150,7 @@ export const monthlyreporttwo = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Invalid year parameter");
   }
 
-  const isCityManager = req.user?.role_name === "City Manager";
-  const isTeleSales = req.user?.subDepartment_name === "Tele-Sales";
-
-  let cityIds;
-
-  if (isCityManager && isTeleSales) {
-    const zoneIds = req.user?.zone_ids || [];
-
-    cityIds = await getCityIdsByZoneIds(zoneIds);
-  } else {
-    cityIds = req.user?.city_ids || [];
-  }
+  const { cityIds } = await findZoneCityRegion(req);
 
   const data = await getMonthlyReportTwo(year, cityIds);
 

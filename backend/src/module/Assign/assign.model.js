@@ -81,7 +81,6 @@ export const getLeadsByAdvisorId = async (
     let whereClause = `WHERE (l.unwanted_status IS NULL OR l.unwanted_status != 'unwanted')`;
     let values = [];
 
-    // ── Advisor filter ────────────────────────────────────────────────────
     if (Array.isArray(advisorId)) {
       if (advisorId.length > 0) {
         const placeholders = advisorId.map(() => "?").join(",");
@@ -102,10 +101,6 @@ export const getLeadsByAdvisorId = async (
         case "0-5":
           whereClause += ` AND DATEDIFF(CURDATE(), l.date) BETWEEN 0 AND 5`;
           break;
-
-        case "6-10":
-          whereClause += ` AND DATEDIFF(CURDATE(), l.date) BETWEEN 6 AND 10`;
-          break;
         case "6-10":
           whereClause += ` AND DATEDIFF(CURDATE(), l.date) BETWEEN 6 AND 10`;
           break;
@@ -118,7 +113,6 @@ export const getLeadsByAdvisorId = async (
         case "31-60":
           whereClause += ` AND DATEDIFF(CURDATE(), l.date) BETWEEN 31 AND 60`;
           break;
-
         case "60+":
           whereClause += ` AND DATEDIFF(CURDATE(), l.date) >= 60`;
           break;
@@ -146,11 +140,9 @@ export const getLeadsByAdvisorId = async (
         case "1-4":
           whereClause += ` AND l.passengerTotal BETWEEN 1 AND 4`;
           break;
-
         case "5-7":
           whereClause += ` AND l.passengerTotal BETWEEN 5 AND 7`;
           break;
-
         case "8-13":
           whereClause += ` AND l.passengerTotal BETWEEN 8 AND 13`;
           break;
@@ -169,14 +161,12 @@ export const getLeadsByAdvisorId = async (
         case "51-60":
           whereClause += ` AND l.passengerTotal BETWEEN 51 AND 60`;
           break;
-
         case "60+":
           whereClause += ` AND l.passengerTotal > 60`;
           break;
       }
     }
 
-    // ── Year filter ───────────────────────────────────────────────────────
     if (selectedMonth) {
       whereClause += ` AND MONTH(l.pickupDateTime) = ? AND YEAR(l.pickupDateTime) = ?`;
       values.push(selectedMonth, selectedYear);
@@ -185,14 +175,12 @@ export const getLeadsByAdvisorId = async (
       values.push(selectedYear);
     }
 
-    // ── City filter ───────────────────────────────────────────────────────
     if (cityIds && cityIds.length > 0) {
       const placeholders = cityIds.map(() => "?").join(",");
       whereClause += ` AND l.city_id IN (${placeholders})`;
       values.push(...cityIds);
     }
 
-    // ── Search filter ─────────────────────────────────────────────────────
     if (search && search.trim()) {
       const like = `%${search.trim()}%`;
       whereClause += ` AND (
@@ -204,13 +192,11 @@ export const getLeadsByAdvisorId = async (
       values.push(like, like, like, like);
     }
 
-    // ── Status filter ─────────────────────────────────────────────────────
     if (status && status.trim()) {
       whereClause += ` AND UPPER(l.status) = ?`;
       values.push(status.trim().toUpperCase());
     }
 
-    // ✅ Live/Expiry filter — YAHAN lagao
     if (liveorexpiry && liveorexpiry.trim() && liveorexpiry !== "All") {
       if (liveorexpiry.trim().toUpperCase() === "LIVE") {
         whereClause += ` AND l.pickupDateTime > NOW()`;
@@ -219,7 +205,6 @@ export const getLeadsByAdvisorId = async (
       }
     }
 
-    // ── Main query ────────────────────────────────────────────────────────
     const query = `
       SELECT 
         l.*,
@@ -265,10 +250,8 @@ END AS liveorexpiry,
     `;
     const [countResult] = await pool.query(countQuery, values);
 
-    // ── Status wise count — status filter ke bina (pure counts) ──────────
     const statusList = ["NEW", "RFQ", "KYC", "HOT", "VEH-N", "LOST", "BOOK"];
 
-    // ✅ statusCounts hamesha bina status filter ke aayega
     const statusCountWhereClause =
       status && status.trim()
         ? whereClause.replace(` AND UPPER(l.status) = ?`, "")
@@ -298,7 +281,6 @@ END AS liveorexpiry,
 
     const totalLeads = Object.values(statusCounts).reduce((a, b) => a + b, 0);
 
-    // ── Monthly stats ─────────────────────────────────────────────────────
     let monthlyStatsWhereClause = `WHERE pickupDateTime IS NOT NULL
       AND (unwanted_status IS NULL OR unwanted_status != 'unwanted')`;
     let monthlyStatsValues = [];
@@ -336,7 +318,6 @@ END AS liveorexpiry,
       monthlyStatsValues,
     );
 
-    // ── Advisor + Presales names ──────────────────────────────────────────
     const advisorIds = leads
       .map((l) => l.advisor_id)
       .filter((id) => id != null);
@@ -369,10 +350,38 @@ END AS liveorexpiry,
       return `${first} `.trim() || null;
     };
 
+    // ── City names ─────────────────────────────────────────────────────────
+    const leadCityIds = leads
+      .map((l) => l.city_id)
+      .filter((id) => id !== null && id !== undefined);
+    const uniqueCityIds = [...new Set(leadCityIds)];
+    let cityMap = {};
+
+    if (uniqueCityIds.length > 0) {
+      try {
+        const placeholders = uniqueCityIds.map(() => "?").join(",");
+        const [cities] = await hrmsPool.query(
+          `SELECT id, city_name FROM city WHERE id IN (${placeholders})`,
+          uniqueCityIds,
+        );
+        cities.forEach((c) => {
+          cityMap[c.id] = c.city_name;
+        });
+      } catch (err) {
+        console.error("hrmsPool city fetch failed:", err.message);
+      }
+    }
+
+    const getCityName = (cityId) => {
+      if (cityId === null || cityId === undefined) return null;
+      return cityMap[cityId] || null;
+    };
+
     const leadsWithNames = leads.map((lead) => ({
       ...lead,
       advisorFullName: getName(lead.advisor_id, "advisor"),
       presalesFullName: getName(lead.presales_id, "presales"),
+      cityName: getCityName(lead.city_id),
     }));
 
     return {
@@ -383,7 +392,7 @@ END AS liveorexpiry,
       hasNextPage: pageNumber < Math.ceil(countResult[0].total / limitNumber),
       selectedMonth,
       selectedYear,
-      selectedStatus: status ? status.trim().toUpperCase() : null, // ✅ add kiya
+      selectedStatus: status ? status.trim().toUpperCase() : null,
       statusCounts,
       totalLeads,
       monthlyStats,

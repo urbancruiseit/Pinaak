@@ -1,7 +1,6 @@
 import express from "express";
 import {
   getLeadCountByAdviserForMonthController,
-  getLeadCountByDateForYearController,
   getMonthlyDateWiseStatusReportController,
   getMonthlyStatusWiseReportController,
   longWeekendReport,
@@ -15,7 +14,7 @@ const router = express.Router();
 
 router.use(verifyJWT);
 router.get("/monthly-enquiry", monthlyEnquiryReport);
-router.get("/leads/count-by-date", getLeadCountByDateForYearController);
+
 router.get(
   "/adviser-report",
 

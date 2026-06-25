@@ -30,8 +30,6 @@ export interface LeadCountByDateResponse {
   data: LeadCountRecord[];
 }
 
-// ─── Lead Distribution Types ─────────────────────────────────────────
-
 export interface DayRecord {
   day: number;
   leads: number;
@@ -67,7 +65,10 @@ export interface LeadDistributionResponse {
 export interface LeadDistributionParams {
   month?: number;
   year?: number;
-  advisorId?: number | null;
+  advisorId?: string | number | null;
+  regionId?: string;
+  zoneId?: string;
+  cityId?: string;
 }
 
 export interface StatusWiseReportParams {
@@ -126,6 +127,14 @@ export interface MonthlyReportTwoResponse {
   data: MonthlyReportTwoRecord[];
 }
 
+export interface StatusWiseReportParams {
+  month?: number;
+  year?: number;
+  regionId?: string;
+  zoneId?: string;
+  cityId?: string;
+}
+
 // ─── Error Handler ───────────────────────────────────────────────────
 
 const handleAxiosError = (error: any, context: string): never => {
@@ -155,11 +164,22 @@ const handleAxiosError = (error: any, context: string): never => {
 // ─── APIs ────────────────────────────────────────────────────────────
 export const getMonthlyEnquiryApi = async (
   year: number,
+  regionId?: string,
+  zoneId?: string,
+  cityId?: string,
 ): Promise<MonthlyEnquiryResponse> => {
   try {
     const response = await axiosInstance.get<MonthlyEnquiryResponse>(
       "/reports/monthly-enquiry",
-      { params: { year }, timeout: 10000 },
+      {
+        params: {
+          year,
+          ...(regionId && { regionId }),
+          ...(zoneId && { zoneId }),
+          ...(cityId && { cityId }),
+        },
+        timeout: 10000,
+      },
     );
 
     const res = response.data;
@@ -216,6 +236,9 @@ export const getLeadDistributionApi = async (
         ...(params.year !== undefined && { year: params.year }),
         ...(params.advisorId !== undefined &&
           params.advisorId !== null && { advisorId: params.advisorId }),
+        ...(params.regionId && { regionId: params.regionId }),
+        ...(params.zoneId && { zoneId: params.zoneId }),
+        ...(params.cityId && { cityId: params.cityId }),
       },
       timeout: 15000,
     });
@@ -259,6 +282,9 @@ export const getStatusWiseReportApi = async (
       params: {
         ...(params.month !== undefined && { month: params.month }),
         ...(params.year !== undefined && { year: params.year }),
+        ...(params.regionId && { regionId: params.regionId }),
+        ...(params.zoneId && { zoneId: params.zoneId }),
+        ...(params.cityId && { cityId: params.cityId }),
       },
       timeout: 15000,
     });
@@ -334,11 +360,19 @@ export const getStatusWiseDateReportApi = async (params = {}) => {
   }
 };
 
-export const getLongWeekendReportApi = async (year: number) => {
+export const getLongWeekendReportApi = async (
+  params: {
+    year?: number;
+    regionId?: string | number;
+    zoneId?: string | number;
+    cityId?: string | number;
+  } = {},
+) => {
   try {
     const response = await axiosInstance.get("/reports/longweekend", {
-      params: { year },
+      params,
     });
+
     return response.data.data;
   } catch (error: any) {
     throw new Error(
@@ -347,11 +381,18 @@ export const getLongWeekendReportApi = async (year: number) => {
   }
 };
 
-// types पहले update करो
 export interface PickupMonthSummary {
   total: number;
   activeDays: number;
   avg: number;
+}
+export interface MonthlyReportTwoParams {
+  year?: number;
+  cityIds?: number[];
+
+  regionId?: string | number;
+  zoneId?: string | number;
+  cityId?: string | number;
 }
 
 export interface MonthlyReportTwoResponse {
@@ -373,25 +414,30 @@ export const getMonthlyReportTwoApi = async (
       data: {
         year: number | "all";
         data: {
-          // ✅ nested data
           rows: MonthlyReportTwoDayRecord[];
           pickupMonthSummary: Record<string, PickupMonthSummary>;
         };
       };
     }>("/reports/monthlyreporttwo", {
-      params,
+      params: {
+        year: params.year,
+        cityIds: params.cityIds,
+        regionId: params.regionId,
+        zoneId: params.zoneId,
+        cityId: params.cityId,
+      },
       timeout: 10000,
     });
 
     const res = response.data;
-    const payload = res.data; // { year, data: { rows, pickupMonthSummary } }
-    const innerData = payload.data; // { rows, pickupMonthSummary }
+    const payload = res.data;
+    const innerData = payload.data;
 
     return {
       success: res.success,
       year: payload.year ?? params.year ?? "all",
-      rows: Array.isArray(innerData?.rows) ? innerData.rows : [], // ✅
-      pickupMonthSummary: innerData?.pickupMonthSummary ?? {}, // ✅
+      rows: Array.isArray(innerData?.rows) ? innerData.rows : [],
+      pickupMonthSummary: innerData?.pickupMonthSummary ?? {},
       cityIds: Array.isArray(params.cityIds) ? params.cityIds : [],
     };
   } catch (error) {

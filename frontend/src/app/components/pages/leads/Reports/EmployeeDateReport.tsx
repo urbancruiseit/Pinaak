@@ -8,6 +8,7 @@ import { Loader2 } from "lucide-react";
 import Image from "next/image";
 import { Eye, X, ChevronDown } from "lucide-react";
 import employeeDate from "../../../../assets/empforstatus.png";
+import { AllRegionZoneCityFilter } from "@/app/components/ui/AllRegionZoneCityFilter";
 
 const MONTH_MAP: Record<string, number> = {
   JAN: 1,
@@ -77,6 +78,9 @@ const Empreport = () => {
   const [selectedYear, setSelectedYear] = useState(
     new Date().getFullYear().toString(),
   );
+  const [selectedRegion, setSelectedRegion] = useState("");
+  const [selectedZone, setSelectedZone] = useState("");
+  const [selectedCity, setSelectedCity] = useState("");
   const [selectedMonth, setSelectedMonth] = useState(
     ALL_MONTHS[new Date().getMonth()],
   );
@@ -89,14 +93,21 @@ const Empreport = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
+
         const result = await dispatch(
           fetchStatusWiseDateReport({
             month: MONTH_MAP[selectedMonth],
             year: Number(selectedYear),
+
+            // filters
+            regionId: selectedRegion || null,
+            zoneId: selectedZone || null,
+            cityId: selectedCity || null,
           }),
         ).unwrap();
 
         const safeEmployees = Array.isArray(result?.data) ? result.data : [];
+
         setEmployees(safeEmployees);
       } catch (err) {
         console.error("Date Report Error:", err);
@@ -107,7 +118,14 @@ const Empreport = () => {
     };
 
     fetchData();
-  }, [selectedMonth, selectedYear, dispatch]);
+  }, [
+    selectedMonth,
+    selectedYear,
+    selectedRegion,
+    selectedZone,
+    selectedCity,
+    dispatch,
+  ]);
 
   const daysInMonth = new Date(
     Number(selectedYear),
@@ -128,6 +146,17 @@ const Empreport = () => {
             </h2>
 
             <div className="flex items-center gap-3">
+              <AllRegionZoneCityFilter
+                selectedRegion={selectedRegion}
+                selectedZone={selectedZone}
+                selectedCity={selectedCity}
+                selectedYear={selectedYear}
+                onRegionChange={setSelectedRegion}
+                onZoneChange={setSelectedZone}
+                onCityChange={setSelectedCity}
+                onYearChange={setSelectedYear}
+                layout="row"
+              />
               <button
                 onClick={() => setShowImageModal(true)}
                 className="p-1 rounded-full hover:bg-orange-50 border-2 border-orange-400 shadow-sm transition-colors"
@@ -137,19 +166,6 @@ const Empreport = () => {
               </button>
 
               <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-slate-200 shadow-sm">
-                <label className="text-sm font-medium text-slate-700">
-                  Select Year:
-                </label>
-                <select
-                  value={selectedYear}
-                  onChange={(e) => setSelectedYear(e.target.value)}
-                  className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm font-medium text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-orange-500 cursor-pointer"
-                >
-                  {[2024, 2025, 2026, 2027].map((y) => (
-                    <option key={y}>{y}</option>
-                  ))}
-                </select>
-
                 <span className="text-slate-300 text-lg">|</span>
 
                 <select

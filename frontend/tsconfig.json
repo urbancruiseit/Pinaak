@@ -30,7 +30,8 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts",
     "src/app/features/UnwantedLead/unwantedSlice.ts",
-    "src/app/components/Master"
+    "src/app/components/Master",
+    "src/app/components/Vendor"
   ],
   "exclude": ["node_modules"]
 }

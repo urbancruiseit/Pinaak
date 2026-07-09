@@ -11,7 +11,7 @@ import {
 export const createVendorController = asyncHandler(async (req, res) => {
   const data = req.body;
 
-  // ✅ Basic Validation
+
   if (!data.name) {
     throw new ApiError(400, "Name is required");
   }

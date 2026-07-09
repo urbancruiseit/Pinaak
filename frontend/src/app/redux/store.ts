@@ -14,6 +14,8 @@ import websiteGacReducer from "../features/Website/WebsiteSlice";
 import dsrReducer from "../features/Dsr/dsrSlice";
 import downloadReducer from "../features/Download/downloadSlice";
 import rateReducer from "../features/Rate/rateSlice";
+import ruleReducer from "../features/Rules/rulesSlice";
+import navigationReducer from "../features/Navigation/navigationSlice";
 
 export const store = configureStore({
   reducer: {
@@ -32,6 +34,8 @@ export const store = configureStore({
     dsr: dsrReducer,
     download: downloadReducer,
     rate: rateReducer,
+    rule: ruleReducer,
+    navigation: navigationReducer,
   },
 });
 

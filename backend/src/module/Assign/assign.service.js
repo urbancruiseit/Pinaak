@@ -39,10 +39,10 @@ export const findZoneCityRegion = async (req) => {
 
     return result;
   } else if (roleName === "city manager") {
-    // Default: user ke assigned zones
+   
     let zoneIds = req.user.zone_ids;
 
-    // Frontend se zone filter
+   
     const paramZoneId = req.query.zoneId
       ? parseInt(req.query.zoneId, 10)
       : null;
@@ -52,7 +52,7 @@ export const findZoneCityRegion = async (req) => {
         ? req.user.zone_ids
         : [req.user.zone_ids];
 
-      // User ke assigned zone ke bahar ka zone access na ho
+    
       if (!allowedZones.includes(paramZoneId)) {
         result.accessDenied = true;
         return result;

@@ -16,6 +16,7 @@ import websiteGacRoutes from "../module/Website/website.route.js";
 import dsrRouter from "../module/DSR/dsr.route.js";
 import downloadRoute from "../module/Download/download.route.js";
 import rateRoute from "../module/Rate/rate.route.js";
+import ruleRouter from "../module/Rules/rules.route.js";
 
 const allRoutes = (app) => {
   app.use("/api/v1/user", userRouter);
@@ -37,6 +38,7 @@ const allRoutes = (app) => {
   app.use("/api/v1/dsr", dsrRouter);
   app.use("/api/v1/download", downloadRoute);
   app.use("/api/v1/rate", rateRoute);
+  app.use("/api/v1/rule", ruleRouter);
 };
 
 export default allRoutes;

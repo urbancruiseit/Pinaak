@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { RootState, AppDispatch } from "../../../redux/store";
+import { RootState, AppDispatch } from "../../redux/store";
 import { Eye, Pencil, RefreshCw, Search, X } from "lucide-react";
 
 import {
@@ -10,9 +10,9 @@ import {
   clearError,
   resetSuccess,
   getVendorByIdThunk,
-} from "../../../features/vendor/vendorSlice";
+} from "../../features/vendor/vendorSlice";
 import VendorForm from "./VendorFormData";
-import Pagination from "../../ui/pagination";
+import Pagination from "../ui/pagination";
 import VendorModalView from "./vendorModelView"; // ← naya import
 
 const VendorTable: React.FC = () => {
@@ -384,7 +384,7 @@ const VendorTable: React.FC = () => {
 
                     {/* ACTION BUTTONS */}
                     <td className="px-4 py-4 text-sm">
-                     <div className="flex gap-2">
+                      <div className="flex gap-2">
                         <button
                           onClick={() => handleEditClick(vendor)}
                           className="p-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"

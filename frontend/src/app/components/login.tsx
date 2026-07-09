@@ -7,7 +7,6 @@ import { loginUserThunk } from "../features/user/userSlice";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "../redux/store";
 import Image from "next/image";
-
 import pinaakLogo from "@/app/assets/Pinaak final.png";
 import urbanlogo from "@/app/assets/urbanlogo.png";
 
@@ -25,6 +24,7 @@ import {
 type LoginFormValues = {
   username: string;
   password: string;
+  loginType: "employee" | "vendor" | "driver" | "customer";
 };
 
 const cn = (...classes: (string | boolean | undefined | null)[]) =>
@@ -32,8 +32,7 @@ const cn = (...classes: (string | boolean | undefined | null)[]) =>
 
 export function Login() {
   const router = useRouter();
-  const dispatch = useDispatch<AppDispatch>();
-
+  const dispatch = useDispatch<AppDispatch>(); 
   const [serverError, setServerError] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [focusedField, setFocusedField] = useState<string | null>(null);
@@ -42,7 +41,11 @@ export function Login() {
     register,
     handleSubmit,
     formState: { errors, isSubmitting },
-  } = useForm<LoginFormValues>();
+  } = useForm<LoginFormValues>({
+    defaultValues: {
+      loginType: "employee",
+    },
+  });
 
   const onSubmit = async (values: LoginFormValues) => {
     setServerError("");
@@ -172,7 +175,7 @@ export function Login() {
                     <Image
                       src={urbanlogo}
                       alt="Urban Cruise"
-                      className="h-64 w-full object-contain drop-shadow-xl"
+                      className=" h-56 w-full object-contain drop-shadow-xl"
                     />
                   </div>
                 </div>
@@ -212,8 +215,33 @@ export function Login() {
                 onSubmit={handleSubmit(onSubmit)}
                 className="space-y-6"
               >
+                {/* LOGIN TYPE */}
+                <div className="space-y-1">
+                  <label className="text-md font-semibold text-black ml-1">
+                    Login As
+                  </label>
+
+                  <select
+                    {...register("loginType", {
+                      required: "Please select login type",
+                    })}
+                    disabled={isSubmitting}
+                    className="w-full pl-11 pr-4 h-12 rounded-xl border bg-white text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-green-600 focus:ring-2 focus:ring-green-600/20 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <option value="employee">Employee</option>
+                    <option value="vendor">Vendor</option>
+                    <option value="driver">Driver</option>
+                    <option value="customer">Customer</option>
+                  </select>
+
+                  {errors.loginType && (
+                    <p className="text-xs text-red-500 mt-1 ml-1">
+                      {errors.loginType.message}
+                    </p>
+                  )}
+                </div>
                 {/* USERNAME FIELD */}
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <label className="text-md font-semibold text-black ml-1">
                     Username
                   </label>
@@ -257,7 +285,7 @@ export function Login() {
                 </div>
 
                 {/* PASSWORD FIELD */}
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <label className="text-md font-semibold text-black ml-1">
                     Password
                   </label>

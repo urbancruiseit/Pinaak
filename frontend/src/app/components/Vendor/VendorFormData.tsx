@@ -11,8 +11,9 @@ import {
   AlertCircle,
   CheckCircle2,
   MapPin,
+  Lock,
 } from "lucide-react";
-import { AppDispatch, RootState } from "../../../redux/store";
+import { AppDispatch, RootState } from "../../redux/store";
 import {
   createVendorThunk,
   updateVendorThunk,
@@ -24,7 +25,7 @@ import {
   fetchAllCities,
   fetchStatesByCity,
   resetStatesForCity,
-} from "../../../features/State/stateSlice";
+} from "../../features/State/stateSlice";
 
 /* ================================================================
    TYPES
@@ -52,6 +53,8 @@ type AppRootState = RootState & {
 
 interface VendorFormData {
   id?: number;
+  username: string;
+  password: string;
   name: string;
   email: string;
   phone: string;
@@ -107,6 +110,8 @@ interface VendorFormProps {
    CONSTANTS
 ================================================================ */
 const initialFormState: VendorFormData = {
+  username: "",
+  password: "",
   name: "",
   email: "",
   phone: "",
@@ -161,6 +166,7 @@ const companyTypes = [
 
 const FIELD_MAX_LENGTHS: Record<string, number> = {
   name: 100,
+  username: 50,
   shortName: 30,
   panNumber: 10,
   aadhaarNumber: 12,
@@ -194,8 +200,7 @@ const VendorForm: React.FC<VendorFormProps> = ({
   const vendorStatus = useSelector((state: RootState) => state.vendor.status);
 
   // Debug: Log selectedVendor to see what's coming from Redux
-  useEffect(() => {
-  }, [selectedVendor, vendorStatus]);
+  useEffect(() => {}, [selectedVendor, vendorStatus]);
 
   const { cities = [], loading: stateLoading = false } = stateSlice || {};
 
@@ -210,6 +215,7 @@ const VendorForm: React.FC<VendorFormProps> = ({
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isLoadingCities, setIsLoadingCities] = useState(false);
   const [isLoadingVendor, setIsLoadingVendor] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const [personalStatesForCity, setPersonalStatesForCity] = useState<
     StateItem[]
@@ -279,6 +285,11 @@ const VendorForm: React.FC<VendorFormProps> = ({
 
     const mapped: VendorFormData = {
       id: vendorData.id,
+      // NOTE: password is intentionally left blank on load — never populate
+      // a hashed password back into the form. User must type a new one
+      // only if they want to change it.
+      username: vendorData.username || vendorData.user_name || "",
+      password: "",
       name: vendorData.name || vendorData.vendor_name || "",
       email: vendorData.email || vendorData.vendor_email || "",
       phone:
@@ -486,14 +497,39 @@ const VendorForm: React.FC<VendorFormProps> = ({
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
-      setSavingProfile(true);
       setSubmitError(null);
       setSuccessMessage(null);
 
+      // Basic username/password validation
+      if (!isEditMode && !formData.username.trim()) {
+        setSubmitError("username is required");
+        markFieldTouched("username");
+        return;
+      }
+      if (!isEditMode && !formData.password.trim()) {
+        setSubmitError("Password is required");
+        markFieldTouched("password");
+        return;
+      }
+      if (formData.password && formData.password.length < 6) {
+        setSubmitError("Password must be at least 6 characters long");
+        markFieldTouched("password");
+        return;
+      }
+
+      setSavingProfile(true);
+
       try {
         if (isEditMode && formData.id) {
+          // In edit mode, if password field was left blank, don't send it —
+          // so the backend keeps the existing hashed password unchanged.
+          const payload = { ...formData };
+          if (!payload.password.trim()) {
+            delete (payload as any).password;
+          }
+
           await dispatch(
-            updateVendorThunk({ id: formData.id, vendorData: formData }),
+            updateVendorThunk({ id: formData.id, vendorData: payload }),
           ).unwrap();
           setSuccessMessage("Vendor updated successfully!");
         } else {
@@ -527,7 +563,7 @@ const VendorForm: React.FC<VendorFormProps> = ({
         setSavingProfile(false);
       }
     },
-    [formData, dispatch, isEditMode, handleBack],
+    [formData, dispatch, isEditMode, handleBack, markFieldTouched],
   );
 
   /* ================================================================
@@ -607,6 +643,71 @@ const VendorForm: React.FC<VendorFormProps> = ({
               {"Vendor Detail"}
             </h3>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {/* username */}
+              <div>
+                <label className="block mb-1 font-extrabold text-gray-700">
+                  {"username"}
+                </label>
+                <div className="relative">
+                  <User
+                    className="absolute text-purple-600 -translate-y-1/2 left-3 top-1/2"
+                    size={20}
+                  />
+                  <input
+                    name="username"
+                    value={formData.username}
+                    onChange={handleFieldChange}
+                    onBlur={() => markFieldTouched("username")}
+                    placeholder="Enter username"
+                    className={getInputClass("username", true)}
+                    maxLength={FIELD_MAX_LENGTHS["username"]}
+                    disabled={isViewMode}
+                    autoComplete="off"
+                  />
+                </div>
+              </div>
+
+              {/* Password */}
+              <div>
+                <label className="block mb-1 font-extrabold text-gray-700">
+                  {"Password"}
+                  {isEditMode && (
+                    <span className="ml-1 text-xs font-normal text-gray-400">
+                      {"(leave blank to keep unchanged)"}
+                    </span>
+                  )}
+                </label>
+                <div className="relative">
+                  <Lock
+                    className="absolute text-purple-600 -translate-y-1/2 left-3 top-1/2"
+                    size={20}
+                  />
+                  <input
+                    name="password"
+                    type={showPassword ? "text" : "password"}
+                    value={formData.password}
+                    onChange={handleFieldChange}
+                    onBlur={() => markFieldTouched("password")}
+                    placeholder={
+                      isEditMode ? "Enter new password" : "Enter password"
+                    }
+                    className={getInputClass("password", true)}
+                    autoComplete="new-password"
+                    disabled={isViewMode}
+                  />
+                  {!isViewMode && (
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-purple-600"
+                      tabIndex={-1}
+                    >
+                      {showPassword ? "Hide" : "Show"}
+                    </button>
+                  )}
+                </div>
+              </div>
+
               {/* Vendor Name */}
               <div>
                 <label className="block mb-1 font-extrabold text-gray-700">

@@ -2,7 +2,6 @@
 
 import { useMemo, useState, useEffect, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
-
 import {
   Menu,
   X,
@@ -11,10 +10,7 @@ import {
   Users,
   Car,
   FileText,
-  BarChart3,
-  Settings,
   UserCircle,
-  Calendar,
   MapPin,
   Building2,
   Monitor,
@@ -24,24 +20,23 @@ import Image from "next/image";
 import userAvatar from "../../assets/user-pic.png";
 import pinaak from "../../assets/pinnak.png";
 import { AppDispatch, RootState } from "@/app/redux/store";
-
+import { logoutEmployeeThunk } from "@/app/features/user/userSlice";
 import {
-  currentUserThunk,
-  logoutEmployeeThunk,
-} from "@/app/features/user/userSlice";
+  setActiveMaster,
+  setActiveLeadView,
+  setActiveDashboardView,
+  setActiveWebsiteView,
+  setActiveAccessKey,
+  showReport,
+  setActiveSection,
+} from "../../features/Navigation/navigationSlice";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 
-type MenuItem = {
-  label: string;
-  value: string;
-};
+// ─── Static menu data ─────────────────────────────────────────────────────────
 
-type MenuSection = {
-  key: string;
-  label: string;
-  items: MenuItem[];
-};
+type MenuItem = { label: string; value: string };
+type MenuSection = { key: string; label: string; items: MenuItem[] };
 
 const MASTER_MENU_SECTIONS: MenuSection[] = [
   {
@@ -108,101 +103,42 @@ const ACCESS_MENU: MenuSection = {
   ],
 };
 
-const getDashboardMenu = (userRole?: string): MenuSection => {
-  const allItems: MenuItem[] = [
+const DASHBOARD_ITEMS: Record<string, MenuItem[]> = {
+  admin: [
     { label: "Leads Dashboard", value: "leads-dashboard" },
     { label: "Pre-Sales Team Dashboard", value: "presales-dashboard" },
     { label: "City Manager Dashboard", value: "citymanager-dashboard" },
     { label: "BDM Dashboard", value: "bdm-dashboard" },
     { label: "Sales Team Dashboard", value: "salesteam-dashboard" },
     { label: "Team Leader Dashboard", value: "teamleader-dashboard" },
-  ];
-
-  let allowedItems: MenuItem[] = [];
-  const normalizedRole = userRole?.toLowerCase().trim();
-
-  if (normalizedRole === "admin") {
-    allowedItems = allItems;
-  } else if (normalizedRole === "presales" || normalizedRole === "presale") {
-    allowedItems = [
-      { label: "Pre-Sales Team Dashboard", value: "presales-dashboard" },
-    ];
-  } else if (normalizedRole === "bdm") {
-    allowedItems = [{ label: "BDM Dashboard", value: "bdm-dashboard" }];
-  } else if (normalizedRole === "sales") {
-    allowedItems = [
-      { label: "Sales Team Dashboard", value: "salesteam-dashboard" },
-    ];
-  } else if (
-    normalizedRole === "city manager" ||
-    normalizedRole === "citymanager"
-  ) {
-    allowedItems = [
-      { label: "City Manager Dashboard", value: "citymanager-dashboard" },
-    ];
-  } else if (
-    normalizedRole === "team leader" ||
-    normalizedRole === "teamleader" ||
-    normalizedRole === "team_leader"
-  ) {
-    allowedItems = [
-      { label: "Team Leader Dashboard", value: "teamleader-dashboard" },
-    ];
-  }
-
-  return { key: "dashboard-menu", label: "Dashboards", items: allowedItems };
+  ],
+  presales: [
+    { label: "Pre-Sales Team Dashboard", value: "presales-dashboard" },
+  ],
+  presale: [{ label: "Pre-Sales Team Dashboard", value: "presales-dashboard" }],
+  bdm: [{ label: "BDM Dashboard", value: "bdm-dashboard" }],
+  sales: [{ label: "Sales Team Dashboard", value: "salesteam-dashboard" }],
+  "city manager": [
+    { label: "City Manager Dashboard", value: "citymanager-dashboard" },
+  ],
+  citymanager: [
+    { label: "City Manager Dashboard", value: "citymanager-dashboard" },
+  ],
+  "team leader": [
+    { label: "Team Leader Dashboard", value: "teamleader-dashboard" },
+  ],
+  teamleader: [
+    { label: "Team Leader Dashboard", value: "teamleader-dashboard" },
+  ],
+  team_leader: [
+    { label: "Team Leader Dashboard", value: "teamleader-dashboard" },
+  ],
 };
 
-interface NavbarProps {
-  showAccess?: boolean;
-  showMaster?: boolean;
-  showLeadsMenu?: boolean;
-  showDashboardMenu?: boolean;
-  showSalesMenu?: boolean;
-  showYearMenu?: boolean;
-  activeSection?: string | null;
-  activeMasterKey?: string | null;
-  activeLeadKey?: string | null;
-  activeDashboardKey?: string | null;
-  activeYearKey?: string | null;
-  activeAccessKey?: string | null;
-  onMasterSelect?: (key: string) => void;
-  onLeadSelect?: (key: string) => void;
-  onDashboardSelect?: (key: string) => void;
-  onSalesLeadSelect?: (key: string) => void;
-  onSalesEditFormSelect?: (key: string) => void;
-  onTlTablesSelect?: (key: string) => void;
-  onYearSelect?: (key: string) => void;
-  onAccessSelect?: (key: string) => void;
-  onDsrSelect?: (key: string) => void;
-  permittedMasterKeys?: string[] | null;
-  selectedRegion?: string;
-  selectedCity?: string;
-  selectedZone?: string;
-  // onRegionChange?: (region: string) => void;
-  // onCityChange?: (cityId: string) => void;
-  // onZoneChange?: (zone: string) => void;
-  userName?: string;
-  roleLabel?: string;
-  userRole?: string;
-  onLogout?: () => void;
-  onMonthlyEnquiry?: () => void;
-  onMonthlyDistribution?: () => void;
-  onUnwantedLeads?: () => void;
-  onEmployeeReports?: () => void;
-  onTimeEnquiryReports?: () => void;
-  onDateEmployeeReports?: () => void;
-  onMonthlyLeadsTwo?: () => void;
-  onLongWeekendLeads?: () => void;
-  showWebsiteMenu?: boolean;
-  activeWebsiteKey?: string | null;
-  onWebsiteMenuSelect?: (key: string) => void;
-}
-
-const getMenuIcon = (menuKey: string, label: string) => {
+const getMenuIcon = (menuKey: string) => {
   if (menuKey.includes("customer"))
     return <Users size={16} className="mr-1.5" />;
-  if (menuKey.includes("master") || menuKey.includes("UC"))
+  if (menuKey.includes("master"))
     return <Building2 size={16} className="mr-1.5" />;
   if (menuKey.includes("vendor"))
     return <FileText size={16} className="mr-1.5" />;
@@ -211,186 +147,180 @@ const getMenuIcon = (menuKey: string, label: string) => {
     return <UserCircle size={16} className="mr-1.5" />;
   if (menuKey.includes("access"))
     return <Shield size={16} className="mr-1.5" />;
-  if (label === "New Lead Form" || label === "Lead Manager")
-    return <FileText size={16} className="mr-1.5" />;
-  if (label === "Dashboards")
-    return <LayoutDashboard size={16} className="mr-1.5" />;
-  if (label === "Sales Lead Manager")
-    return <Users size={16} className="mr-1.5" />;
   return null;
 };
 
-export function Navbar({
-  showAccess = false,
-  showMaster = false,
-  showLeadsMenu = false,
-  showDashboardMenu = false,
-  showSalesMenu = false,
-  showYearMenu = false,
-  activeSection,
-  showWebsiteMenu = false,
-  activeWebsiteKey,
-  onWebsiteMenuSelect,
-  activeMasterKey,
-  activeLeadKey,
-  activeDashboardKey,
-  activeYearKey,
-  activeAccessKey,
-  onMasterSelect,
-  onLeadSelect,
-  onDashboardSelect,
-  onSalesLeadSelect,
-  onSalesEditFormSelect,
-  onTlTablesSelect,
-  onYearSelect,
-  onAccessSelect,
-  onDsrSelect,
-  permittedMasterKeys,
-  // selectedRegion = "",
-  // selectedCity = "",
-  // selectedZone = "",
-  // onRegionChange,
-  // onCityChange,
-  // onZoneChange,
-  userName,
-  roleLabel,
-  userRole,
-  onLogout,
-  onMonthlyEnquiry,
-  onMonthlyDistribution,
-  onUnwantedLeads,
-  onEmployeeReports,
-  onTimeEnquiryReports,
-  onDateEmployeeReports,
-  onMonthlyLeadsTwo,
-  onLongWeekendLeads,
-}: NavbarProps) {
+// ─── Navbar ───────────────────────────────────────────────────────────────────
+
+export function Navbar() {
   const dispatch = useDispatch<AppDispatch>();
-  const { currentUser } = useSelector((state: RootState) => state.user);
   const router = useRouter();
 
-  const userRegionNames = (currentUser as any)?.region_names ?? [];
-  const userZoneNames = (currentUser as any)?.zone_names ?? [];
-  const userCityNames = (currentUser as any)?.city_names ?? [];
-  const userCityIds = (currentUser as any)?.city_ids ?? [];
+  // ── Redux state ──────────────────────────────────────────────────────────
+  const { currentUser } = useSelector((state: RootState) => state.user);
+  const nav = useSelector((state: RootState) => state.navigation);
+
   const rawUser = (currentUser as any) ?? {};
   const userData = rawUser?.data ?? rawUser;
+
   const userEmail = rawUser?.officeEmail ?? userData?.officeEmail ?? "";
   const userAliasName = rawUser?.aliasName ?? userData?.aliasName ?? "";
   const userDepartment = rawUser?.department ?? userData?.department ?? "";
-
   const userSubDepartment =
     rawUser?.subDepartment ?? userData?.subDepartment ?? "";
+  const userRegionNames = (currentUser as any)?.region_names ?? [];
+  const userZoneNames = (currentUser as any)?.zone_names ?? [];
+  const userCityNames = (currentUser as any)?.city_names ?? [];
 
-  const adminRole =
-    rawUser?.access_role ??
-    userData?.access_role ??
+  const adminRole = (rawUser?.role ??
+    userData?.role ??
     rawUser?.role ??
     userData?.role ??
-    "";
+    "") as string;
 
+  const normalizedRole = adminRole.toLowerCase().trim();
+
+  const showMaster = nav.activeSection === "master";
+  const showLeadsMenu =
+    nav.activeSection === "leads" || nav.activeSection === "dsr-form";
+  const showDashboardMenu = nav.activeSection === "dashboard";
+  const showWebsiteMenu = nav.activeSection === "website";
+  const showAccess =
+    normalizedRole === "superadmin" || normalizedRole === "admin";
+
+  const isSales = normalizedRole === "sales";
+  const isTravelAdvisor = normalizedRole === "travel advisor";
+  const isTeamLeader = normalizedRole === "team leader";
+  const isSuperAdmin = normalizedRole === "superadmin";
+  const isManager = normalizedRole === "manager";
+  const isCityManager = normalizedRole === "city manager";
+
+  // ✅ FIX 1: City Manager included in dropdown trigger
+  const shouldShowLeadManagerDropdown =
+    isSuperAdmin || isManager || isCityManager;
+
+  // ── Dashboard items for current role ─────────────────────────────────────
+  const dashboardItems = DASHBOARD_ITEMS[normalizedRole] ?? [];
+
+  // ── Local UI state ────────────────────────────────────────────────────────
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const navbarRef = useRef<HTMLDivElement>(null);
-  const masterKeySet = useMemo(
-    () => (permittedMasterKeys ? new Set(permittedMasterKeys) : null),
-    [permittedMasterKeys],
-  );
 
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        navbarRef.current &&
-        !navbarRef.current.contains(event.target as Node)
-      ) {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (navbarRef.current && !navbarRef.current.contains(e.target as Node))
         setOpenMenu(null);
-      }
     };
-    if (openMenu) {
-      document.addEventListener("mousedown", handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    if (openMenu) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [openMenu]);
 
+  const close = () => {
+    setOpenMenu(null);
+    setMobileOpen(false);
+  };
+
+  // ── Handlers → dispatch to Redux ─────────────────────────────────────────
   const handleMasterSelect = (value: string) => {
-    onMasterSelect?.(value);
-    setOpenMenu(null);
-    setMobileOpen(false);
+    dispatch(setActiveMaster(value as any));
+    close();
   };
+
   const handleLeadSelect = (value: string) => {
-    onLeadSelect?.(value);
-    setOpenMenu(null);
-    setMobileOpen(false);
+    dispatch(setActiveLeadView(value as any));
+    close();
   };
-  const handleDashboardSelect = (value: string) => {
-    onDashboardSelect?.(value);
-    setOpenMenu(null);
-    setMobileOpen(false);
-  };
-  // const handleYearSelect = (value: string) => {
-  //   onYearSelect?.(value);
-  //   setOpenMenu(null);
-  //   setMobileOpen(false);
-  // };
+
   const handleSalesLeadSelect = (value: string) => {
-    onSalesLeadSelect?.(value);
-    setOpenMenu(null);
-    setMobileOpen(false);
+    dispatch(setActiveLeadView(value as any));
+    close();
   };
-  const handleDsrSelect = (value: string) => {
-    onDsrSelect?.(value);
-    setOpenMenu(null);
-    setMobileOpen(false);
+
+  // const handleSwapLeadSelect = (value: string) => {
+  //   dispatch(setActiveLeadView(value as any));
+  //   close();
+  // };
+
+  const handleDsrSelect = () => {
+    dispatch(setActiveLeadView("dsr-lead-table"));
+    close();
   };
-  const handleSalesEditFormSelect = (value: string) => {
-    onSalesEditFormSelect?.(value);
-    setOpenMenu(null);
-    setMobileOpen(false);
+
+  const handleDashboardSelect = (value: string) => {
+    dispatch(setActiveDashboardView(value as any));
+    close();
   };
-  const handleTlTablesSelect = (value: string) => {
-    onTlTablesSelect?.(value);
-    setOpenMenu(null);
-    setMobileOpen(false);
-  };
+
   const handleAccessSelect = (value: string) => {
-    onAccessSelect?.(value);
-    setOpenMenu(null);
-    setMobileOpen(false);
+    dispatch(setActiveAccessKey(value));
+    close();
   };
-  const handleMonthlyEnquiry = () => {
-    onMonthlyEnquiry?.();
-    setOpenMenu(null);
-    setMobileOpen(false);
+
+  const handleWebsiteSelect = (key: string) => {
+    dispatch(setActiveWebsiteView(key as "gac" | "gaq"));
+    close();
   };
-  const handleMonthlyDistribution = () => {
-    onMonthlyDistribution?.();
-    setOpenMenu(null);
-    setMobileOpen(false);
-  };
-  const handleUnwantedLeads = () => {
-    onUnwantedLeads?.();
-    setOpenMenu(null);
-    setMobileOpen(false);
+
+  const handleTlTablesSelect = () => {
+    dispatch(setActiveSection("leads" as any));
+    close();
   };
 
   const handleLogout = async () => {
     try {
       await dispatch(logoutEmployeeThunk()).unwrap();
       toast.success("Logout successfully");
-      setTimeout(() => {
-        router.push("/");
-      }, 500);
-    } catch (err) {
+      setTimeout(() => router.push("/"), 500);
+    } catch {
       toast.error("Logout failed");
     }
   };
 
-  const shouldShowLeadManagerDropdown =
-    adminRole?.toLowerCase() === "super_admin" ||
-    adminRole?.toLowerCase() === "manager";
+  // ── Tracking menu items ───────────────────────────────────────────────────
+  const isPresalesExecutive = normalizedRole === "pre-sales executive";
 
+  const trackingItems = [
+    {
+      label: "Monthly Enquiry PS (MER)",
+      key: "monthlyEnquiry",
+      show:
+        isSuperAdmin || isPresalesExecutive || isTeamLeader || isCityManager,
+    },
+    {
+      label: "Monthly Enquiry PS 2 (MER 2)",
+      key: "monthlyLeadsTwo",
+      show:
+        isSuperAdmin || isPresalesExecutive || isTeamLeader || isCityManager,
+    },
+    {
+      label: "Lead Distribution PS (LDR)",
+      key: "monthlyDistribution",
+      show: isSuperAdmin || isPresalesExecutive || isCityManager,
+    },
+    {
+      label: "Long Weekend Distribution (LWD)",
+      key: "longWeekendLeads",
+      show: isSuperAdmin || isTravelAdvisor || isTeamLeader || isCityManager,
+    },
+    {
+      label: "Employee Performance - TS (EP-TS)",
+      key: "employeeReports",
+      show: isSuperAdmin || isTravelAdvisor || isTeamLeader || isCityManager,
+    },
+    {
+      label: "Employee Performance - PS (EP-PS)",
+      key: "dateEmployeeReports",
+      show: isSuperAdmin || isPresalesExecutive || isCityManager,
+    },
+    {
+      label: "Unwanted Leads (ULR)",
+      key: "unwantedLeads",
+      show: isPresalesExecutive,
+    },
+  ].filter((i) => i.show);
+
+  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <nav
       ref={navbarRef}
@@ -401,29 +331,24 @@ export function Navbar({
         <button
           type="button"
           className="flex items-center justify-center p-2 text-orange-600 transition border border-orange-200 rounded-full bg-white/80 hover:bg-white hover:shadow-md"
-          onClick={() => setMobileOpen((prev) => !prev)}
-          aria-expanded={mobileOpen}
+          onClick={() => setMobileOpen((p) => !p)}
           aria-label="Toggle navigation"
         >
           {mobileOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
-
-        <div className="flex items-center">
-          <div className="flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-sm border border-orange-100">
-            <Image
-              src={userAvatar}
-              alt="User"
-              width={28}
-              height={28}
-              className="object-cover border-2 border-orange-500 rounded-full"
-            />
-            <div className="text-left">
-              {/* ✅ Guest hata diya — sirf actual name dikhega */}
-              <p className="text-sm font-semibold text-gray-800">
-                {userAliasName}
-              </p>
-              <p className="text-[11px] uppercase text-gray-500">{roleLabel}</p>
-            </div>
+        <div className="flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-sm border border-orange-100">
+          <Image
+            src={userAvatar}
+            alt="User"
+            width={28}
+            height={28}
+            className="object-cover border-2 border-orange-500 rounded-full"
+          />
+          <div className="text-left">
+            <p className="text-sm font-semibold text-gray-800">
+              {userAliasName}
+            </p>
+            <p className="text-[11px] uppercase text-gray-500">{adminRole}</p>
           </div>
         </div>
       </div>
@@ -433,7 +358,7 @@ export function Navbar({
         className={`${mobileOpen ? "block" : "hidden"} w-full px-4 pb-4 md:block md:pb-0`}
       >
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between md:h-16">
-          {/* Left Section */}
+          {/* ── Left section ── */}
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:flex-wrap md:gap-2 lg:gap-4">
             {/* Logo */}
             <div className="flex items-center gap-2 flex-shrink-0 h-full">
@@ -446,360 +371,44 @@ export function Navbar({
               />
             </div>
 
-            {/* MASTER SECTION */}
-            {showMaster && (
-              <>
-                {MASTER_MENU_SECTIONS.map((menu) => {
-                  const visibleItems = masterKeySet
-                    ? menu.items.filter((item) => masterKeySet.has(item.value))
-                    : menu.items;
-                  if (visibleItems.length === 0) return null;
-                  const isOpen = openMenu === menu.key;
-                  const menuIcon = getMenuIcon(menu.key, menu.label);
-                  return (
-                    <div key={menu.key} className="relative w-full md:w-auto">
-                      <button
-                        type="button"
-                        className={`w-full md:w-auto flex items-center justify-between gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200 
-                          ${isOpen ? "bg-orange-600 text-white shadow-lg md:scale-105" : "bg-white text-orange-700 border-2 border-orange-300 hover:border-orange-500 hover:shadow-md hover:scale-[1.02]"}
-                          md:min-w-[100px] md:h-9 md:py-2`}
-                        onClick={() =>
-                          setOpenMenu((prev) =>
-                            prev === menu.key ? null : menu.key,
-                          )
-                        }
-                        aria-expanded={openMenu === menu.key}
-                      >
-                        <span className="flex items-center truncate">
-                          {menuIcon}
-                          {menu.label}
-                        </span>
-                        <ChevronDown
-                          size={14}
-                          className={`transition-transform duration-200 flex-shrink-0 ${isOpen ? "rotate-180" : ""}`}
-                        />
-                      </button>
-                      {openMenu === menu.key && (
-                        <ul className="w-full md:absolute md:left-0 z-50 py-1 mt-1 bg-white border-2 border-orange-300 rounded-lg shadow-xl md:top-full md:w-56 max-h-80 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
-                          {visibleItems.map((item) => {
-                            const isActive = item.value === activeMasterKey;
-                            return (
-                              <li
-                                key={item.value}
-                                onClick={() => handleMasterSelect(item.value)}
-                                className={`px-3 py-2.5 md:py-2 text-sm transition-all cursor-pointer flex items-center gap-2
-                                  ${isActive ? "bg-orange-600 text-white font-semibold" : "text-gray-700 hover:bg-orange-50 hover:text-orange-700 hover:pl-4"}`}
-                              >
-                                <span
-                                  className={`w-1 h-1 rounded-full ${isActive ? "bg-white" : "bg-orange-300"} transition-all`}
-                                ></span>
-                                {item.label}
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      )}
-                    </div>
-                  );
-                })}
-              </>
-            )}
-
-            {/* LEADS MENU */}
-            {showLeadsMenu && (
-              <>
-                {userRole?.toLowerCase() !== "sales" &&
-                  !roleLabel?.toLowerCase().includes("travel") &&
-                  !roleLabel?.toLowerCase().includes("advisor") && (
-                    <div className="relative w-full md:w-auto">
-                      <button
-                        type="button"
-                        className="w-full md:w-auto flex items-center justify-center gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200 bg-white text-emerald-700 border-2 border-emerald-300 hover:border-emerald-500 hover:shadow-md hover:scale-[1.02] md:min-w-[100px] md:h-9 md:py-2"
-                        onClick={() => onLeadSelect?.("lead-form")}
-                      >
-                        <FileText size={16} className="mr-1.5 flex-shrink-0" />
-                        <span className="truncate">New Lead</span>
-                      </button>
-                    </div>
-                  )}
-
-                {userRole?.toLowerCase() !== "sales" &&
-                  !roleLabel?.toLowerCase().includes("travel") &&
-                  !roleLabel?.toLowerCase().includes("advisor") && (
-                    <>
-                      {shouldShowLeadManagerDropdown ? (
-                        <div className="relative w-full md:w-auto">
-                          <button
-                            type="button"
-                            className="w-full md:w-auto flex items-center justify-between gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200 bg-white text-emerald-700 border-2 border-emerald-300 hover:border-emerald-500 hover:shadow-md hover:scale-[1.02] md:min-w-[100px] md:h-9 md:py-2"
-                            onClick={() =>
-                              setOpenMenu((prev) =>
-                                prev === "lead-manager-superadmin"
-                                  ? null
-                                  : "lead-manager-superadmin",
-                              )
-                            }
-                          >
-                            <FileText
-                              size={16}
-                              className="mr-1.5 flex-shrink-0"
-                            />
-                            <span className="truncate">Lead Manager</span>
-                            <ChevronDown
-                              size={14}
-                              className={`transition-transform duration-200 flex-shrink-0 ${openMenu === "lead-manager-superadmin" ? "rotate-180" : ""}`}
-                            />
-                          </button>
-                          {openMenu === "lead-manager-superadmin" && (
-                            <ul className="w-full md:absolute md:left-0 z-50 py-1 mt-1 bg-white border-2 border-emerald-300 rounded-lg shadow-xl md:top-full md:w-64 max-h-80 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
-                              <li
-                                onClick={() => {
-                                  handleLeadSelect("lead-table");
-                                }}
-                                className="px-3 py-2.5 md:py-2 text-sm transition-all cursor-pointer flex items-center gap-2 text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 hover:pl-4"
-                              >
-                                <span className="w-1 h-1 rounded-full bg-emerald-300"></span>
-                                Presales Lead Manager
-                              </li>
-                              <li
-                                onClick={() => {
-                                  handleSalesLeadSelect("sales-lead-table");
-                                }}
-                                className="px-3 py-2.5 md:py-2 text-sm transition-all cursor-pointer flex items-center gap-2 text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 hover:pl-4"
-                              >
-                                <span className="w-1 h-1 rounded-full bg-emerald-300"></span>
-                                Telesales Lead Manager
-                              </li>
-                            </ul>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="relative w-full md:w-auto">
-                          <button
-                            type="button"
-                            className="w-full md:w-auto flex items-center justify-center gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200 bg-white text-emerald-700 border-2 border-emerald-300 hover:border-emerald-500 hover:shadow-md hover:scale-[1.02] md:min-w-[100px] md:h-9 md:py-2"
-                            onClick={() => handleLeadSelect("lead-table")}
-                          >
-                            <FileText
-                              size={16}
-                              className="mr-1.5 flex-shrink-0"
-                            />
-                            <span className="truncate">Lead Manager</span>
-                          </button>
-                        </div>
-                      )}
-                    </>
-                  )}
-
-                {userRole?.toLowerCase() === "team leader" && (
-                  <div className="relative w-full md:w-auto">
-                    <button
-                      type="button"
-                      className="w-full md:w-auto flex items-center justify-center gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200 bg-white text-emerald-700 border-2 border-emerald-300 hover:border-emerald-500 hover:shadow-md hover:scale-[1.02] md:min-w-[100px] md:h-9 md:py-2"
-                      onClick={() => handleTlTablesSelect("tl-tables")}
-                    >
-                      <FileText size={16} className="mr-1.5 flex-shrink-0" />
-                      <span className="truncate">TL Tables</span>
-                    </button>
-                  </div>
-                )}
-
-                {userRole?.toLowerCase() === "travel advisor" && (
-                  <div className="relative flex flex-col md:flex-row gap-3 w-full md:w-auto">
-                    <button
-                      type="button"
-                      className="w-full md:w-auto flex items-center justify-center gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200 bg-white text-emerald-700 border-2 border-emerald-300 hover:border-emerald-500 hover:shadow-md hover:scale-[1.02] md:min-w-[100px] md:h-9 md:py-2"
-                      onClick={() => onSalesLeadSelect?.("sales-lead-table")}
-                    >
-                      <FileText size={16} className="mr-1.5 flex-shrink-0" />
-                      <span className="truncate">Sales Lead Manager</span>
-                    </button>
-                    <button
-                      type="button"
-                      className="w-full md:w-auto flex items-center justify-center gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200 bg-white text-emerald-700 border-2 border-emerald-300 hover:border-emerald-500 hover:shadow-md hover:scale-[1.02] md:min-w-[100px] md:h-9 md:py-2"
-                      onClick={() => onDsrSelect?.("dsr-lead-table")}
-                    >
-                      <FileText size={16} className="mr-1.5 flex-shrink-0" />
-                      <span className="truncate">DSR Lead Manager</span>
-                    </button>
-                  </div>
-                )}
-
-                {/* TRACKING MENU */}
-                <div className="relative w-full md:w-auto">
-                  {(() => {
-                    const isOpen = openMenu === "lead-track-menu";
-
-                    const role = userRole?.toLowerCase().trim() ?? "";
-
-                    const isPresalesExecutive = role === "pre-sales executive";
-                    const isTravelAdvisor = role === "travel advisor";
-                    const isTeamLeader = role === "team leader";
-                    const isCityManager = role === "city manager";
-                    const isSuperAdmin = role === "superadmin";
-
-                    const trackingItems = [
-                      {
-                        label: "Monthly Enquiry PS (MER)",
-                        fn: onMonthlyEnquiry,
-                        show:
-                          isSuperAdmin ||
-                          isPresalesExecutive ||
-                          isTeamLeader ||
-                          isCityManager,
-                      },
-                      {
-                        label: "Monthly Enquiry PS 2 (MER 2)",
-                        fn: onMonthlyLeadsTwo,
-                        show:
-                          isSuperAdmin ||
-                          isPresalesExecutive ||
-                          isTeamLeader ||
-                          isCityManager,
-                      },
-                      {
-                        label: "Lead Distribution PS (LDR)",
-                        fn: onMonthlyDistribution,
-                        show:
-                          isSuperAdmin || isPresalesExecutive || isCityManager,
-                      },
-                      {
-                        label: "Long Weekend Distribution (LWD)",
-                        fn: onLongWeekendLeads,
-                        show:
-                          isSuperAdmin ||
-                          isTravelAdvisor ||
-                          isTeamLeader ||
-                          isCityManager,
-                      },
-                      {
-                        label: "Employee Performance - TS (EP-TS)",
-                        fn: onEmployeeReports,
-                        show:
-                          isSuperAdmin ||
-                          isTravelAdvisor ||
-                          isTeamLeader ||
-                          isCityManager,
-                      },
-                      {
-                        label: "Employee Performance - PS (EP-PS)",
-                        fn: onDateEmployeeReports,
-                        show:
-                          isSuperAdmin || isPresalesExecutive || isCityManager,
-                      },
-                      // {
-                      //   label: "Time Enquiry Reports - PS (TER)",
-                      //   fn: onTimeEnquiryReports,
-                      //   show: isSuperAdmin || isTeamLeader || isCityManager,
-                      // },
-                      {
-                        label: "Unwanted Leads (ULR)",
-                        fn: onUnwantedLeads,
-                        show: isPresalesExecutive,
-                      },
-                    ].filter((item) => item.show);
-
-                    if (trackingItems.length === 0) return null;
-
-                    return (
-                      <>
-                        <button
-                          type="button"
-                          className={`w-full md:w-auto flex items-center justify-between gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200
-            ${isOpen ? "bg-green-600 text-white shadow-lg md:scale-105" : "bg-white text-green-700 border-2 border-green-300 hover:border-green-500 hover:shadow-md hover:scale-[1.02] hover:bg-green-50"}
-            md:min-w-[100px] md:h-9 md:py-2`}
-                          onClick={() =>
-                            setOpenMenu((prev) =>
-                              prev === "lead-track-menu"
-                                ? null
-                                : "lead-track-menu",
-                            )
-                          }
-                          aria-expanded={openMenu === "lead-track-menu"}
-                        >
-                          <span className="flex z-50 items-center truncate">
-                            <MapPin
-                              size={16}
-                              className="mr-1.5 flex-shrink-0"
-                            />
-                            Tracking
-                          </span>
-                          <ChevronDown
-                            size={14}
-                            className={`transition-transform duration-200 flex-shrink-0 ${isOpen ? "rotate-180" : ""}`}
-                          />
-                        </button>
-                        {openMenu === "lead-track-menu" && (
-                          <ul className="w-full md:absolute md:left-0 z-50 py-1 mt-1 bg-white border-2 border-green-300 rounded-lg shadow-xl md:top-full md:w-56 max-h-80 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
-                            {trackingItems.map(({ label, fn }) => (
-                              <li
-                                key={label}
-                                onClick={() => {
-                                  fn?.();
-                                  setOpenMenu(null);
-                                  setMobileOpen(false);
-                                }}
-                                className="px-3 py-2.5 md:py-2 text-sm transition-all hover:bg-green-50 hover:text-green-700 hover:pl-4 cursor-pointer text-gray-700 flex items-center gap-2"
-                              >
-                                <span className="w-1 h-1 rounded-full bg-green-300"></span>
-                                {label}
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </>
-                    );
-                  })()}
-                </div>
-              </>
-            )}
-
-            {/* DASHBOARD MENU */}
-            {showDashboardMenu &&
-              (() => {
-                const dashboardMenu = getDashboardMenu(userRole);
-                if (dashboardMenu.items.length === 0) return null;
-                const isOpen = openMenu === dashboardMenu.key;
+            {/* MASTER */}
+            {showMaster &&
+              MASTER_MENU_SECTIONS.map((menu) => {
+                const isOpen = openMenu === menu.key;
                 return (
-                  <div className="relative w-full md:w-auto">
+                  <div key={menu.key} className="relative w-full md:w-auto">
                     <button
                       type="button"
                       className={`w-full md:w-auto flex items-center justify-between gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200
-                      ${isOpen ? "bg-green-600 text-white shadow-lg md:scale-105" : "bg-white text-green-700 border-2 border-green-300 hover:border-green-500 hover:shadow-md hover:scale-[1.02] hover:bg-green-50"}
+                      ${isOpen ? "bg-orange-600 text-white shadow-lg md:scale-105" : "bg-white text-orange-700 border-2 border-orange-300 hover:border-orange-500 hover:shadow-md hover:scale-[1.02]"}
                       md:min-w-[100px] md:h-9 md:py-2`}
                       onClick={() =>
-                        setOpenMenu((prev) =>
-                          prev === dashboardMenu.key ? null : dashboardMenu.key,
-                        )
+                        setOpenMenu((p) => (p === menu.key ? null : menu.key))
                       }
-                      aria-expanded={openMenu === dashboardMenu.key}
                     >
                       <span className="flex items-center truncate">
-                        <LayoutDashboard
-                          size={16}
-                          className="mr-1.5 flex-shrink-0"
-                        />
-                        {dashboardMenu.label}
+                        {getMenuIcon(menu.key)}
+                        {menu.label}
                       </span>
                       <ChevronDown
                         size={14}
                         className={`transition-transform duration-200 flex-shrink-0 ${isOpen ? "rotate-180" : ""}`}
                       />
                     </button>
-                    {openMenu === dashboardMenu.key && (
-                      <ul className="w-full md:absolute md:left-0 z-50 py-1 mt-1 bg-white border-2 border-green-300 rounded-lg shadow-xl md:top-full md:w-60 max-h-80 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
-                        {dashboardMenu.items.map((item) => {
-                          const isActive = item.value === activeDashboardKey;
+                    {isOpen && (
+                      <ul className="w-full md:absolute md:left-0 z-50 py-1 mt-1 bg-white border-2 border-orange-300 rounded-lg shadow-xl md:top-full md:w-56 max-h-80 overflow-y-auto">
+                        {menu.items.map((item) => {
+                          const isActive = item.value === nav.activeMaster;
                           return (
                             <li
                               key={item.value}
-                              onClick={() => handleDashboardSelect(item.value)}
+                              onClick={() => handleMasterSelect(item.value)}
                               className={`px-3 py-2.5 md:py-2 text-sm transition-all cursor-pointer flex items-center gap-2
-                              ${isActive ? "bg-green-600 text-white font-semibold" : "text-gray-700 hover:bg-green-50 hover:text-green-700 hover:pl-4"}`}
+                              ${isActive ? "bg-orange-600 text-white font-semibold" : "text-gray-700 hover:bg-orange-50 hover:text-orange-700 hover:pl-4"}`}
                             >
                               <span
-                                className={`w-1 h-1 rounded-full ${isActive ? "bg-white" : "bg-green-300"} transition-all`}
-                              ></span>
+                                className={`w-1 h-1 rounded-full ${isActive ? "bg-white" : "bg-orange-300"}`}
+                              />
                               {item.label}
                             </li>
                           );
@@ -808,131 +417,346 @@ export function Navbar({
                     )}
                   </div>
                 );
-              })()}
+              })}
+
+            {/* LEADS MENU */}
+            {showLeadsMenu && (
+              <>
+                {/* New Lead button */}
+                {!isSales && !isTravelAdvisor && (
+                  <div className="relative w-full md:w-auto">
+                    <button
+                      type="button"
+                      className="w-full md:w-auto flex items-center justify-center gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200 bg-white text-emerald-700 border-2 border-emerald-300 hover:border-emerald-500 hover:shadow-md hover:scale-[1.02] md:min-w-[100px] md:h-9 md:py-2"
+                      onClick={() => handleLeadSelect("lead-form")}
+                    >
+                      <FileText size={16} className="mr-1.5 flex-shrink-0" />
+                      <span className="truncate">New Lead</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* Lead Manager */}
+                {!isSales &&
+                  !isTravelAdvisor &&
+                  (shouldShowLeadManagerDropdown ? (
+                    <div className="relative w-full md:w-auto">
+                      <button
+                        type="button"
+                        className="w-full md:w-auto flex items-center justify-between gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200 bg-white text-emerald-700 border-2 border-emerald-300 hover:border-emerald-500 hover:shadow-md hover:scale-[1.02] md:min-w-[100px] md:h-9 md:py-2"
+                        onClick={() =>
+                          setOpenMenu((p) =>
+                            p === "lead-manager-superadmin"
+                              ? null
+                              : "lead-manager-superadmin",
+                          )
+                        }
+                      >
+                        <FileText size={16} className="mr-1.5 flex-shrink-0" />
+                        <span className="truncate">Lead Manager</span>
+                        <ChevronDown
+                          size={14}
+                          className={`transition-transform duration-200 flex-shrink-0 ${openMenu === "lead-manager-superadmin" ? "rotate-180" : ""}`}
+                        />
+                      </button>
+
+                      {/* ✅ FIX 2: Dropdown now shows for City Manager too */}
+                      {openMenu === "lead-manager-superadmin" && (
+                        <ul className="w-full md:absolute md:left-0 z-50 py-1 mt-1 bg-white border-2 border-emerald-300 rounded-lg shadow-xl md:top-full md:w-64 max-h-80 overflow-y-auto">
+                          <li
+                            onClick={() => handleLeadSelect("lead-table")}
+                            className="px-3 py-2.5 md:py-2 text-sm cursor-pointer flex items-center gap-2 text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 hover:pl-4"
+                          >
+                            <span className="w-1 h-1 rounded-full bg-emerald-300" />
+                            Presales Lead Manager
+                          </li>
+
+                          <li
+                            onClick={() =>
+                              handleSalesLeadSelect("sale-lead-table")
+                            }
+                            className="px-3 py-2.5 md:py-2 text-sm cursor-pointer flex items-center gap-2 text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 hover:pl-4"
+                          >
+                            <span className="w-1 h-1 rounded-full bg-emerald-300" />
+                            Telesales Lead Manager
+                          </li>
+
+                          {/* <li
+                            onClick={() => handleLeadSelect("swap-lead-table")}
+                            className="px-3 py-2.5 md:py-2 text-sm cursor-pointer flex items-center gap-2 text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 hover:pl-4"
+                          >
+                            <span className="w-1 h-1 rounded-full bg-emerald-300" />
+                            Swap Lead Manager
+                          </li> */}
+                        </ul>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="relative w-full md:w-auto">
+                      <button
+                        type="button"
+                        className="w-full md:w-auto flex items-center justify-center gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200 bg-white text-emerald-700 border-2 border-emerald-300 hover:border-emerald-500 hover:shadow-md hover:scale-[1.02] md:min-w-[100px] md:h-9 md:py-2"
+                        onClick={() => handleLeadSelect("lead-table")}
+                      >
+                        <FileText size={16} className="mr-1.5 flex-shrink-0" />
+                        <span className="truncate">Lead Manager</span>
+                      </button>
+                    </div>
+                  ))}
+
+                {/* TL Tables */}
+                {isTeamLeader && (
+                  <div className="relative w-full md:w-auto">
+                    <button
+                      type="button"
+                      className="w-full md:w-auto flex items-center justify-center gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200 bg-white text-emerald-700 border-2 border-emerald-300 hover:border-emerald-500 hover:shadow-md hover:scale-[1.02] md:min-w-[100px] md:h-9 md:py-2"
+                      onClick={handleTlTablesSelect}
+                    >
+                      <FileText size={16} className="mr-1.5 flex-shrink-0" />
+                      <span className="truncate">TL Tables</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* Travel Advisor buttons */}
+                {isTravelAdvisor && (
+                  <div className="relative flex flex-col md:flex-row gap-3 w-full md:w-auto">
+                    <button
+                      type="button"
+                      className="w-full md:w-auto flex items-center justify-center gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200 bg-white text-emerald-700 border-2 border-emerald-300 hover:border-emerald-500 hover:shadow-md hover:scale-[1.02] md:min-w-[100px] md:h-9 md:py-2"
+                      onClick={() => handleSalesLeadSelect("sale-lead-table")}
+                    >
+                      <FileText size={16} className="mr-1.5 flex-shrink-0" />
+                      <span className="truncate">Sales Lead Manager</span>
+                    </button>
+
+                    {/* <button
+                      type="button"
+                      className="w-full md:w-auto flex items-center justify-center gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200 bg-white text-emerald-700 border-2 border-emerald-300 hover:border-emerald-500 hover:shadow-md hover:scale-[1.02] md:min-w-[100px] md:h-9 md:py-2"
+                      onClick={() => handleSwapLeadSelect("swap-lead-table")}
+                    >
+                      <FileText size={16} className="mr-1.5 flex-shrink-0" />
+                      <span className="truncate">Swap Lead Manager</span>
+                    </button> */}
+
+                    <button
+                      type="button"
+                      className="w-full md:w-auto flex items-center justify-center gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200 bg-white text-emerald-700 border-2 border-emerald-300 hover:border-emerald-500 hover:shadow-md hover:scale-[1.02] md:min-w-[100px] md:h-9 md:py-2"
+                      onClick={handleDsrSelect}
+                    >
+                      <FileText size={16} className="mr-1.5 flex-shrink-0" />
+                      <span className="truncate">DSR Lead Manager</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* Tracking menu */}
+                {trackingItems.length > 0 && (
+                  <div className="relative w-full md:w-auto">
+                    <button
+                      type="button"
+                      className={`w-full md:w-auto flex items-center justify-between gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200
+                        ${openMenu === "lead-track-menu" ? "bg-green-600 text-white shadow-lg md:scale-105" : "bg-white text-green-700 border-2 border-green-300 hover:border-green-500 hover:shadow-md hover:scale-[1.02] hover:bg-green-50"}
+                        md:min-w-[100px] md:h-9 md:py-2`}
+                      onClick={() =>
+                        setOpenMenu((p) =>
+                          p === "lead-track-menu" ? null : "lead-track-menu",
+                        )
+                      }
+                    >
+                      <span className="flex items-center truncate">
+                        <MapPin size={16} className="mr-1.5 flex-shrink-0" />
+                        Tracking
+                      </span>
+                      <ChevronDown
+                        size={14}
+                        className={`transition-transform duration-200 flex-shrink-0 ${openMenu === "lead-track-menu" ? "rotate-180" : ""}`}
+                      />
+                    </button>
+                    {openMenu === "lead-track-menu" && (
+                      <ul className="w-full md:absolute md:left-0 z-50 py-1 mt-1 bg-white border-2 border-green-300 rounded-lg shadow-xl md:top-full md:w-56 max-h-80 overflow-y-auto">
+                        {trackingItems.map(({ label, key }) => (
+                          <li
+                            key={key}
+                            onClick={() => {
+                              dispatch(showReport(key as any));
+                              close();
+                            }}
+                            className="px-3 py-2.5 md:py-2 text-sm cursor-pointer text-gray-700 hover:bg-green-50 hover:text-green-700 hover:pl-4 flex items-center gap-2"
+                          >
+                            <span className="w-1 h-1 rounded-full bg-green-300" />
+                            {label}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* DASHBOARD MENU */}
+            {showDashboardMenu && dashboardItems.length > 0 && (
+              <div className="relative w-full md:w-auto">
+                <button
+                  type="button"
+                  className={`w-full md:w-auto flex items-center justify-between gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200
+                    ${openMenu === "dashboard-menu" ? "bg-green-600 text-white shadow-lg md:scale-105" : "bg-white text-green-700 border-2 border-green-300 hover:border-green-500 hover:shadow-md hover:scale-[1.02] hover:bg-green-50"}
+                    md:min-w-[100px] md:h-9 md:py-2`}
+                  onClick={() =>
+                    setOpenMenu((p) =>
+                      p === "dashboard-menu" ? null : "dashboard-menu",
+                    )
+                  }
+                >
+                  <span className="flex items-center truncate">
+                    <LayoutDashboard
+                      size={16}
+                      className="mr-1.5 flex-shrink-0"
+                    />
+                    Dashboards
+                  </span>
+                  <ChevronDown
+                    size={14}
+                    className={`transition-transform duration-200 flex-shrink-0 ${openMenu === "dashboard-menu" ? "rotate-180" : ""}`}
+                  />
+                </button>
+                {openMenu === "dashboard-menu" && (
+                  <ul className="w-full md:absolute md:left-0 z-50 py-1 mt-1 bg-white border-2 border-green-300 rounded-lg shadow-xl md:top-full md:w-60 max-h-80 overflow-y-auto">
+                    {dashboardItems.map((item) => {
+                      const isActive = item.value === nav.activeDashboardView;
+                      return (
+                        <li
+                          key={item.value}
+                          onClick={() => handleDashboardSelect(item.value)}
+                          className={`px-3 py-2.5 md:py-2 text-sm cursor-pointer flex items-center gap-2
+                            ${isActive ? "bg-green-600 text-white font-semibold" : "text-gray-700 hover:bg-green-50 hover:text-green-700 hover:pl-4"}`}
+                        >
+                          <span
+                            className={`w-1 h-1 rounded-full ${isActive ? "bg-white" : "bg-green-300"}`}
+                          />
+                          {item.label}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            )}
 
             {/* ACCESS MENU */}
             {showAccess && (
               <div className="relative w-full md:w-auto">
-                {(() => {
-                  const isOpen = openMenu === ACCESS_MENU.key;
-                  const menuIcon = getMenuIcon(
-                    ACCESS_MENU.key,
-                    ACCESS_MENU.label,
-                  );
-                  return (
-                    <>
-                      <button
-                        type="button"
-                        className={`w-full md:w-auto flex items-center justify-between gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200
-                          ${isOpen ? "bg-yellow-600 text-white shadow-lg md:scale-105" : "bg-white text-yellow-700 border-2 border-yellow-300 hover:border-yellow-500 hover:shadow-md hover:scale-[1.02] hover:bg-yellow-50"}
-                          md:min-w-[100px] md:h-9 md:py-2`}
-                        onClick={() =>
-                          setOpenMenu((prev) =>
-                            prev === ACCESS_MENU.key ? null : ACCESS_MENU.key,
-                          )
-                        }
-                        aria-expanded={openMenu === ACCESS_MENU.key}
-                      >
-                        <span className="flex items-center truncate">
-                          {menuIcon}
-                          {ACCESS_MENU.label}
-                        </span>
-                        <ChevronDown
-                          size={14}
-                          className={`transition-transform duration-200 flex-shrink-0 ${isOpen ? "rotate-180" : ""}`}
-                        />
-                      </button>
-                      {openMenu === ACCESS_MENU.key && (
-                        <ul className="w-full md:absolute md:left-0 z-50 py-1 mt-1 bg-white border-2 border-yellow-300 rounded-lg shadow-xl md:top-full md:w-56 max-h-80 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
-                          {ACCESS_MENU.items.map((item) => {
-                            const isActive = item.value === activeAccessKey;
-                            return (
-                              <li
-                                key={item.value}
-                                onClick={() => handleAccessSelect(item.value)}
-                                className={`px-3 py-2.5 md:py-2 text-sm transition-all cursor-pointer flex items-center gap-2
-                                  ${isActive ? "bg-yellow-600 text-white font-semibold" : "text-gray-700 hover:bg-yellow-50 hover:text-yellow-700 hover:pl-4"}`}
-                              >
-                                <span
-                                  className={`w-1 h-1 rounded-full ${isActive ? "bg-white" : "bg-yellow-300"} transition-all`}
-                                ></span>
-                                {item.label}
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      )}
-                    </>
-                  );
-                })()}
+                <button
+                  type="button"
+                  className={`w-full md:w-auto flex items-center justify-between gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200
+                    ${openMenu === ACCESS_MENU.key ? "bg-yellow-600 text-white shadow-lg md:scale-105" : "bg-white text-yellow-700 border-2 border-yellow-300 hover:border-yellow-500 hover:shadow-md hover:scale-[1.02] hover:bg-yellow-50"}
+                    md:min-w-[100px] md:h-9 md:py-2`}
+                  onClick={() =>
+                    setOpenMenu((p) =>
+                      p === ACCESS_MENU.key ? null : ACCESS_MENU.key,
+                    )
+                  }
+                >
+                  <span className="flex items-center truncate">
+                    <Shield size={16} className="mr-1.5" />
+                    {ACCESS_MENU.label}
+                  </span>
+                  <ChevronDown
+                    size={14}
+                    className={`transition-transform duration-200 flex-shrink-0 ${openMenu === ACCESS_MENU.key ? "rotate-180" : ""}`}
+                  />
+                </button>
+                {openMenu === ACCESS_MENU.key && (
+                  <ul className="w-full md:absolute md:left-0 z-50 py-1 mt-1 bg-white border-2 border-yellow-300 rounded-lg shadow-xl md:top-full md:w-56 max-h-80 overflow-y-auto">
+                    {ACCESS_MENU.items.map((item) => {
+                      const isActive = item.value === nav.activeAccessKey;
+                      return (
+                        <li
+                          key={item.value}
+                          onClick={() => handleAccessSelect(item.value)}
+                          className={`px-3 py-2.5 md:py-2 text-sm cursor-pointer flex items-center gap-2
+                            ${isActive ? "bg-yellow-600 text-white font-semibold" : "text-gray-700 hover:bg-yellow-50 hover:text-yellow-700 hover:pl-4"}`}
+                        >
+                          <span
+                            className={`w-1 h-1 rounded-full ${isActive ? "bg-white" : "bg-yellow-300"}`}
+                          />
+                          {item.label}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
               </div>
             )}
 
             {/* WEBSITE MENU */}
             {showWebsiteMenu && (
               <div className="relative w-full md:w-auto">
-                {(() => {
-                  const isOpen = openMenu === "website-menu";
-                  return (
-                    <>
-                      <button
-                        type="button"
-                        className={`w-full md:w-auto flex items-center justify-between gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200
-                          ${isOpen ? "bg-blue-600 text-white shadow-lg md:scale-105" : "bg-white text-blue-700 border-2 border-blue-300 hover:border-blue-500 hover:shadow-md hover:scale-[1.02] hover:bg-blue-50"}
-                          md:min-w-[100px] md:h-9 md:py-2`}
-                        onClick={() =>
-                          setOpenMenu((prev) =>
-                            prev === "website-menu" ? null : "website-menu",
-                          )
-                        }
-                        aria-expanded={isOpen}
+                <button
+                  type="button"
+                  className={`w-full md:w-auto flex items-center justify-between gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200
+                    ${openMenu === "website-menu" ? "bg-blue-600 text-white shadow-lg md:scale-105" : "bg-white text-blue-700 border-2 border-blue-300 hover:border-blue-500 hover:shadow-md hover:scale-[1.02] hover:bg-blue-50"}
+                    md:min-w-[100px] md:h-9 md:py-2`}
+                  onClick={() =>
+                    setOpenMenu((p) =>
+                      p === "website-menu" ? null : "website-menu",
+                    )
+                  }
+                >
+                  <span className="flex items-center truncate">
+                    <Monitor size={16} className="mr-1.5 flex-shrink-0" />
+                    Website
+                  </span>
+                  <ChevronDown
+                    size={14}
+                    className={`transition-transform duration-200 flex-shrink-0 ${openMenu === "website-menu" ? "rotate-180" : ""}`}
+                  />
+                </button>
+                {openMenu === "website-menu" && (
+                  <ul className="w-full md:absolute md:left-0 z-50 py-1 mt-1 bg-white border-2 border-blue-300 rounded-lg shadow-xl md:top-full md:w-56 max-h-80 overflow-y-auto">
+                    {[
+                      { key: "gac", label: "GAC Table" },
+                      { key: "gaq", label: "GAQ Table" },
+                    ].map(({ key, label }) => (
+                      <li
+                        key={key}
+                        onClick={() => handleWebsiteSelect(key)}
+                        className={`px-3 py-2.5 md:py-2 text-sm cursor-pointer flex items-center gap-2
+                          ${nav.activeWebsiteView === key ? "bg-blue-600 text-white font-semibold" : "text-gray-700 hover:bg-blue-50 hover:text-blue-700 hover:pl-4"}`}
                       >
-                        <span className="flex items-center truncate">
-                          <Monitor size={16} className="mr-1.5 flex-shrink-0" />
-                          Website
-                        </span>
-                        <ChevronDown
-                          size={14}
-                          className={`transition-transform duration-200 flex-shrink-0 ${isOpen ? "rotate-180" : ""}`}
+                        <span
+                          className={`w-1 h-1 rounded-full ${nav.activeWebsiteView === key ? "bg-white" : "bg-blue-300"}`}
                         />
-                      </button>
-                      {isOpen && (
-                        <ul className="w-full md:absolute md:left-0 z-50 py-1 mt-1 bg-white border-2 border-blue-300 rounded-lg shadow-xl md:top-full md:w-56 max-h-80 overflow-y-auto animate-in fade-in slide-in-from-top-2 duration-200">
-                          {[
-                            { key: "gac", label: "GAC Table" },
-                            { key: "gaq", label: "GAQ Table" },
-                          ].map(({ key, label }) => (
-                            <li
-                              key={key}
-                              onClick={() => {
-                                onWebsiteMenuSelect?.(key);
-                                setOpenMenu(null);
-                                setMobileOpen(false);
-                              }}
-                              className={`px-3 py-2.5 md:py-2 text-sm transition-all cursor-pointer flex items-center gap-2
-                                ${activeWebsiteKey === key ? "bg-blue-600 text-white font-semibold" : "text-gray-700 hover:bg-blue-50 hover:text-blue-700 hover:pl-4"}`}
-                            >
-                              <span
-                                className={`w-1 h-1 rounded-full ${activeWebsiteKey === key ? "bg-white" : "bg-blue-300"}`}
-                              ></span>
-                              {label}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </>
-                  );
-                })()}
+                        {label}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             )}
           </div>
 
-          {/* Right Section */}
+          {/* ── Right section: User profile ── */}
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:ml-auto md:gap-2 lg:gap-3">
-            {/* User Profile Dropdown */}
+            {/* Rules — city manager aur pre-sales executive ko dikhega */}
+            {(normalizedRole === "city manager" ||
+              normalizedRole === "pre-sales executive") && (
+              <button
+                type="button"
+                onClick={() => dispatch(setActiveSection("rules"))}
+                className="flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold uppercase tracking-wide bg-white text-red-700 border-2 border-red-300 hover:border-red-500 hover:shadow-md hover:scale-[1.02] transition-all duration-200 md:h-9"
+              >
+                <FileText size={16} className="flex-shrink-0" />
+                Rules
+              </button>
+            )}
+
             <div className="relative">
               <button
-                onClick={() => setOpenMenu(openMenu === "user" ? null : "user")}
+                onClick={() =>
+                  setOpenMenu((p) => (p === "user" ? null : "user"))
+                }
                 className={`flex items-center gap-2 rounded-full bg-white px-2 py-1 text-xs font-semibold text-gray-700 shadow-sm border-2 transition-all duration-200 hover:shadow-md hover:scale-[1.02]
                   ${openMenu === "user" ? "border-orange-500 shadow-md" : "border-orange-300 hover:border-orange-500"}`}
               >
@@ -944,12 +768,13 @@ export function Navbar({
                   className="object-cover border-2 border-orange-500 rounded-full flex-shrink-0"
                 />
                 <div className="text-left hidden lg:block">
-                  {/* ✅ "Guest" fallback hata diya */}
-                  <p className="text-sm font-semibold text-gray-800">
-                    {userAliasName || userName}
+                  <p className="text-sm font-semibold text-gray-900">
+                    {userAliasName ||
+                      (rawUser?.shortName ?? userData?.shortName) ||
+                      "-"}
                   </p>
                   <p className="text-[11px] uppercase text-gray-500">
-                    {roleLabel || adminRole || "-"}
+                    {adminRole || "-"}
                   </p>
                 </div>
                 <ChevronDown
@@ -961,83 +786,70 @@ export function Navbar({
               {openMenu === "user" && (
                 <div className="absolute right-0 z-50 mt-2 w-72 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
                   <div className="p-4 border-b border-gray-100">
-                    <div className="flex flex-col gap-2">
-                      {/* ✅ "Guest" fallback hata diya */}
-                      <p className="text-sm font-semibold text-gray-900">
-                        {userAliasName}
-                      </p>
-                      <p className="text-xs text-gray-500 truncate">
-                        {userEmail}
-                      </p>
-                      <div className="flex flex-wrap gap-1.5 mt-2">
-                        {userDepartment && (
-                          <span className="text-[11px] px-2 py-[2px] bg-blue-100 text-blue-700 rounded-full">
-                            {userDepartment}
-                          </span>
-                        )}
-                        {userSubDepartment && (
-                          <span className="text-[11px] px-2 py-[2px] bg-purple-100 text-purple-700 rounded-full">
-                            {userSubDepartment}
-                          </span>
-                        )}
-                        {roleLabel && (
-                          <span className="text-[11px] px-2 py-[2px] bg-green-100 text-green-700 rounded-full">
-                            {roleLabel || adminRole || "-"}
-                          </span>
-                        )}
-                      </div>
+                    <p className="text-sm font-semibold text-gray-900">
+                      {userAliasName ||
+                        (rawUser?.shortName ?? userData?.shortName) ||
+                        "-"}
+                    </p>
+                    <p className="text-xs text-gray-500 truncate">
+                      {userEmail}
+                    </p>
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {userDepartment && (
+                        <span className="text-[11px] px-2 py-[2px] bg-blue-100 text-blue-700 rounded-full">
+                          {userDepartment}
+                        </span>
+                      )}
+                      {userSubDepartment && (
+                        <span className="text-[11px] px-2 py-[2px] bg-purple-100 text-purple-700 rounded-full">
+                          {userSubDepartment}
+                        </span>
+                      )}
+                      {adminRole && (
+                        <span className="text-[11px] px-2 py-[2px] bg-green-100 text-green-700 rounded-full">
+                          {adminRole}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="px-4 py-3 space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Role</span>
-                      <span className="text-gray-800 font-medium">
-                        {roleLabel || adminRole || "-"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Department</span>
-                      <span className="text-gray-800 font-medium">
-                        {userDepartment || "-"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Sub Dept</span>
-                      <span className="text-gray-800 font-medium">
-                        {userSubDepartment || "-"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Region</span>
-                      <span className="text-gray-800 font-medium">
-                        {userRegionNames || "-"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">Zone</span>
-                      <span className="text-gray-800 font-medium">
-                        {userZoneNames?.length ? userZoneNames.join(", ") : "-"}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-500">City</span>
-                      <span className="text-gray-800 font-medium">
-                        {userCityNames?.length ? userCityNames.join(", ") : "-"}
-                      </span>
-                    </div>
+                    {[
+                      ["Role", adminRole],
+                      ["Department", userDepartment],
+                      ["Sub Dept", userSubDepartment],
+                      [
+                        "Region",
+                        Array.isArray(userRegionNames)
+                          ? userRegionNames.join(", ")
+                          : userRegionNames,
+                      ],
+                      [
+                        "Zone",
+                        userZoneNames?.length ? userZoneNames.join(", ") : "-",
+                      ],
+                      [
+                        "City",
+                        userCityNames?.length ? userCityNames.join(", ") : "-",
+                      ],
+                    ].map(([label, value]) => (
+                      <div key={label} className="flex justify-between">
+                        <span className="text-gray-500">{label}</span>
+                        <span className="text-gray-800 font-medium">
+                          {value || "-"}
+                        </span>
+                      </div>
+                    ))}
                   </div>
-                  {onLogout && (
-                    <button
-                      onClick={() => {
-                        handleLogout();
-                        setOpenMenu(null);
-                      }}
-                      className="w-full px-4 py-2.5 md:py-2 text-sm text-left text-gray-700 hover:bg-orange-50 hover:text-orange-700 transition-all hover:pl-6 flex items-center gap-2"
-                    >
-                      <span className="w-1 h-1 rounded-full bg-orange-300"></span>
-                      Sign out
-                    </button>
-                  )}
+                  <button
+                    onClick={() => {
+                      handleLogout();
+                      setOpenMenu(null);
+                    }}
+                    className="w-full px-4 py-2.5 md:py-2 text-sm text-left text-gray-700 hover:bg-orange-50 hover:text-orange-700 transition-all hover:pl-6 flex items-center gap-2"
+                  >
+                    <span className="w-1 h-1 rounded-full bg-orange-300" />
+                    Sign out
+                  </button>
                 </div>
               )}
             </div>

@@ -4,8 +4,7 @@ import { generateUUID } from "../../utils/uuid.js";
 
 export const USER_TABLE = "users";
 
-// Look up a user from the HRMS DB by username (used for login)
-export const findUserByUserName = async (userName) => {
+export const findHrmsUserByUserName = async (userName) => {
   try {
     const [rows] = await hrmsPool.execute(
       `SELECT * FROM ${USER_TABLE} WHERE username = ?`,
@@ -17,7 +16,18 @@ export const findUserByUserName = async (userName) => {
   }
 };
 
-// Look up a user by id from the HRMS DB (used after login for profile)
+export const findVendorByUserName = async (userName) => {
+  try {
+    const [rows] = await pool.execute(
+      `SELECT * FROM vendors WHERE username = ?`,
+      [userName],
+    );
+    return rows[0] || null;
+  } catch (error) {
+    throw error;
+  }
+};
+
 export const findHrmsUserById = async (id) => {
   try {
     const [rows] = await hrmsPool.execute(
@@ -37,6 +47,18 @@ export const saveHrmsRefreshToken = async (userId, refreshToken) => {
       `UPDATE ${USER_TABLE} SET refreshToken = ? WHERE id = ?`,
       [refreshToken, userId],
     );
+  } catch (error) {
+    console.error("saveHrmsRefreshToken error:", error);
+    throw error;
+  }
+};
+
+export const saveVendorRefreshToken = async (userId, refreshToken) => {
+  try {
+    await pool.execute(`UPDATE vendors SET refreshToken = ? WHERE id = ?`, [
+      refreshToken,
+      userId,
+    ]);
   } catch (error) {
     console.error("saveHrmsRefreshToken error:", error);
     throw error;
@@ -140,8 +162,6 @@ export const findUserByUUID = async (uuid) => {
   }
 };
 
-
-
 export const findUserById = async (id) => {
   if (!id) throw new Error("User ID is required");
 
@@ -234,9 +254,7 @@ export const findUserById = async (id) => {
       department: user.department_name || null,
       subDepartment: user.subDepartment_name || null,
 
-      fullName: [user.shortName, ]
-        .filter(Boolean)
-        .join(" "),
+      fullName: [user.shortName].filter(Boolean).join(" "),
 
       isActive: Boolean(user.is_active),
 

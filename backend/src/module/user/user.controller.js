@@ -4,7 +4,6 @@ import { asyncHandler } from "../../utils/asyncHandler.js";
 import {
   findUserById,
   findUserByEmail,
-  findUserByUserName,
   findHrmsUserById,
   insertUser,
   saveRefreshToken,
@@ -12,8 +11,13 @@ import {
   getSalesUsers,
   updateUserById,
   updateUserRefreshToken,
+  findHrmsUserByUserName,
 } from "./user.model.js";
-import { generateTokens, isPasswordCorrect } from "./user.service.js";
+import {
+  generateTokens,
+  isPasswordCorrect,
+  loginService,
+} from "./user.service.js";
 
 const registerUser = asyncHandler(async (req, res) => {
   const { name, email, password, city, role, subDepartment_name } = req.body;
@@ -49,56 +53,77 @@ const registerUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(201, newUser, "User created successfully"));
 });
 
+// const loginUser = asyncHandler(async (req, res) => {
+//   const { username, password } = req.body;
+//   if (!username || !password) {
+//     throw new ApiError(400, "Username and password are required");
+//   }
+
+//   const user = await findHrmsUserByUserName(username);
+//   if (!user) {
+//     throw new ApiError(404, "User does not exist");
+//   }
+
+//   const validPassword = await isPasswordCorrect(password, user.password);
+//   if (!validPassword) {
+//     throw new ApiError(401, "Invalid credentials");
+//   }
+
+//   const { accessToken, refreshToken } = generateTokens(user.id);
+
+//   await saveHrmsRefreshToken(user.id, refreshToken);
+
+//   const cookieOptions = {
+//     httpOnly: true,
+//     secure: true,
+//     sameSite: "None",
+//     maxAge: 7 * 24 * 60 * 60 * 1000,
+//   };
+
+//   const loginUser = await findHrmsUserById(user.id);
+
+//   res
+//     .status(200)
+//     .cookie("accessToken", accessToken, cookieOptions)
+//     .cookie("refreshToken", refreshToken, cookieOptions)
+//     .json(
+//       new ApiResponse(
+//         200,
+//         {
+//           loginUser,
+//           accessToken,
+//           refreshToken,
+//         },
+//         "User logged in successfully",
+//       ),
+//     );
+// });
+
 const loginUser = asyncHandler(async (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password) {
-    throw new ApiError(400, "Username and password are required");
-  }
+  const { username, password, loginType } = req.body;
 
-  const user = await findUserByUserName(username);
-  if (!user) {
-    throw new ApiError(404, "User does not exist");
-  }
-
-  const validPassword = await isPasswordCorrect(password, user.password);
-  if (!validPassword) {
-    throw new ApiError(401, "Invalid credentials");
-  }
-
-  const { accessToken, refreshToken } = generateTokens(user.id);
-
-  await saveHrmsRefreshToken(user.id, refreshToken);
+  const result = await loginService({
+    username,
+    password,
+    loginType,
+  });
 
   const cookieOptions = {
     httpOnly: true,
-    secure: true,
-    sameSite: "None",
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
     maxAge: 7 * 24 * 60 * 60 * 1000,
   };
 
-  const loginUser = await findHrmsUserById(user.id);
-
   res
     .status(200)
-    .cookie("accessToken", accessToken, cookieOptions)
-    .cookie("refreshToken", refreshToken, cookieOptions)
-    .json(
-      new ApiResponse(
-        200,
-        {
-          loginUser,
-          accessToken,
-          refreshToken,
-        },
-        "User logged in successfully",
-      ),
-    );
+    .cookie("accessToken", result.accessToken, cookieOptions)
+    .cookie("refreshToken", result.refreshToken, cookieOptions)
+    .json(new ApiResponse(200, result, "Login successful"));
 });
 
 const getCurrentUSer = asyncHandler(async (req, res) => {
-  const id = req.user.id;
-
-  const currentUser = await findUserById(id);
+  const currentUser = req.user;
 
   if (!currentUser) {
     throw new ApiError(404, "Current user not found");

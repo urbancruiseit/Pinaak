@@ -1,13 +1,42 @@
 import { pool } from "../../config/mySqlDB.js";
-
+import bcrypt from "bcrypt";
 const toNull = (val) => (val === "" || val === undefined ? null : val);
-
+export const findVendorById = async (id) => {
+  try {
+    const [rows] = await pool.execute(`SELECT * FROM vendors WHERE id = ?`, [
+      id,
+    ]);
+    return rows[0] || null;
+  } catch (error) {
+    throw error;
+  }
+};
 export const createVendorModel = async (data) => {
   try {
+    // 1. Password validation - required field, empty/undefined allow mat karo
+    if (
+      !data.password ||
+      typeof data.password !== "string" ||
+      data.password.trim() === ""
+    ) {
+      throw new Error("Password is required to create a vendor");
+    }
+
+    // 2. Minimum length check (optional but recommended)
+    if (data.password.length < 6) {
+      throw new Error("Password must be at least 6 characters long");
+    }
+
+    // 3. Hash the password properly
+    const saltRounds = 12; // 10 se 12 better hai, thoda zyada secure
+    const hashedPassword = await bcrypt.hash(data.password, saltRounds);
+
     const [columns] = await pool.execute("SHOW COLUMNS FROM vendors");
     const columnNames = columns.map((c) => c.Field);
 
     const fieldMapping = {
+      username: data.username,
+      password: hashedPassword, // hashed value use karo, raw data.password nahi
       name: data.name,
       email: data.email,
       phone: data.phone,
@@ -18,7 +47,7 @@ export const createVendorModel = async (data) => {
 
       company_name: data.companyName,
       company_type: data.companyType,
-      company_pan_number: data.companyPanNumber, // FIXED
+      company_pan_number: data.companyPanNumber,
       company_registered_number: data.companyRegisteredNumber,
 
       gst_number: data.gstNumber,
@@ -75,6 +104,10 @@ export const createVendorModel = async (data) => {
     `;
 
     const [result] = await pool.execute(query, values);
+
+    // 4. Response me kabhi bhi hashed password wapas mat bhejo
+    delete result.password;
+
     return result;
   } catch (error) {
     console.error("Error in createVendorModel:", error);
@@ -225,7 +258,7 @@ export const getVendorByIdModel = async (id) => {
       FROM vendors 
       WHERE id = ?
       `,
-      [id]
+      [id],
     );
 
     if (!rows.length) return null;
@@ -240,7 +273,7 @@ export const getVendorByIdModel = async (id) => {
 
       companyName: vendor.company_name,
       companyType: vendor.company_type,
-      companyPanNumber: vendor.company_pan_number,   // ✅ FIXED
+      companyPanNumber: vendor.company_pan_number, // ✅ FIXED
       companyRegisteredNumber: vendor.company_registered_number,
 
       gstNumber: vendor.gst_number,

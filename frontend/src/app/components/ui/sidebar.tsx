@@ -166,6 +166,27 @@ const Sidebar: React.FC = () => {
               onClick={() => dispatch(setActiveSection("venderDashboard"))}
               color="indigo"
             />
+
+            <SidebarItem
+              icon={<Car size={iconSize} />}
+              label="Trip / Booking"
+              description="View & manage your trips"
+              isExpanded={isExpanded}
+              isActive={activeSection === "booking-trip"}
+              onClick={() => dispatch(setActiveSection("booking-trip"))}
+              color="purple"
+            />
+
+            <SidebarItem
+              icon={<FileBadge size={iconSize} />}
+              label="Vehicle Documents"
+              description="Manage vehicle documents"
+              isExpanded={isExpanded}
+              isActive={activeSection === "vehicle-documents"}
+              onClick={() => dispatch(setActiveSection("vehicle-documents"))}
+              color="blue"
+            />
+
             <SidebarItem
               icon={<UserCircle size={iconSize} />}
               label="Vendor Profile"
@@ -175,6 +196,7 @@ const Sidebar: React.FC = () => {
               onClick={() => dispatch(setActiveSection("vendor-profile"))}
               color="orange"
             />
+
             <SidebarItem
               icon={<Truck size={iconSize} />}
               label="Vehicles"

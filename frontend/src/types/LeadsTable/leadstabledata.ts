@@ -369,6 +369,15 @@ export const TABLE_BANNER_COLUMNS: BannerColumn[] = [
     minWidthPx: 150,
   },
   {
+    key: "follow_ups",
+    label: "Follow Up",
+    groupLabel: "TS_REPORT",
+    groupClass: "text-white",
+    labelClass: "text-white font-semibold",
+    minWidthClass: "min-w-[150px]",
+    minWidthPx: 150,
+  },
+  {
     key: "lost_reason",
     label: "LOST REASON",
     groupLabel: "TS_REPORT",
@@ -380,15 +389,6 @@ export const TABLE_BANNER_COLUMNS: BannerColumn[] = [
   {
     key: "lostReasonDetails",
     label: "Lost Reason Details",
-    groupLabel: "TS_REPORT",
-    groupClass: "text-white",
-    labelClass: "text-white font-semibold",
-    minWidthClass: "min-w-[150px]",
-    minWidthPx: 150,
-  },
-  {
-    key: "followUp",
-    label: "Follow Up",
     groupLabel: "TS_REPORT",
     groupClass: "text-white",
     labelClass: "text-white font-semibold",

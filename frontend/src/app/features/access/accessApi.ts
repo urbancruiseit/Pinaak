@@ -247,42 +247,76 @@ export const getMySwapLeadsApi = async (
   page: number = 1,
   filters?: {
     cityIds?: number[];
+    zoneId?: number | null;
     search?: string;
     month?: number | null;
     year?: number | null;
     advisorId?: number | null;
-    status?: string | null; // ✅ add kiya
+    status?: string | null;
+    ageFilter?: string | null;
+    daysFilter?: string | null;
+    paxFilter?: string | null;
+    liveorexpiry?: string | null;
   },
 ): Promise<SwapLeadsResponse> => {
   try {
     const params = new URLSearchParams();
+
     params.append("page", String(page));
 
-    if (filters?.cityIds && filters.cityIds.length > 0) {
+    if (filters?.cityIds?.length) {
       params.append("cityIds", filters.cityIds.join(","));
     }
-    if (filters?.search && filters.search.trim()) {
+
+    if (filters?.zoneId != null) {
+      params.append("zoneId", String(filters.zoneId));
+    }
+
+    if (filters?.search?.trim()) {
       params.append("search", filters.search.trim());
     }
+
     if (filters?.month != null) {
       params.append("month", String(filters.month));
     }
+
     if (filters?.year != null) {
       params.append("year", String(filters.year));
     }
+
     if (filters?.advisorId != null) {
       params.append("advisorId", String(filters.advisorId));
     }
+
     if (filters?.status != null) {
-      params.append("status", filters.status); // ✅ add kiya
+      params.append("status", filters.status);
+    }
+
+    if (filters?.ageFilter != null) {
+      params.append("ageFilter", filters.ageFilter);
+    }
+
+    if (filters?.daysFilter != null) {
+      params.append("daysFilter", filters.daysFilter);
+    }
+
+    if (filters?.paxFilter != null) {
+      params.append("paxFilter", filters.paxFilter);
+    }
+
+    if (filters?.liveorexpiry && filters.liveorexpiry !== "All") {
+      params.append("liveorexpiry", filters.liveorexpiry);
     }
 
     const response = await axiosInstance.get(
       `/assign/swap-leads?${params.toString()}`,
     );
-    console.log("swap leads response", response.data);
+
     const data: SwapLeadsResponse = response?.data?.data;
-    if (!data) throw new Error("Invalid response from server");
+
+    if (!data) {
+      throw new Error("Invalid response from server");
+    }
 
     return data;
   } catch (error: any) {
@@ -309,9 +343,9 @@ export const getPresalesLeadStatusCountApi = async () => {
       `/assign/leads/status-count-by-presales`,
     );
 
-   const data = response?.data?.data;
+    const data = response?.data?.data;
     if (!data) throw new Error("Invalid response from server");
- 
+
     return data;
   } catch (error: any) {
     throw new Error(error?.response?.data?.message || error.message);
@@ -326,10 +360,10 @@ export const getCityByZoneIdApi = async (
       timeout: 10000,
     });
 
-     const data = response?.data?.data;
+    const data = response?.data?.data;
     if (!data) throw new Error("Invalid response from server");
 
-   return data
+    return data;
   } catch (error) {
     throw new Error(error?.response?.data?.message || error.message);
   }

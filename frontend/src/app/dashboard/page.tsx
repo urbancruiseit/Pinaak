@@ -43,6 +43,9 @@ const LeadTableModule = lazy(
 const LeadSaleTableModule = lazy(
   () => import("../components/telesales/saleleadable"),
 );
+const LeadSwapTableModule = lazy(
+  () => import("../components/telesales/Swap/swapTable"),
+);
 const EditLeadFormModule = lazy(
   () => import("../components/pages/leads/list/EditForm/editleadform"),
 );
@@ -495,6 +498,14 @@ export default function DashboardPage() {
             <LeadSaleTableModule />
           </div>
         );
+
+      if (nav.activeLeadView === "swap-lead-table")
+        return (
+          <div className="space-y-6">
+            <LeadSwapTableModule />
+          </div>
+        );
+
       if (nav.activeLeadView === "dsr-lead-table")
         return (
           <div className="space-y-6">

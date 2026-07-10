@@ -1,5 +1,5 @@
 // E:\Pinnak\PINAK_FRONTEND\src\types\leads\leadTableColumns.tsx
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { Eye, Edit, UserPlus, RefreshCw } from "lucide-react";
 import type { LeadRecord } from "../types";
 
@@ -48,6 +48,137 @@ const getISTDateParts = (isoDateTime: string) => {
   };
 };
 
+const RemarksCell = ({
+  text,
+  title = "Special Requirement of Customer",
+}: {
+  text: string;
+  title?: string;
+}) => {
+  const [showPopup, setShowPopup] = React.useState(false);
+
+  if (!text || text === "—") return <>—</>;
+
+  const trimmedText = text.trim();
+  const isLong = trimmedText.length > 30;
+  const shortText = isLong ? trimmedText.slice(0, 30) : trimmedText;
+
+  return (
+    <>
+      <div className="flex items-center max-w-[220px]">
+        <span className="truncate">
+          {shortText}
+          {isLong ? "..." : ""}
+        </span>
+
+        {isLong && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowPopup(true);
+            }}
+            className="flex-shrink-0 ml-1 text-blue-600 hover:underline font-semibold whitespace-nowrap"
+          >
+            More
+          </button>
+        )}
+      </div>
+
+      {showPopup && (
+        <div
+          className="fixed inset-0 bg-black/30 flex items-center justify-center z-[99999]"
+          onClick={() => setShowPopup(false)}
+        >
+          <div
+            className="bg-white rounded-xl shadow-2xl w-[550px] max-w-[90%] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b bg-gray-50">
+              <h3 className="text-xl font-bold text-gray-800 pr-4">{title}</h3>
+              <button
+                onClick={() => setShowPopup(false)}
+                className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-full bg-red-600 hover:bg-red-700 text-white transition-all duration-200"
+              >
+                <span className="text-lg font-bold leading-none">✕</span>
+              </button>
+            </div>
+
+            <div className="p-5 max-h-[350px] overflow-y-auto">
+              <div className="text-gray-700 text-[15px] leading-7 whitespace-pre-wrap break-words">
+                {text}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
+
+const ItineraryCell = ({ text }: { text: string }) => {
+  const [showPopup, setShowPopup] = React.useState(false);
+
+  if (!text || text === "—") return <>—</>;
+
+  const trimmedText = text.trim();
+  const isLong = trimmedText.length > 30;
+  const shortText = isLong ? trimmedText.slice(0, 30) : trimmedText;
+
+  return (
+    <>
+      <div className="flex items-center max-w-[220px]">
+        <span className="truncate">
+          {highlightItineraryIfKeyword(shortText)}
+          {isLong ? "..." : ""}
+        </span>
+
+        {isLong && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowPopup(true);
+            }}
+            className="flex-shrink-0 ml-1 text-blue-600 hover:underline font-semibold whitespace-nowrap"
+          >
+            More
+          </button>
+        )}
+      </div>
+
+      {showPopup && (
+        <div
+          className="fixed inset-0 bg-black/30 flex items-center justify-center z-[99999]"
+          onClick={() => setShowPopup(false)}
+        >
+          <div
+            className="bg-white rounded-xl shadow-2xl w-[550px] max-w-[90%] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b bg-gray-50">
+              <h3 className="text-xl font-bold text-gray-800 pr-4">
+                Itinerary
+              </h3>
+              <button
+                onClick={() => setShowPopup(false)}
+                className="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-full bg-red-600 hover:bg-red-700 text-white transition-all duration-200"
+              >
+                <span className="text-lg font-bold leading-none">✕</span>
+              </button>
+            </div>
+
+            <div className="p-5 max-h-[350px] overflow-y-auto">
+              <div className="text-gray-700 text-[15px] leading-7 whitespace-pre-wrap break-words">
+                {highlightItineraryIfKeyword(trimmedText)}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+};
 const getISTHour = (isoDateTime: string): number => {
   const date = new Date(isoDateTime);
   if (Number.isNaN(date.getTime())) return 0;
@@ -256,19 +387,6 @@ export const useLeadColumns = ({
               >
                 <UserPlus size={16} />
               </button>
-
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  window.dispatchEvent(
-                    new CustomEvent("swapLead", { detail: lead }),
-                  );
-                }}
-                className="p-1 text-white bg-green-600 rounded hover:bg-green-700"
-                title="Swap"
-              >
-                <RefreshCw size={16} />
-              </button>
             </div>
           );
         }
@@ -276,6 +394,14 @@ export const useLeadColumns = ({
         // Occasion Column
         if (col.key === "occasion") {
           return renderOccasion(String(val));
+        }
+
+        if (col.key === "remarks") {
+          return <RemarksCell text={String(val || "")} />;
+        }
+
+        if (col.key === "lostReasonDetails") {
+          return <RemarksCell text={String(val || "")} title="Lost Reason" />;
         }
 
         // Service Type Column
@@ -303,6 +429,86 @@ export const useLeadColumns = ({
           );
         }
 
+        // Follow Ups Column
+        if (col.key === "follow_ups") {
+          const raw = lead.follow_ups;
+          const data: { date: string; text: string }[] = !raw
+            ? []
+            : typeof raw === "string"
+              ? (() => {
+                  try {
+                    return JSON.parse(raw);
+                  } catch {
+                    return [];
+                  }
+                })()
+              : Array.isArray(raw)
+                ? raw
+                : [];
+
+          if (!data.length)
+            return <span className="text-gray-400 italic text-xs">—</span>;
+
+          const first = data[0];
+          const rest = data.slice(1);
+
+          return (
+            <div className="relative group w-full">
+              {/* Pehla item hamesha dikhe */}
+              <div className="flex items-center gap-1 whitespace-nowrap">
+                <span className="text-blue-700 font-semibold text-xs">
+                  {first.date}
+                </span>
+                <span className="text-gray-600 text-xs truncate max-w-[80px]">
+                  {first.text}
+                </span>
+
+                {/* Sirf tab dikhao jab rest bhi ho */}
+                {rest.length > 0 && (
+                  <span className="ml-1 text-[10px] bg-orange-500 text-white rounded-full px-1.5 py-0.5 font-bold cursor-pointer select-none">
+                    +{rest.length}
+                  </span>
+                )}
+              </div>
+
+              {/* Hover pe dropdown — right side se bahar na jaye */}
+              {rest.length > 0 && (
+                <div
+                  className="absolute top-full mt-1 hidden group-hover:block z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl min-w-[260px]"
+                  style={{ right: 0, left: "auto" }}
+                >
+                  <div className="px-2 py-1 bg-gray-100 rounded-t-lg border-b border-gray-200">
+                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">
+                      All Follow Ups ({data.length})
+                    </span>
+                  </div>
+                  <table className="text-xs w-full">
+                    <tbody>
+                      {data.map((item, index) => (
+                        <tr
+                          key={index}
+                          className={
+                            index % 2 === 0 ? "bg-white" : "bg-gray-50"
+                          }
+                        >
+                          <td className="px-1 py-1.5 text-gray-400 font-bold w-4 pl-2">
+                            {index + 1}.
+                          </td>
+                          <td className="px-2 py-1.5 text-blue-700 font-semibold whitespace-nowrap">
+                            {item.date}
+                          </td>
+                          <td className="px-2 py-1.5 text-gray-700 whitespace-normal max-w-[180px] pr-3">
+                            {item.text}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          );
+        }
         // Pickup DateTime Column
         if (col.key === "pickupDateTime") {
           const dateTimeStr = formatDateTime(String(val));
@@ -374,25 +580,6 @@ export const useLeadColumns = ({
         if (col.key === "tripType")
           return formatTripType(val as any) || String(val);
 
-        // // Aged Column
-        // if (col.key === "aged") {
-        //   const leadDate = new Date(lead.date);
-        //   const currentDate = new Date();
-        //   const diffTime = currentDate.getTime() - leadDate.getTime();
-        //   const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-        //   const age = diffDays >= 0 ? diffDays : 0;
-
-        //   let bgClass = "";
-        //   if (age >= 0 && age <= 5)
-        //     bgClass = "bg-green-500 text-white px-2 py-1 rounded";
-        //   else if (age >= 6 && age <= 10)
-        //     bgClass = "bg-orange-500 text-white px-2 py-1 rounded";
-        //   else if (age >= 11)
-        //     bgClass = "bg-red-900 text-white px-2 py-1 rounded";
-
-        //   return <span className={bgClass}>{String(age)}</span>;
-        // }
-
         // Live/Expiry Column
         if (col.key === "liveorexpiry") {
           if (!lead.pickupDateTime) return "—";
@@ -440,8 +627,8 @@ export const useLeadColumns = ({
           let bgClass = "";
           if (pax >= 1 && pax <= 20) bgClass = "bg-blue-500 text-white";
           else if (pax >= 21 && pax <= 53) bgClass = "bg-black text-white";
-          else if (pax >= 54 && pax <= 150) bgClass = "bg-pink-500 text-white";
-          else if (pax >= 151) bgClass = "bg-red-900 text-white";
+          else if (pax >= 54 && pax <= 150) bgClass = "bg-pink-700 text-white";
+          else if (pax >= 151) bgClass = "bg-red-700 text-white";
           return (
             <span className={`px-2 py-1 rounded font-bold ${bgClass}`}>
               {pax}
@@ -457,20 +644,24 @@ export const useLeadColumns = ({
         }
 
         // Itinerary Column
-        if (col.key === "itinerary" && Array.isArray(val)) {
-          const itineraryText = val.length > 0 ? val.join(", ") : "—";
+        if (col.key === "itinerary") {
+          let itineraryArr: string[] = [];
 
-          const formattedText =
-            itineraryText.length > 50
-              ? itineraryText.match(/.{1,50}(\s|$)/g)?.join("\n") ||
-                itineraryText
-              : itineraryText;
+          if (Array.isArray(val)) {
+            itineraryArr = val;
+          } else if (typeof val === "string" && val.trim() !== "") {
+            try {
+              const parsed = JSON.parse(val);
+              itineraryArr = Array.isArray(parsed) ? parsed : [val];
+            } catch {
+              itineraryArr = [val];
+            }
+          }
 
-          return (
-            <div className="whitespace-pre-line break-words max-w-[250px] leading-5">
-              {highlightItineraryIfKeyword(formattedText)}
-            </div>
-          );
+          const itineraryText =
+            itineraryArr.length > 0 ? itineraryArr.join(", ") : "—";
+
+          return <ItineraryCell text={itineraryText} />;
         }
 
         if (col.key === "fullName") {

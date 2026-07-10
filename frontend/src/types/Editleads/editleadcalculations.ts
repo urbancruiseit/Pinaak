@@ -212,7 +212,7 @@ export const prepareLeadPayload = (
     remarks: data.remarks || "",
     lost_reason: data.lost_reason || "",
     lostReasonDetails: data.lostReasonDetails || "",
-    followUp: data.followUp || "",
+    follow_ups: data.followUps ?? [],
     message: "",
     multiplepickup: data.multiplepickup || "",
     multipledrop: data.multipledrop || "",

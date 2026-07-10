@@ -3,14 +3,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { createPortal } from "react-dom";
-import SalesEditLeadForm from "../telesales/salesEditLeadForm";
-import type { LeadRecord } from "../../../types/types";
+import SalesEditLeadForm from "../salesEditLeadForm";
+import type { LeadRecord } from "../../../../types/types";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/app/redux/store";
-import RateQuotationModel from "../../components/pages/ratequation/list/rateQuotationModel";
-import Pagination from "../ui/pagination";
-import LeadDetailsModel from "../DetailModel/LeadModel/leadTabledetailsmodel";
-import SwapSalesModal from "../DetailModel/LeadModel/SwapModel";
+import RateQuotationModel from "../../../components/pages/ratequation/list/rateQuotationModel";
+import Pagination from "../../ui/pagination";
+import LeadDetailsModel from "../../DetailModel/LeadModel/leadTabledetailsmodel";
+import SwapSalesModal from "../../DetailModel/LeadModel/SwapModel";
 
 import {
   TABLE_BANNER_COLUMNS,
@@ -18,10 +18,10 @@ import {
   BANNER_GROUP_BG_CLASS,
   LEAD_STATUS_OPTIONS,
   MONTH_OPTIONS,
-} from "../../../types/LeadsTable/leadstabledata";
+} from "../../../../types/LeadsTable/leadstabledata";
 import {
   addRealtimeAssignedLead,
-  fetchMyAssignedLeads,
+  fetchMySwapLeads,
   setAssignedStatus,
   updateRealtimeAssignedLead,
 } from "@/app/features/access/accessSlice";
@@ -30,7 +30,7 @@ import { Eye, Edit, UserRoundPlus, RefreshCw } from "lucide-react";
 import {
   useLeadColumns,
   type LeadColumn,
-} from "../../../types/LeadsTable/leadTableColumns";
+} from "../../../../types/LeadsTable/leadTableColumns";
 import { connectSocket } from "@/app/socket";
 import {
   listenToAdviserLeads,
@@ -38,7 +38,7 @@ import {
   removeLeadListeners,
 } from "@/app/socket/leadsocket";
 import { useAppSelector } from "@/hooks/useRedux";
-import { AllRegionZoneCityFilter } from "../ui/AllRegionZoneCityFilter";
+import { AllRegionZoneCityFilter } from "../../ui/AllRegionZoneCityFilter";
 
 const CITY_OPTIONS = [
   "Delhi",
@@ -124,15 +124,14 @@ export default function LeadsTable() {
   // ─── States (type fix + naya cityId state) ─────────────────────────────────
   const [selectedRegion, setSelectedRegion] = useState("");
   const [selectedCity, setSelectedCity] = useState(""); // dropdown value (string id)
-  const [selectedCityId, setSelectedCityId] = useState<number | null>(null);
+  const [selectedCityId, setSelectedCityId] = useState<number | null>(null); // backend ke liye number
 
-  const [selectedZone, setSelectedZone] = useState("");
+  const [selectedZone, setSelectedZone] = useState(""); // ✅ string rakho (pehle string|null tha — type mismatch tha)
   const [selectedZoneId, setSelectedZoneId] = useState<number | null>(null);
   const dispatch = useDispatch<AppDispatch>();
 
-  const { assignedLeads } = useSelector(
-    (state: RootState) => state.travelAdvisor,
-  );
+  const { swapLeads } = useSelector((state: RootState) => state.travelAdvisor);
+
   const { currentUser } = useSelector((state: RootState) => state.user);
   const {
     leads,
@@ -144,7 +143,7 @@ export default function LeadsTable() {
     statusCounts,
     monthlyStats,
     zonesAdvisors,
-  } = assignedLeads;
+  } = swapLeads;
 
   // ─── Search debounce (400ms) ───────────────────────────────────────────────
   useEffect(() => {
@@ -228,9 +227,8 @@ export default function LeadsTable() {
   ]);
 
   // ─── Main fetch ─────────────────────────────────────────────────────────────
-  // ─── Main fetch effect — already theek hai, kyuki buildFetchArgs use ho raha hai
   useEffect(() => {
-    dispatch(fetchMyAssignedLeads(buildFetchArgs(currentPage)));
+    dispatch(fetchMySwapLeads(buildFetchArgs(currentPage)));
   }, [dispatch, currentPage, buildFetchArgs]);
   // ─── Handlers ────────────────────────────────────────────────────────────
   const handleRegionChange = (region: string) => {
@@ -249,7 +247,7 @@ export default function LeadsTable() {
 
   useEffect(() => {
     const handleLeadSubmitted = () => {
-      dispatch(fetchMyAssignedLeads({ page: 1 }));
+      dispatch(fetchMySwapLeads({ page: 1 }));
     };
     window.addEventListener("leadSubmitted", handleLeadSubmitted);
     return () =>
@@ -415,10 +413,8 @@ export default function LeadsTable() {
               setSelectedLead(lead);
               setIsSwapModalOpen(true);
             }}
-            className="px-2 py-1 text-white bg-cyan-600 rounded hover:bg-cyan-700 flex items-center justify-center"
-            title="Swap Advisor"
           >
-            <RefreshCw size={14} />
+            <RefreshCw size={16} />
           </button>
         )}
       </div>
@@ -621,7 +617,7 @@ export default function LeadsTable() {
           onSuccess={() => {
             setDetailLead(null);
             setIsEditMode(false);
-            dispatch(fetchMyAssignedLeads({ page: 1 }));
+            dispatch(fetchMySwapLeads({ page: 1 }));
           }}
           onCancel={() => {
             setDetailLead(null);
@@ -631,7 +627,6 @@ export default function LeadsTable() {
       </div>
     );
   }
-
   // ─── Main render ───────────────────────────────────────────────────────────
   return (
     <>
@@ -641,7 +636,7 @@ export default function LeadsTable() {
           <div className="flex justify-evenly items-center ">
             <div className="border-l-8 border rounded-lg border-orange-500 bg-white px-3">
               <h2 className="text-2xl md:text-4xl font-bold text-left text-orange-600 whitespace-nowrap">
-                Lead Manager
+                Swap Lead Manager
               </h2>
               <p className="text-2xl md:text-2xl mt-1 text-md text-center text-orange-700">
                 (Tele-Sales)

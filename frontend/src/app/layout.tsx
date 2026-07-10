@@ -7,6 +7,7 @@ import "react-toastify/dist/ReactToastify.css"; // Toastify CSS
 import GlobalLeadPopup from "@/app/components/GlobalLeadPopup";
 import AuthInitializer from "./components/AuthInitializer";
 import { SocketProvider } from "./components/SocketProvider";
+import GlobalReminderPopup from "@/app/components/ReminderPopup";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -39,6 +40,7 @@ export default function RootLayout({
             <AuthInitializer />
             {children}
             <GlobalLeadPopup />
+            <GlobalReminderPopup />
           </SocketProvider>
 
           <ToastContainer

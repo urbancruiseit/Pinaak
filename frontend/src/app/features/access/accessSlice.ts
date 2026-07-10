@@ -71,6 +71,7 @@ interface TravelAdvisorState {
   assignLoading: boolean;
   assignSuccess: boolean;
   assignedLeads: AssignedLeadsState;
+  swapLeads: AssignedLeadsState;
   leadStatus: LeadStatusState;
   citiesByZone: {
     cities: CityOption[];
@@ -135,6 +136,31 @@ const initialState: TravelAdvisorState = {
       BOOK: 0,
     },
 
+    totalLeads: 0,
+    monthlyStats: [],
+    zonesAdvisors: [],
+  },
+
+  swapLeads: {
+    leads: [],
+    loading: false,
+    error: null,
+    page: 1,
+    total: 0,
+    totalPages: 1,
+    hasNextPage: false,
+    selectedMonth: new Date().getMonth() + 1,
+    selectedYear: new Date().getFullYear(),
+    selectedStatus: null,
+    statusCounts: {
+      NEW: 0,
+      KYC: 0,
+      RFQ: 0,
+      HOT: 0,
+      "VEH-N": 0,
+      LOST: 0,
+      BOOK: 0,
+    },
     totalLeads: 0,
     monthlyStats: [],
     zonesAdvisors: [],
@@ -264,17 +290,35 @@ export const fetchMySwapLeads = createAsyncThunk<
 >(
   "access/fetchMySwapLeads",
   async (
-    { page = 1, cityIds, search, month, year, advisorId, status },
+    {
+      page = 1,
+      cityIds,
+      zoneId,
+      search,
+      month,
+      year,
+      advisorId,
+      status,
+      ageFilter,
+      daysFilter,
+      paxFilter,
+      liveorexpiry,
+    },
     { rejectWithValue },
   ) => {
     try {
       return await getMySwapLeadsApi(page, {
         cityIds,
+        zoneId,
         search,
         month,
         year,
         advisorId,
         status,
+        ageFilter,
+        daysFilter,
+        paxFilter,
+        liveorexpiry,
       });
     } catch (error: any) {
       return rejectWithValue(error?.message || "Failed to fetch swap leads");
@@ -497,6 +541,30 @@ const travelAdvisorSlice = createSlice({
       .addCase(fetchCitiesByZone.rejected, (state, action) => {
         state.citiesByZone.loading = false;
         state.citiesByZone.error = action.payload || "Failed to fetch cities";
+      })
+
+      .addCase(fetchMySwapLeads.pending, (state) => {
+        state.swapLeads.loading = true; // ✅ assignedLeads → swapLeads
+        state.swapLeads.error = null;
+      })
+
+      .addCase(fetchMySwapLeads.fulfilled, (state, action) => {
+        const p = action.payload;
+        state.swapLeads.loading = false; // ✅ assignedLeads → swapLeads
+        state.swapLeads.leads = p.leads;
+        state.swapLeads.page = p.page;
+        state.swapLeads.total = p.total;
+        state.swapLeads.totalPages = p.totalPages;
+        state.swapLeads.hasNextPage = p.hasNextPage;
+        state.swapLeads.statusCounts = p.statusCounts;
+        state.swapLeads.totalLeads = p.totalLeads;
+        state.swapLeads.monthlyStats = p.monthlyStats ?? [];
+        state.swapLeads.zonesAdvisors = p.zoneAdvisors ?? [];
+      })
+
+      .addCase(fetchMySwapLeads.rejected, (state, action) => {
+        state.swapLeads.loading = false; // ✅ assignedLeads → swapLeads
+        state.swapLeads.error = action.payload || "Failed to fetch swap leads";
       });
   },
 });

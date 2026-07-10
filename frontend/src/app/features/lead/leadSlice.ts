@@ -6,6 +6,11 @@ import {
   updateLeadApi,
   markUnwantedApi,
   getAllUnwantedLeadsApi,
+  createReminderApi,
+  markReminderAsShownApi,
+  getDueRemindersApi,
+  DueReminder,
+  checkCustomerPhoneApi,
 } from "./leadApi";
 
 interface StatusCounts {
@@ -39,6 +44,15 @@ interface LeadState {
   unwantedLeadsLoading: boolean;
   unwantedLeadsTotal: number;
   unwantedLeadsError: string | null;
+
+  // ✅ Add these
+  reminderLoading: boolean;
+  reminderSuccess: boolean;
+  reminderError: string | null;
+
+  dueReminders: DueReminder[];
+  dueReminderLoading: boolean;
+  dueReminderError: string | null;
 }
 
 const now = new Date();
@@ -72,6 +86,15 @@ const initialState: LeadState = {
   unwantedLeadsLoading: false,
   unwantedLeadsTotal: 0,
   unwantedLeadsError: null,
+
+  // ✅ Add these
+  reminderLoading: false,
+  reminderSuccess: false,
+  reminderError: null,
+
+  dueReminders: [],
+  dueReminderLoading: false,
+  dueReminderError: null,
 };
 
 /* ---------- FETCH LEADS ---------- */
@@ -179,6 +202,65 @@ export const fetchUnwantedLeads = createAsyncThunk(
   },
 );
 
+export const createReminder = createAsyncThunk(
+  "lead/createReminder",
+  async (
+    {
+      lead_id,
+      reminder_datetime,
+      message,
+    }: {
+      lead_id: number;
+      reminder_datetime: string;
+      message: string;
+    },
+    { rejectWithValue },
+  ) => {
+    try {
+      return await createReminderApi({
+        lead_id,
+        reminder_datetime,
+        message,
+      });
+    } catch (error: any) {
+      return rejectWithValue(error.message);
+    }
+  },
+);
+
+export const fetchDueReminders = createAsyncThunk(
+  "lead/fetchDueReminders",
+  async (_, { rejectWithValue }) => {
+    try {
+      return await getDueRemindersApi();
+    } catch (err: any) {
+      return rejectWithValue(err.message);
+    }
+  },
+);
+
+export const markReminderAsShown = createAsyncThunk(
+  "lead/markReminderAsShown",
+  async (id: number, { rejectWithValue }) => {
+    try {
+      await markReminderAsShownApi(id);
+      return id;
+    } catch (err: any) {
+      return rejectWithValue(err.message);
+    }
+  },
+);
+
+export const checkCustomerPhone = createAsyncThunk(
+  "lead/checkCustomerPhone",
+  async (customerPhone: string, { rejectWithValue }) => {
+    try {
+      return await checkCustomerPhoneApi(customerPhone);
+    } catch (error: any) {
+      return rejectWithValue(error.message);
+    }
+  },
+);
 const leadSlice = createSlice({
   name: "lead",
   initialState,
@@ -308,10 +390,51 @@ const leadSlice = createSlice({
       .addCase(fetchUnwantedLeads.rejected, (state) => {
         state.unwantedLeadsLoading = false;
         state.unwantedLeads = [];
+      })
+      .addCase(createReminder.pending, (state) => {
+        state.reminderLoading = true;
+        state.reminderSuccess = false;
+        state.reminderError = null;
+      })
+
+      .addCase(createReminder.fulfilled, (state) => {
+        state.reminderLoading = false;
+        state.reminderSuccess = true;
+      })
+
+      .addCase(createReminder.rejected, (state, action) => {
+        state.reminderLoading = false;
+        state.reminderSuccess = false;
+        state.reminderError = action.payload as string;
+      })
+      .addCase(fetchDueReminders.pending, (state) => {
+        state.dueReminderLoading = true;
+      })
+
+      .addCase(fetchDueReminders.fulfilled, (state, action) => {
+        state.dueReminderLoading = false;
+        state.dueReminders = action.payload;
+      })
+
+      .addCase(fetchDueReminders.rejected, (state, action) => {
+        state.dueReminderLoading = false;
+        state.dueReminderError = action.payload as string;
+      })
+
+      .addCase(markReminderAsShown.fulfilled, (state, action) => {
+        state.dueReminders = state.dueReminders.filter(
+          (item) => item.id !== action.payload,
+        );
+      })
+      .addCase(checkCustomerPhone.fulfilled, (state, action) => {
+        // No state update required
+      })
+
+      .addCase(checkCustomerPhone.rejected, (state, action) => {
+        state.error = action.payload as string;
       });
   },
 });
-
 export const {
   setPage,
   setLimit,

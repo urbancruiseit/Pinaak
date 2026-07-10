@@ -31,7 +31,11 @@ import {
   CheckCircle,
   Building,
 } from "lucide-react";
-import { createLead, fetchLeads } from "@/app/features/lead/leadSlice";
+import {
+  createLead,
+  fetchLeads,
+  checkCustomerPhone,
+} from "@/app/features/lead/leadSlice";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/app/redux/store";
 import { getCountriesThunk } from "@/app/features/countrycode/countrycodeSlice";
@@ -179,7 +183,20 @@ const LeadsForm: React.FC = () => {
     email: "",
     companyName: "",
   });
+  const handleCheckCustomerPhone = async (phone: string) => {
+    try {
+      const res = await dispatch(checkCustomerPhone(phone)).unwrap();
 
+      if (res?.isExisting && res?.customer) {
+        showToastMessage(`⚠ Customer already exists`);
+      } else {
+        showToastMessage("✅ New customer — number not found in database.");
+      }
+    } catch (err: any) {
+      console.error(err);
+      showToastMessage("Error checking customer phone. Try again.");
+    }
+  };
   const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>(
     {},
   );
@@ -988,6 +1005,7 @@ const LeadsForm: React.FC = () => {
                         /[^0-9]/g,
                         "",
                       );
+
                       handleFieldChange({
                         ...e,
                         target: {
@@ -996,6 +1014,11 @@ const LeadsForm: React.FC = () => {
                           value: numericValue,
                         },
                       });
+
+                      // ✅ 10 digit hone par customer check karo
+                      if (numericValue.length === 10) {
+                        handleCheckCustomerPhone(numericValue);
+                      }
                     }}
                     placeholder="Enter 10 digit number"
                     className="w-full py-2 px-3 outline-none"

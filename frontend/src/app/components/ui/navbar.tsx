@@ -199,6 +199,25 @@ export function Navbar() {
   const shouldShowLeadManagerDropdown =
     isSuperAdmin || isManager || isCityManager;
 
+  // ✅ SEO Executive (Digital Marketing) special-case checks
+  const isSeoExecutive = normalizedRole === "seo executive";
+  const isDigitalMarketingDept =
+    (userDepartment ?? "").toLowerCase().trim() === "digital marketing";
+
+  const isSeoExecutiveDigitalMarketing =
+    isSeoExecutive && isDigitalMarketingDept;
+
+  // ✅ Allowlist for who can see the Leads menu (New Lead / Lead Manager)
+  const leadsAllowedRoles = [
+    "superadmin",
+    "manager",
+    "city manager",
+    "team leader",
+    "pre-sales executive",
+    "seo executive",
+  ];
+  const canSeeLeadsMenu = leadsAllowedRoles.includes(normalizedRole);
+
   // ── Dashboard items for current role ─────────────────────────────────────
   const dashboardItems = DASHBOARD_ITEMS[normalizedRole] ?? [];
 
@@ -237,10 +256,10 @@ export function Navbar() {
     close();
   };
 
-  // const handleSwapLeadSelect = (value: string) => {
-  //   dispatch(setActiveLeadView(value as any));
-  //   close();
-  // };
+  const handleSwapLeadSelect = (value: string) => {
+    dispatch(setActiveLeadView(value as any));
+    close();
+  };
 
   const handleDsrSelect = () => {
     dispatch(setActiveLeadView("dsr-lead-table"));
@@ -285,7 +304,11 @@ export function Navbar() {
       label: "Monthly Enquiry PS (MER)",
       key: "monthlyEnquiry",
       show:
-        isSuperAdmin || isPresalesExecutive || isTeamLeader || isCityManager,
+        isSuperAdmin ||
+        isPresalesExecutive ||
+        isTeamLeader ||
+        isCityManager ||
+        isSeoExecutiveDigitalMarketing,
     },
     {
       label: "Monthly Enquiry PS 2 (MER 2)",
@@ -423,22 +446,27 @@ export function Navbar() {
             {showLeadsMenu && (
               <>
                 {/* New Lead button */}
-                {!isSales && !isTravelAdvisor && (
-                  <div className="relative w-full md:w-auto">
-                    <button
-                      type="button"
-                      className="w-full md:w-auto flex items-center justify-center gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200 bg-white text-emerald-700 border-2 border-emerald-300 hover:border-emerald-500 hover:shadow-md hover:scale-[1.02] md:min-w-[100px] md:h-9 md:py-2"
-                      onClick={() => handleLeadSelect("lead-form")}
-                    >
-                      <FileText size={16} className="mr-1.5 flex-shrink-0" />
-                      <span className="truncate">New Lead</span>
-                    </button>
-                  </div>
-                )}
+                {canSeeLeadsMenu &&
+                  !isSales &&
+                  !isTravelAdvisor &&
+                  !isSeoExecutiveDigitalMarketing && (
+                    <div className="relative w-full md:w-auto">
+                      <button
+                        type="button"
+                        className="w-full md:w-auto flex items-center justify-center gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200 bg-white text-emerald-700 border-2 border-emerald-300 hover:border-emerald-500 hover:shadow-md hover:scale-[1.02] md:min-w-[100px] md:h-9 md:py-2"
+                        onClick={() => handleLeadSelect("lead-form")}
+                      >
+                        <FileText size={16} className="mr-1.5 flex-shrink-0" />
+                        <span className="truncate">New Lead</span>
+                      </button>
+                    </div>
+                  )}
 
                 {/* Lead Manager */}
-                {!isSales &&
+                {canSeeLeadsMenu &&
+                  !isSales &&
                   !isTravelAdvisor &&
+                  !isSeoExecutiveDigitalMarketing &&
                   (shouldShowLeadManagerDropdown ? (
                     <div className="relative w-full md:w-auto">
                       <button
@@ -481,13 +509,13 @@ export function Navbar() {
                             Telesales Lead Manager
                           </li>
 
-                          {/* <li
+                          <li
                             onClick={() => handleLeadSelect("swap-lead-table")}
                             className="px-3 py-2.5 md:py-2 text-sm cursor-pointer flex items-center gap-2 text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 hover:pl-4"
                           >
                             <span className="w-1 h-1 rounded-full bg-emerald-300" />
                             Swap Lead Manager
-                          </li> */}
+                          </li>
                         </ul>
                       )}
                     </div>
@@ -530,14 +558,14 @@ export function Navbar() {
                       <span className="truncate">Sales Lead Manager</span>
                     </button>
 
-                    {/* <button
+                    <button
                       type="button"
                       className="w-full md:w-auto flex items-center justify-center gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200 bg-white text-emerald-700 border-2 border-emerald-300 hover:border-emerald-500 hover:shadow-md hover:scale-[1.02] md:min-w-[100px] md:h-9 md:py-2"
                       onClick={() => handleSwapLeadSelect("swap-lead-table")}
                     >
                       <FileText size={16} className="mr-1.5 flex-shrink-0" />
                       <span className="truncate">Swap Lead Manager</span>
-                    </button> */}
+                    </button>
 
                     <button
                       type="button"

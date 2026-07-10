@@ -232,6 +232,27 @@ export const insertLead = async (data) => {
   }
 };
 
+export const checkCustomerByPhone = async (customerPhone) => {
+  try {
+    const sql = `
+      SELECT id, uuid, customerPhone
+      FROM customers
+      WHERE RIGHT(REPLACE(REPLACE(customerPhone, ' ', ''), '+91', ''), 10) = ?
+      LIMIT 1
+    `;
+
+    const [rows] = await pool.execute(sql, [customerPhone]);
+
+    if (rows.length > 0) {
+      return rows[0];
+    }
+
+    return null;
+  } catch (error) {
+    console.error("Check Customer Error:", error);
+    throw error;
+  }
+};
 export const createCustomers = async (data) => {
   try {
     // Dynamic duplicate check
@@ -487,7 +508,7 @@ export const getLeads = async (
       l.message,
       l.lost_reason,
       l.lostReasonDetails,
-      l.followUp,
+      l.follow_ups,
         DATEDIFF(CURDATE(), l.date) AS aged,
 
 CASE
@@ -810,6 +831,14 @@ export const getLeadById = async (id) => {
       }
     }
 
+    if (lead.follow_ups && typeof lead.follow_ups === "string") {
+      try {
+        lead.follow_ups = JSON.parse(lead.follow_ups);
+      } catch {
+        lead.follow_ups = [];
+      }
+    }
+
     // ── Presales name fetch (hrmsPool se) ──
     const userIds = [lead.advisor_id, lead.presales_id].filter(Boolean);
 
@@ -850,4 +879,65 @@ export const getLeadById = async (id) => {
     console.error("getLeadById Error:", error);
     return null;
   }
+};
+
+export const createReminder = async ({
+  lead_id,
+  reminder_datetime,
+  message,
+}) => {
+  if (!lead_id) throw new Error("Lead ID is required");
+
+  const [result] = await pool.query(
+    `INSERT INTO scheduler (lead_id, reminder_datetime, message)
+     VALUES (?, ?, ?)`,
+    [lead_id, reminder_datetime, message],
+  );
+
+  const [rows] = await pool.query(`SELECT * FROM scheduler WHERE id = ?`, [
+    result.insertId,
+  ]);
+
+  return rows[0];
+};
+
+export const markReminderAsShown = async (id) => {
+  await pool.query(`UPDATE scheduler SET is_shown = 1 WHERE id = ?`, [id]);
+};
+
+export const getDueReminders = async (advisorId) => {
+  // IST current time string banao Node se
+  const nowIST = new Date().toLocaleString("sv-SE", {
+    timeZone: "Asia/Kolkata",
+  });
+  // "sv-SE" locale format deta hai: YYYY-MM-DD HH:MM:SS — MySQL datetime ke compatible
+
+  const [rows] = await pool.query(
+    `
+    SELECT
+      s.id,
+      s.lead_id,
+      s.message,
+      s.reminder_datetime,
+      CONCAT_WS(' ', c.firstName, c.middleName, c.lastName) AS fullName,
+      c.customerPhone,
+      c.customerEmail,
+      l.pickupDateTime,
+      l.dropDateTime,
+      l.days,
+      l.passengerTotal,
+      l.advisor_id
+    FROM scheduler s
+    INNER JOIN leads l ON l.id = s.lead_id
+    LEFT JOIN customers c ON c.id = l.customer_id
+    WHERE
+      l.advisor_id = ?
+      AND s.is_shown = 0
+      AND s.reminder_datetime <= ?
+    ORDER BY s.reminder_datetime ASC
+    `,
+    [advisorId, nowIST],
+  );
+
+  return rows;
 };

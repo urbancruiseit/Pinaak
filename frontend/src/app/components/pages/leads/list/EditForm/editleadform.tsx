@@ -103,6 +103,7 @@ const EditLeadForm: React.FC<{
   const [isInitialized, setIsInitialized] = useState(false);
 
   const pendingStateRef = useRef<string | null>(null);
+  const cityIdSetRef = useRef(false);
 
   const pickupDateTime = watch("pickupDateTime");
   const dropDateTime = watch("dropDateTime");
@@ -183,11 +184,13 @@ const EditLeadForm: React.FC<{
 
   useEffect(() => {
     if (
+      !cityIdSetRef.current &&
       initialData?.city_id &&
       Array.isArray(currentUser?.city_ids) &&
       currentUser.city_ids.length > 0
     ) {
       setValue("city_id", Number(initialData.city_id));
+      cityIdSetRef.current = true;
     }
   }, [initialData, currentUser, setValue]);
 
@@ -312,6 +315,8 @@ const EditLeadForm: React.FC<{
       alternateCountryCode,
       initialData,
     );
+    payload.city_id = data.city_id;
+
     try {
       await dispatch(
         updateLead({
@@ -859,12 +864,6 @@ const EditLeadForm: React.FC<{
                 </div>
               )}
 
-              {/* ── Customer State (India only) ───────────────────────────────────────────
-                  statesForCity → fetchStatesByCity (stateSlice) se aata hai
-                  Slice ka pending case: statesForCity = []
-                  Slice ka fulfilled case: statesForCity = [data]
-                  STEP 5 effect fulfilled hone par pendingStateRef ka stored value set karega
-              ─────────────────────────────────────────────────────────────────────────── */}
               {isIndia && (
                 <div>
                   <label className="block text-md font-extrabold text-gray-700 mb-1">

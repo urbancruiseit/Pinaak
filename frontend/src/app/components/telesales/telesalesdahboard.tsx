@@ -297,7 +297,7 @@ export default function Dashboard() {
 
 
       {/* Leads Section */}
-      <div className={`mb-8 mt-6 ${editingIndex !== null ? 'pointer-events-none ' : ''}`}>
+      {/* <div className={`mb-8 mt-6 ${editingIndex !== null ? 'pointer-events-none ' : ''}`}>
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold">Leads</h2>
           <button className="bg-purple-600 text-white px-4 py-1 rounded">View All</button>
@@ -356,10 +356,10 @@ export default function Dashboard() {
             </div>
           ))}
         </div>
-      </div>
+      </div> */}
 
       {/* Modal */}
-      {editingIndex !== null && (
+      {/* {editingIndex !== null && (
         <div className="fixed inset-0 flex items-center justify-center z-50">
           <div className="bg-white p-4 rounded-lg shadow-xl w-full max-w-lg border-2 border-green-500">
             <h3 className="font-bold mb-4 text-center text-lg">Edit Lead: {editingIndex !== null ? leads[editingIndex].contactBy : ''}</h3>
@@ -422,7 +422,7 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-      )}
+      )} */}
 
       {/* Reminder Popup Modal */}
       {showReminderPopup && selectedLeadForReminder && (

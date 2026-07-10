@@ -74,7 +74,15 @@ export const leadSchema = z.object({
   remarks: z.string().optional(),
   lost_reason: z.string().optional(),
   lostReasonDetails: z.string().optional(),
-  followUp: z.string().optional(),
+  followUps: z
+    .array(
+      z.object({
+        date: z.string().optional(),
+        text: z.string().optional(),
+      }),
+    )
+    .optional()
+    .default([]),
   email: z.string().email("Invalid email format").optional().or(z.literal("")),
   city_id: z.number().optional(),
 });

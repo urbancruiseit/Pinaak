@@ -13,6 +13,10 @@ import {
   getAllUnwantedLeadsModel,
   createCustomers,
   getLeadById,
+  createReminder,
+  getDueReminders,
+  markReminderAsShown,
+  checkCustomerByPhone,
 } from "./lead.model.js";
 
 const createLeads = asyncHandler(async (req, res) => {
@@ -107,6 +111,27 @@ const createLeads = asyncHandler(async (req, res) => {
   }
 });
 
+export const checkCustomerPhoneController = asyncHandler(async (req, res) => {
+  const { customerPhone } = req.body;
+
+  if (!customerPhone) {
+    throw new ApiError(400, "Customer phone is required");
+  }
+
+  const customer = await checkCustomerByPhone(customerPhone);
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        isExisting: !!customer,
+        customer,
+      },
+      customer ? "Customer already exists" : "Customer not found",
+    ),
+  );
+});
+
 const listLeads = asyncHandler(async (req, res) => {
   console.log("Full req.query =", req.query);
   const user = req.user;
@@ -136,8 +161,6 @@ const listLeads = asyncHandler(async (req, res) => {
   const dropDateTime = req.query.dropDateTime?.trim() || null;
   const liveorexpiry = req.query.liveorexpiry?.trim() || null;
   const ageFilter = req.query.ageFilter?.trim() || null;
-
- 
 
   const leadsData = await getLeads(
     page,
@@ -272,13 +295,12 @@ const updateLeadByIdController = asyncHandler(async (req, res) => {
   // ✅ Full lead fetch — customers JOIN + hrmsPool names ke saath
   const fullLead = await getLeadById(updatedLead?.id ?? leadId);
 
-  // ✅ fullLead emit karo, updatedLead nahi
   try {
     const io = getIO();
     emitToHierarchy({
       io,
       eventName: "leadUpdated",
-      lead: fullLead ?? updatedLead, // fallback
+      lead: fullLead ?? updatedLead,
       userIdKey: "presales_id",
     });
     console.log("📡 leadUpdated emitted with full data");
@@ -286,7 +308,6 @@ const updateLeadByIdController = asyncHandler(async (req, res) => {
     console.error("⚠️ Socket emit failed:", err.message);
   }
 
-  // Step 5: Response
   return res.status(200).json(
     new ApiResponse(
       200,
@@ -298,6 +319,70 @@ const updateLeadByIdController = asyncHandler(async (req, res) => {
     ),
   );
 });
+export const createReminderController = async (req, res) => {
+  try {
+    const { lead_id, reminder_datetime, message } = req.body;
+
+    if (!lead_id || !reminder_datetime || !message) {
+      return res.status(400).json({
+        success: false,
+        message: "lead_id, reminder_datetime, message required hain",
+      });
+    }
+
+    const newReminder = await createReminder({
+      lead_id,
+      reminder_datetime,
+      message,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "Reminder created successfully",
+      data: newReminder,
+    });
+  } catch (error) {
+    console.error("[reminderController] createReminder:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+export const markReminderAsShownController = async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!id) {
+      return res.status(400).json({ success: false, message: "ID required" });
+    }
+
+    await markReminderAsShown(Number(id));
+
+    return res
+      .status(200)
+      .json({ success: true, message: "Reminder marked as shown" });
+  } catch (error) {
+    console.error("[markReminderAsShown]", error);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+export const getDueRemindersController = async (req, res) => {
+  try {
+    const advisorId = req.user.id;
+
+    const reminders = await getDueReminders(advisorId);
+
+    return res.status(200).json({
+      success: true,
+      data: reminders,
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
+};
 export {
   createLeads,
   listLeads,

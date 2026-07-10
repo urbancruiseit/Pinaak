@@ -66,6 +66,11 @@ export interface PaginatedLeadsResponse {
   totalLeads: number;
 }
 
+export interface CheckCustomerResponse {
+  isExisting: boolean;
+  customer: any;
+}
+
 export const getLeadApi = async (
   page: number = 1,
   search: string = "",
@@ -151,6 +156,31 @@ export const updateLeadApi = async (
   }
 };
 
+export const checkCustomerPhoneApi = async (
+  customerPhone: string,
+): Promise<CheckCustomerResponse> => {
+  try {
+    const response = await axiosInstance.post<
+      ApiResponse<CheckCustomerResponse>
+    >("/lead/check-phone", { customerPhone });
+
+    return response.data.data;
+  } catch (error: any) {
+    console.error(
+      "Check Customer Phone Error:",
+      error.response?.data || error.message,
+    );
+
+    const errorMessage =
+      error.response?.data?.message ||
+      error.response?.data?.error ||
+      error.message ||
+      "Failed to check customer phone";
+
+    throw new Error(errorMessage);
+  }
+};
+
 // ─── MARK UNWANTED ─────────────────────────────
 export const markUnwantedApi = async (
   id: number,
@@ -195,5 +225,95 @@ export const getAllUnwantedLeadsApi = async (): Promise<LeadRecord[]> => {
       "Failed to fetch unwanted leads";
 
     throw new Error(errorMessage);
+  }
+};
+
+export interface ReminderPayload {
+  lead_id: number;
+  reminder_datetime: string;
+  message: string;
+}
+
+export interface Reminder {
+  id: number;
+  lead_id: number;
+  reminder_datetime: string;
+  message: string;
+}
+
+export const createReminderApi = async (
+  payload: ReminderPayload,
+): Promise<Reminder> => {
+  try {
+    const response = await axiosInstance.post<ApiResponse<Reminder>>(
+      "/lead/reminder",
+      payload,
+    );
+
+    return response.data.data;
+  } catch (error: any) {
+    console.error(
+      "Create Reminder Error:",
+      error.response?.data || error.message,
+    );
+
+    const errorMessage =
+      error.response?.data?.message ||
+      error.response?.data?.error ||
+      error.message ||
+      "Failed to create reminder";
+
+    throw new Error(errorMessage);
+  }
+};
+
+export interface DueReminder {
+  id: number;
+  lead_id: number;
+  reminder_datetime: string;
+  message: string;
+
+  fullName: string;
+  customerPhone: string;
+  customerEmail: string;
+
+  pickupDateTime: string;
+  dropDateTime: string;
+
+  passengerTotal: number;
+  days: number;
+}
+
+export const getDueRemindersApi = async (): Promise<DueReminder[]> => {
+  try {
+    const response = await axiosInstance.get<ApiResponse<DueReminder[]>>(
+      "/lead/reminders/due",
+    );
+
+    return response.data.data;
+  } catch (error: any) {
+    console.error(
+      "Get Due Reminder Error:",
+      error.response?.data || error.message,
+    );
+
+    throw new Error(
+      error.response?.data?.message || "Failed to fetch reminders",
+    );
+  }
+};
+
+export const markReminderAsShownApi = async (id: number): Promise<void> => {
+  try {
+    await axiosInstance.patch(`/lead/reminders/${id}/shown`);
+  } catch (error: any) {
+    console.error(
+      "Mark Reminder Error:",
+      error.response?.data || error.message,
+    );
+
+    throw new Error(
+      error.response?.data?.message || "Failed to update reminder",
+    );
   }
 };

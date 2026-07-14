@@ -3,7 +3,8 @@ import { hrmsPool } from "../../config/mySqlDB.js";
 export const findZoneCityRegion = async (req) => {
   const roleName = req.user.role_name?.toLowerCase();
   const sub_department = req.user.subDepartment_name?.toLowerCase();
-
+  console.log("roleName ", roleName);
+  console.log("roleName ", sub_department);
   let result = {
     advisorId: null,
     zoneAdvisors: [],
@@ -38,11 +39,11 @@ export const findZoneCityRegion = async (req) => {
     }
 
     return result;
-  } else if (roleName === "city manager") {
-   
+  } else if (
+    ["city manager", "seo executive"].includes(roleName?.toLowerCase())
+  ) {
     let zoneIds = req.user.zone_ids;
 
-   
     const paramZoneId = req.query.zoneId
       ? parseInt(req.query.zoneId, 10)
       : null;
@@ -52,7 +53,6 @@ export const findZoneCityRegion = async (req) => {
         ? req.user.zone_ids
         : [req.user.zone_ids];
 
-    
       if (!allowedZones.includes(paramZoneId)) {
         result.accessDenied = true;
         return result;

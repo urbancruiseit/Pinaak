@@ -83,6 +83,12 @@ export default function RulesBoard() {
   const dispatch = useAppDispatch();
   const { entries } = useSelector((state: RootState) => state.rule);
 
+  const currentUser = useSelector((state: RootState) => state.user.currentUser);
+
+  const canAddRule =
+    currentUser?.subDepartment_name === "Tele-Sales" &&
+    currentUser?.role_name === "City Manager";
+
   const monthColumns = getMonthColumns(3);
 
   useEffect(() => {
@@ -170,56 +176,74 @@ export default function RulesBoard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50/30 py-8 px-4">
       <div className="max-w-full mx-auto">
-        <div className="mb-10">
-          <div className="flex items-center justify-between flex-wrap gap-4 bg-orange-50 border order-grey-500 rounded-2xl px-5 py-3">
-            <div className="flex items-center gap-3">
-              <div className="w-1.5 h-10 bg-orange-600 rounded-full" />
-              <div className="p-2 bg-white rounded-xl shadow-sm border border-grey-500">
-                <BarChart3 className="w-6 h-6 text-orange-600" />
-              </div>
-              <h1 className="text-2xl font-bold text-orange-700 tracking-tight">
-                Enquiry Mgmt Board
-              </h1>
-            </div>
+        <div className="sticky top-0 z-20 mb-8">
+          <div className="rounded-2xl border border-orange-200/60 bg-white/90 backdrop-blur-xl shadow-xl shadow-orange-100 px-6 py-4">
+            <div className="flex flex-wrap items-center justify-between gap-5">
+              {/* Left */}
+              <div className="flex items-center gap-4">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 shadow-lg shadow-orange-500/30">
+                  <BarChart3 className="h-7 w-7 text-white" />
+                </div>
 
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-full border border-grey-500 shadow-sm">
-                <Users className="w-4 h-4 text-orange-600" />
-                <span className="text-sm font-semibold text-slate-700">
-                  {totalEntries}
-                </span>
-              </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-slate-800">
+                    Enquiry Management Board
+                  </h1>
 
-              <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-full border border-grey-500 shadow-sm">
-                <Calendar className="w-4 h-4 text-orange-600" />
-                <span className="text-sm font-semibold text-slate-700">
-                  {totalCount}
-                </span>
+                  <p className="text-sm text-slate-500">
+                    Manage Reminder Rules & Follow-ups
+                  </p>
+                </div>
               </div>
 
-              <div className="flex gap-1 p-1 bg-white rounded-full border border-grey-500 shadow-sm">
-                {(["ALL", "T20", "T60"] as const).map((f) => (
+              {/* Right */}
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Total Entries */}
+                <div className="flex items-center gap-2 rounded-xl border bg-white px-4 py-3 shadow-sm hover:shadow-md transition">
+                  <Users className="h-5 w-5 text-orange-600" />
+                  <div>
+                    <p className="text-xs text-slate-500">Entries</p>
+                    <p className="font-bold text-slate-700">{totalEntries}</p>
+                  </div>
+                </div>
+
+                {/* Total Count */}
+                <div className="flex items-center gap-2 rounded-xl border bg-white px-4 py-3 shadow-sm hover:shadow-md transition">
+                  <Calendar className="h-5 w-5 text-orange-600" />
+                  <div>
+                    <p className="text-xs text-slate-500">Total</p>
+                    <p className="font-bold text-slate-700">{totalCount}</p>
+                  </div>
+                </div>
+
+                {/* Filter */}
+                <div className="flex rounded-xl border bg-slate-100 p-1">
+                  {(["ALL", "T20", "T60"] as const).map((f) => (
+                    <button
+                      key={f}
+                      onClick={() => setActiveFilter(f)}
+                      className={`rounded-lg px-5 py-2 text-sm font-semibold transition-all duration-300 ${
+                        activeFilter === f
+                          ? "bg-orange-600 text-white shadow-lg"
+                          : "text-slate-600 hover:bg-white hover:text-orange-600"
+                      }`}
+                    >
+                      {f === "ALL" ? "All" : f === "T20" ? "T-20" : "T-60"}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Add Button */}
+                {canAddRule && (
                   <button
-                    key={f}
-                    onClick={() => setActiveFilter(f)}
-                    className={`px-4 py-1.5 rounded-full text-sm font-semibold transition-all duration-200 ${
-                      activeFilter === f
-                        ? "bg-orange-600 text-white shadow-md shadow-orange-500/25"
-                        : "text-slate-600 hover:text-orange-600 hover:bg-orange-50"
-                    }`}
+                    onClick={toggleAddForm}
+                    className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 px-5 py-3 font-semibold text-white shadow-lg shadow-orange-500/30 transition-all duration-300 hover:scale-105 hover:shadow-xl"
                   >
-                    {f === "ALL" ? "All" : f === "T20" ? "T-20" : "T-60"}
+                    <Plus className="h-5 w-5" />
+                    Add New Rule
                   </button>
-                ))}
+                )}
               </div>
-
-              <button
-                onClick={toggleAddForm}
-                className="flex items-center gap-2 px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-full text-sm font-semibold shadow-md shadow-orange-500/25 transition-all duration-200"
-              >
-                <Plus className="w-4 h-4" />
-                Add New Rule
-              </button>
             </div>
           </div>
         </div>
@@ -419,6 +443,25 @@ function getMonthColor(theme: TableTheme, index: number) {
   return palette[index % palette.length];
 }
 
+function getStartTimeInMinutes(shift: string) {
+  if (!shift) return Number.MAX_SAFE_INTEGER;
+
+  const startTime = shift.split("-")[0].trim();
+
+  const match = startTime.match(/(\d+):(\d+)\s*(am|pm)/i);
+
+  if (!match) return Number.MAX_SAFE_INTEGER;
+
+  let hour = parseInt(match[1], 10);
+  const minute = parseInt(match[2], 10);
+  const period = match[3].toLowerCase();
+
+  if (period === "pm" && hour !== 12) hour += 12;
+  if (period === "am" && hour === 12) hour = 0;
+
+  return hour * 60 + minute;
+}
+
 function BoardSection({
   title,
   icon,
@@ -447,6 +490,12 @@ function BoardSection({
   if (!show) return null;
 
   const totalCount = entries.reduce((s, e) => s + (e.lead || 0), 0);
+  const sortedEntries = [...entries].sort(
+    (a, b) =>
+      getStartTimeInMinutes(a.shiftTiming) -
+      getStartTimeInMinutes(b.shiftTiming),
+  );
+
   const t = TABLE_THEME_CLASSES[tableTheme];
 
   return (
@@ -522,7 +571,7 @@ function BoardSection({
             </thead>
 
             <tbody>
-              {entries.map((e) => (
+              {sortedEntries.map((e) => (
                 <tr
                   key={e.id}
                   className={`${t.bg} ${t.hover} transition-colors`}

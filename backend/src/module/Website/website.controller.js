@@ -3,84 +3,87 @@
 import { ApiError } from "../../utils/ApiError.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
-import {
-  getAllTripBookings,
-  getAllWebsiteGac,
-  getTripBookingById,
-  getWebsiteGacById,
-} from "./website.model.js";
+import { createWebsiteGac, getAllWebsiteGac } from "./website.model.js";
+import { createTripBooking, getTripBookings } from "./website.service.js";
 
-// ================= GET ALL WEBSITE GAC =================
+// ================= CREATE WEBSITE GAC =================
+export const createWebsiteGacController = asyncHandler(async (req, res) => {
+  const { name, phone, country_code = "+91", city } = req.body;
+  console.log("req.body", req.body);
+  if (!name || !phone || !city) {
+    throw new ApiError(400, "Name, Phone and City are required");
+  }
+
+  const data = await createWebsiteGac({
+    name,
+    phone,
+    country_code,
+    city,
+  });
+
+  return res
+    .status(201)
+    .json(new ApiResponse(201, data, "Website GAC submitted successfully"));
+});
+
 export const getWebsiteGacController = asyncHandler(async (req, res) => {
   const data = await getAllWebsiteGac();
 
-  if (!data || data.length === 0) {
-    throw new ApiError(404, "No Website GAC records found");
-  }
-
   return res
     .status(200)
-    .json(new ApiResponse(200, data, "Website GAC list fetched successfully"));
+    .json(new ApiResponse(200, data, "Website GAC fetched successfully"));
 });
 
-// ================= GET WEBSITE GAC BY ID =================
-export const getWebsiteGacByIdController = asyncHandler(async (req, res) => {
-  const { id } = req.params;
+// ================= CREATE TRIP BOOKING =================
 
-  if (!id || isNaN(Number(id))) {
-    throw new ApiError(400, "Valid Website GAC ID is required");
+export const createTripBookingController = asyncHandler(async (req, res) => {
+  const {
+    pickup_address,
+    pickup_date,
+    drop_address,
+    drop_date,
+    travel_itinerary,
+    passengers,
+    baggages,
+    vehicle_category,
+    vehicle_model,
+    full_name,
+    phone,
+    email,
+    country_code,
+    trip_message,
+  } = req.body;
+
+  // Validation
+  if (
+    !pickup_address ||
+    !pickup_date ||
+    !drop_address ||
+    !drop_date ||
+    !travel_itinerary ||
+    !passengers ||
+    !baggages ||
+    !vehicle_category ||
+    !vehicle_model ||
+    !full_name ||
+    !phone
+  ) {
+    throw new ApiError(400, "Please fill all required fields");
   }
 
-  const record = await getWebsiteGacById(Number(id));
-
-  if (!record) {
-    throw new ApiError(404, `Website GAC record not found for ID ${id}`);
-  }
+  const booking = await createTripBooking(req.body);
 
   return res
-    .status(200)
-    .json(
-      new ApiResponse(200, record, "Website GAC record fetched successfully"),
-    );
+    .status(201)
+    .json(new ApiResponse(201, booking, "Trip booking created successfully"));
 });
 
 // ================= GET ALL TRIP BOOKINGS =================
+
 export const getTripBookingsController = asyncHandler(async (req, res) => {
-  const data = await getAllTripBookings();
-
-  if (!data || data.length === 0) {
-    throw new ApiError(404, "No trip bookings found");
-  }
-
-  return res.status(200).json(
-    new ApiResponse(
-      200,
-      {
-        tripBookings: data,
-        count: data.length,
-      },
-      "Trip bookings list fetched successfully",
-    ),
-  );
-});
-
-// ================= GET TRIP BOOKING BY ID =================
-export const getTripBookingByIdController = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-
-  if (!id || isNaN(Number(id))) {
-    throw new ApiError(400, "Valid Trip Booking ID is required");
-  }
-
-  const record = await getTripBookingById(Number(id));
-
-  if (!record) {
-    throw new ApiError(404, `Trip booking record not found for ID ${id}`);
-  }
+  const bookings = await getTripBookings();
 
   return res
     .status(200)
-    .json(
-      new ApiResponse(200, record, "Trip booking record fetched successfully"),
-    );
+    .json(new ApiResponse(200, bookings, "Trip bookings fetched successfully"));
 });

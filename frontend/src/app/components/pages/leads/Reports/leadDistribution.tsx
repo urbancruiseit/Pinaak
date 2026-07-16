@@ -280,7 +280,12 @@ export default function DailyLeadReport() {
                         rowSpan={2}
                         className="border-b border-gray-400 px-2 py-1 font-extrabold text-purple-700 bg-amber-200 text-center text-xl"
                       >
-                        {adviser.cntb_percentage}
+                        {teamTotal.total_leads > 0
+                          ? (
+                              (adviser.total_leads / teamTotal.total_leads) *
+                              100
+                            ).toFixed(1)
+                          : "0.0"}
                       </td>
                     </tr>
 
@@ -327,7 +332,7 @@ export default function DailyLeadReport() {
                   <td className="text-center px-2">
                     {teamTotal.total_leads > 0
                       ? (
-                          (teamTotal.total_booked / teamTotal.total_leads) *
+                          (teamTotal.total_leads / teamTotal.total_leads) *
                           100
                         ).toFixed(1)
                       : "0.0"}

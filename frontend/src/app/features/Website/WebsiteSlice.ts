@@ -2,10 +2,12 @@ import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import type { RootState } from "../../redux/store";
 
 import {
-  getTripBookingByIdApi,
-  getTripBookingsApi,
+  createTripBookingApi,
+  createWebsiteGacApi,
+  CreateWebsiteGacPayload,
+  CreateTripBookingPayload,
   getWebsiteGacApi,
-  getWebsiteGacByIdApi,
+  getTripBookingsApi,
   TripBookingRecord,
   WebsiteGacRecord,
 } from "./websiteApi";
@@ -19,8 +21,17 @@ interface WebsiteGacState {
   tripBookings: TripBookingRecord[];
 
   count: number;
+  tripBookingCount: number;
+
   loading: boolean;
+  creating: boolean;
+
+  createSuccess: boolean;
+  tripBookingSuccess: boolean;
+
   error: string | null;
+
+  booking: TripBookingRecord | null;
 
   selected: {
     data: WebsiteGacRecord | TripBookingRecord | null;
@@ -34,8 +45,17 @@ const initialState: WebsiteGacState = {
   tripBookings: [],
 
   count: 0,
+  tripBookingCount: 0,
+
   loading: false,
+  creating: false,
+
+  createSuccess: false,
+  tripBookingSuccess: false,
+
   error: null,
+
+  booking: null,
 
   selected: {
     data: null,
@@ -48,7 +68,17 @@ const initialState: WebsiteGacState = {
 // THUNKS
 // ─────────────────────────────────────────────
 
-// WEBSITE GAC
+export const createWebsiteGacThunk = createAsyncThunk(
+  "websiteGac/create",
+  async (payload: CreateWebsiteGacPayload, { rejectWithValue }) => {
+    try {
+      return await createWebsiteGacApi(payload);
+    } catch (error: any) {
+      return rejectWithValue(error.message);
+    }
+  },
+);
+
 export const getWebsiteGacThunk = createAsyncThunk(
   "websiteGac/getAll",
   async (_, { rejectWithValue }) => {
@@ -60,39 +90,43 @@ export const getWebsiteGacThunk = createAsyncThunk(
   },
 );
 
-export const getWebsiteGacByIdThunk = createAsyncThunk(
-  "websiteGac/getById",
-  async (id: number, { rejectWithValue }) => {
+// CREATE TRIP BOOKING
+export const createTripBookingThunk = createAsyncThunk(
+  "websiteGac/createTripBooking",
+  async (payload: CreateTripBookingPayload, { rejectWithValue }) => {
     try {
-      return await getWebsiteGacByIdApi(id);
+      return await createTripBookingApi(payload);
     } catch (error: any) {
-      return rejectWithValue(error.message);
+      return rejectWithValue(error.message || "Failed to create trip booking");
     }
   },
 );
 
-// TRIP BOOKINGS
+// GET ALL TRIP BOOKINGS
 export const getTripBookingsThunk = createAsyncThunk(
-  "tripBookings/getAll",
+  "websiteGac/getTripBookings",
   async (_, { rejectWithValue }) => {
     try {
       return await getTripBookingsApi();
     } catch (error: any) {
-      return rejectWithValue(error.message);
+      return rejectWithValue(error.message || "Failed to fetch trip bookings");
     }
   },
 );
 
-export const getTripBookingByIdThunk = createAsyncThunk(
-  "tripBookings/getById",
-  async (id: number, { rejectWithValue }) => {
-    try {
-      return await getTripBookingByIdApi(id);
-    } catch (error: any) {
-      return rejectWithValue(error.message);
-    }
-  },
-);
+// TODO: GET TRIP BOOKING BY ID — add a thunk here once the corresponding
+// API function (e.g. getTripBookingByIdApi) exists in websiteApi.ts, e.g.:
+//
+// export const getTripBookingByIdThunk = createAsyncThunk(
+//   "websiteGac/getTripBookingById",
+//   async (id: string, { rejectWithValue }) => {
+//     try {
+//       return await getTripBookingByIdApi(id);
+//     } catch (error: any) {
+//       return rejectWithValue(error.message || "Failed to fetch trip booking");
+//     }
+//   },
+// );
 
 // ─────────────────────────────────────────────
 // SLICE
@@ -101,6 +135,7 @@ export const getTripBookingByIdThunk = createAsyncThunk(
 const websiteGacSlice = createSlice({
   name: "websiteGac",
   initialState,
+
   reducers: {
     resetWebsiteGac: () => initialState,
 
@@ -113,7 +148,24 @@ const websiteGacSlice = createSlice({
   extraReducers: (builder) => {
     builder
 
-      // ───────── WEBSITE GAC ─────────
+      // ================= WEBSITE GAC CREATE =================
+      .addCase(createWebsiteGacThunk.pending, (state) => {
+        state.creating = true;
+        state.createSuccess = false;
+        state.error = null;
+      })
+      .addCase(createWebsiteGacThunk.fulfilled, (state, action) => {
+        state.creating = false;
+        state.createSuccess = true;
+        state.data.unshift(action.payload);
+      })
+      .addCase(createWebsiteGacThunk.rejected, (state, action) => {
+        state.creating = false;
+        state.createSuccess = false;
+        state.error = action.payload as string;
+      })
+
+      // ================= GET WEBSITE GAC =================
       .addCase(getWebsiteGacThunk.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -128,21 +180,25 @@ const websiteGacSlice = createSlice({
         state.error = action.payload as string;
       })
 
-      // ───────── WEBSITE GAC BY ID ─────────
-      .addCase(getWebsiteGacByIdThunk.pending, (state) => {
-        state.selected.loading = true;
-        state.selected.error = null;
+      // ================= CREATE TRIP BOOKING =================
+      .addCase(createTripBookingThunk.pending, (state) => {
+        state.creating = true;
+        state.tripBookingSuccess = false;
+        state.error = null;
       })
-      .addCase(getWebsiteGacByIdThunk.fulfilled, (state, action) => {
-        state.selected.loading = false;
-        state.selected.data = action.payload.data;
+      .addCase(createTripBookingThunk.fulfilled, (state, action) => {
+        state.creating = false;
+        state.tripBookingSuccess = true;
+        state.booking = action.payload;
+        state.tripBookings.unshift(action.payload);
       })
-      .addCase(getWebsiteGacByIdThunk.rejected, (state, action) => {
-        state.selected.loading = false;
-        state.selected.error = action.payload as string;
+      .addCase(createTripBookingThunk.rejected, (state, action) => {
+        state.creating = false;
+        state.tripBookingSuccess = false;
+        state.error = action.payload as string;
       })
 
-      // ───────── TRIP BOOKINGS ─────────
+      // ================= GET ALL TRIP BOOKINGS =================
       .addCase(getTripBookingsThunk.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -150,24 +206,11 @@ const websiteGacSlice = createSlice({
       .addCase(getTripBookingsThunk.fulfilled, (state, action) => {
         state.loading = false;
         state.tripBookings = action.payload.data;
+        state.tripBookingCount = action.payload.count;
       })
       .addCase(getTripBookingsThunk.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
-      })
-
-      // ───────── TRIP BOOKING BY ID ─────────
-      .addCase(getTripBookingByIdThunk.pending, (state) => {
-        state.selected.loading = true;
-        state.selected.error = null;
-      })
-      .addCase(getTripBookingByIdThunk.fulfilled, (state, action) => {
-        state.selected.loading = false;
-        state.selected.data = action.payload.data;
-      })
-      .addCase(getTripBookingByIdThunk.rejected, (state, action) => {
-        state.selected.loading = false;
-        state.selected.error = action.payload as string;
       });
   },
 });
@@ -189,11 +232,17 @@ export const selectGacList = (state: RootState) => state.websiteGac?.data ?? [];
 export const selectTripBookings = (state: RootState) =>
   state.websiteGac?.tripBookings ?? [];
 
+export const selectTripBookingCount = (state: RootState) =>
+  state.websiteGac?.tripBookingCount ?? 0;
+
 export const selectSelected = (state: RootState) =>
   state.websiteGac?.selected.data ?? null;
 
 export const selectLoading = (state: RootState) =>
   state.websiteGac?.loading ?? false;
+
+export const selectCreating = (state: RootState) =>
+  state.websiteGac?.creating ?? false;
 
 export const selectError = (state: RootState) =>
   state.websiteGac?.error ?? null;

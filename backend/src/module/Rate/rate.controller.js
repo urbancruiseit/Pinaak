@@ -68,7 +68,7 @@ export const getAllRateQuotations = asyncHandler(async (req, res) => {
       : null;
 
     const zoneIds = req.user.zone_ids;
-    let zoneAdvisorIds = []; // ✅ Fix 3: Declare zoneAdvisorIds at the top of this block
+    let zoneAdvisorIds = [];
 
     if (zoneIds && zoneIds.length > 0) {
       try {

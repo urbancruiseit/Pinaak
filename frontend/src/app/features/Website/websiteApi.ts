@@ -9,13 +9,6 @@ export interface WebsiteGacRecord {
   created_at: string;
 }
 
-interface ApiResponse<T> {
-  success: boolean;
-  data: T;
-  count?: number;
-  message?: string;
-}
-
 export interface TripBookingRecord {
   id: number;
   firstName: string;
@@ -34,18 +27,71 @@ export interface TripBookingRecord {
   baggageTotal: number;
   vehicle_model: string;
   city: string;
-   vehicle_category: string;
+  vehicle_category: string;
   created_at: string;
 }
 
+export interface CreateTripBookingPayload {
+  pickup_address: string;
+  pickup_date: string;
+  drop_address: string;
+  drop_date: string;
+  travel_itinerary: string;
+  passengers: string;
+  baggages: string;
+  vehicle_category: string;
+  vehicle_model: string;
+  full_name: string;
+  country_code: string;
+  phone: string;
+  email?: string;
+  trip_message?: string;
+}
+
+export interface CreateWebsiteGacPayload {
+  name: string;
+  phone: string;
+  country_code: string;
+  city: string;
+}
 interface ApiResponse<T> {
   success: boolean;
   data: T;
   count?: number;
   message?: string;
 }
+// ─── CREATE WEBSITE GAC ──────────────────────────────────────
 
-// ─── GET ALL GAC ──────────────────────────────────────────────────────
+export const createWebsiteGacApi = async (
+  payload: CreateWebsiteGacPayload,
+): Promise<WebsiteGacRecord> => {
+  try {
+    const response = await axiosInstance.post<ApiResponse<WebsiteGacRecord>>(
+      "/website-gac/gac",
+      payload,
+    );
+
+    console.log("✅ Create Website GAC:", response.data);
+
+    return response.data.data;
+  } catch (error: any) {
+    console.error(
+      "❌ Create Website GAC Error:",
+      error.response?.data || error.message,
+    );
+
+    throw new Error(
+      error.response?.data?.message ||
+        error.response?.data?.error ||
+        error.message ||
+        "Failed to create Website GAC",
+    );
+  }
+};
+
+// ─────────────────────────────────────────────
+// GET ALL WEBSITE GAC
+// ─────────────────────────────────────────────
 
 export const getWebsiteGacApi = async (): Promise<{
   data: WebsiteGacRecord[];
@@ -57,56 +103,50 @@ export const getWebsiteGacApi = async (): Promise<{
         "/website-gac/gac",
       );
 
-    console.log("✅ Website GAC Response:", response.data);
-
     return {
       data: response.data.data ?? [],
-      count: response.data.count ?? response.data.data?.length ?? 0,
+      count: response.data.count ?? response.data.data.length ?? 0,
     };
   } catch (error: any) {
-    console.error(
-      "❌ Get Website GAC Error:",
-      error.response?.data || error.message,
-    );
-
-    const errorMessage =
+    throw new Error(
       error.response?.data?.message ||
-      error.response?.data?.error ||
-      error.message ||
-      "Failed to fetch website GAC entries";
-
-    throw new Error(errorMessage);
+        error.response?.data?.error ||
+        error.message ||
+        "Failed to fetch Website GAC",
+    );
   }
 };
 
-// ─── GET GAC BY ID ────────────────────────────────────────────────────
-
-export const getWebsiteGacByIdApi = async (
-  id: number,
-): Promise<{ data: WebsiteGacRecord }> => {
+export const createTripBookingApi = async (
+  payload: CreateTripBookingPayload,
+): Promise<TripBookingRecord> => {
   try {
-    const response = await axiosInstance.get<ApiResponse<WebsiteGacRecord>>(
-      `/website-gac/gac/${id}`,
+    const response = await axiosInstance.post<ApiResponse<TripBookingRecord>>(
+      "/website-gac/trip-bookings",
+      payload,
     );
 
-    console.log("✅ Website GAC By ID Response:", response.data);
+    console.log("✅ Create Trip Booking:", response.data);
 
-    return { data: response.data.data };
+    return response.data.data;
   } catch (error: any) {
     console.error(
-      "❌ Get Website GAC By ID Error:",
+      "❌ Create Trip Booking Error:",
       error.response?.data || error.message,
     );
 
-    const errorMessage =
+    throw new Error(
       error.response?.data?.message ||
-      error.response?.data?.error ||
-      error.message ||
-      "Failed to fetch GAC entry";
-
-    throw new Error(errorMessage);
+        error.response?.data?.error ||
+        error.message ||
+        "Failed to create trip booking",
+    );
   }
 };
+
+// ─────────────────────────────────────────────
+// GET ALL TRIP BOOKINGS
+// ─────────────────────────────────────────────
 
 export const getTripBookingsApi = async (): Promise<{
   data: TripBookingRecord[];
@@ -117,7 +157,7 @@ export const getTripBookingsApi = async (): Promise<{
       "/website-gac/trip-bookings",
     );
 
-    console.log("✅ Trip Bookings Response:", response.data);
+    console.log("✅ Get Trip Bookings:", response.data);
 
     return {
       data: response.data.data ?? [],
@@ -129,41 +169,39 @@ export const getTripBookingsApi = async (): Promise<{
       error.response?.data || error.message,
     );
 
-    const errorMessage =
+    throw new Error(
       error.response?.data?.message ||
-      error.response?.data?.error ||
-      error.message ||
-      "Failed to fetch trip bookings";
-
-    throw new Error(errorMessage);
+        error.response?.data?.error ||
+        error.message ||
+        "Failed to fetch trip bookings",
+    );
   }
 };
 
 // ─── GET TRIP BOOKING BY ID ─────────────────────────────
 
 export const getTripBookingByIdApi = async (
-  id: number,
-): Promise<{ data: TripBookingRecord }> => {
+  id: string | number,
+): Promise<TripBookingRecord> => {
   try {
     const response = await axiosInstance.get<ApiResponse<TripBookingRecord>>(
       `/website-gac/trip-bookings/${id}`,
     );
 
-    console.log("✅ Trip Booking By ID Responsessesss:", response.data.data);
+    console.log("✅ Get Trip Booking By Id:", response.data);
 
-    return { data: response.data.data };
+    return response.data.data;
   } catch (error: any) {
     console.error(
-      "❌ Get Trip Booking By ID Error:",
+      "❌ Get Trip Booking By Id Error:",
       error.response?.data || error.message,
     );
 
-    const errorMessage =
+    throw new Error(
       error.response?.data?.message ||
-      error.response?.data?.error ||
-      error.message ||
-      "Failed to fetch trip booking";
-
-    throw new Error(errorMessage);
+        error.response?.data?.error ||
+        error.message ||
+        "Failed to fetch trip booking",
+    );
   }
 };

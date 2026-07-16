@@ -2,25 +2,41 @@
 
 import { pool } from "../../config/mySqlDB.js";
 
-// ─── GET All Records ───────────────────────────────────────────────────────────
+// CREATE WEBSITE GAC
+export const createWebsiteGac = async ({ name, country_code, phone, city }) => {
+  try {
+    const [result] = await pool.execute(
+      `INSERT INTO website_gac
+      (name, country_code, phone, city)
+      VALUES (?, ?, ?, ?)`,
+      [name, country_code, phone, city],
+    );
+
+    return {
+      id: result.insertId,
+      name,
+      country_code,
+      phone,
+      city,
+    };
+  } catch (error) {
+    throw new Error(`createWebsiteGac failed: ${error.message}`);
+  }
+};
+
 export const getAllWebsiteGac = async () => {
   try {
-    const [tables] = await pool.query("SHOW TABLES LIKE 'website_gac'");
-    if (tables.length === 0) {
-      return [];
-    }
-
-    const [rows] = await pool.execute(
-      `SELECT 
-         id,
-         name,
-         country_code,
-         phone,
-         city,
-         created_at
-       FROM website_gac
-       ORDER BY created_at DESC`,
-    );
+    const [rows] = await pool.execute(`
+      SELECT
+        id,
+        name,
+        country_code,
+        phone,
+        city,
+        created_at
+      FROM website_gac
+      ORDER BY id DESC
+    `);
 
     return rows;
   } catch (error) {
@@ -28,40 +44,54 @@ export const getAllWebsiteGac = async () => {
   }
 };
 
-// ─── GET Single Record By ID ───────────────────────────────────────────────────
-export const getWebsiteGacById = async (id) => {
-  try {
-    const [rows] = await pool.execute(
-      `SELECT 
-         id,
-         name,
-         country_code,
-         phone,
-         city,
-         created_at
-       FROM website_gac
-       WHERE id = ?`,
-      [id],
-    );
+export const createTripBookingModel = async (data) => {
+  const [result] = await pool.execute(
+    `INSERT INTO trip_bookings
+    (
+      firstName,
+      customerPhone,
+      country_code,
+      customerEmail,
+      message,
+      pickupAddress,
+      pickup_date,
+      dropAddress,
+      drop_date,
+      itinerary,
+      passengerTotal,
+      baggageTotal,
+      vehicle_category,
+      vehicle_model,
+      created_at
+    )
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,NOW())`,
+    [
+      data.full_name,
+      data.phone,
+      data.country_code,
+      data.email,
+      data.trip_message,
+      data.pickup_address,
+      data.pickup_date,
+      data.drop_address,
+      data.drop_date,
+      data.travel_itinerary,
+      data.passengers,
+      data.baggages,
+      data.vehicle_category,
+      data.vehicle_model,
+    ],
+  );
 
-    if (rows.length === 0) return null;
-
-    return rows[0];
-  } catch (error) {
-    throw new Error(`getWebsiteGacById failed: ${error.message}`);
-  }
+  return result.insertId;
 };
 
-// ─── GET All Trip Bookings ─────────────────────────────────────────────────────
+// ================= GET ALL TRIP BOOKINGS =================
+
 export const getAllTripBookings = async () => {
   try {
-    const [tables] = await pool.query("SHOW TABLES LIKE 'trip_bookings'");
-    if (tables.length === 0) {
-      throw new Error("Table 'trip_bookings' does not exist");
-    }
-
-    const [rows] = await pool.execute(
-      `SELECT 
+    const [rows] = await pool.execute(`
+      SELECT
         id,
         firstName,
         middleName,
@@ -82,47 +112,11 @@ export const getAllTripBookings = async () => {
         city,
         created_at
       FROM trip_bookings
-      ORDER BY created_at DESC`,
-    );
+      ORDER BY id DESC
+    `);
 
     return rows;
   } catch (error) {
     throw new Error(`getAllTripBookings failed: ${error.message}`);
-  }
-};
-
-// ─── GET Single Trip Booking By ID ────────────────────────────────────────────
-export const getTripBookingById = async (id) => {
-  try {
-    const [rows] = await pool.execute(
-      `SELECT 
-        id,
-        firstName,
-        middleName,
-        lastName,
-        customerPhone,
-        country_code,
-        customerEmail,
-        message,
-        pickupAddress,
-        pickup_date,
-        dropAddress,
-        drop_date,
-        itinerary,
-        passengerTotal,
-        baggageTotal,
-        vehicle_category,
-        vehicle_model,
-        city,
-        created_at
-      FROM trip_bookings
-      WHERE id = ?`,
-      [id],
-    );
-
-    if (rows.length === 0) return null;
-    return rows[0];
-  } catch (error) {
-    throw new Error(`getTripBookingById failed: ${error.message}`);
   }
 };

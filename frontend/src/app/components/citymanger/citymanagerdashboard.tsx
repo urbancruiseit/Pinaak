@@ -8,10 +8,12 @@ import {
   RefreshCw,
   Users,
   BarChart3,
+  ChevronDown,
 } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/app/redux/store";
 import { fetchMyAssignedLeads } from "@/app/features/access/accessSlice";
+import { getMyAssignedLeadsApi } from "@/app/features/access/accessApi";
 import { MONTH_OPTIONS } from "../../../types/LeadsTable/leadstabledata";
 import {
   ResponsiveContainer,
@@ -26,14 +28,22 @@ import {
 } from "recharts";
 
 const STATUS_META = [
-  { key: "NEW", label: "New", color: "#0E7C7B" },
-  { key: "KYC", label: "KYC", color: "#E8A33D" },
-  { key: "RFQ", label: "RFQ", color: "#3B6EA5" },
-  { key: "HOT", label: "Hot", color: "#E4572E" },
-  { key: "VEH-N", label: "Vehicle", color: "#B5578A" },
-  { key: "LOST", label: "Lost", color: "#7C8896" },
-  { key: "BOOK", label: "Booked", color: "#3F9142" },
+  { key: "NEW", label: "New", color: "#2563EB" },
+  { key: "KYC", label: "KYC", color: "#0891B2" },
+  { key: "RFQ", label: "RFQ", color: "#4F46E5" },
+  { key: "HOT", label: "Hot", color: "#DC2626" },
+  { key: "VEH-N", label: "Vehicle", color: "#7C3AED" },
+  { key: "LOST", label: "Lost", color: "#64748B" },
+  { key: "BOOK", label: "Booked", color: "#059669" },
 ] as const;
+
+const ACCENT = "#60A5FA";
+
+interface AdvisorStat {
+  advisor: string;
+  total: number;
+  booked: number;
+}
 
 export default function Dashboard() {
   const dispatch = useDispatch<AppDispatch>();
@@ -58,11 +68,9 @@ export default function Dashboard() {
     null,
   );
 
-  // ─── 🆕 Overall leads state (for advisor stats) ──────────────────────────
-  const [overallLeads, setOverallLeads] = useState<any[]>([]);
-  const [overallLoading, setOverallLoading] = useState(false);
+  const [advisorStats, setAdvisorStats] = useState<AdvisorStat[]>([]);
+  const [advisorStatsLoading, setAdvisorStatsLoading] = useState(false);
 
-  // ─── Fetch filtered data (status cards, month strip, status chart) ──────
   useEffect(() => {
     dispatch(
       fetchMyAssignedLeads({
@@ -74,27 +82,49 @@ export default function Dashboard() {
     );
   }, [dispatch, liveStatusFilter, liveSelectedMonth, selectedAdvisorId]);
 
-  // ─── 🆕 Fetch overall leads (bina kisi filter ke – sabhi advisors ki) ───
+  const advisorIdsKey = (zonesAdvisors || [])
+    .map((a) => a.id)
+    .sort((a, b) => a - b)
+    .join(",");
+
   useEffect(() => {
-    const fetchOverall = async () => {
-      setOverallLoading(true);
+    if (selectedAdvisorId !== null) return;
+    if (!zonesAdvisors || zonesAdvisors.length === 0) return;
+
+    let cancelled = false;
+
+    const fetchAllAdvisorStats = async () => {
+      setAdvisorStatsLoading(true);
       try {
-        // ✅ IMPORTANT: advisorId = null ya undefined -> backend ko sabhi advisors ki leads return karni chahiye
-        const result = await dispatch(
-          fetchMyAssignedLeads({
-            page: 1,
-            // ✅ No status, no month, no advisorId – pure overall data
+        const results = await Promise.all(
+          zonesAdvisors.map(async (adv) => {
+            try {
+              const res = await getMyAssignedLeadsApi(1, {
+                advisorId: adv.id,
+              });
+              return {
+                advisor: adv.name,
+                total: res.total ?? 0,
+                booked: res.statusCounts?.BOOK ?? 0,
+              } as AdvisorStat;
+            } catch (err) {
+              console.error(`Failed to fetch stats for advisor ${adv.id}`, err);
+              return { advisor: adv.name, total: 0, booked: 0 } as AdvisorStat;
+            }
           }),
-        ).unwrap();
-        setOverallLeads(result.leads || []);
-      } catch (error) {
-        console.error("Failed to fetch overall leads", error);
+        );
+        if (!cancelled) setAdvisorStats(results);
       } finally {
-        setOverallLoading(false);
+        if (!cancelled) setAdvisorStatsLoading(false);
       }
     };
-    fetchOverall();
-  }, [dispatch]); // sirf ek baar run hoga – agar aap chahein toh dependencies add kar sakte hain (e.g., year change)
+
+    fetchAllAdvisorStats();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedAdvisorId, advisorIdsKey]);
 
   // ─── Total leads (filtered) ──────────────────────────────────────────────
   const liveTotalCount = useMemo(() => {
@@ -128,72 +158,54 @@ export default function Dashboard() {
     }));
   }, [liveStatusCounts]);
 
-  // ─── 🆕 Advisor Stats (overall leads – unfiltered) ──────────────────────
-  const advisorStats = useMemo(() => {
-    // Jab "All Advisors" select ho tabhi dikhana hai
-    if (selectedAdvisorId !== null) return null;
-
-    // Advisor name map
-    const advisorMap = new Map<number, string>();
-    (zonesAdvisors || []).forEach((adv) => advisorMap.set(adv.id, adv.name));
-
-    // Group overall leads by advisor_id
-    const groups: Record<number, { total: number; booked: number }> = {};
-    (overallLeads || []).forEach((lead) => {
-      // ⚠️ Yahan field ka naam check karein – aapke lead object me kaunsa field hai advisor ka?
-      // Ho sakta hai: advisor_id, assigned_to, adviser_id, etc.
-      const advisorId = lead.advisor_id; // ← isko apne field ke hisaab change karein
-      if (!advisorId) return;
-      if (!groups[advisorId]) {
-        groups[advisorId] = { total: 0, booked: 0 };
-      }
-      groups[advisorId].total += 1;
-      if (lead.status === "BOOK") {
-        groups[advisorId].booked += 1;
-      }
-    });
-
-    return Object.entries(groups).map(([id, stats]) => ({
-      advisor: advisorMap.get(Number(id)) || `Advisor ${id}`,
-      total: stats.total,
-      booked: stats.booked,
-    }));
-  }, [overallLeads, zonesAdvisors, selectedAdvisorId]);
-
-  // ─── (Aapka existing code for leads table, modals, etc. yahan rahega) ──
+  // ─── Selected advisor ka naam (banner ke liye) ───────────────────────────
+  const selectedAdvisorName = useMemo(() => {
+    if (selectedAdvisorId === null) return null;
+    return (
+      zonesAdvisors?.find((a) => a.id === selectedAdvisorId)?.name ??
+      `Advisor ${selectedAdvisorId}`
+    );
+  }, [selectedAdvisorId, zonesAdvisors]);
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6 relative">
+    <div className="min-h-screen bg-slate-50 p-6 relative">
       {/* ─── LEAD STATUS OVERVIEW ─── */}
-      <div className="bg-[#10243E] rounded-2xl shadow-lg mb-6 p-6 text-white">
+      <div className="bg-white rounded-2xl shadow-xl mb-6 p-6 text-blue-950 border border-slate-200">
         {/* header with advisor dropdown */}
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-lg font-bold tracking-wide flex items-center gap-2">
-            <MapPin size={18} className="text-[#E8A33D]" />
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+          <h2 className="text-lg font-bold tracking-wide flex items-center gap-2 text-blue-950">
+            <MapPin size={18} className="text-blue-600" />
             Lead Status Overview
             {liveLoading && (
-              <span className="text-xs font-normal text-white/50 ml-2">
+              <span className="text-xs font-medium text-blue-600 ml-2 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
                 syncing…
               </span>
             )}
           </h2>
           <div className="flex items-center gap-3">
             {zonesAdvisors && zonesAdvisors.length > 0 && (
-              <select
-                value={selectedAdvisorId ?? ""}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setSelectedAdvisorId(val ? Number(val) : null);
-                }}
-                className="text-sm font-semibold bg-white/10 text-white border border-white/20 rounded-lg px-3 py-1.5 pr-8 focus:outline-none focus:ring-2 focus:ring-[#E8A33D]"
-              >
-                <option value="">All Advisors</option>
-                {zonesAdvisors.map((advisor) => (
-                  <option key={advisor.id} value={advisor.id}>
-                    {advisor.name}
-                  </option>
-                ))}
-              </select>
+              <div className="relative">
+                <select
+                  value={selectedAdvisorId ?? ""}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setSelectedAdvisorId(val ? Number(val) : null);
+                  }}
+                  className="appearance-none text-sm font-semibold bg-white text-blue-950 border border-slate-300 rounded-lg pl-3 pr-8 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-300 shadow-sm cursor-pointer"
+                >
+                  <option value="">All Advisors</option>
+                  {zonesAdvisors.map((advisor) => (
+                    <option key={advisor.id} value={advisor.id}>
+                      {advisor.name}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown
+                  size={14}
+                  className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-blue-950"
+                />
+              </div>
             )}
             {(liveStatusFilter !== "All" ||
               liveSelectedMonth !== null ||
@@ -204,7 +216,7 @@ export default function Dashboard() {
                   setLiveSelectedMonth(null);
                   setSelectedAdvisorId(null);
                 }}
-                className="text-xs font-semibold uppercase tracking-wider text-[#E8A33D] hover:text-white transition-colors"
+                className="text-xs font-semibold uppercase tracking-wider text-blue-600 hover:text-blue-900 transition-colors underline underline-offset-4 decoration-blue-300"
               >
                 Reset
               </button>
@@ -223,7 +235,7 @@ export default function Dashboard() {
                   }),
                 )
               }
-              className="p-1.5 rounded-md bg-white/10 hover:bg-white/20 transition-colors"
+              className="p-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm"
               title="Refresh"
             >
               <RefreshCw
@@ -234,26 +246,43 @@ export default function Dashboard() {
           </div>
         </div>
 
+        {/* ─── 🆕 SELECTED ADVISOR TOTAL BANNER ─── (accessSlice.assignedLeads.total) */}
+        {selectedAdvisorId !== null && (
+          <div className="mb-5 flex items-center gap-4 rounded-xl bg-blue-50 border border-blue-100 px-5 py-4 shadow-sm">
+            <div className="flex items-center justify-center w-11 h-11 rounded-full bg-blue-100">
+              <Users size={20} className="text-blue-700" />
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-widest text-slate-500 font-semibold">
+                Total Leads — {selectedAdvisorName}
+              </p>
+              <p className="text-3xl font-black leading-tight text-blue-950">
+                {liveLoading ? "…" : liveTotal}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* ─── STATUS CARDS ─── (filtered data) */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 mb-6 bg-slate-50 rounded-xl p-3 border border-slate-100">
           {/* Total card */}
           <button
             onClick={() => setLiveStatusFilter("All")}
             className={`relative flex flex-col justify-between rounded-xl p-3 h-24 border-l-4 bg-white transition-all duration-200 ${
               liveStatusFilter === "All"
-                ? "border-[#E8A33D] scale-[1.03] shadow-lg"
-                : "border-gray-300 hover:shadow-md"
+                ? "border-blue-500 scale-[1.03] shadow-lg ring-1 ring-blue-200"
+                : "border-slate-300 hover:shadow-md"
             }`}
           >
-            <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-gray-500">
+            <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500">
               <Users size={12} />
               Total
             </div>
             <div>
-              <div className="text-2xl font-black leading-none text-[#10243E]">
+              <div className="text-2xl font-black leading-none text-blue-950">
                 {liveTotalCount}
               </div>
-              <div className="text-[11px] text-gray-400 mt-1">100.0%</div>
+              <div className="text-[11px] text-slate-400 mt-1">100.0%</div>
             </div>
           </button>
 
@@ -280,14 +309,14 @@ export default function Dashboard() {
                   {s.label}
                 </div>
                 <div>
-                  <div className="text-2xl font-black leading-none text-[#10243E]">
+                  <div className="text-2xl font-black leading-none text-blue-950">
                     {count}
                   </div>
-                  <div className="text-[11px] text-gray-400 mt-1">
+                  <div className="text-[11px] text-slate-400 mt-1">
                     {livePct(count)}%
                   </div>
                 </div>
-                <div className="absolute bottom-0 left-0 h-[3px] bg-gray-100 w-full rounded-b-xl overflow-hidden">
+                <div className="absolute bottom-0 left-0 h-[3px] bg-slate-100 w-full rounded-b-xl overflow-hidden">
                   <div
                     className="h-full"
                     style={{
@@ -303,7 +332,7 @@ export default function Dashboard() {
 
         {/* ─── MONTH FILTER STRIP ─── */}
         <div className="mb-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/50 mb-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-700 mb-3">
             Filter by month
           </p>
           <div className="flex gap-3 overflow-x-auto pb-2">
@@ -316,26 +345,18 @@ export default function Dashboard() {
                   onClick={() =>
                     setLiveSelectedMonth(isActive ? null : month.value)
                   }
-                  className={`relative flex-shrink-0 min-w-[92px] rounded-lg px-3 py-2 flex items-center justify-between transition-all duration-200 ${
+                  className={`relative flex-shrink-0 min-w-[92px] rounded-lg px-3 py-2 flex items-center justify-between transition-all duration-200 border ${
                     isActive
-                      ? "bg-[#E8A33D] text-[#10243E] shadow-md scale-105"
-                      : "bg-white/10 text-white hover:bg-white/20"
+                      ? "bg-blue-600 text-white border-blue-600 shadow-md scale-105"
+                      : "bg-blue-50 text-blue-900 border-blue-200 hover:bg-blue-100"
                   }`}
                 >
-                  <span
-                    className="absolute -left-1.5 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-[#10243E]"
-                    aria-hidden
-                  />
-                  <span
-                    className="absolute -right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-[#10243E]"
-                    aria-hidden
-                  />
                   <span className="font-bold text-sm">{month.label}</span>
                   <span
                     className={`ml-2 text-xs font-bold rounded-full px-1.5 py-0.5 ${
                       isActive
-                        ? "bg-[#10243E] text-[#E8A33D]"
-                        : "bg-white/20 text-white"
+                        ? "bg-white/20 text-white"
+                        : "bg-blue-600/10 text-blue-800"
                     }`}
                   >
                     {count}
@@ -346,77 +367,25 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* ─── STATUS BREAKDOWN CHART ─── (filtered) */}
-        <div className="mt-4 bg-white/5 rounded-xl p-4">
+        {/* ─── ADVISOR PERFORMANCE CHART (all advisors — from accessSlice loop) ─── */}
+        <div className="mt-6 bg-white rounded-xl p-4 shadow-sm border border-slate-200">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-white/80 flex items-center gap-2">
-              <span className="w-1 h-5 bg-[#E8A33D] rounded-full" />
-              Leads by Status
-            </h3>
-            {liveLoading && (
-              <span className="text-xs text-white/40 animate-pulse">
-                loading…
-              </span>
-            )}
-          </div>
-          <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={chartData}
-                margin={{ top: 10, right: 10, left: 0, bottom: 20 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff20" />
-                <XAxis
-                  dataKey="status"
-                  tick={{ fill: "#ffffff90", fontSize: 11 }}
-                  axisLine={{ stroke: "#ffffff30" }}
-                  tickLine={false}
-                />
-                <YAxis
-                  allowDecimals={false}
-                  tick={{ fill: "#ffffff90", fontSize: 11 }}
-                  axisLine={{ stroke: "#ffffff30" }}
-                  tickLine={false}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "#10243E",
-                    border: "1px solid #ffffff30",
-                    borderRadius: "8px",
-                    color: "#fff",
-                  }}
-                  formatter={(value: number) => [`${value} leads`, "Count"]}
-                  labelStyle={{ color: "#E8A33D", fontWeight: "bold" }}
-                />
-                <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={48}>
-                  {chartData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* ─── 🆕 ADVISOR PERFORMANCE CHART (overall – unfiltered) ─── */}
-        <div className="mt-6 bg-white/5 rounded-xl p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-white/80 flex items-center gap-2">
-              <BarChart3 size={16} className="text-[#E8A33D]" />
+            <h3 className="text-sm font-semibold text-blue-950 flex items-center gap-2">
+              <BarChart3 size={16} className="text-blue-600" />
               Advisor Performance (Total Leads vs Booked) – Overall
             </h3>
-            {overallLoading && (
-              <span className="text-xs text-white/40 animate-pulse">
+            {advisorStatsLoading && (
+              <span className="text-xs text-slate-400 animate-pulse">
                 loading overall…
               </span>
             )}
           </div>
 
           {selectedAdvisorId !== null ? (
-            <div className="text-center py-8 text-white/60 text-sm">
+            <div className="text-center py-8 text-slate-500 text-sm">
               Please select{" "}
-              <strong className="text-white">"All Advisors"</strong> to see the
-              team performance.
+              <strong className="text-blue-900">"All Advisors"</strong> to see
+              the team performance.
             </div>
           ) : advisorStats && advisorStats.length > 0 ? (
             <div className="h-72 w-full">
@@ -425,11 +394,11 @@ export default function Dashboard() {
                   data={advisorStats}
                   margin={{ top: 20, right: 30, left: 10, bottom: 30 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#ffffff20" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" />
                   <XAxis
                     dataKey="advisor"
-                    tick={{ fill: "#ffffff90", fontSize: 11 }}
-                    axisLine={{ stroke: "#ffffff30" }}
+                    tick={{ fill: "#334155", fontSize: 11 }}
+                    axisLine={{ stroke: "#CBD5E1" }}
                     tickLine={false}
                     angle={-15}
                     textAnchor="end"
@@ -437,32 +406,32 @@ export default function Dashboard() {
                   />
                   <YAxis
                     allowDecimals={false}
-                    tick={{ fill: "#ffffff90", fontSize: 11 }}
-                    axisLine={{ stroke: "#ffffff30" }}
+                    tick={{ fill: "#334155", fontSize: 11 }}
+                    axisLine={{ stroke: "#CBD5E1" }}
                     tickLine={false}
                   />
                   <Tooltip
                     contentStyle={{
-                      backgroundColor: "#10243E",
-                      border: "1px solid #ffffff30",
+                      backgroundColor: "#0B1E3D",
+                      border: "1px solid #1E3A8A",
                       borderRadius: "8px",
                       color: "#fff",
                     }}
-                    labelStyle={{ color: "#E8A33D", fontWeight: "bold" }}
+                    labelStyle={{ color: "#93C5FD", fontWeight: "bold" }}
                   />
                   <Legend
-                    wrapperStyle={{ color: "#ffffff90", fontSize: 12 }}
+                    wrapperStyle={{ color: "#334155", fontSize: 12 }}
                     iconType="circle"
                   />
                   <Bar
                     dataKey="total"
-                    fill="#60A5FA"
+                    fill="#2563EB"
                     name="Total Leads"
                     radius={[4, 4, 0, 0]}
                   />
                   <Bar
                     dataKey="booked"
-                    fill="#34D399"
+                    fill="#0EA5E9"
                     name="Booked"
                     radius={[4, 4, 0, 0]}
                   />
@@ -470,15 +439,12 @@ export default function Dashboard() {
               </ResponsiveContainer>
             </div>
           ) : (
-            <div className="text-center py-8 text-white/60 text-sm">
+            <div className="text-center py-8 text-slate-500 text-sm">
               No leads data available for advisors.
             </div>
           )}
         </div>
       </div>
-
-      {/* ─── YOUR EXISTING BOTTOM SECTION (leads table, modals, etc.) ─── */}
-      {/* ... (aapka existing code yahan rakhein) ... */}
     </div>
   );
 }

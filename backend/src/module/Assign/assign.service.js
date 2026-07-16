@@ -3,8 +3,7 @@ import { hrmsPool } from "../../config/mySqlDB.js";
 export const findZoneCityRegion = async (req) => {
   const roleName = req.user.role_name?.toLowerCase();
   const sub_department = req.user.subDepartment_name?.toLowerCase();
-  console.log("roleName ", roleName);
-  console.log("roleName ", sub_department);
+
   let result = {
     advisorId: null,
     zoneAdvisors: [],

@@ -24,12 +24,44 @@ export default function GacFormPage() {
     city: "Delhi",
   });
 
-  // Load all countries
+  // Load Countries
   useEffect(() => {
     dispatch(getCountriesThunk());
   }, [dispatch]);
 
-  // Set default country code
+  // Detect City from URL
+  useEffect(() => {
+    const path = window.location.pathname.toLowerCase();
+
+    let city = "Delhi"; // Default
+
+    if (path.startsWith("/delhi")) {
+      city = "Delhi";
+    } else if (path.startsWith("/mumbai")) {
+      city = "Mumbai";
+    } else if (path.startsWith("/pune")) {
+      city = "Pune";
+    } else if (path.startsWith("/bangalore")) {
+      city = "Bangalore";
+    } else if (path.startsWith("/hyderabad")) {
+      city = "Hyderabad";
+    } else if (path.startsWith("/chennai")) {
+      city = "Chennai";
+    } else if (path.startsWith("/kolkata")) {
+      city = "Kolkata";
+    } else if (path.startsWith("/jaipur")) {
+      city = "Jaipur";
+    } else if (path.startsWith("/ahmedabad")) {
+      city = "Ahmedabad";
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      city,
+    }));
+  }, []);
+
+  // Set Default Country Code
   useEffect(() => {
     if (countries.length > 0 && !formData.country_code) {
       const defaultCountry =
@@ -40,7 +72,7 @@ export default function GacFormPage() {
         country_code: defaultCountry.phone_code,
       }));
     }
-  }, [countries]);
+  }, [countries, formData.country_code]);
 
   // Input Change
   const handleChange = (
@@ -62,12 +94,12 @@ export default function GacFormPage() {
       setMessageType("success");
       setMessage("Successfully Submitted");
 
-      setFormData({
+      setFormData((prev) => ({
         name: "",
         phone: "",
-        country_code: formData.country_code,
-        city: "Delhi",
-      });
+        country_code: prev.country_code,
+        city: prev.city,
+      }));
     } else {
       setMessageType("error");
       setMessage((resultAction.payload as string) || "Something went wrong");
@@ -80,8 +112,8 @@ export default function GacFormPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-start justify-center bg-gray-100 pt-20 px-4">
-      <div className="w-full max-w-3xl rounded-[22px] overflow-hidden shadow-xl border-2 border-lime-500 bg-white">
+    <div className="w-full min-h-screen bg-gray-100">
+      <div className="w-full bg-white border-2 border-lime-500">
         {/* Header */}
         <div className="bg-lime-500 text-white text-center py-4">
           <h1 className="text-4xl font-extrabold uppercase tracking-wide">
@@ -90,7 +122,7 @@ export default function GacFormPage() {
         </div>
 
         <div className="p-6">
-          {/* Success / Error Message */}
+          {/* Success / Error */}
           {message && (
             <div
               className={`mb-5 rounded-md px-4 py-3 text-center font-semibold ${
@@ -103,7 +135,6 @@ export default function GacFormPage() {
             </div>
           )}
 
-          {/* Form */}
           <form
             onSubmit={handleSubmit}
             className="flex flex-col md:flex-row items-center gap-5"
@@ -145,7 +176,7 @@ export default function GacFormPage() {
               />
             </div>
 
-            {/* Submit Button */}
+            {/* Submit */}
             <button
               type="submit"
               disabled={creating}

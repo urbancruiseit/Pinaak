@@ -7,6 +7,7 @@ import {
   createWebsiteGacController,
   getTripBookingsController,
   getWebsiteGacController,
+  markWebsiteGacReadController,
 } from "./website.controller.js";
 
 const router = express.Router();
@@ -16,5 +17,6 @@ router.get("/gac", getWebsiteGacController);
 
 router.post("/trip-bookings", createTripBookingController);
 router.get("/trip-bookings", getTripBookingsController);
+router.patch("/gac/:id/read", markWebsiteGacReadController);
 
 export default router;

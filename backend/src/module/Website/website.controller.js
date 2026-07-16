@@ -4,7 +4,7 @@ import { ApiError } from "../../utils/ApiError.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
 import { createWebsiteGac, getAllWebsiteGac } from "./website.model.js";
-import { createTripBooking, getTripBookings } from "./website.service.js";
+import { createTripBooking, getTripBookings, markWebsiteGacRead } from "./website.service.js";
 
 // ================= CREATE WEBSITE GAC =================
 export const createWebsiteGacController = asyncHandler(async (req, res) => {
@@ -86,4 +86,14 @@ export const getTripBookingsController = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .json(new ApiResponse(200, bookings, "Trip bookings fetched successfully"));
+});
+
+export const markWebsiteGacReadController = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  await markWebsiteGacRead(id);
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, {}, "Lead marked as read"));
 });

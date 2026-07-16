@@ -192,7 +192,7 @@ export default function TripBookingFormPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 py-10 px-4 flex justify-center">
+    <div className="w-full min-h-screen bg-gray-100">
       {/* Thank-you modal: appears on successful submit, auto-closes after 5s */}
       {showThankYouModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4">
@@ -221,7 +221,7 @@ export default function TripBookingFormPage() {
         </div>
       )}
 
-      <div className="w-full max-w-5xl rounded-[10px] overflow-hidden shadow-xl bg-white">
+      <div className="w-full bg-white">
         {/* Success / Error Message */}
         {message && (
           <div

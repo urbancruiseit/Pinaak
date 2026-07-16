@@ -10,6 +10,7 @@ import {
   getTripBookingsApi,
   TripBookingRecord,
   WebsiteGacRecord,
+  markWebsiteGacReadApi,
 } from "./websiteApi";
 
 // ─────────────────────────────────────────────
@@ -114,19 +115,17 @@ export const getTripBookingsThunk = createAsyncThunk(
   },
 );
 
-// TODO: GET TRIP BOOKING BY ID — add a thunk here once the corresponding
-// API function (e.g. getTripBookingByIdApi) exists in websiteApi.ts, e.g.:
-//
-// export const getTripBookingByIdThunk = createAsyncThunk(
-//   "websiteGac/getTripBookingById",
-//   async (id: string, { rejectWithValue }) => {
-//     try {
-//       return await getTripBookingByIdApi(id);
-//     } catch (error: any) {
-//       return rejectWithValue(error.message || "Failed to fetch trip booking");
-//     }
-//   },
-// );
+export const markWebsiteGacReadThunk = createAsyncThunk(
+  "websiteGac/markRead",
+  async (id: number, { rejectWithValue }) => {
+    try {
+      await markWebsiteGacReadApi(id);
+      return id;
+    } catch (error: any) {
+      return rejectWithValue(error.message);
+    }
+  },
+);
 
 // ─────────────────────────────────────────────
 // SLICE
@@ -147,7 +146,6 @@ const websiteGacSlice = createSlice({
 
   extraReducers: (builder) => {
     builder
-
       // ================= WEBSITE GAC CREATE =================
       .addCase(createWebsiteGacThunk.pending, (state) => {
         state.creating = true;
@@ -211,6 +209,15 @@ const websiteGacSlice = createSlice({
       .addCase(getTripBookingsThunk.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
+      })
+
+      // ================= MARK WEBSITE GAC READ =================
+      .addCase(markWebsiteGacReadThunk.fulfilled, (state, action) => {
+        const lead = state.data.find((item) => item.id === action.payload);
+
+        if (lead) {
+          lead.is_read = 1;
+        }
       });
   },
 });

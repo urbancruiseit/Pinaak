@@ -28,14 +28,15 @@ export const getAllWebsiteGac = async () => {
   try {
     const [rows] = await pool.execute(`
       SELECT
-        id,
-        name,
-        country_code,
-        phone,
-        city,
-        created_at
-      FROM website_gac
-      ORDER BY id DESC
+  id,
+  name,
+  country_code,
+  phone,
+  city,
+  created_at,
+  is_read
+FROM website_gac
+ORDER BY id DESC
     `);
 
     return rows;
@@ -118,5 +119,22 @@ export const getAllTripBookings = async () => {
     return rows;
   } catch (error) {
     throw new Error(`getAllTripBookings failed: ${error.message}`);
+  }
+};
+
+export const markWebsiteGacAsRead = async (id) => {
+  try {
+    const [result] = await pool.execute(
+      `
+      UPDATE website_gac
+      SET is_read = 1
+      WHERE id = ?
+      `,
+      [id],
+    );
+
+    return result;
+  } catch (error) {
+    throw new Error(`markWebsiteGacAsRead failed: ${error.message}`);
   }
 };

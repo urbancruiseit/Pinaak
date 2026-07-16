@@ -7,6 +7,7 @@ export interface WebsiteGacRecord {
   phone: string;
   city: string;
   created_at: string;
+  is_read: number;
 }
 
 export interface TripBookingRecord {
@@ -202,6 +203,28 @@ export const getTripBookingByIdApi = async (
         error.response?.data?.error ||
         error.message ||
         "Failed to fetch trip booking",
+    );
+  }
+};
+
+// ─── MARK WEBSITE GAC AS READ ─────────────────────────────
+
+export const markWebsiteGacReadApi = async (
+  id: number,
+): Promise<void> => {
+  try {
+    await axiosInstance.patch(`/website-gac/gac/${id}/read`);
+  } catch (error: any) {
+    console.error(
+      "❌ Mark Website GAC Read Error:",
+      error.response?.data || error.message,
+    );
+
+    throw new Error(
+      error.response?.data?.message ||
+        error.response?.data?.error ||
+        error.message ||
+        "Failed to mark lead as read",
     );
   }
 };

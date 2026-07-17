@@ -30,6 +30,7 @@ export interface TripBookingRecord {
   city: string;
   vehicle_category: string;
   created_at: string;
+  is_read: number; // 🆕 mark-read feature ke liye add kiya
 }
 
 export interface CreateTripBookingPayload {
@@ -209,9 +210,7 @@ export const getTripBookingByIdApi = async (
 
 // ─── MARK WEBSITE GAC AS READ ─────────────────────────────
 
-export const markWebsiteGacReadApi = async (
-  id: number,
-): Promise<void> => {
+export const markWebsiteGacReadApi = async (id: number): Promise<void> => {
   try {
     await axiosInstance.patch(`/website-gac/gac/${id}/read`);
   } catch (error: any) {
@@ -225,6 +224,26 @@ export const markWebsiteGacReadApi = async (
         error.response?.data?.error ||
         error.message ||
         "Failed to mark lead as read",
+    );
+  }
+};
+
+// 🆕 ─── MARK TRIP BOOKING AS READ ─────────────────────────────
+
+export const markTripBookingReadApi = async (id: number): Promise<void> => {
+  try {
+    await axiosInstance.patch(`/website-gac/trip-bookings/${id}/read`);
+  } catch (error: any) {
+    console.error(
+      "❌ Mark Trip Booking Read Error:",
+      error.response?.data || error.message,
+    );
+
+    throw new Error(
+      error.response?.data?.message ||
+        error.response?.data?.error ||
+        error.message ||
+        "Failed to mark trip booking as read",
     );
   }
 };

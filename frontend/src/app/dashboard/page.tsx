@@ -305,49 +305,6 @@ export default function DashboardPage() {
 
   // ── Main content ─────────────────────────────────────────────────────────
   const mainContent = (() => {
-    // ══════════════════════════════════════════════════════════
-    // VENDOR — completely separate content tree. Vendor never
-    // falls through to the employee sections below.
-    // ══════════════════════════════════════════════════════════
-    // if (nav.loginType === "vendor") {
-    //   if (nav.activeSection === "venderDashboard")
-    //     return (
-    //       <div className="space-y-6">
-    //         <VenderDashboardModule />
-    //       </div>
-    //     );
-    //   if (nav.activeSection === "vehicle-documents")
-    //     return (
-    //       <div className="space-y-6">
-    //         <VendorVehicleDocumentsModule />
-    //       </div>
-    //     );
-    //   if (nav.activeSection === "vendor-profile")
-    //     return (
-    //       <div className="space-y-6">
-    //         <VendorProfileModule />
-    //       </div>
-    //     );
-
-    //   // 👇 Naya: vendor-table / vehicles / driver / driver-table sidebar se
-    //   // directly khulenge (master flow ke bina)
-    //   if (VendorDirectMasterComponent) {
-    //     const Comp = VendorDirectMasterComponent;
-    //     return (
-    //       <div className="space-y-6">
-    //         <Comp />
-    //       </div>
-    //     );
-    //   }
-
-    //   return (
-    //     <div className="space-y-6">
-    //       {" "}
-    //       <VenderDashboardModule />
-    //     </div>
-    //   );
-    // }
-
     if (nav.loginType === "vendor") {
       if (nav.activeSection === "venderDashboard")
         return (
@@ -616,8 +573,7 @@ export default function DashboardPage() {
         </div>
       );
 
-    // Employee reaching a vendor-only section (e.g. stale URL/tab) — just
-    // fall back to their normal leads dashboard instead of a blank screen.
+    
     if (
       nav.activeSection === "booking-trip" ||
       nav.activeSection === "vehicle-documents" ||
@@ -636,14 +592,16 @@ export default function DashboardPage() {
   // ── Layout ───────────────────────────────────────────────────────────────
   return (
     <div className="flex flex-col h-screen overflow-hidden bg-slate-100 text-slate-900">
-      {/* ✅ Zero props — Navbar reads everything from Redux */}
       <Navbar />
 
       <div className="flex flex-1 overflow-hidden">
-        {/* ✅ Zero props — Sidebar reads/dispatches Redux directly */}
-        <Sidebar />
+     
+        <div className="relative">
+          <Sidebar />
+        </div>
 
-        <main className="flex-1 px-4 py-1 overflow-y-auto bg-white sm:px-6">
+       
+        <main className="flex-1 px-4 py-1 overflow-y-auto bg-white sm:px-6 ml-[100px]">
           <div className="w-full mx-auto space-y-6">{mainContent}</div>
         </main>
       </div>

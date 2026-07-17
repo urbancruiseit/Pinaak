@@ -7,11 +7,18 @@ import { AppDispatch, RootState } from "@/app/redux/store";
 import { createWebsiteGacThunk } from "../features/Website/WebsiteSlice";
 import { getCountriesThunk } from "../features/countrycode/countrycodeSlice";
 
+// URL -> City mapping array
+const CITY_URL_MAP = [
+  { url: "https://urbancruise.in/delhi/", city: "Delhi" },
+  { url: "https://urbancruise.in/pune/", city: "Pune" },
+  { url: "https://urbancruise.in/mumbai/", city: "Mumbai" },
+  { url: "https://urbancruise.in", city: "India" }, // base URL -> India
+];
+
 export default function GacFormPage() {
   const dispatch = useDispatch<AppDispatch>();
 
   const { creating } = useSelector((state: RootState) => state.websiteGac);
-
   const countries = useSelector((state: RootState) => state.country.countries);
 
   const [message, setMessage] = useState("");
@@ -21,7 +28,7 @@ export default function GacFormPage() {
     name: "",
     phone: "",
     country_code: "",
-    city: "Delhi",
+    city: "", // no default city
   });
 
   // Load Countries
@@ -29,35 +36,39 @@ export default function GacFormPage() {
     dispatch(getCountriesThunk());
   }, [dispatch]);
 
-  // Detect City from URL
+  // Detect City from full URL using CITY_URL_MAP array
   useEffect(() => {
-    const path = window.location.pathname.toLowerCase();
+    const currentUrl = window.location.href.toLowerCase();
 
-    let city = "Delhi"; // Default
+    let detectedCity = "";
 
-    if (path.startsWith("/delhi")) {
-      city = "Delhi";
-    } else if (path.startsWith("/mumbai")) {
-      city = "Mumbai";
-    } else if (path.startsWith("/pune")) {
-      city = "Pune";
-    } else if (path.startsWith("/bangalore")) {
-      city = "Bangalore";
-    } else if (path.startsWith("/hyderabad")) {
-      city = "Hyderabad";
-    } else if (path.startsWith("/chennai")) {
-      city = "Chennai";
-    } else if (path.startsWith("/kolkata")) {
-      city = "Kolkata";
-    } else if (path.startsWith("/jaipur")) {
-      city = "Jaipur";
-    } else if (path.startsWith("/ahmedabad")) {
-      city = "Ahmedabad";
+    for (const item of CITY_URL_MAP) {
+      const mapUrl = item.url.toLowerCase();
+
+      if (mapUrl === "https://urbancruise.in") {
+        // Base URL -> match only exact domain (with/without trailing slash or query)
+        const isBaseUrl =
+          currentUrl === mapUrl ||
+          currentUrl === `${mapUrl}/` ||
+          currentUrl.startsWith(`${mapUrl}/?`) ||
+          currentUrl.startsWith(`${mapUrl}?`);
+
+        if (isBaseUrl) {
+          detectedCity = item.city;
+          break;
+        }
+      } else {
+        // Specific city URLs -> prefix match
+        if (currentUrl.startsWith(mapUrl)) {
+          detectedCity = item.city;
+          break;
+        }
+      }
     }
 
     setFormData((prev) => ({
       ...prev,
-      city,
+      city: detectedCity,
     }));
   }, []);
 
@@ -139,6 +150,9 @@ export default function GacFormPage() {
             onSubmit={handleSubmit}
             className="flex flex-col md:flex-row items-center gap-5"
           >
+            {/* Hidden city field */}
+            <input type="hidden" name="city" value={formData.city} />
+
             {/* Name */}
             <input
               type="text"

@@ -111,7 +111,8 @@ export const getAllTripBookings = async () => {
         vehicle_category,
         vehicle_model,
         city,
-        created_at
+        created_at,
+           is_read   
       FROM trip_bookings
       ORDER BY id DESC
     `);
@@ -136,5 +137,22 @@ export const markWebsiteGacAsRead = async (id) => {
     return result;
   } catch (error) {
     throw new Error(`markWebsiteGacAsRead failed: ${error.message}`);
+  }
+};
+
+export const markTripBookingAsRead = async (id) => {
+  try {
+    const [result] = await pool.execute(
+      `
+      UPDATE trip_bookings
+      SET is_read = 1
+      WHERE id = ?
+      `,
+      [id],
+    );
+
+    return result;
+  } catch (error) {
+    throw new Error(`markTripBookingAsRead failed: ${error.message}`);
   }
 };

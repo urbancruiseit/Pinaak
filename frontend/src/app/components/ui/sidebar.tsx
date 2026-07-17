@@ -94,13 +94,18 @@ const colorMap: Record<
     activeBg: "bg-indigo-50",
   },
 };
-
-// ─── Sidebar ──────────────────────────────────────────────────────────────────
+// Menu access ke liye supported role-tags. Ye woh "canonical" names hain
+// jo employeeMenuItems ke `allowedRoles` array me use honge.
+type RoleTag =
+  | "advisor"
+  | "manager"
+  | "presale"
+  | "tele-sales"
+  | "seo-executive";
 
 const Sidebar: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
 
-  // Redux se role/loginType aur activeSection lo
   const currentUser = useSelector((state: RootState) => state.user.currentUser);
   const activeSection = useSelector(
     (state: RootState) => state.navigation.activeSection,
@@ -116,19 +121,50 @@ const Sidebar: React.FC = () => {
     rawUser?.data?.subDepartment ??
     ""
   ).toLowerCase();
+  const departmentName = (
+    rawUser?.department_name ??
+    rawUser?.data?.department_name ??
+    ""
+  ).toLowerCase();
+  const roleName = (
+    rawUser?.role_name ??
+    rawUser?.data?.role_name ??
+    ""
+  ).toLowerCase();
 
-  // loginType Redux navigation slice se aata hai (initFromRole ke through).
-  // Fallback ke roop me currentUser.loginType bhi check kar lete hain, taaki
-  // page refresh ke thoda pehle wale render me bhi vendor menu galti se
-  // employee menu na dikhaye.
   const effectiveLoginType =
     loginType || (rawUser?.loginType as string | undefined) || "";
   const isVendor = effectiveLoginType === "vendor";
 
-  const isPresale = role === "presale" || role === "presales";
-  const isSales = role === "sales";
+  // ══════════════════════════════════════════════
+  // ROLE DETECTION — inputs se derive karte hain,
+  // par final access ALLOW-LIST (userRoleTags) se decide hota hai
+  // ══════════════════════════════════════════════
+  const isPresale =
+    role.includes("presale") ||
+    role.includes("pre-sale") ||
+    roleName.includes("presale") ||
+    roleName.includes("pre-sale");
+
   const isAdvisor = role.includes("advisor") || role.includes("travel");
+  const isManager = role.includes("manager") || roleName.includes("manager");
   const isTelesales = subDept === "tele-sales";
+
+  const isSeoExecutiveDigitalMarketing =
+    departmentName === "digital marketing" && roleName === "seo executive";
+
+  // User ke paas jo bhi role-tags match hote hain, unka list.
+  // Menu items sirf isi list ke against check honge (whitelist).
+  const userRoleTags: RoleTag[] = [
+    isAdvisor && "advisor",
+    isManager && "manager",
+    isPresale && "presale",
+    isTelesales && "tele-sales",
+    isSeoExecutiveDigitalMarketing && "seo-executive",
+  ].filter(Boolean) as RoleTag[];
+
+  const hasAccess = (allowedRoles: RoleTag[]) =>
+    allowedRoles.some((r) => userRoleTags.includes(r));
 
   const [isExpanded, setIsExpanded] = useState(false);
   const iconSize = isExpanded ? 26 : 28;
@@ -142,21 +178,113 @@ const Sidebar: React.FC = () => {
     }
   };
 
+  // ══════════════════════════════════════════════
+  // EMPLOYEE MENU ITEMS — ab whitelist (allowedRoles) driven
+  // ══════════════════════════════════════════════
+  const employeeMenuItems = [
+    {
+      key: "master",
+      icon: <Database size={iconSize} />,
+      label: "Master",
+      description: "Manage all forms and data",
+      isActive: activeSection === "master",
+      onClick: () => dispatch(setActiveSection("master")),
+      color: "orange" as Color,
+      allowedRoles: ["advisor", "manager"] as RoleTag[],
+    },
+    {
+      key: "leads",
+      icon: <Search size={iconSize} />,
+      label: "Leads",
+      description: "Manage leads & inquiries",
+      isActive: activeSection === "leads",
+      onClick: handleLeadsClick,
+      color: "green" as Color,
+      allowedRoles: [
+        "presale",
+        "tele-sales",
+        "seo-executive",
+        "advisor",
+        "manager",
+      ] as RoleTag[],
+    },
+    {
+      key: "rate-quotation",
+      icon: <FileText size={iconSize} />,
+      label: "Rate Quotation",
+      description: "Generate & manage quotations",
+      isActive: activeSection === "rate-quotation",
+      onClick: () => dispatch(setActiveSection("rate-quotation")),
+      color: "blue" as Color,
+      allowedRoles: ["advisor", "manager"] as RoleTag[],
+    },
+    {
+      key: "booking-trip",
+      icon: <Calendar size={iconSize} />,
+      label: "Booking",
+      description: "Manage trip bookings",
+      isActive: activeSection === "booking-trip",
+      onClick: () => dispatch(setActiveSection("booking-trip")),
+      color: "purple" as Color,
+      allowedRoles: ["advisor", "manager", "presale"] as RoleTag[],
+    },
+    {
+      key: "payment",
+      icon: <Car size={iconSize} />,
+      label: "Trip",
+      description: "Handle payments & transactions",
+      isActive: activeSection === "payment",
+      onClick: () => dispatch(setActiveSection("payment")),
+      color: "yellow" as Color,
+      allowedRoles: ["advisor", "manager", "presale"] as RoleTag[],
+    },
+    {
+      key: "feedback",
+      icon: <MessageSquare size={iconSize} />,
+      label: "Feedback",
+      description: "Collect & manage feedback",
+      isActive: activeSection === "feedback",
+      onClick: () => dispatch(setActiveSection("feedback")),
+      color: "red" as Color,
+      allowedRoles: [
+        "advisor",
+        "manager",
+        "presale",
+        "seo-executive",
+      ] as RoleTag[],
+    },
+    {
+      key: "website",
+      icon: <Monitor size={iconSize} />,
+      label: "Website",
+      description: "Manage website content",
+      isActive: activeSection === "website",
+      onClick: () => dispatch(setActiveWebsiteView("gac")),
+      color: "red" as Color,
+      allowedRoles: ["manager", "presale"] as RoleTag[],
+    },
+    {
+      key: "download-report",
+      icon: <Download size={iconSize} />,
+      label: "Download Report",
+      description: "Download & export reports",
+      isActive: activeSection === "download-report",
+      onClick: () => dispatch(setActiveSection("download-report")),
+      color: "indigo" as Color,
+      allowedRoles: ["manager"] as RoleTag[],
+    },
+  ].filter((item) => hasAccess(item.allowedRoles));
+
   return (
     <div
-      className="h-full bg-white border-r border-gray-200 transition-all duration-300 ease-in-out relative overflow-y-auto overflow-x-hidden"
+      className="absolute top-0 left-0 z-40 h-full bg-white border-r border-gray-200 shadow-xl transition-all duration-300 ease-in-out overflow-y-auto overflow-x-hidden"
       style={{ width: isExpanded ? "280px" : "100px" }}
       onMouseEnter={() => setIsExpanded(true)}
       onMouseLeave={() => setIsExpanded(false)}
     >
       <div className={`${isExpanded ? "px-3" : "px-2"} space-y-1.5 pb-4`}>
         {isVendor ? (
-          // ══════════════════════════════════════════════
-          // VENDOR MENU
-          // ══════════════════════════════════════════════
           <>
-            {/* 👇 Naye items: Master ke andar wale hi components, vendor ko
-                bhi seedha sidebar se access */}
             <SidebarItem
               icon={<Store size={iconSize} />}
               label="Dashboard"
@@ -166,7 +294,6 @@ const Sidebar: React.FC = () => {
               onClick={() => dispatch(setActiveSection("venderDashboard"))}
               color="indigo"
             />
-
             <SidebarItem
               icon={<Car size={iconSize} />}
               label="Trip / Booking"
@@ -176,7 +303,6 @@ const Sidebar: React.FC = () => {
               onClick={() => dispatch(setActiveSection("booking-trip"))}
               color="purple"
             />
-
             <SidebarItem
               icon={<FileBadge size={iconSize} />}
               label="Vehicle Documents"
@@ -186,7 +312,6 @@ const Sidebar: React.FC = () => {
               onClick={() => dispatch(setActiveSection("vehicle-documents"))}
               color="blue"
             />
-
             <SidebarItem
               icon={<UserCircle size={iconSize} />}
               label="Vendor Profile"
@@ -196,7 +321,6 @@ const Sidebar: React.FC = () => {
               onClick={() => dispatch(setActiveSection("vendor-profile"))}
               color="orange"
             />
-
             <SidebarItem
               icon={<Truck size={iconSize} />}
               label="Vehicles"
@@ -206,7 +330,6 @@ const Sidebar: React.FC = () => {
               onClick={() => dispatch(setActiveSection("vehicles"))}
               color="yellow"
             />
-
             <SidebarItem
               icon={<Users size={iconSize} />}
               label="Driver"
@@ -225,7 +348,6 @@ const Sidebar: React.FC = () => {
               onClick={() => dispatch(setActiveSection("rate-quotation"))}
               color="blue"
             />
-
             <SidebarItem
               icon={<Calendar size={iconSize} />}
               label="Booking"
@@ -235,7 +357,6 @@ const Sidebar: React.FC = () => {
               onClick={() => dispatch(setActiveSection("booking-trip"))}
               color="purple"
             />
-
             <SidebarItem
               icon={<Car size={iconSize} />}
               label="Trip"
@@ -247,109 +368,19 @@ const Sidebar: React.FC = () => {
             />
           </>
         ) : (
-          // ══════════════════════════════════════════════
-          // EMPLOYEE MENU — existing behaviour, unchanged.
-          // ══════════════════════════════════════════════
           <>
-            {/* Master — hidden for presale & sales */}
-            {!isPresale && !isSales && (
+            {employeeMenuItems.map((item) => (
               <SidebarItem
-                icon={<Database size={iconSize} />}
-                label="Master"
-                description="Manage all forms and data"
+                key={item.key}
+                icon={item.icon}
+                label={item.label}
+                description={item.description}
                 isExpanded={isExpanded}
-                isActive={activeSection === "master"}
-                onClick={() => dispatch(setActiveSection("master"))}
-                color="orange"
+                isActive={item.isActive}
+                onClick={item.onClick}
+                color={item.color}
               />
-            )}
-
-            {/* Leads — visible to all */}
-            <SidebarItem
-              icon={<Search size={iconSize} />}
-              label="Leads"
-              description="Manage leads & inquiries"
-              isExpanded={isExpanded}
-              isActive={activeSection === "leads"}
-              onClick={handleLeadsClick}
-              color="green"
-            />
-
-            {/* Rate Quotation — hidden for presale */}
-            {!isPresale && (
-              <SidebarItem
-                icon={<FileText size={iconSize} />}
-                label="Rate Quotation"
-                description="Generate & manage quotations"
-                isExpanded={isExpanded}
-                isActive={activeSection === "rate-quotation"}
-                onClick={() => dispatch(setActiveSection("rate-quotation"))}
-                color="blue"
-              />
-            )}
-
-            {/* Booking — hidden for presale */}
-            {!isPresale && (
-              <SidebarItem
-                icon={<Calendar size={iconSize} />}
-                label="Booking"
-                description="Manage trip bookings"
-                isExpanded={isExpanded}
-                isActive={activeSection === "booking-trip"}
-                onClick={() => dispatch(setActiveSection("booking-trip"))}
-                color="purple"
-              />
-            )}
-
-            {/* Trip — visible to all */}
-            <SidebarItem
-              icon={<Car size={iconSize} />}
-              label="Trip"
-              description="Handle payments & transactions"
-              isExpanded={isExpanded}
-              isActive={activeSection === "payment"}
-              onClick={() => dispatch(setActiveSection("payment"))}
-              color="yellow"
-            />
-
-            {/* Feedback — visible to all */}
-            <SidebarItem
-              icon={<MessageSquare size={iconSize} />}
-              label="Feedback"
-              description="Collect & manage feedback"
-              isExpanded={isExpanded}
-              isActive={activeSection === "feedback"}
-              onClick={() => dispatch(setActiveSection("feedback"))}
-              color="red"
-            />
-
-            {/* Website — hidden for advisor & presale */}
-            {!isAdvisor && !isPresale && (
-              <SidebarItem
-                icon={<Monitor size={iconSize} />}
-                label="Website"
-                description="Manage website content"
-                isExpanded={isExpanded}
-                isActive={activeSection === "website"}
-                onClick={() => {
-                  dispatch(setActiveWebsiteView("gac"));
-                }}
-                color="red"
-              />
-            )}
-
-            {/* Download Report — hidden for advisor & presale */}
-            {!isAdvisor && !isPresale && (
-              <SidebarItem
-                icon={<Download size={iconSize} />}
-                label="Download Report"
-                description="Download & export reports"
-                isExpanded={isExpanded}
-                isActive={activeSection === "download-report"}
-                onClick={() => dispatch(setActiveSection("download-report"))}
-                color="indigo"
-              />
-            )}
+            ))}
           </>
         )}
       </div>
@@ -362,8 +393,6 @@ const Sidebar: React.FC = () => {
     </div>
   );
 };
-
-// ─── SidebarItem ─────────────────────────────────────────────────────────────
 
 interface SidebarItemProps {
   icon: React.ReactNode;

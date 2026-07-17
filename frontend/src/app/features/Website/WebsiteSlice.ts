@@ -11,6 +11,7 @@ import {
   TripBookingRecord,
   WebsiteGacRecord,
   markWebsiteGacReadApi,
+  markTripBookingReadApi,
 } from "./websiteApi";
 
 // ─────────────────────────────────────────────
@@ -127,6 +128,18 @@ export const markWebsiteGacReadThunk = createAsyncThunk(
   },
 );
 
+export const markTripBookingReadThunk = createAsyncThunk(
+  "website/markTripBookingRead",
+  async (id: number, { rejectWithValue }) => {
+    try {
+      await markTripBookingReadApi(id);
+      return id;
+    } catch (error: any) {
+      return rejectWithValue(error.message);
+    }
+  },
+);
+
 // ─────────────────────────────────────────────
 // SLICE
 // ─────────────────────────────────────────────
@@ -218,6 +231,13 @@ const websiteGacSlice = createSlice({
         if (lead) {
           lead.is_read = 1;
         }
+      })
+      .addCase(markTripBookingReadThunk.fulfilled, (state, action) => {
+        const item = state.tripBookings.find(
+          (b: any) => b.id === action.payload,
+        );
+
+        if (item) item.is_read = 1;
       });
   },
 });

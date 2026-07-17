@@ -7,6 +7,7 @@ import {
   createWebsiteGacController,
   getTripBookingsController,
   getWebsiteGacController,
+  markTripBookingReadController,
   markWebsiteGacReadController,
 } from "./website.controller.js";
 
@@ -18,5 +19,7 @@ router.get("/gac", getWebsiteGacController);
 router.post("/trip-bookings", createTripBookingController);
 router.get("/trip-bookings", getTripBookingsController);
 router.patch("/gac/:id/read", markWebsiteGacReadController);
+
+router.patch("/trip-bookings/:id/read", markTripBookingReadController); // 🆕
 
 export default router;

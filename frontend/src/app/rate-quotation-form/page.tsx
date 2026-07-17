@@ -52,6 +52,14 @@ const VEHICLE_CATEGORIES: VehicleCategory[] = [
 const VISIBLE_COUNTRY_ROWS = 10;
 const COUNTRY_ROW_HEIGHT = 36; // px, matches the row's py-2 + text-sm sizing below
 
+// URL -> City mapping array
+const CITY_URL_MAP = [
+  { url: "https://urbancruise.in/delhi/", city: "Delhi" },
+  { url: "https://urbancruise.in/pune/", city: "Pune" },
+  { url: "https://urbancruise.in/mumbai/", city: "Mumbai" },
+  { url: "https://urbancruise.in", city: "India" }, // base URL -> India
+];
+
 export default function TripBookingFormPage() {
   const dispatch = useDispatch<AppDispatch>();
 
@@ -70,6 +78,7 @@ export default function TripBookingFormPage() {
   const countryDropdownRef = useRef<HTMLDivElement>(null);
 
   const [formData, setFormData] = useState({
+    city: "", // hidden field, auto-detected from URL
     pickup_address: "",
     pickup_date: "",
     drop_address: "",
@@ -92,6 +101,42 @@ export default function TripBookingFormPage() {
   useEffect(() => {
     dispatch(getCountriesThunk());
   }, [dispatch]);
+
+  // Detect City from full URL using CITY_URL_MAP array
+  useEffect(() => {
+    const currentUrl = window.location.href.toLowerCase();
+
+    let detectedCity = "";
+
+    for (const item of CITY_URL_MAP) {
+      const mapUrl = item.url.toLowerCase();
+
+      if (mapUrl === "https://urbancruise.in") {
+        // Base URL -> match only exact domain (with/without trailing slash or query)
+        const isBaseUrl =
+          currentUrl === mapUrl ||
+          currentUrl === `${mapUrl}/` ||
+          currentUrl.startsWith(`${mapUrl}/?`) ||
+          currentUrl.startsWith(`${mapUrl}?`);
+
+        if (isBaseUrl) {
+          detectedCity = item.city;
+          break;
+        }
+      } else {
+        // Specific city URLs -> prefix match
+        if (currentUrl.startsWith(mapUrl)) {
+          detectedCity = item.city;
+          break;
+        }
+      }
+    }
+
+    setFormData((prev) => ({
+      ...prev,
+      city: detectedCity,
+    }));
+  }, []);
 
   // Set default country code (defaults to +91 if present, else the first one)
   useEffect(() => {
@@ -158,6 +203,7 @@ export default function TripBookingFormPage() {
 
     if (createTripBookingThunk.fulfilled.match(resultAction)) {
       setFormData({
+        city: formData.city,
         pickup_address: "",
         pickup_date: "",
         drop_address: "",
@@ -236,6 +282,9 @@ export default function TripBookingFormPage() {
         )}
 
         <form onSubmit={handleSubmit}>
+          {/* Hidden city field */}
+          <input type="hidden" name="city" value={formData.city} />
+
           {/* Trip Details */}
           <div className="bg-lime-500 text-black text-center py-3">
             <h2 className="text-2xl font-bold">Trip Details</h2>

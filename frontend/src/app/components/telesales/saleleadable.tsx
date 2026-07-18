@@ -763,6 +763,10 @@ export default function LeadsTable() {
                 onRegionChange={handleRegionChange}
                 onZoneChange={handleZoneChange}
                 onCityChange={handleCityChange}
+                  onYearChange={(year) => {
+    setYearFilter(year as typeof yearFilter);
+    setCurrentPage(1);
+  }}
               />
             </div>
           </div>

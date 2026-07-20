@@ -51,8 +51,7 @@ export default function GacFormPage() {
     dispatch(getCountriesThunk());
   }, [dispatch]);
 
-  // Detect city from the PARENT window's URL (this component is expected
-  // to run inside an iframe embedded on urbancruise.in/<city>/...)
+
   useEffect(() => {
     const extractCityFromUrl = (href: string): string | null => {
       try {
@@ -70,16 +69,15 @@ export default function GacFormPage() {
     };
 
     let detectedCity: string | null = null;
+    console.log("window.parent.location.href:", window.parent.location.href);
 
-    // 1) Try same-origin parent location (works only if iframe + parent share origin)
     try {
       detectedCity = extractCityFromUrl(window.parent.location.href);
     } catch {
       detectedCity = null;
     }
 
-    // 2) Fallback: document.referrer works even cross-origin, since the
-    //    browser sets it to the embedding page's URL when loading the iframe.
+
     if (!detectedCity && document.referrer) {
       detectedCity = extractCityFromUrl(document.referrer);
     }

@@ -188,6 +188,7 @@ export interface countryData {
   phone_code: string;
   created_at?: Date;
   data?: any;
+  name?: string;
 }
 export interface Vehicle {
   id: number;

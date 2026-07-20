@@ -7,13 +7,6 @@ import { AppDispatch, RootState } from "@/app/redux/store";
 import { createWebsiteGacThunk } from "../features/Website/WebsiteSlice";
 import { getCountriesThunk } from "../features/countrycode/countrycodeSlice";
 
-const CITY_URL_MAP = [
-  { url: "https://urbancruise.in/delhi/", city: "Delhi" },
-  { url: "https://urbancruise.in/pune/", city: "Pune" },
-  { url: "https://urbancruise.in/mumbai/", city: "Mumbai" },
-  { url: "https://urbancruise.in", city: "India" },
-];
-
 // How many country rows are visible before the list scrolls
 const VISIBLE_COUNTRY_ROWS = 10;
 const COUNTRY_ROW_HEIGHT = 36; // px, matches the row's py-2 + text-sm sizing below
@@ -58,21 +51,26 @@ export default function GacFormPage() {
     dispatch(getCountriesThunk());
   }, [dispatch]);
 
+  // Detect city from the PARENT window's URL (this component is expected
+  // to run inside an iframe embedded on urbancruise.in/<city>/...)
   useEffect(() => {
-    const rawUrl = window.location.href.toLowerCase();
-    const currentUrl = rawUrl.split(/[?#]/)[0].replace(/\/+$/, "");
+    let detectedCity = "India"; // default when path is empty / root / inaccessible
 
-    let detectedCity = "India";
+    try {
+      const parentHref = window.parent.location.href.toLowerCase();
+      const url = new URL(parentHref);
 
-    for (const item of CITY_URL_MAP) {
-      const mapUrl = item.url.toLowerCase().replace(/\/+$/, "");
+      // split path into segments and drop empty strings (handles trailing slashes)
+      const pathSegments = url.pathname.split("/").filter(Boolean);
 
-      if (mapUrl === "https://urbancruise.in") continue;
-
-      if (currentUrl.startsWith(mapUrl)) {
-        detectedCity = item.city;
-        break;
+      if (pathSegments.length > 0) {
+        const rawCity = decodeURIComponent(pathSegments[0]);
+        detectedCity = rawCity.charAt(0).toUpperCase() + rawCity.slice(1);
       }
+    } catch (err) {
+      // Cross-origin restriction: parent's location isn't readable.
+      // Fall back to default city.
+      detectedCity = "India";
     }
 
     setFormData((prev) => ({

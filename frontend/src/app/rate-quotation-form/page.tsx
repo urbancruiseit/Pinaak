@@ -52,14 +52,6 @@ const VEHICLE_CATEGORIES: VehicleCategory[] = [
 const VISIBLE_COUNTRY_ROWS = 10;
 const COUNTRY_ROW_HEIGHT = 36; // px, matches the row's py-2 + text-sm sizing below
 
-// URL -> City mapping array
-const CITY_URL_MAP = [
-  { url: "https://urbancruise.in/delhi/", city: "Delhi" },
-  { url: "https://urbancruise.in/pune/", city: "Pune" },
-  { url: "https://urbancruise.in/mumbai/", city: "Mumbai" },
-  { url: "https://urbancruise.in", city: "India" }, // base URL -> India
-];
-
 export default function TripBookingFormPage() {
   const dispatch = useDispatch<AppDispatch>();
 
@@ -78,7 +70,7 @@ export default function TripBookingFormPage() {
   const countryDropdownRef = useRef<HTMLDivElement>(null);
 
   const [formData, setFormData] = useState({
-    city: "", // hidden field, auto-detected from URL
+    city: "", // hidden field, auto-detected
     pickup_address: "",
     pickup_date: "",
     drop_address: "",
@@ -102,39 +94,66 @@ export default function TripBookingFormPage() {
     dispatch(getCountriesThunk());
   }, [dispatch]);
 
-  // Detect City from full URL using CITY_URL_MAP array
+  // Detect city — priority order:
+  // 1) This iframe's own URL query param (?city=delhi) — set explicitly by
+  //    whoever embeds the iframe on each city page. Most reliable, works
+  //    even inside the WordPress editor's nested preview iframe.
+  // 2) Same-origin parent window location (only works if parent shares origin).
+  // 3) document.referrer (works cross-origin, but unreliable inside
+  //    editor preview canvases which may not set a real referrer).
+  // 4) Default to "India".
   useEffect(() => {
-    const currentUrl = window.location.href.toLowerCase();
+    const extractCityFromUrl = (href: string): string | null => {
+      try {
+        const url = new URL(href.toLowerCase());
+        const pathSegments = url.pathname.split("/").filter(Boolean);
 
-    let detectedCity = "";
-
-    for (const item of CITY_URL_MAP) {
-      const mapUrl = item.url.toLowerCase();
-
-      if (mapUrl === "https://urbancruise.in") {
-        // Base URL -> match only exact domain (with/without trailing slash or query)
-        const isBaseUrl =
-          currentUrl === mapUrl ||
-          currentUrl === `${mapUrl}/` ||
-          currentUrl.startsWith(`${mapUrl}/?`) ||
-          currentUrl.startsWith(`${mapUrl}?`);
-
-        if (isBaseUrl) {
-          detectedCity = item.city;
-          break;
+        if (pathSegments.length > 0) {
+          const rawCity = decodeURIComponent(pathSegments[0]);
+          return rawCity.charAt(0).toUpperCase() + rawCity.slice(1);
         }
-      } else {
-        // Specific city URLs -> prefix match
-        if (currentUrl.startsWith(mapUrl)) {
-          detectedCity = item.city;
-          break;
-        }
+      } catch {
+        // invalid URL, ignore
       }
+      return null;
+    };
+
+    let detectedCity: string | null = null;
+
+    // 1) Own iframe URL query param, e.g. ?city=mumbai
+    try {
+      const ownParams = new URLSearchParams(window.location.search);
+      const cityParam = ownParams.get("city");
+      if (cityParam) {
+        detectedCity =
+          cityParam.charAt(0).toUpperCase() + cityParam.slice(1).toLowerCase();
+      }
+    } catch {
+      detectedCity = null;
+    }
+
+    // 2) Same-origin parent location
+    if (!detectedCity) {
+      try {
+        detectedCity = extractCityFromUrl(window.parent.location.href);
+      } catch {
+        detectedCity = null;
+      }
+    }
+
+    // 3) document.referrer fallback (works cross-origin)
+    if (!detectedCity && document.referrer) {
+      detectedCity = extractCityFromUrl(document.referrer);
+    }
+
+    // 4) Final fallback
+    if (!detectedCity) {
+      detectedCity = "India";
     }
 
     setFormData((prev) => ({
       ...prev,
-      city: detectedCity,
+      city: detectedCity as string,
     }));
   }, []);
 

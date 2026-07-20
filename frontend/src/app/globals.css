@@ -112,3 +112,17 @@ body {
 .animate-float {
   animation: float 5s ease-in-out infinite;
 }
+
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  outline: none;
+  box-shadow: none;
+  background-image: none;
+}
+
+select:focus {
+  outline: none;
+  box-shadow: none;
+}

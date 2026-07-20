@@ -1,68 +1,77 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/app/redux/store";
 
 import { createWebsiteGacThunk } from "../features/Website/WebsiteSlice";
 import { getCountriesThunk } from "../features/countrycode/countrycodeSlice";
 
-// URL -> City mapping array
 const CITY_URL_MAP = [
   { url: "https://urbancruise.in/delhi/", city: "Delhi" },
   { url: "https://urbancruise.in/pune/", city: "Pune" },
   { url: "https://urbancruise.in/mumbai/", city: "Mumbai" },
-  { url: "https://urbancruise.in", city: "India" }, // base URL -> India
+  { url: "https://urbancruise.in", city: "India" },
 ];
+
+// How many country rows are visible before the list scrolls
+const VISIBLE_COUNTRY_ROWS = 10;
+const COUNTRY_ROW_HEIGHT = 36; // px, matches the row's py-2 + text-sm sizing below
 
 export default function GacFormPage() {
   const dispatch = useDispatch<AppDispatch>();
 
   const { creating } = useSelector((state: RootState) => state.websiteGac);
+
   const countries = useSelector((state: RootState) => state.country.countries);
 
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState<"success" | "error" | "">("");
+  const [countryDropdownOpen, setCountryDropdownOpen] = useState(false);
+  const countryDropdownRef = useRef<HTMLDivElement>(null);
 
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
     country_code: "",
-    city: "", // no default city
+    city: "",
   });
 
-  // Load Countries
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        countryDropdownRef.current &&
+        !countryDropdownRef.current.contains(event.target as Node)
+      ) {
+        setCountryDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
   useEffect(() => {
     dispatch(getCountriesThunk());
   }, [dispatch]);
 
-  // Detect City from full URL using CITY_URL_MAP array
   useEffect(() => {
-    const currentUrl = window.location.href.toLowerCase();
+    const rawUrl = window.location.href.toLowerCase();
+    const currentUrl = rawUrl.split(/[?#]/)[0].replace(/\/+$/, "");
 
-    let detectedCity = "";
+    let detectedCity = "India";
 
     for (const item of CITY_URL_MAP) {
-      const mapUrl = item.url.toLowerCase();
+      const mapUrl = item.url.toLowerCase().replace(/\/+$/, "");
 
-      if (mapUrl === "https://urbancruise.in") {
-        // Base URL -> match only exact domain (with/without trailing slash or query)
-        const isBaseUrl =
-          currentUrl === mapUrl ||
-          currentUrl === `${mapUrl}/` ||
-          currentUrl.startsWith(`${mapUrl}/?`) ||
-          currentUrl.startsWith(`${mapUrl}?`);
+      if (mapUrl === "https://urbancruise.in") continue;
 
-        if (isBaseUrl) {
-          detectedCity = item.city;
-          break;
-        }
-      } else {
-        // Specific city URLs -> prefix match
-        if (currentUrl.startsWith(mapUrl)) {
-          detectedCity = item.city;
-          break;
-        }
+      if (currentUrl.startsWith(mapUrl)) {
+        detectedCity = item.city;
+        break;
       }
     }
 
@@ -72,7 +81,6 @@ export default function GacFormPage() {
     }));
   }, []);
 
-  // Set Default Country Code
   useEffect(() => {
     if (countries.length > 0 && !formData.country_code) {
       const defaultCountry =
@@ -85,7 +93,6 @@ export default function GacFormPage() {
     }
   }, [countries, formData.country_code]);
 
-  // Input Change
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
@@ -95,7 +102,15 @@ export default function GacFormPage() {
     }));
   };
 
-  // Submit
+  const handleCountrySelect = (phoneCode: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      country_code: phoneCode,
+    }));
+
+    setCountryDropdownOpen(false);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -126,20 +141,19 @@ export default function GacFormPage() {
     <div className="w-full min-h-screen bg-gray-100">
       <div className="w-full bg-white border-2 border-lime-500">
         {/* Header */}
-        <div className="bg-lime-500 text-white text-center py-4">
-          <h1 className="text-4xl font-extrabold uppercase tracking-wide">
+        <div className="bg-lime-500 py-4 text-center">
+          <h1 className="text-4xl font-extrabold uppercase tracking-wide text-white">
             GET A QUICK CALL
           </h1>
         </div>
 
         <div className="p-6">
-          {/* Success / Error */}
           {message && (
             <div
-              className={`mb-5 rounded-md px-4 py-3 text-center font-semibold ${
+              className={`mb-5 rounded-md border px-4 py-3 text-center font-semibold ${
                 messageType === "success"
-                  ? "bg-green-100 border border-green-500 text-green-700"
-                  : "bg-red-100 border border-red-500 text-red-700"
+                  ? "border-green-500 bg-green-100 text-green-700"
+                  : "border-red-500 bg-red-100 text-red-700"
               }`}
             >
               {message}
@@ -148,53 +162,85 @@ export default function GacFormPage() {
 
           <form
             onSubmit={handleSubmit}
-            className="flex flex-col md:flex-row items-center gap-5"
+            className="flex flex-col gap-5 md:flex-row md:items-center"
           >
-            {/* Hidden city field */}
             <input type="hidden" name="city" value={formData.city} />
 
             {/* Name */}
             <input
               type="text"
               name="name"
+              required
               value={formData.name}
               onChange={handleChange}
               placeholder="Name"
-              required
-              className="w-full md:w-1/3 h-12 border border-gray-300 rounded-md px-4 text-black placeholder:text-gray-400 outline-none focus:border-lime-500"
+              className="h-12 w-full rounded-md border border-gray-300 px-4 text-black outline-none focus:border-lime-500 md:w-1/3"
             />
 
-            {/* Country Code + Phone */}
-            <div className="flex w-full md:w-1/3 border border-gray-300 rounded-md overflow-hidden h-12">
-              <select
-                name="country_code"
-                value={formData.country_code}
-                onChange={handleChange}
-                className="w-28 border-r bg-white text-black outline-none px-2"
+            {/* Phone */}
+            <div className="flex h-12 w-full overflow-visible rounded-md border border-gray-300 md:w-1/3 relative">
+              {/* Country Code (custom dropdown, shows max 10 rows then scrolls) */}
+              <div
+                ref={countryDropdownRef}
+                className="relative h-full flex-shrink-0"
               >
-                {countries.map((country) => (
-                  <option key={country.id} value={country.phone_code}>
-                    {country.phone_code}
-                  </option>
-                ))}
-              </select>
+                <button
+                  type="button"
+                  onClick={() => setCountryDropdownOpen((prev) => !prev)}
+                  className="w-24 h-full border-r border-gray-300 bg-white text-black outline-none px-2 flex items-center justify-between gap-1 box-border"
+                >
+                  <span className="truncate">
+                    {formData.country_code || "Code"}
+                  </span>
+                  <span className="text-gray-400 text-xs">▾</span>
+                </button>
 
+                {countryDropdownOpen && (
+                  <ul
+                    style={{
+                      maxHeight: `${VISIBLE_COUNTRY_ROWS * COUNTRY_ROW_HEIGHT}px`,
+                    }}
+                    className="absolute z-20 top-full left-0 mt-1 w-28 overflow-y-auto rounded-md border text-black border-gray-300 bg-white shadow-lg"
+                  >
+                    {countries.map((country) => (
+                      <li key={country.id}>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleCountrySelect(country.phone_code)
+                          }
+                          title={country.name}
+                          className={`w-full px-3 py-2 text-sm text-right hover:bg-lime-50 ${
+                            formData.country_code === country.phone_code
+                              ? "bg-lime-100 font-semibold"
+                              : ""
+                          }`}
+                        >
+                          {country.phone_code}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              {/* Phone */}
               <input
                 type="tel"
                 name="phone"
+                required
                 value={formData.phone}
                 onChange={handleChange}
                 placeholder="Phone Number"
-                required
-                className="flex-1 px-4 text-black placeholder:text-gray-400 outline-none"
+                className="flex-1 px-4 text-black outline-none placeholder:text-gray-400"
               />
             </div>
 
-            {/* Submit */}
+            {/* Button */}
             <button
               type="submit"
               disabled={creating}
-              className="w-full md:w-44 h-12 rounded-md bg-amber-500 text-white font-bold text-lg shadow-md hover:bg-amber-600 transition disabled:opacity-50"
+              className="h-12 w-full rounded-md bg-amber-500 text-lg font-bold text-white transition hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-50 md:w-44"
             >
               {creating ? "Submitting..." : "SUBMIT"}
             </button>

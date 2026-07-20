@@ -179,6 +179,11 @@ export default function TripBookingFormPage() {
     }));
   };
 
+  // Reusable handler: click anywhere on a date input to open the calendar picker
+  const handleDateFieldClick = (e: React.MouseEvent<HTMLInputElement>) => {
+    e.currentTarget.showPicker?.();
+  };
+
   const handleCountrySelect = (phoneCode: string) => {
     setFormData((prev) => ({ ...prev, country_code: phoneCode }));
     setCountryDropdownOpen(false);
@@ -316,8 +321,9 @@ export default function TripBookingFormPage() {
                 name="pickup_date"
                 value={formData.pickup_date}
                 onChange={handleChange}
+                onClick={handleDateFieldClick}
                 required
-                className="w-full h-12 border border-gray-300 rounded-md px-4 text-black outline-none focus:border-lime-500"
+                className="w-full h-12 border border-gray-300 rounded-md px-4 text-black outline-none focus:border-lime-500 cursor-pointer"
               />
             </div>
 
@@ -345,8 +351,9 @@ export default function TripBookingFormPage() {
                 name="drop_date"
                 value={formData.drop_date}
                 onChange={handleChange}
+                onClick={handleDateFieldClick}
                 required
-                className="w-full h-12 border border-gray-300 rounded-md px-4 text-black outline-none focus:border-lime-500"
+                className="w-full h-12 border border-gray-300 rounded-md px-4 text-black outline-none focus:border-lime-500 cursor-pointer"
               />
             </div>
 
@@ -435,29 +442,60 @@ export default function TripBookingFormPage() {
             </p>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-              {VEHICLE_MODELS.map((vehicle) => (
-                <button
-                  type="button"
-                  key={vehicle.key}
-                  onClick={() => handleModelSelect(vehicle.key)}
-                  className={`border rounded-md p-3 flex flex-col items-center gap-2 transition ${
-                    formData.vehicle_model === vehicle.key
-                      ? "border-lime-500 ring-2 ring-lime-400"
-                      : "border-gray-300 hover:border-lime-400"
-                  }`}
-                >
-                  <Image
-                    src={vehicle.image}
-                    alt={vehicle.label}
-                    width={150}
-                    priority
-                    className="rounded-xl object-contain flex-shrink-0"
-                  />
-                  <span className="text-xs font-semibold text-blue-700">
-                    {vehicle.label}
-                  </span>
-                </button>
-              ))}
+              {VEHICLE_MODELS.map((vehicle) => {
+                const isSelected = formData.vehicle_model === vehicle.key;
+                return (
+                  <button
+                    type="button"
+                    key={vehicle.key}
+                    onClick={() => handleModelSelect(vehicle.key)}
+                    className={`border rounded-md p-3 flex flex-col items-center gap-2 transition ${
+                      isSelected
+                        ? "border-lime-500 ring-2 ring-lime-400"
+                        : "border-gray-300 hover:border-lime-400"
+                    }`}
+                  >
+                    {/* image wrapper — relative rakhna zaroori hai */}
+                    <div className="relative w-full flex justify-center">
+                      <Image
+                        src={vehicle.image}
+                        alt={vehicle.label}
+                        width={150}
+                        priority
+                        className="rounded-xl object-contain flex-shrink-0"
+                      />
+
+                      {/* checkbox — hamesha visible, top-right corner */}
+                      <span
+                        className={`absolute top-0 right-0 w-5 h-5 rounded-md border-2 flex items-center justify-center transition ${
+                          isSelected
+                            ? "bg-green-500 border-green-500"
+                            : "bg-white border-gray-300"
+                        }`}
+                      >
+                        {isSelected && (
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="white"
+                            strokeWidth={3}
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="w-3.5 h-3.5"
+                          >
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        )}
+                      </span>
+                    </div>
+
+                    <span className="text-xs font-semibold text-blue-700">
+                      {vehicle.label}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 

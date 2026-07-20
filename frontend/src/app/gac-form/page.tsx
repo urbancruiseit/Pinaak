@@ -54,28 +54,44 @@ export default function GacFormPage() {
   // Detect city from the PARENT window's URL (this component is expected
   // to run inside an iframe embedded on urbancruise.in/<city>/...)
   useEffect(() => {
-    let detectedCity = "India"; // default when path is empty / root / inaccessible
+    const extractCityFromUrl = (href: string): string | null => {
+      try {
+        const url = new URL(href.toLowerCase());
+        const pathSegments = url.pathname.split("/").filter(Boolean);
 
-    try {
-      const parentHref = window.parent.location.href.toLowerCase();
-      const url = new URL(parentHref);
-
-      // split path into segments and drop empty strings (handles trailing slashes)
-      const pathSegments = url.pathname.split("/").filter(Boolean);
-
-      if (pathSegments.length > 0) {
-        const rawCity = decodeURIComponent(pathSegments[0]);
-        detectedCity = rawCity.charAt(0).toUpperCase() + rawCity.slice(1);
+        if (pathSegments.length > 0) {
+          const rawCity = decodeURIComponent(pathSegments[0]);
+          return rawCity.charAt(0).toUpperCase() + rawCity.slice(1);
+        }
+      } catch {
+        // invalid URL, ignore
       }
-    } catch (err) {
-      // Cross-origin restriction: parent's location isn't readable.
-      // Fall back to default city.
+      return null;
+    };
+
+    let detectedCity: string | null = null;
+
+    // 1) Try same-origin parent location (works only if iframe + parent share origin)
+    try {
+      detectedCity = extractCityFromUrl(window.parent.location.href);
+    } catch {
+      detectedCity = null;
+    }
+
+    // 2) Fallback: document.referrer works even cross-origin, since the
+    //    browser sets it to the embedding page's URL when loading the iframe.
+    if (!detectedCity && document.referrer) {
+      detectedCity = extractCityFromUrl(document.referrer);
+    }
+
+    // 3) Final fallback
+    if (!detectedCity) {
       detectedCity = "India";
     }
 
     setFormData((prev) => ({
       ...prev,
-      city: detectedCity,
+      city: detectedCity as string,
     }));
   }, []);
 

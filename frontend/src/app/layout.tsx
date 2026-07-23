@@ -4,10 +4,8 @@ import "./globals.css";
 import ReduxProvider from "./redux/redux-provider";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css"; // Toastify CSS
-import GlobalLeadPopup from "@/app/components/GlobalLeadPopup";
-import AuthInitializer from "./components/AuthInitializer";
 import { SocketProvider } from "./components/SocketProvider";
-import GlobalReminderPopup from "@/app/components/ReminderPopup";
+import GlobalWidgets from "@/app/components/GlobalWidgets";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -37,10 +35,8 @@ export default function RootLayout({
       >
         <ReduxProvider>
           <SocketProvider>
-            <AuthInitializer />
+            <GlobalWidgets />
             {children}
-            <GlobalLeadPopup />
-            <GlobalReminderPopup />
           </SocketProvider>
 
           <ToastContainer

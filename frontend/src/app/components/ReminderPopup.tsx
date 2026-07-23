@@ -16,6 +16,9 @@ const POLL_INTERVAL_MS = 15000; // 15 seconds — chaaho to 30000/60000 kar sakt
 const ReminderPopupListener: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { dueReminders } = useSelector((state: RootState) => state.lead);
+  const isAuthenticated = useSelector(
+    (state: RootState) => state.user.isAuthenticated,
+  );
 
   const [mounted, setMounted] = useState(false);
   const [activeReminder, setActiveReminder] = useState<
@@ -30,8 +33,10 @@ const ReminderPopupListener: React.FC = () => {
     return () => setMounted(false);
   }, []);
 
-  // ── Poll backend periodically ──────────────────────────────
+  // ── Poll backend periodically (only once logged in) ────────
   useEffect(() => {
+    if (!isAuthenticated) return;
+
     // pehli baar turant check karo
     dispatch(fetchDueReminders());
 
@@ -40,7 +45,7 @@ const ReminderPopupListener: React.FC = () => {
     }, POLL_INTERVAL_MS);
 
     return () => clearInterval(interval);
-  }, [dispatch]);
+  }, [dispatch, isAuthenticated]);
 
   // ── Jab bhi naya due reminder aaye aur abhi koi popup open nahi hai, dikhao ──
   useEffect(() => {

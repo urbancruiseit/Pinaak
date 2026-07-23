@@ -11,6 +11,20 @@ const app = express();
 
 app.use(helmet());
 
+// Pages embedded via <iframe> on urbancruise.in need frame-ancestors instead
+// of helmet's default X-Frame-Options: SAMEORIGIN, which blocks all framing.
+const EMBEDDABLE_ROUTES = ["/gac-form", "/rate-quotation-form"];
+app.use((req, res, next) => {
+  if (EMBEDDABLE_ROUTES.includes(req.path)) {
+    res.removeHeader("X-Frame-Options");
+    res.setHeader(
+      "Content-Security-Policy",
+      "frame-ancestors 'self' https://urbancruise.in https://www.urbancruise.in;",
+    );
+  }
+  next();
+});
+
 const allowedOrigins = (process.env.CORS_ORIGIN || "http://localhost:3000")
   .split(",")
   .map((o) => o.trim().replace(/\/$/, ""));

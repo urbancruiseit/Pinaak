@@ -12,11 +12,14 @@ const app = express();
 app.use(helmet());
 
 // Pages embedded via <iframe> on urbancruise.in need frame-ancestors instead
-// of helmet's default X-Frame-Options: SAMEORIGIN, which blocks all framing.
+// of helmet's default X-Frame-Options: SAMEORIGIN, and need
+// Cross-Origin-Resource-Policy relaxed too — CORP: same-origin (helmet's
+// default) blocks cross-origin embedding independently of X-Frame-Options/CSP.
 const EMBEDDABLE_ROUTES = ["/gac-form", "/rate-quotation-form"];
 app.use((req, res, next) => {
   if (EMBEDDABLE_ROUTES.includes(req.path)) {
     res.removeHeader("X-Frame-Options");
+    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
     res.setHeader(
       "Content-Security-Policy",
       "frame-ancestors 'self' https://urbancruise.in https://www.urbancruise.in;",

@@ -17,7 +17,7 @@ export interface CreateRulePayload {
   overflow: string;
   advisorId: number;
   shiftTiming: string;
-  lead: number;
+  lead: number | string;   // ✅
 }
 export interface RuleEntry {
   id: number;
@@ -26,7 +26,7 @@ export interface RuleEntry {
   monthLeads: MonthLead[];
   advisorId: number;
   shiftTiming: string;
-  lead: number;
+  lead: number | string; // ✅
   overflow: string;
 }
 export const getAdvisorsByZone = async (): Promise<ZoneAdvisor[]> => {

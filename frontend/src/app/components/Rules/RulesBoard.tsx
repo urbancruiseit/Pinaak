@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import EntryForm, { Entry, EntryType, EntryPayload } from "./Entryform";
 import {
   Plus,
@@ -15,6 +16,7 @@ import {
   CheckCircle2,
   Zap,
   BarChart,
+  RefreshCw,
 } from "lucide-react";
 import { useSelector } from "react-redux";
 import { RootState } from "@/app/redux/store";
@@ -71,6 +73,52 @@ function getMonthLead(entry: Entry, columnLabel: string) {
   );
 }
 
+/**
+ * Sums the `lead` values across the given month columns for a set of
+ * entries. This is the "real" total (matches the per-column totals shown
+ * in each table's footer), as opposed to `entry.lead` which is a single
+ * static field on the entry and can be out of sync with the monthly data.
+ *
+ * IMPORTANT: this only adds up numbers that actually exist as an entry in
+ * the leads table (`getMonthLead` returning a match). Anything without a
+ * matching month-lead entry contributes 0, it is never guessed/defaulted.
+ */
+function sumLeadsAcrossMonths(entries: Entry[], monthColumns: MonthColumn[]) {
+  return entries.reduce((sum, e) => {
+    const entryMonthTotal = monthColumns.reduce((s, col) => {
+      const ml = getMonthLead(e, col.label);
+      // `lead` sometimes comes through as a string (e.g. "7") instead of a
+      // number. If we don't coerce it, `s + ml.lead` silently falls back to
+      // JS string concatenation ("0" + "7" -> "07") instead of addition,
+      // which is exactly what was producing totals like "087" or "010".
+      // Number(...) guarantees this is always a real numeric add.
+      const numericLead = ml ? Number(ml.lead) : 0;
+      return s + (Number.isFinite(numericLead) ? numericLead : 0);
+    }, 0);
+    return sum + entryMonthTotal;
+  }, 0);
+}
+
+/**
+ * Counts how many actual leads-table entries (cells) exist across the
+ * given month columns for a set of entries — i.e. how many (entry, month)
+ * pairs actually have a row in `monthLeads`. This is different from
+ * `entries.length`, which just counts people/rows regardless of whether
+ * they have any lead data in the visible months.
+ */
+function countLeadEntriesAcrossMonths(
+  entries: Entry[],
+  monthColumns: MonthColumn[],
+) {
+  return entries.reduce((count, e) => {
+    const entryMonthCount = monthColumns.reduce(
+      (c, col) => c + (getMonthLead(e, col.label) ? 1 : 0),
+      0,
+    );
+    return count + entryMonthCount;
+  }, 0);
+}
+
 export default function RulesBoard() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [activeFilter, setActiveFilter] = useState<"ALL" | EntryType>("ALL");
@@ -79,6 +127,10 @@ export default function RulesBoard() {
   // Delete-confirmation + success toast state
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+
+  // Refresh button loading state (separate from redux loading so the icon
+  // spins for a minimum, visible amount of time even on a fast response)
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const dispatch = useAppDispatch();
   const { entries } = useSelector((state: RootState) => state.rule);
@@ -157,6 +209,19 @@ export default function RulesBoard() {
     setShowForm(true);
   }
 
+  // Manually refresh the entries from the server
+  async function handleRefresh() {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    try {
+      await dispatch(fetchRuleEntries());
+    } finally {
+      // Keep the spin visible for at least a short moment so the click
+      // always feels acknowledged, even on very fast responses.
+      setTimeout(() => setIsRefreshing(false), 500);
+    }
+  }
+
   const visible: Entry[] = (entries || []).filter(
     (e: Entry) => activeFilter === "ALL" || e.type === activeFilter,
   );
@@ -167,11 +232,11 @@ export default function RulesBoard() {
   const editingEntry =
     (entries || []).find((e: Entry) => e.id === editingId) ?? null;
 
-  const totalCount = (entries || []).reduce(
-    (sum: number, e: Entry) => sum + (e.lead || 0),
-    0,
-  );
-  const totalEntries = (entries || []).length;
+  // Both header stats are now derived from `visible` (i.e. respect the
+  // ALL / T20 / T60 filter) and only ever count numbers that actually
+  // exist as an entry in the leads table — never a stale/default field.
+  const totalCount = sumLeadsAcrossMonths(visible, monthColumns);
+  const totalEntries = countLeadEntriesAcrossMonths(visible, monthColumns);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-emerald-50/30 py-8 px-4">
@@ -198,7 +263,7 @@ export default function RulesBoard() {
 
               {/* Right */}
               <div className="flex flex-wrap items-center gap-3">
-                {/* Total Entries */}
+                {/* Total Entries (actual leads-table entries, respects filter) */}
                 <div className="flex items-center gap-2 rounded-xl border bg-white px-4 py-3 shadow-sm hover:shadow-md transition">
                   <Users className="h-5 w-5 text-orange-600" />
                   <div>
@@ -207,7 +272,7 @@ export default function RulesBoard() {
                   </div>
                 </div>
 
-                {/* Total Count */}
+                {/* Total Count (sum of leads, respects filter) */}
                 <div className="flex items-center gap-2 rounded-xl border bg-white px-4 py-3 shadow-sm hover:shadow-md transition">
                   <Calendar className="h-5 w-5 text-orange-600" />
                   <div>
@@ -232,6 +297,19 @@ export default function RulesBoard() {
                     </button>
                   ))}
                 </div>
+
+                {/* Refresh Button */}
+                <button
+                  onClick={handleRefresh}
+                  disabled={isRefreshing}
+                  title="Refresh"
+                  className="flex items-center justify-center gap-2 rounded-xl border bg-white px-4 py-3 font-semibold text-slate-600 shadow-sm transition-all duration-300 hover:bg-slate-50 hover:text-orange-600 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <RefreshCw
+                    className={`h-5 w-5 ${isRefreshing ? "animate-spin" : ""}`}
+                  />
+                  <span className="hidden sm:inline">Refresh</span>
+                </button>
 
                 {/* Add Button */}
                 {canAddRule && (
@@ -443,6 +521,19 @@ function getMonthColor(theme: TableTheme, index: number) {
   return palette[index % palette.length];
 }
 
+/**
+ * Given a month column's key ("YYYY-MM"), returns the short uppercase name
+ * of the month right after it (e.g. "2026-07" -> "AUG"). Used to show a
+ * forecast month in brackets next to the last visible month column.
+ */
+function getNextMonthLabel(key: string) {
+  const [yearStr, monthStr] = key.split("-");
+  const year = Number(yearStr);
+  const month = Number(monthStr); // 1-12, already the next zero-indexed month
+  const d = new Date(year, month, 1);
+  return d.toLocaleString("en-US", { month: "short" }).toUpperCase();
+}
+
 function getStartTimeInMinutes(shift: string) {
   if (!shift) return Number.MAX_SAFE_INTEGER;
 
@@ -474,9 +565,10 @@ function BoardSection({
   onEdit,
   onDelete,
   show,
+  titleClassName,
 }: {
   title: string;
-  icon: string;
+  icon: ReactNode;
   gradient: string;
   bgGradient: string;
   headerClass: string;
@@ -486,10 +578,11 @@ function BoardSection({
   onEdit: (e: Entry) => void;
   onDelete: (id: number) => void;
   show: boolean;
+  titleClassName?: string;
 }) {
   if (!show) return null;
 
-  const totalCount = entries.reduce((s, e) => s + (e.lead || 0), 0);
+  const totalCount = sumLeadsAcrossMonths(entries, monthColumns);
   const sortedEntries = [...entries].sort(
     (a, b) =>
       getStartTimeInMinutes(a.shiftTiming) -
@@ -508,24 +601,24 @@ function BoardSection({
             <div
               className={`w-9 h-9 rounded-xl bg-gradient-to-r ${gradient} flex items-center justify-center text-white shadow-lg`}
             >
-              <span className="text-lg">{icon}</span>
+              {icon}
             </div>
             <div>
               <h3
-                className={`text-lg font-bold bg-gradient-to-r ${gradient} bg-clip-text text-transparent`}
+                className={`${titleClassName ?? "text-[40px]"} font-bold bg-gradient-to-r ${gradient} bg-clip-text text-transparent leading-tight`}
               >
                 {title}
               </h3>
-              <p className="flex items-center gap-5 text-md text-slate-500 font-medium">
+              <p className="flex items-center gap-5 text-xl text-slate-500 font-semibold">
                 <span className="flex items-center gap-2">
-                  <Users className="w-5 h-5 text-blue-600" />
+                  <Users className="w-6 h-6 text-blue-600" />
                   <span>{entries.length} Persons</span>
                 </span>
 
                 <span className="w-1 h-1 rounded-full bg-slate-400"></span>
 
                 <span className="flex items-center gap-2">
-                  <Target className="w-5 h-5 text-emerald-600" />
+                  <Target className="w-6 h-6 text-emerald-600" />
                   <span>{totalCount} Leads</span>
                 </span>
               </p>
@@ -553,12 +646,16 @@ function BoardSection({
                 </th>
                 {monthColumns.map((col, idx) => {
                   const c = getMonthColor(tableTheme, idx);
+                  const isLast = idx === monthColumns.length - 1;
+                  const headerLabel = isLast
+                    ? `${col.label} (Future Month)`
+                    : col.label;
                   return (
                     <th
                       key={col.key}
                       className={`border ${c.border} p-3 ${c.header}`}
                     >
-                      {col.label}
+                      {headerLabel}
                     </th>
                   );
                 })}
@@ -590,7 +687,7 @@ function BoardSection({
                       >
                         {ml ? (
                           <>
-                            <span className="font-semibold">
+                            <span className="font-semibold text-lg">
                               {e.advisorName}
                             </span>
                             <span className="text-red-500 font-bold">
@@ -632,10 +729,16 @@ function BoardSection({
                   Total Leads
                 </td>
                 {monthColumns.map((col) => {
-                  const monthTotal = entries.reduce(
-                    (sum, e) => sum + (getMonthLead(e, col.label)?.lead || 0),
-                    0,
-                  );
+                  // Same fix as sumLeadsAcrossMonths: coerce to Number so a
+                  // string lead value ("7") is added numerically instead of
+                  // being concatenated onto the running total as text.
+                  const monthTotal = entries.reduce((sum, e) => {
+                    const ml = getMonthLead(e, col.label);
+                    const numericLead = ml ? Number(ml.lead) : 0;
+                    return (
+                      sum + (Number.isFinite(numericLead) ? numericLead : 0)
+                    );
+                  }, 0);
                   return (
                     <td
                       key={col.key}

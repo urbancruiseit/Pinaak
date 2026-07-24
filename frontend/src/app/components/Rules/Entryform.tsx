@@ -20,20 +20,20 @@ export type Entry = {
   advisorId: number;
   advisorName: string;
   shiftTiming: string;
-  lead: number;
+  lead: number | string; // ✅
   overflow: string;
 };
 
 // One Month + Lead pair
 export type MonthLead = {
   month: string;
-  lead: number;
+  lead: number | string;
 };
 
 // UI-only state used while the user is filling the form
 export type FormState = {
   type: EntryType;
-  monthLeads: MonthLead[]; // exactly 2 rows: Month 1 + Lead, Month 2 + Lead
+  monthLeads: MonthLead[]; // exactly 3 rows: Month 1 + Lead, Month 2 + Lead, Month 3 + Lead
   advisorId: number | null;
   shiftTiming: string;
 };
@@ -46,7 +46,7 @@ export type EntryPayload = {
   monthLeads: MonthLead[];
   advisorId: number;
   shiftTiming: string;
-  lead: number;
+  lead: number | string; // ✅
   overflow: string;
 };
 
@@ -70,12 +70,13 @@ export const emptyForm: FormState = {
   monthLeads: [
     { month: "", lead: 0 },
     { month: "", lead: 0 },
+    { month: "", lead: 0 },
   ],
   advisorId: null,
   shiftTiming: "",
 };
 
-// Maps a backend Entry (months[] + monthLeads[]) into the 2-row monthLeads shape
+// Maps a backend Entry (months[] + monthLeads[]) into the 3-row monthLeads shape
 function entryToForm(entry: Entry): FormState {
   const sourceLeads =
     entry.monthLeads && entry.monthLeads.length > 0
@@ -85,6 +86,7 @@ function entryToForm(entry: Entry): FormState {
   const rows: MonthLead[] = [
     sourceLeads[0] ?? { month: "", lead: 0 },
     sourceLeads[1] ?? { month: "", lead: 0 },
+    sourceLeads[2] ?? { month: "", lead: 0 },
   ];
 
   return {
@@ -95,12 +97,6 @@ function entryToForm(entry: Entry): FormState {
   };
 }
 
-// Transforms the UI FormState into the flat payload the backend requires.
-// - Drops rows where no month was selected.
-// - Derives `months` (string[]) from the filled rows, since the backend
-//   validates `Array.isArray(months) && months.length > 0`.
-// - Derives a single top-level `lead` (backend column) from the first
-//   filled row, while still sending the full per-month `monthLeads` array.
 function formToPayload(form: FormState): EntryPayload {
   const filledRows = form.monthLeads.filter((ml) => ml.month !== "");
 
@@ -157,7 +153,7 @@ export default function EntryForm({
   function handleLeadChange(index: number, value: string) {
     setForm((prev) => {
       const next = [...prev.monthLeads];
-      next[index] = { ...next[index], lead: Number(value) };
+      next[index] = { ...next[index], lead: value };
       return { ...prev, monthLeads: next };
     });
   }
@@ -228,6 +224,41 @@ export default function EntryForm({
           </div>
         </div>
 
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="text-md text-gray-700 font-semibold mb-2 block">
+              Advisor
+            </label>
+
+            <select
+              value={form.advisorId ?? ""}
+              onChange={handleAdvisorChange}
+              required
+              className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-green-500"
+            >
+              <option value="">Select Advisor</option>
+
+              {zoneAdvisors.map((advisor) => (
+                <option key={advisor.id} value={advisor.id}>
+                  {advisor.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="text-md text-gray-700 font-semibold mb-2 block">
+              Shift Timing
+            </label>
+
+            <input
+              value={form.shiftTiming}
+              readOnly
+              className="w-full bg-gray-100 border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-gray-900"
+            />
+          </div>
+        </div>
+
         {/* Month 1 + Lead */}
         <div className="grid grid-cols-2 gap-3">
           <div>
@@ -253,7 +284,7 @@ export default function EntryForm({
               Lead/Day
             </label>
             <input
-              type="number"
+              type="text"
               value={form.monthLeads[0].lead}
               onChange={(e) => handleLeadChange(0, e.target.value)}
               className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-green-500"
@@ -287,7 +318,7 @@ export default function EntryForm({
               Lead/Day
             </label>
             <input
-              type="number"
+              type="text"
               value={form.monthLeads[1].lead}
               onChange={(e) => handleLeadChange(1, e.target.value)}
               className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-green-500"
@@ -296,23 +327,21 @@ export default function EntryForm({
           </div>
         </div>
 
+        {/* Month 3 + Lead */}
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="text-md text-gray-700 font-semibold mb-2 block">
-              Advisor
+              Month 3
             </label>
-
             <select
-              value={form.advisorId ?? ""}
-              onChange={handleAdvisorChange}
-              required
+              value={form.monthLeads[2].month}
+              onChange={(e) => handleMonthChange(2, e.target.value)}
               className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-green-500"
             >
-              <option value="">Select Advisor</option>
-
-              {zoneAdvisors.map((advisor) => (
-                <option key={advisor.id} value={advisor.id}>
-                  {advisor.name}
+              <option value="">Select Month</option>
+              {MONTHS.map((m) => (
+                <option key={m} value={m}>
+                  {m}
                 </option>
               ))}
             </select>
@@ -320,13 +349,14 @@ export default function EntryForm({
 
           <div>
             <label className="text-md text-gray-700 font-semibold mb-2 block">
-              Shift Timing
+              Lead/Day
             </label>
-
             <input
-              value={form.shiftTiming}
-              readOnly
-              className="w-full bg-gray-100 border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-gray-900"
+              type="text"
+              value={form.monthLeads[2].lead}
+              onChange={(e) => handleLeadChange(2, e.target.value)}
+              className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2.5 text-sm text-gray-900 outline-none focus:border-green-500"
+              placeholder="Enter lead / day"
             />
           </div>
         </div>

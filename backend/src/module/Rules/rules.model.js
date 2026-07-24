@@ -102,33 +102,53 @@ export const createRuleEntry = async ({
   }
 };
 
-export const getRuleEntries = async () => {
+export const getRuleEntries = async ({ advisorIds } = {}) => {
+  const whereClauses = [];
+  const params = [];
+
+  if (Array.isArray(advisorIds) && advisorIds.length) {
+    whereClauses.push(`advisor_id IN (${advisorIds.map(() => "?").join(",")})`);
+    params.push(...advisorIds);
+  }
+
+  const whereSQL = whereClauses.length
+    ? `WHERE ${whereClauses.join(" AND ")}`
+    : "";
+
   const [rows] = await pool.query(
     `SELECT
        id,
        type,
        months,
-           month_leads,
-
+       month_leads,
        advisor_id AS advisorId,
        shift_timing AS shiftTiming,
        lead,
        overflow
      FROM rule_entries
+     ${whereSQL}
      ORDER BY id DESC`,
+    params,
   );
 
   if (rows.length === 0) return [];
 
-  const advisorIds = [...new Set(rows.map((r) => r.advisorId))];
-  const placeholders = advisorIds.map(() => "?").join(",");
-
-  const [advisorRows] = await hrmsPool.query(
-    `SELECT id, aliasName FROM users WHERE id IN (${placeholders})`,
-    advisorIds,
+  const advisorIdList = [...new Set(rows.map((r) => r.advisorId))].filter(
+    (id) => id !== null && id !== undefined,
   );
 
-  const advisorMap = new Map(advisorRows.map((a) => [a.id, a.aliasName || ""]));
+  let advisorMap = new Map();
+
+  if (advisorIdList.length) {
+    const placeholders = advisorIdList.map(() => "?").join(",");
+
+    const [advisorRows] = await hrmsPool.query(
+      `SELECT id, aliasName FROM users WHERE id IN (${placeholders})`,
+      advisorIdList,
+    );
+
+    advisorMap = new Map(advisorRows.map((a) => [a.id, a.aliasName || ""]));
+  }
 
   return rows.map((row) => ({
     ...row,

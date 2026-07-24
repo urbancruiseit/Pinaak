@@ -13,6 +13,8 @@ export const findZoneCityRegion = async (req) => {
   };
   if (sub_department === "pre-sales") {
     if (roleName === "pre-sales executive") {
+      let zoneIds = req.user.zone_ids;
+
       let cityIds = req.user.city_ids || [];
       const paramCityId = req.query.cityId
         ? parseInt(req.query.cityId, 10)
@@ -23,6 +25,12 @@ export const findZoneCityRegion = async (req) => {
       }
 
       result.cityIds = cityIds;
+
+      const { zoneAdvisorIds, zoneAdvisors } =
+        await findAdvisorsByZoneIds(zoneIds);
+
+      result.zoneAdvisorIds = zoneAdvisorIds;
+      result.zoneAdvisors = zoneAdvisors;
 
       return result;
     }

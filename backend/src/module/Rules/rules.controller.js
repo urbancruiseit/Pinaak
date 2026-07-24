@@ -1,6 +1,7 @@
 import { ApiError } from "../../utils/ApiError.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
+import { findZoneCityRegion } from "../Assign/assign.service.js";
 import {
   findAdvisorsShiftTimingByZoneIds,
   createRuleEntry,
@@ -60,7 +61,26 @@ const createEntry = asyncHandler(async (req, res) => {
 });
 
 const getEntries = asyncHandler(async (req, res) => {
-  const entries = await getRuleEntries();
+  const { advisorId, zoneAdvisorIds, accessDenied } =
+    await findZoneCityRegion(req);
+
+  if (accessDenied) {
+    return res.status(403).json(new ApiResponse(403, [], "Access denied"));
+  }
+
+  // Advisor scope: agar single advisorId hai to array bana do, agar array hai to wahi use karo
+  let advisorScope = null;
+  if (Array.isArray(advisorId)) {
+    advisorScope = advisorId;
+  } else if (advisorId) {
+    advisorScope = [advisorId];
+  } else if (Array.isArray(zoneAdvisorIds) && zoneAdvisorIds.length) {
+    advisorScope = zoneAdvisorIds;
+  }
+
+  const entries = await getRuleEntries({
+    advisorIds: advisorScope,
+  });
 
   return res
     .status(200)

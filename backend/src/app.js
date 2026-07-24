@@ -24,6 +24,10 @@ app.use((req, res, next) => {
       "Content-Security-Policy",
       "frame-ancestors 'self' https://urbancruise.in https://www.urbancruise.in;",
     );
+  } else if (req.path.startsWith("/_next/")) {
+    // Next.js build assets (images, JS, CSS) — safe to load cross-origin,
+    // needed so <img> tags on urbancruise.in can reference these directly.
+    res.setHeader("Cross-Origin-Resource-Policy", "cross-origin");
   }
   next();
 });

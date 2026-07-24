@@ -51,7 +51,6 @@ export default function GacFormPage() {
     dispatch(getCountriesThunk());
   }, [dispatch]);
 
-
   useEffect(() => {
     const extractCityFromUrl = (href: string): string | null => {
       try {
@@ -69,7 +68,6 @@ export default function GacFormPage() {
     };
 
     let detectedCity: string | null = null;
-    console.log("window.parent.location.href:", window.parent.location.href);
 
     try {
       detectedCity = extractCityFromUrl(window.parent.location.href);
@@ -77,12 +75,11 @@ export default function GacFormPage() {
       detectedCity = null;
     }
 
-
     if (!detectedCity && document.referrer) {
       detectedCity = extractCityFromUrl(document.referrer);
     }
 
-    // 3) Final fallback
+    // Final fallback
     if (!detectedCity) {
       detectedCity = "India";
     }
@@ -153,16 +150,16 @@ export default function GacFormPage() {
     <div className="w-full min-h-screen bg-gray-100">
       <div className="w-full bg-white border-2 border-lime-500">
         {/* Header */}
-        <div className="bg-lime-500 py-4 text-center">
-          <h1 className="text-4xl font-extrabold uppercase tracking-wide text-white">
+        <div className="bg-lime-500 py-3 sm:py-4 text-center px-2">
+          <h1 className="text-xl sm:text-3xl md:text-4xl font-extrabold uppercase tracking-wide text-white">
             GET A QUICK CALL
           </h1>
         </div>
 
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {message && (
             <div
-              className={`mb-5 rounded-md border px-4 py-3 text-center font-semibold ${
+              className={`mb-4 sm:mb-5 rounded-md border px-4 py-3 text-center font-semibold text-sm sm:text-base ${
                 messageType === "success"
                   ? "border-green-500 bg-green-100 text-green-700"
                   : "border-red-500 bg-red-100 text-red-700"
@@ -174,7 +171,7 @@ export default function GacFormPage() {
 
           <form
             onSubmit={handleSubmit}
-            className="flex flex-col gap-5 md:flex-row md:items-center"
+            className="flex flex-col gap-4 md:flex-row md:items-center md:gap-5"
           >
             <input type="hidden" name="city" value={formData.city} />
 
@@ -199,9 +196,9 @@ export default function GacFormPage() {
                 <button
                   type="button"
                   onClick={() => setCountryDropdownOpen((prev) => !prev)}
-                  className="w-24 h-full border-r border-gray-300 bg-white text-black outline-none px-2 flex items-center justify-between gap-1 box-border"
+                  className="w-20 sm:w-24 h-full border-r border-gray-300 bg-white text-black outline-none px-2 flex items-center justify-between gap-1 box-border"
                 >
-                  <span className="truncate">
+                  <span className="truncate text-sm sm:text-base">
                     {formData.country_code || "Code"}
                   </span>
                   <span className="text-gray-400 text-xs">▾</span>
@@ -212,7 +209,7 @@ export default function GacFormPage() {
                     style={{
                       maxHeight: `${VISIBLE_COUNTRY_ROWS * COUNTRY_ROW_HEIGHT}px`,
                     }}
-                    className="absolute z-20 top-full left-0 mt-1 w-28 overflow-y-auto rounded-md border text-black border-gray-300 bg-white shadow-lg"
+                    className="absolute z-20 top-full left-0 mt-1 w-28 max-w-[60vw] overflow-y-auto rounded-md border text-black border-gray-300 bg-white shadow-lg"
                   >
                     {countries.map((country) => (
                       <li key={country.id}>
@@ -244,7 +241,7 @@ export default function GacFormPage() {
                 value={formData.phone}
                 onChange={handleChange}
                 placeholder="Phone Number"
-                className="flex-1 px-4 text-black outline-none placeholder:text-gray-400"
+                className="flex-1 min-w-0 px-4 text-black outline-none placeholder:text-gray-400"
               />
             </div>
 
@@ -252,7 +249,7 @@ export default function GacFormPage() {
             <button
               type="submit"
               disabled={creating}
-              className="h-12 w-full rounded-md bg-amber-500 text-lg font-bold text-white transition hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-50 md:w-44"
+              className="h-12 w-full shrink-0 rounded-md bg-amber-500 text-base sm:text-lg font-bold text-white transition hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-50 md:w-44"
             >
               {creating ? "Submitting..." : "SUBMIT"}
             </button>

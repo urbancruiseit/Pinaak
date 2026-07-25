@@ -83,9 +83,9 @@ export const createWebsiteGacThunk = createAsyncThunk(
 
 export const getWebsiteGacThunk = createAsyncThunk(
   "websiteGac/getAll",
-  async (_, { rejectWithValue }) => {
+  async (city: string | undefined, { rejectWithValue }) => {
     try {
-      return await getWebsiteGacApi();
+      return await getWebsiteGacApi(city);
     } catch (error: any) {
       return rejectWithValue(error.message);
     }

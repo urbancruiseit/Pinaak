@@ -32,7 +32,9 @@ export const createWebsiteGacController = asyncHandler(async (req, res) => {
 });
 
 export const getWebsiteGacController = asyncHandler(async (req, res) => {
-  const data = await getAllWebsiteGac();
+  const { city } = req.query; // 🆕 query param se city lo
+
+  const data = await getAllWebsiteGac(city);
 
   return res
     .status(200)

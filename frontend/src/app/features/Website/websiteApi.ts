@@ -95,15 +95,19 @@ export const createWebsiteGacApi = async (
 // GET ALL WEBSITE GAC
 // ─────────────────────────────────────────────
 
-export const getWebsiteGacApi = async (): Promise<{
+export const getWebsiteGacApi = async (
+  city?: string,
+): Promise<{
   data: WebsiteGacRecord[];
   count: number;
 }> => {
   try {
-    const response =
-      await axiosInstance.get<ApiResponse<WebsiteGacRecord[]>>(
-        "/website-gac/gac",
-      );
+    const response = await axiosInstance.get<ApiResponse<WebsiteGacRecord[]>>(
+      "/website-gac/gac",
+      {
+        params: city && city !== "all" ? { city } : {},
+      },
+    );
 
     return {
       data: response.data.data ?? [],

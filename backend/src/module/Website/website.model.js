@@ -24,20 +24,30 @@ export const createWebsiteGac = async ({ name, country_code, phone, city }) => {
   }
 };
 
-export const getAllWebsiteGac = async () => {
+export const getAllWebsiteGac = async (city) => {
   try {
-    const [rows] = await pool.execute(`
+    let query = `
       SELECT
-  id,
-  name,
-  country_code,
-  phone,
-  city,
-  created_at,
-  is_read
-FROM website_gac
-ORDER BY id DESC
-    `);
+        id,
+        name,
+        country_code,
+        phone,
+        city,
+        created_at,
+        is_read
+      FROM website_gac
+    `;
+    const params = [];
+
+    // city filter (agar "all" nahi hai to WHERE lagao)
+    if (city && city.toLowerCase() !== "all") {
+      query += ` WHERE LOWER(city) = LOWER(?)`;
+      params.push(city);
+    }
+
+    query += ` ORDER BY id DESC`;
+
+    const [rows] = await pool.execute(query, params);
 
     return rows;
   } catch (error) {

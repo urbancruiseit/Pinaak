@@ -35,12 +35,16 @@ const GACForm: React.FC = () => {
 
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  // 🆕 City filter state: "all" | "mumbai" | "delhi" | "india"
+  const [cityFilter, setCityFilter] = useState("all");
   const rowsPerPage = 10;
 
+  // 🆕 Jab bhi cityFilter change ho, backend se filtered data fetch karo
   useEffect(() => {
-    dispatch(getWebsiteGacThunk());
-  }, [dispatch]);
+    dispatch(getWebsiteGacThunk(cityFilter));
+  }, [dispatch, cityFilter]);
 
+  // Ab sirf text-search yaha hota hai, city filtering backend (DB query) me ho chuki hoti hai
   const filtered = (list ?? []).filter((entry) => {
     const q = search.toLowerCase();
     return (
@@ -82,10 +86,19 @@ const GACForm: React.FC = () => {
     }
   };
 
-  const handleRefresh = () => dispatch(getWebsiteGacThunk());
+  // 🆕 Refresh karte waqt current city filter bhi bhejo
+  const handleRefresh = () => dispatch(getWebsiteGacThunk(cityFilter));
+
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
+
+  // 🆕 City filter change handler (buttons + dropdown dono ke liye common)
+  const handleCityFilterChange = (value: string) => {
+    setCityFilter(value);
+    setCurrentPage(1);
+  };
+
   // Build page numbers with ellipsis for large lists
   const getPageNumbers = () => {
     const pages: (number | "...")[] = [];
@@ -154,8 +167,8 @@ const GACForm: React.FC = () => {
 
       {/* Main card */}
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-        {/* Search bar */}
-        <div className="p-4 border-b border-slate-200 flex items-center gap-3">
+        {/* Search + City Filter bar */}
+        <div className="p-4 border-b border-slate-200 flex items-center gap-3 flex-wrap">
           <div className="relative flex-1 max-w-sm">
             <svg
               className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"
@@ -181,7 +194,42 @@ const GACForm: React.FC = () => {
               className="w-full pl-9 pr-3 py-2.5 text-sm rounded-xl bg-slate-50 border border-slate-200 text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition"
             />
           </div>
-          <span className="text-sm text-slate-400 hidden sm:block">
+
+          {/* 🆕 City Filter Buttons */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {[
+              { label: "All", value: "all" },
+              { label: "Mumbai", value: "mumbai" },
+              { label: "Delhi", value: "delhi" },
+              { label: "All India", value: "india" },
+            ].map((c) => (
+              <button
+                key={c.value}
+                onClick={() => handleCityFilterChange(c.value)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                  cityFilter === c.value
+                    ? "bg-blue-600 text-white"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+
+          {/* 🆕 City Filter Dropdown (mobile / compact view ke liye alternative) */}
+          <select
+            value={cityFilter}
+            onChange={(e) => handleCityFilterChange(e.target.value)}
+            className="px-3 py-2.5 text-sm rounded-xl bg-slate-50 border border-slate-200 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+          >
+            <option value="all">All</option>
+            <option value="mumbai">Mumbai</option>
+            <option value="delhi">Delhi</option>
+            <option value="india">All India</option>
+          </select>
+
+          <span className="text-sm text-slate-400 hidden sm:block ml-auto">
             {filtered.length} result{filtered.length !== 1 ? "s" : ""}
           </span>
         </div>

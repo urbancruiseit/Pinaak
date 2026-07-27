@@ -154,13 +154,18 @@ export const createTripBookingApi = async (
 // GET ALL TRIP BOOKINGS
 // ─────────────────────────────────────────────
 
-export const getTripBookingsApi = async (): Promise<{
+export const getTripBookingsApi = async (
+  city?: string,
+): Promise<{
   data: TripBookingRecord[];
   count: number;
 }> => {
   try {
     const response = await axiosInstance.get<ApiResponse<TripBookingRecord[]>>(
       "/website-gac/trip-bookings",
+      {
+        params: city && city !== "all" ? { city } : {},
+      },
     );
 
     console.log("✅ Get Trip Bookings:", response.data);

@@ -52,6 +52,31 @@ const VEHICLE_CATEGORIES: VehicleCategory[] = [
 const VISIBLE_COUNTRY_ROWS = 10;
 const COUNTRY_ROW_HEIGHT = 36; // px, matches the row's py-2 + text-sm sizing below
 
+// 🆕 Sirf ye 2 cities officially supported hai — baaki sab "India" fallback
+const CITY_MAP: Record<string, string> = {
+  delhi: "Delhi",
+  mumbai: "Mumbai",
+};
+
+// 🆕 Kisi bhi URL string se pehla path-segment nikal ke city map karo
+// e.g. "https://urbancruise.in/delhi/get-a-quotation-route-infomation/" -> "Delhi"
+const detectCityFromHref = (href: string): string | null => {
+  try {
+    const url = new URL(href);
+    const firstSegment = url.pathname
+      .split("/")
+      .filter(Boolean)[0]
+      ?.toLowerCase();
+
+    if (firstSegment && CITY_MAP[firstSegment]) {
+      return CITY_MAP[firstSegment];
+    }
+  } catch {
+    // invalid URL, ignore
+  }
+  return null;
+};
+
 export default function TripBookingFormPage() {
   const dispatch = useDispatch<AppDispatch>();
 
@@ -94,56 +119,37 @@ export default function TripBookingFormPage() {
     dispatch(getCountriesThunk());
   }, [dispatch]);
 
-  // Detect city — priority order:
-  // 1) This iframe's own URL query param (?city=delhi) — set explicitly by
-  //    whoever embeds the iframe on each city page. Most reliable, works
-  //    even inside the WordPress editor's nested preview iframe.
-  // 2) Same-origin parent window location (only works if parent shares origin).
-  // 3) document.referrer (works cross-origin, but unreliable inside
-  //    editor preview canvases which may not set a real referrer).
-  // 4) Default to "India".
+  // 🆕 Detect city — priority order (sabse reliable pehle):
+  // 1) Iframe's own query param (?city=delhi) — agar embed karte waqt explicitly set kiya ho
+  // 2) Parent window ka URL (same-origin ho to) — real page URL: urbancruise.in/delhi/...
+  // 3) document.referrer — cross-origin me bhi kaam karta hai, jab page load hota hai iframe ke andar
+  // 4) Fallback: "India"
   useEffect(() => {
-    const extractCityFromUrl = (href: string): string | null => {
-      try {
-        const url = new URL(href.toLowerCase());
-        const pathSegments = url.pathname.split("/").filter(Boolean);
-
-        if (pathSegments.length > 0) {
-          const rawCity = decodeURIComponent(pathSegments[0]);
-          return rawCity.charAt(0).toUpperCase() + rawCity.slice(1);
-        }
-      } catch {
-        // invalid URL, ignore
-      }
-      return null;
-    };
-
     let detectedCity: string | null = null;
 
-    // 1) Own iframe URL query param, e.g. ?city=mumbai
+    // 1) Apne khud ke query param se
     try {
       const ownParams = new URLSearchParams(window.location.search);
-      const cityParam = ownParams.get("city");
-      if (cityParam) {
-        detectedCity =
-          cityParam.charAt(0).toUpperCase() + cityParam.slice(1).toLowerCase();
+      const cityParam = ownParams.get("city")?.toLowerCase();
+      if (cityParam && CITY_MAP[cityParam]) {
+        detectedCity = CITY_MAP[cityParam];
       }
     } catch {
       detectedCity = null;
     }
 
-    // 2) Same-origin parent location
+    // 2) Parent frame ka URL (same-origin par hi accessible hoga)
     if (!detectedCity) {
       try {
-        detectedCity = extractCityFromUrl(window.parent.location.href);
+        detectedCity = detectCityFromHref(window.parent.location.href);
       } catch {
         detectedCity = null;
       }
     }
 
-    // 3) document.referrer fallback (works cross-origin)
+    // 3) document.referrer (cross-origin embed me ye kaam aayega)
     if (!detectedCity && document.referrer) {
-      detectedCity = extractCityFromUrl(document.referrer);
+      detectedCity = detectCityFromHref(document.referrer);
     }
 
     // 4) Final fallback

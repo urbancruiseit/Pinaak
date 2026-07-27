@@ -107,9 +107,9 @@ export const createTripBookingThunk = createAsyncThunk(
 // GET ALL TRIP BOOKINGS
 export const getTripBookingsThunk = createAsyncThunk(
   "websiteGac/getTripBookings",
-  async (_, { rejectWithValue }) => {
+  async (city: string | undefined, { rejectWithValue }) => {
     try {
-      return await getTripBookingsApi();
+      return await getTripBookingsApi(city);
     } catch (error: any) {
       return rejectWithValue(error.message || "Failed to fetch trip bookings");
     }

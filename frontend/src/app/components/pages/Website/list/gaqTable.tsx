@@ -45,12 +45,15 @@ const TripBookingsTable: React.FC = () => {
 
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  // 🆕 City filter state: "all" | "mumbai" | "delhi" | "india"
+  const [cityFilter, setCityFilter] = useState("all");
 
   const rowsPerPage = 10;
 
+  // 🆕 Jab bhi cityFilter change ho, backend se filtered data fetch karo
   useEffect(() => {
-    dispatch(getTripBookingsThunk());
-  }, [dispatch]);
+    dispatch(getTripBookingsThunk(cityFilter));
+  }, [dispatch, cityFilter]);
 
   const handleRead = async (id: number) => {
     try {
@@ -60,8 +63,10 @@ const TripBookingsTable: React.FC = () => {
     }
   };
 
-  const handleRefresh = () => dispatch(getTripBookingsThunk());
+  // 🆕 Refresh karte waqt current city filter bhi bhejo
+  const handleRefresh = () => dispatch(getTripBookingsThunk(cityFilter));
 
+  // Ab sirf text-search yaha hota hai, city filtering backend (DB query) me ho chuki hoti hai
   const filtered = (list ?? []).filter((item) => {
     const q = search.toLowerCase();
     return (
@@ -85,6 +90,12 @@ const TripBookingsTable: React.FC = () => {
   const unreadCount = totalCount - readCount;
 
   const handlePageChange = (page: number) => setCurrentPage(page);
+
+  // 🆕 City filter change handler (buttons + dropdown dono ke liye common)
+  const handleCityFilterChange = (value: string) => {
+    setCityFilter(value);
+    setCurrentPage(1);
+  };
 
   // ✅ Date + Time Format
   const formatDateTime = (dateStr: string) => {
@@ -155,8 +166,8 @@ const TripBookingsTable: React.FC = () => {
 
       {/* Main card */}
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-        {/* Search bar */}
-        <div className="p-4 border-b border-slate-200 flex items-center gap-3">
+        {/* Search + City Filter bar */}
+        <div className="p-4 border-b border-slate-200 flex items-center gap-3 flex-wrap">
           <div className="relative flex-1 max-w-sm">
             <svg
               className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"
@@ -182,7 +193,42 @@ const TripBookingsTable: React.FC = () => {
               className="w-full pl-9 pr-3 py-2.5 text-sm rounded-xl bg-slate-50 border border-slate-200 text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 transition"
             />
           </div>
-          <span className="text-sm text-slate-400 hidden sm:block">
+
+          {/* 🆕 City Filter Buttons */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {[
+              { label: "All", value: "all" },
+              { label: "Mumbai", value: "mumbai" },
+              { label: "Delhi", value: "delhi" },
+              { label: "All India", value: "india" },
+            ].map((c) => (
+              <button
+                key={c.value}
+                onClick={() => handleCityFilterChange(c.value)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                  cityFilter === c.value
+                    ? "bg-blue-600 text-white"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
+
+          {/* 🆕 City Filter Dropdown (mobile / compact view ke liye alternative) */}
+          <select
+            value={cityFilter}
+            onChange={(e) => handleCityFilterChange(e.target.value)}
+            className="px-3 py-2.5 text-sm rounded-xl bg-slate-50 border border-slate-200 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+          >
+            <option value="all">All</option>
+            <option value="mumbai">Mumbai</option>
+            <option value="delhi">Delhi</option>
+            <option value="india">All India</option>
+          </select>
+
+          <span className="text-sm text-slate-400 hidden sm:block ml-auto">
             {filtered.length} result{filtered.length !== 1 ? "s" : ""}
           </span>
         </div>
@@ -212,60 +258,24 @@ const TripBookingsTable: React.FC = () => {
           <table className="w-full text-sm min-w-[1600px]">
             <thead>
               <tr className="text-left text-slate-500 uppercase text-xs tracking-wide bg-slate-50 border-b border-slate-200">
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">
-                  No.
-                </th>
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">
-                  Customer
-                </th>
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">
-                  Phone
-                </th>
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">
-                  Email
-                </th>
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">
-                  City
-                </th>
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">
-                  Pickup Address
-                </th>
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">
-                  Pickup Date
-                </th>
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">
-                  Drop Address
-                </th>
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">
-                  Drop Date
-                </th>
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">
-                  Vehicle Category
-                </th>
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">
-                  Vehicle Model
-                </th>
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">
-                  Passengers
-                </th>
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">
-                  Baggage
-                </th>
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">
-                  Itinerary
-                </th>
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">
-                  Message
-                </th>
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">
-                  Created
-                </th>
-                <th className="px-4 py-3 font-semibold text-center whitespace-nowrap">
-                  Mark Read
-                </th>
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">
-                  Status
-                </th>
+                <th className="px-4 py-3 font-semibold whitespace-nowrap">No.</th>
+                <th className="px-4 py-3 font-semibold whitespace-nowrap">Customer</th>
+                <th className="px-4 py-3 font-semibold whitespace-nowrap">Phone</th>
+                <th className="px-4 py-3 font-semibold whitespace-nowrap">Email</th>
+                <th className="px-4 py-3 font-semibold whitespace-nowrap">City</th>
+                <th className="px-4 py-3 font-semibold whitespace-nowrap">Pickup Address</th>
+                <th className="px-4 py-3 font-semibold whitespace-nowrap">Pickup Date</th>
+                <th className="px-4 py-3 font-semibold whitespace-nowrap">Drop Address</th>
+                <th className="px-4 py-3 font-semibold whitespace-nowrap">Drop Date</th>
+                <th className="px-4 py-3 font-semibold whitespace-nowrap">Vehicle Category</th>
+                <th className="px-4 py-3 font-semibold whitespace-nowrap">Vehicle Model</th>
+                <th className="px-4 py-3 font-semibold whitespace-nowrap">Passengers</th>
+                <th className="px-4 py-3 font-semibold whitespace-nowrap">Baggage</th>
+                <th className="px-4 py-3 font-semibold whitespace-nowrap">Itinerary</th>
+                <th className="px-4 py-3 font-semibold whitespace-nowrap">Message</th>
+                <th className="px-4 py-3 font-semibold whitespace-nowrap">Created</th>
+                <th className="px-4 py-3 font-semibold text-center whitespace-nowrap">Mark Read</th>
+                <th className="px-4 py-3 font-semibold whitespace-nowrap">Status</th>
               </tr>
             </thead>
 
@@ -297,87 +307,60 @@ const TripBookingsTable: React.FC = () => {
                           d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2H5a2 2 0 01-2-2z"
                         />
                       </svg>
-                      <p className="text-sm font-medium text-slate-500">
-                        No entries found
-                      </p>
-                      <p className="text-xs text-slate-400">
-                        Try adjusting your search
-                      </p>
+                      <p className="text-sm font-medium text-slate-500">No entries found</p>
+                      <p className="text-xs text-slate-400">Try adjusting your search</p>
                     </div>
                   </td>
                 </tr>
               ) : (
                 paginated.map((item, idx) => (
-                  <tr
-                    key={item.id}
-                    className="hover:bg-slate-50 transition-colors"
-                  >
+                  <tr key={item.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-4 py-4 text-slate-400 whitespace-nowrap">
                       {(currentPage - 1) * rowsPerPage + idx + 1}
                     </td>
-
                     <td className="px-4 py-4 text-slate-800 font-medium whitespace-nowrap">
-                      {[item.firstName, item.lastName]
-                        .filter(Boolean)
-                        .join(" ")}
+                      {[item.firstName, item.lastName].filter(Boolean).join(" ")}
                     </td>
-
                     <td className="px-4 py-4 text-slate-600 whitespace-nowrap">
                       +{item.country_code} {item.customerPhone}
                     </td>
-
                     <td className="px-4 py-4 text-slate-600 whitespace-nowrap">
                       {item.customerEmail}
                     </td>
-
-                    <td className="px-4 py-4 text-slate-600 whitespace-nowrap">
-                      {item.city}
-                    </td>
-
+                    <td className="px-4 py-4 text-slate-600 whitespace-nowrap">{item.city}</td>
                     <td className="px-4 py-4 text-slate-600 text-xs max-w-[180px]">
                       {item.pickupAddress}
                     </td>
-
                     <td className="px-4 py-4 text-slate-500 text-xs whitespace-nowrap">
                       {formatDateTime(item.pickup_date)}
                     </td>
-
                     <td className="px-4 py-4 text-slate-600 text-xs max-w-[180px]">
                       {item.dropAddress}
                     </td>
-
                     <td className="px-4 py-4 text-slate-500 text-xs whitespace-nowrap">
                       {formatDateTime(item.drop_date)}
                     </td>
-
                     <td className="px-4 py-4 text-slate-600 whitespace-nowrap">
                       {item.vehicle_category}
                     </td>
-
                     <td className="px-4 py-4 text-slate-600 whitespace-nowrap">
                       {item.vehicle_model}
                     </td>
-
                     <td className="px-4 py-4 text-slate-600 text-center">
                       {item.passengerTotal}
                     </td>
-
                     <td className="px-4 py-4 text-slate-600 text-center">
                       {item.baggageTotal}
                     </td>
-
                     <td className="px-4 py-4 text-slate-600 text-xs max-w-[180px]">
                       {item.itinerary}
                     </td>
-
                     <td className="px-4 py-4 text-slate-600 text-xs max-w-[180px]">
                       {item.message}
                     </td>
-
                     <td className="px-4 py-4 text-slate-500 text-xs whitespace-nowrap">
                       {formatDateTime(item.created_at)}
                     </td>
-
                     <td className="px-4 py-4 text-center">
                       <label className="inline-flex items-center justify-center cursor-pointer">
                         <input
@@ -389,7 +372,6 @@ const TripBookingsTable: React.FC = () => {
                         />
                       </label>
                     </td>
-
                     <td className="px-4 py-4 whitespace-nowrap">
                       {item.is_read === 1 ? (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-green-50 text-green-700 text-xs font-semibold">

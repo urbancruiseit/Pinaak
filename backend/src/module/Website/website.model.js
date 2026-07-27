@@ -99,33 +99,27 @@ export const createTripBookingModel = async (data) => {
 
 // ================= GET ALL TRIP BOOKINGS =================
 
-export const getAllTripBookings = async () => {
+export const getAllTripBookings = async (city) => {
   try {
-    const [rows] = await pool.execute(`
+    let query = `
       SELECT
-        id,
-        firstName,
-        middleName,
-        lastName,
-        customerPhone,
-        country_code,
-        customerEmail,
-        message,
-        pickupAddress,
-        pickup_date,
-        dropAddress,
-        drop_date,
-        itinerary,
-        passengerTotal,
-        baggageTotal,
-        vehicle_category,
-        vehicle_model,
-        city,
-        created_at,
-           is_read   
+        id, firstName, middleName, lastName, customerPhone, country_code,
+        customerEmail, message, pickupAddress, pickup_date, dropAddress,
+        drop_date, itinerary, passengerTotal, baggageTotal, vehicle_category,
+        vehicle_model, city, created_at, is_read
       FROM trip_bookings
-      ORDER BY id DESC
-    `);
+    `;
+    const params = [];
+
+    // city filter (agar "all" nahi hai to WHERE lagao)
+    if (city && city.toLowerCase() !== "all") {
+      query += ` WHERE LOWER(city) = LOWER(?)`;
+      params.push(city);
+    }
+
+    query += ` ORDER BY id DESC`;
+
+    const [rows] = await pool.execute(query, params);
 
     return rows;
   } catch (error) {

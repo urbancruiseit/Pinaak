@@ -88,7 +88,9 @@ export const createTripBookingController = asyncHandler(async (req, res) => {
 // ================= GET ALL TRIP BOOKINGS =================
 
 export const getTripBookingsController = asyncHandler(async (req, res) => {
-  const bookings = await getTripBookings();
+  const { city } = req.query; // 🆕 query param se city lo
+
+  const bookings = await getTripBookings(city);
 
   return res
     .status(200)

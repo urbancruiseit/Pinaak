@@ -205,7 +205,7 @@ export default function VehicleAddForm() {
                 placeholder="Eg. Sprinter"
               />
               <Field
-                label="Model variant"
+                label=" variant"
                 icon={<Layers size={16} />}
                 value={formState.modelVariant}
                 onChange={handleChange("modelVariant")}

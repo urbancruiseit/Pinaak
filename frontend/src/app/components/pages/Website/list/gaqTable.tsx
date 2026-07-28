@@ -36,6 +36,22 @@ interface TripBooking {
   is_read: number;
 }
 
+// 🆕 Small helper component to render a label + value pair inside the modal
+const DetailRow: React.FC<{
+  label: string;
+  value?: string | number;
+  full?: boolean;
+}> = ({ label, value, full }) => (
+  <div className={full ? "sm:col-span-2" : ""}>
+    <p className="text-xs font-semibold text-slate-400 uppercase mb-1">
+      {label}
+    </p>
+    <p className="text-slate-700 break-words">
+      {value || value === 0 ? value : "—"}
+    </p>
+  </div>
+);
+
 const TripBookingsTable: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
 
@@ -45,12 +61,14 @@ const TripBookingsTable: React.FC = () => {
 
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  // 🆕 City filter state: "all" | "mumbai" | "delhi" | "india"
+  // City filter state: "all" | "mumbai" | "delhi" | "india"
   const [cityFilter, setCityFilter] = useState("all");
+
+  // 🆕 Currently selected booking for the "View" modal (null = modal closed)
+  const [viewItem, setViewItem] = useState<TripBooking | null>(null);
 
   const rowsPerPage = 10;
 
-  // 🆕 Jab bhi cityFilter change ho, backend se filtered data fetch karo
   useEffect(() => {
     dispatch(getTripBookingsThunk(cityFilter));
   }, [dispatch, cityFilter]);
@@ -63,10 +81,8 @@ const TripBookingsTable: React.FC = () => {
     }
   };
 
-  // 🆕 Refresh karte waqt current city filter bhi bhejo
   const handleRefresh = () => dispatch(getTripBookingsThunk(cityFilter));
 
-  // Ab sirf text-search yaha hota hai, city filtering backend (DB query) me ho chuki hoti hai
   const filtered = (list ?? []).filter((item) => {
     const q = search.toLowerCase();
     return (
@@ -91,13 +107,11 @@ const TripBookingsTable: React.FC = () => {
 
   const handlePageChange = (page: number) => setCurrentPage(page);
 
-  // 🆕 City filter change handler (buttons + dropdown dono ke liye common)
   const handleCityFilterChange = (value: string) => {
     setCityFilter(value);
     setCurrentPage(1);
   };
 
-  // ✅ Date + Time Format
   const formatDateTime = (dateStr: string) => {
     if (!dateStr) return "—";
 
@@ -157,7 +171,7 @@ const TripBookingsTable: React.FC = () => {
               Read: {readCount}
             </span>
 
-            <span className="px-4 py-2 rounded-lg bg-red-100 text-red-700 font-semibold text-sm">
+            <span className="px-4 py-2 rounded-lg bg-red-100 text-red-600 font-semibold text-sm">
               Unread: {unreadCount}
             </span>
           </div>
@@ -194,7 +208,7 @@ const TripBookingsTable: React.FC = () => {
             />
           </div>
 
-          {/* 🆕 City Filter Buttons */}
+          {/* City Filter Buttons */}
           <div className="flex items-center gap-2 flex-wrap">
             {[
               { label: "All", value: "all" },
@@ -216,7 +230,7 @@ const TripBookingsTable: React.FC = () => {
             ))}
           </div>
 
-          {/* 🆕 City Filter Dropdown (mobile / compact view ke liye alternative) */}
+          {/* City Filter Dropdown (mobile / compact view ke liye alternative) */}
           <select
             value={cityFilter}
             onChange={(e) => handleCityFilterChange(e.target.value)}
@@ -255,27 +269,55 @@ const TripBookingsTable: React.FC = () => {
 
         {/* Table */}
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[1600px]">
+          <table className="w-full text-sm min-w-[1700px]">
             <thead>
               <tr className="text-left text-slate-500 uppercase text-xs tracking-wide bg-slate-50 border-b border-slate-200">
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">No.</th>
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">Customer</th>
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">Phone</th>
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">Email</th>
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">City</th>
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">Pickup Address</th>
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">Pickup Date</th>
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">Drop Address</th>
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">Drop Date</th>
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">Vehicle Category</th>
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">Vehicle Model</th>
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">Passengers</th>
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">Baggage</th>
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">Itinerary</th>
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">Message</th>
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">Created</th>
-                <th className="px-4 py-3 font-semibold text-center whitespace-nowrap">Mark Read</th>
-                <th className="px-4 py-3 font-semibold whitespace-nowrap">Status</th>
+                <th className="px-4 py-3 font-semibold whitespace-nowrap">
+                  No.
+                </th>
+                {/* 🆕 Action column moved right after No. */}
+                <th className="px-4 py-3 font-semibold text-center whitespace-nowrap">
+                  Action
+                </th>
+                <th className="px-4 py-3 font-semibold whitespace-nowrap">
+                  Customer
+                </th>
+                <th className="px-4 py-3 font-semibold whitespace-nowrap">
+                  Phone
+                </th>
+               
+                <th className="px-4 py-3 font-semibold whitespace-nowrap">
+                  City
+                </th>
+                <th className="px-4 py-3 font-semibold whitespace-nowrap">
+                  Pickup Address
+                </th>
+                <th className="px-4 py-3 font-semibold whitespace-nowrap">
+                  Pickup Date
+                </th>
+                <th className="px-4 py-3 font-semibold whitespace-nowrap">
+                  Drop Address
+                </th>
+                <th className="px-4 py-3 font-semibold whitespace-nowrap">
+                  Drop Date
+                </th>
+              
+                <th className="px-4 py-3 font-semibold whitespace-nowrap">
+                  Passengers
+                </th>
+                <th className="px-4 py-3 font-semibold whitespace-nowrap">
+                  Baggage
+                </th>
+              
+                <th className="px-4 py-3 font-semibold whitespace-nowrap">
+                  Created
+                </th>
+                <th className="px-4 py-3 font-semibold text-center whitespace-nowrap">
+                  Mark Read
+                </th>
+                <th className="px-4 py-3 font-semibold whitespace-nowrap">
+                  Status
+                </th>
               </tr>
             </thead>
 
@@ -283,7 +325,7 @@ const TripBookingsTable: React.FC = () => {
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} className="animate-pulse">
-                    {Array.from({ length: 18 }).map((__, j) => (
+                    {Array.from({ length: 19 }).map((__, j) => (
                       <td key={j} className="px-4 py-4">
                         <div className="h-3.5 bg-slate-100 rounded w-full max-w-[100px]" />
                       </td>
@@ -292,7 +334,7 @@ const TripBookingsTable: React.FC = () => {
                 ))
               ) : paginated.length === 0 ? (
                 <tr>
-                  <td colSpan={18} className="text-center py-16">
+                  <td colSpan={19} className="text-center py-16">
                     <div className="flex flex-col items-center gap-2 text-slate-400">
                       <svg
                         className="w-10 h-10"
@@ -307,27 +349,63 @@ const TripBookingsTable: React.FC = () => {
                           d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2H5a2 2 0 01-2-2z"
                         />
                       </svg>
-                      <p className="text-sm font-medium text-slate-500">No entries found</p>
-                      <p className="text-xs text-slate-400">Try adjusting your search</p>
+                      <p className="text-sm font-medium text-slate-500">
+                        No entries found
+                      </p>
+                      <p className="text-xs text-slate-400">
+                        Try adjusting your search
+                      </p>
                     </div>
                   </td>
                 </tr>
               ) : (
                 paginated.map((item, idx) => (
-                  <tr key={item.id} className="hover:bg-slate-50 transition-colors">
+                  <tr
+                    key={item.id}
+                    className="hover:bg-slate-50 transition-colors"
+                  >
                     <td className="px-4 py-4 text-slate-400 whitespace-nowrap">
                       {(currentPage - 1) * rowsPerPage + idx + 1}
                     </td>
+                    {/* 🆕 Action cell -> View button, ab naam se pehle */}
+                    <td className="px-4 py-4 text-center whitespace-nowrap">
+                      <button
+                        onClick={() => setViewItem(item)}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 text-xs font-semibold hover:bg-blue-100 transition"
+                      >
+                        <svg
+                          className="w-3.5 h-3.5"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth={2}
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z"
+                          />
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                          />
+                        </svg>
+                        View
+                      </button>
+                    </td>
                     <td className="px-4 py-4 text-slate-800 font-medium whitespace-nowrap">
-                      {[item.firstName, item.lastName].filter(Boolean).join(" ")}
+                      {[item.firstName, item.lastName]
+                        .filter(Boolean)
+                        .join(" ")}
                     </td>
                     <td className="px-4 py-4 text-slate-600 whitespace-nowrap">
                       +{item.country_code} {item.customerPhone}
                     </td>
+                
                     <td className="px-4 py-4 text-slate-600 whitespace-nowrap">
-                      {item.customerEmail}
+                      {item.city}
                     </td>
-                    <td className="px-4 py-4 text-slate-600 whitespace-nowrap">{item.city}</td>
                     <td className="px-4 py-4 text-slate-600 text-xs max-w-[180px]">
                       {item.pickupAddress}
                     </td>
@@ -340,24 +418,14 @@ const TripBookingsTable: React.FC = () => {
                     <td className="px-4 py-4 text-slate-500 text-xs whitespace-nowrap">
                       {formatDateTime(item.drop_date)}
                     </td>
-                    <td className="px-4 py-4 text-slate-600 whitespace-nowrap">
-                      {item.vehicle_category}
-                    </td>
-                    <td className="px-4 py-4 text-slate-600 whitespace-nowrap">
-                      {item.vehicle_model}
-                    </td>
+                    
                     <td className="px-4 py-4 text-slate-600 text-center">
                       {item.passengerTotal}
                     </td>
                     <td className="px-4 py-4 text-slate-600 text-center">
                       {item.baggageTotal}
                     </td>
-                    <td className="px-4 py-4 text-slate-600 text-xs max-w-[180px]">
-                      {item.itinerary}
-                    </td>
-                    <td className="px-4 py-4 text-slate-600 text-xs max-w-[180px]">
-                      {item.message}
-                    </td>
+                   
                     <td className="px-4 py-4 text-slate-500 text-xs whitespace-nowrap">
                       {formatDateTime(item.created_at)}
                     </td>
@@ -401,6 +469,105 @@ const TripBookingsTable: React.FC = () => {
           onPageChange={handlePageChange}
         />
       </div>
+
+      {/* 🆕 View Details Modal — opens when a row's View button is clicked */}
+      {viewItem && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+          onClick={() => setViewItem(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[85vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal header */}
+            <div className="sticky top-0 bg-white flex items-center justify-between px-6 py-4 border-b border-slate-200 rounded-t-2xl">
+              <div>
+                <h3 className="text-lg font-bold text-slate-800">
+                  {[viewItem.firstName, viewItem.middleName, viewItem.lastName]
+                    .filter(Boolean)
+                    .join(" ")}
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Booking ID: {viewItem.id}
+                </p>
+              </div>
+              <button
+                onClick={() => setViewItem(null)}
+                className="text-slate-400 hover:text-slate-600 text-xl leading-none w-8 h-8 flex items-center justify-center rounded-full hover:bg-slate-100 transition"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal body -> customer data */}
+            <div className="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+              <DetailRow
+                label="Phone"
+                value={`+${viewItem.country_code} ${viewItem.customerPhone}`}
+              />
+              <DetailRow label="Email" value={viewItem.customerEmail} />
+              <DetailRow label="City" value={viewItem.city} />
+              <DetailRow
+                label="Status"
+                value={viewItem.is_read === 1 ? "Read" : "Unread"}
+              />
+              <DetailRow
+                label="Vehicle Category"
+                value={viewItem.vehicle_category}
+              />
+              <DetailRow label="Vehicle Model" value={viewItem.vehicle_model} />
+              <DetailRow label="Passengers" value={viewItem.passengerTotal} />
+              <DetailRow label="Baggage" value={viewItem.baggageTotal} />
+              <DetailRow
+                label="Pickup Date"
+                value={formatDateTime(viewItem.pickup_date)}
+              />
+              <DetailRow
+                label="Drop Date"
+                value={formatDateTime(viewItem.drop_date)}
+              />
+              <DetailRow
+                label="Created At"
+                value={formatDateTime(viewItem.created_at)}
+              />
+              <DetailRow
+                label="Pickup Address"
+                value={viewItem.pickupAddress}
+                full
+              />
+              <DetailRow
+                label="Drop Address"
+                value={viewItem.dropAddress}
+                full
+              />
+              <DetailRow label="Itinerary" value={viewItem.itinerary} full />
+              <DetailRow label="Message" value={viewItem.message} full />
+            </div>
+
+            {/* Modal footer */}
+            <div className="px-6 py-4 border-t border-slate-200 flex justify-end gap-2 sticky bottom-0 bg-white rounded-b-2xl">
+              {viewItem.is_read !== 1 && (
+                <button
+                  onClick={() => {
+                    handleRead(viewItem.id);
+                    setViewItem(null);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition"
+                >
+                  Mark as Read
+                </button>
+              )}
+              <button
+                onClick={() => setViewItem(null)}
+                className="px-4 py-2 rounded-xl bg-slate-100 text-slate-600 text-sm font-medium hover:bg-slate-200 transition"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

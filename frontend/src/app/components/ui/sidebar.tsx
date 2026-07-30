@@ -150,6 +150,15 @@ const Sidebar: React.FC = () => {
   const isManager = role.includes("manager") || roleName.includes("manager");
   const isTelesales = subDept === "tele-sales";
 
+  // ✅ FIX: City Manager ka subDepartment bhi "tele-sales" hota hai
+  // (navigationSlice.ts -> initFromRole me `r.includes("city manager") &&
+  // isTelesalesSub` se hi "citymanager-dashboard" set hota hai). Isliye
+  // sirf `isTelesales` check se City Manager galti se Telesales wale
+  // "sale-lead-table" view me chala jaata tha. Ab role/role_name me
+  // explicitly "city manager" dhoondh kar isko alag treat karte hain.
+  const isCityManagerRole =
+    role.includes("city manager") || roleName.includes("city manager");
+
   const isSeoExecutiveDigitalMarketing =
     departmentName === "digital marketing" && roleName === "seo executive";
 
@@ -169,13 +178,23 @@ const Sidebar: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState(false);
   const iconSize = isExpanded ? 26 : 28;
 
+  // ✅ FIX: City Manager click -> uska apna dashboard (activeSection "leads"
+  // + activeLeadView "dashboard"; page.tsx me isCityManager check isi
+  // combination par CityManagerDashboardModule render karta hai).
+  // Telesales (non-city-manager) click -> "sale-lead-table" (jaisa pehle tha).
+  // Baaki sab -> default leads dashboard/list view.
   const handleLeadsClick = () => {
-    if (isTelesales) {
-      dispatch(setActiveLeadView("sale-lead-table"));
-    } else {
+    if (isCityManagerRole) {
       dispatch(setActiveSection("leads"));
       dispatch(setActiveLeadView("dashboard" as any));
+      return;
     }
+    if (isTelesales) {
+      dispatch(setActiveLeadView("sale-lead-table"));
+      return;
+    }
+    dispatch(setActiveSection("leads"));
+    dispatch(setActiveLeadView("dashboard" as any));
   };
 
   // ══════════════════════════════════════════════

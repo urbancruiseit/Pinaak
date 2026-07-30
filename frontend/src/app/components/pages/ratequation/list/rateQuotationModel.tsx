@@ -1,7 +1,18 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { FileText, X, IndianRupee, Car, Tag, AlignLeft } from "lucide-react";
+import {
+  FileText,
+  X,
+  IndianRupee,
+  Car,
+  Tag,
+  AlignLeft,
+  Plus,
+  Trash2,
+  Percent,
+  Hash,
+} from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState, AppDispatch } from "@/app/redux/store";
 import { fetchVehicles } from "@/app/features/vehicle/vehicleSlice";
@@ -15,6 +26,7 @@ interface VehicleSlot {
   category: string;
   description: string;
   amount: number | string;
+  noOfVehicles: number | string;
 }
 
 interface RateQuotationModalProps {
@@ -30,14 +42,26 @@ const EMPTY_SLOT: VehicleSlot = {
   category: "",
   description: "",
   amount: "",
+  noOfVehicles: 1,
 };
 
 const CATEGORY_OPTIONS = [
-  { value: "economy premium", label: "Economy Premium" },
-  { value: "royal vip", label: "Royal VIP" },
+  { value: "economy ", label: "Economy " },
+  { value: " premium", label: " Premium" },
   { value: "royal", label: "Royal" },
-  { value: "vip", label: "VIP" },
+  { value: "royal vip", label: "Royal VIP" },
 ];
+
+// ✅ GST % dropdown ke options
+const GST_OPTIONS = [
+  { value: "0", label: "0%" },
+  { value: "5", label: "5%" },
+  { value: "18", label: "18%" },
+];
+
+const MIN_ROWS = 1; // kam se kam kitni rows honi chahiye (delete se neeche na jaye)
+const MAX_ROWS = 10; // add row ki upper limit
+const INITIAL_ROWS = 1; // shuruat me kitni rows dikhengi (baaki Add Row se aayengi)
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -51,12 +75,12 @@ const RateQuotationModel = ({
   // Lead info (display only)
   const [leadInfo, setLeadInfo] = useState<LeadRecord | null>(null);
 
-  // Vehicle slots — 3 rows, each holds its own data
-  const [slots, setSlots] = useState<VehicleSlot[]>([
-    { ...EMPTY_SLOT },
-    { ...EMPTY_SLOT },
-    { ...EMPTY_SLOT },
-  ]);
+  // Vehicle slots — ab dynamic array hai (1 se start, "Add Row" se 10 tak badh sakti hai)
+  const [slots, setSlots] = useState<VehicleSlot[]>([{ ...EMPTY_SLOT }]);
+
+  // ✅ Global GST % — "Add Row" button ke paas GST dropdown ke liye (saari vehicles pe apply hota hai)
+  const [gstPercentage, setGstPercentage] = useState<string>("0");
+  const [isGstOpen, setIsGstOpen] = useState(false);
 
   // Redux
   const { vehicleCodes } = useSelector((state: RootState) => state.vehicle);
@@ -90,26 +114,22 @@ const RateQuotationModel = ({
 
     const vehicles = Array.isArray(lead_?.vehicles) ? lead_.vehicles : [];
 
-    setSlots([
-      {
-        vehicleType: vehicles[0]?.vehicleType || "",
-        category: vehicles[0]?.category || "",
-        description: vehicles[0]?.description || "",
-        amount: vehicles[0]?.amount || "",
-      },
-      {
-        vehicleType: vehicles[1]?.vehicleType || "",
-        category: vehicles[1]?.category || "",
-        description: vehicles[1]?.description || "",
-        amount: vehicles[1]?.amount || "",
-      },
-      {
-        vehicleType: vehicles[2]?.vehicleType || "",
-        category: vehicles[2]?.category || "",
-        description: vehicles[2]?.description || "",
-        amount: vehicles[2]?.amount || "",
-      },
-    ]);
+    if (vehicles.length > 0) {
+      // Lead me jitni vehicles already hain utni hi rows bana do (max 10)
+      const mapped: VehicleSlot[] = vehicles.map((v: any) => ({
+        vehicleType: v?.vehicleType || "",
+        category: v?.category || "",
+        description: v?.description || "",
+        amount: v?.amount || "",
+        noOfVehicles: v?.noOfVehicles || 1,
+      }));
+
+      const rowCount = Math.min(mapped.length, MAX_ROWS);
+      setSlots(mapped.slice(0, rowCount));
+    } else {
+      // Naya lead — sirf 1 empty row se start, baaki "Add Row" se aayengi
+      setSlots(Array.from({ length: INITIAL_ROWS }, () => ({ ...EMPTY_SLOT })));
+    }
   }, [lead]);
 
   // ── Handlers ───────────────────────────────────────────────────────────────
@@ -125,11 +145,39 @@ const RateQuotationModel = ({
     );
   };
 
+  // ✅ Add a new empty vehicle row (max 10 tak)
+  const addRow = () => {
+    setSlots((prev) => {
+      if (prev.length >= MAX_ROWS) return prev;
+      return [...prev, { ...EMPTY_SLOT }];
+    });
+  };
+
+  // ✅ Remove a specific vehicle row (min 1 row rehni chahiye)
+  const removeRow = (index: number) => {
+    setSlots((prev) => {
+      if (prev.length <= MIN_ROWS) return prev;
+      return prev.filter((_, i) => i !== index);
+    });
+  };
+
   // Get vehicle display name from code
   const getVehicleName = (code: string) => {
     if (!code || vehicleCodes.length === 0) return "";
     const v = vehicleCodes.find((v: { code: string }) => v.code === code);
     return v ? `${v.code} - ${v.name}` : code;
+  };
+
+  // ✅ Ek slot ka GST amount + total nikalne wala helper
+  // (Amount x No. of Vehicles = base, phir usi pe global GST % lagta hai)
+  const getGstBreakdown = (slot: VehicleSlot) => {
+    const rate = Number(slot.amount) || 0;
+    const qty = Number(slot.noOfVehicles) || 0;
+    const base = rate * qty;
+    const gstPct = Number(gstPercentage) || 0;
+    const gstAmount = (base * gstPct) / 100;
+    const total = base + gstAmount;
+    return { rate, qty, base, gstPct, gstAmount, total };
   };
 
   // Build final payload and dispatch
@@ -138,12 +186,21 @@ const RateQuotationModel = ({
 
     const vehiclesArray = slots
       .filter((slot) => slot.vehicleType !== "")
-      .map((slot) => ({
-        vehicleType: slot.vehicleType,
-        category: slot.category,
-        description: slot.description,
-        amount: Number(slot.amount) || 0,
-      }));
+      .map((slot) => {
+        const { rate, qty, base, gstPct, gstAmount, total } =
+          getGstBreakdown(slot);
+        return {
+          vehicleType: slot.vehicleType,
+          category: slot.category,
+          description: slot.description,
+          amount: rate,
+          noOfVehicles: qty,
+          subTotal: base,
+          gstPercentage: gstPct,
+          gstAmount,
+          totalAmount: total,
+        };
+      });
 
     if (vehiclesArray.length === 0) {
       alert("Kam se kam ek vehicle select karo.");
@@ -214,6 +271,66 @@ const RateQuotationModel = ({
             <InfoItem label="Service Type" value={lead_?.serviceType} />
           </div>
 
+          {/* ── Vehicle Slots Header + GST Dropdown + Add Row Button ── */}
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-gray-700">
+              Vehicles ({slots.length}/{MAX_ROWS})
+            </h3>
+            <div className="flex items-center gap-2">
+              {/* ✅ GST Dropdown Button */}
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setIsGstOpen((prev) => !prev)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 text-sm font-semibold transition-colors"
+                >
+                  <Percent size={16} />
+                  GST: {gstPercentage}%
+                </button>
+
+                {isGstOpen && (
+                  <>
+                    {/* Backdrop to close dropdown on outside click */}
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setIsGstOpen(false)}
+                    />
+                    <div className="absolute right-0 mt-1.5 w-32 bg-white border border-gray-200 rounded-lg shadow-lg z-20 overflow-hidden">
+                      {GST_OPTIONS.map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => {
+                            setGstPercentage(opt.value);
+                            setIsGstOpen(false);
+                          }}
+                          className={`w-full text-left px-3 py-2 text-sm hover:bg-rose-50 transition-colors ${
+                            gstPercentage === opt.value
+                              ? "text-rose-600 font-semibold bg-rose-50"
+                              : "text-gray-600"
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Add Row Button */}
+              <button
+                type="button"
+                onClick={addRow}
+                disabled={slots.length >= MAX_ROWS}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 text-sm font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-blue-50"
+              >
+                <Plus size={16} />
+                Add Row
+              </button>
+            </div>
+          </div>
+
           {/* ── Vehicle Slots ── */}
           <div className="space-y-5">
             {slots.map((slot, index) => (
@@ -224,30 +341,63 @@ const RateQuotationModel = ({
                 vehicleCodes={vehicleCodes}
                 getVehicleName={getVehicleName}
                 onChange={updateSlot}
+                onRemove={removeRow}
+                canRemove={slots.length > MIN_ROWS}
+                gstBreakdown={getGstBreakdown(slot)}
               />
             ))}
           </div>
 
-          {/* ── Preview of what will be sent ── */}
+          {/* ── Add Row Button (bottom, easy access after scrolling) ── */}
+          <div className="mt-4">
+            <button
+              type="button"
+              onClick={addRow}
+              disabled={slots.length >= MAX_ROWS}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border-2 border-dashed border-blue-200 text-blue-600 hover:border-blue-400 hover:bg-blue-50 text-sm font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:border-blue-200"
+            >
+              <Plus size={16} />
+              {slots.length >= MAX_ROWS
+                ? `Maximum ${MAX_ROWS} vehicles allowed`
+                : "Add Another Vehicle"}
+            </button>
+          </div>
+
+          {/* ── Grand Total (sabhi vehicles ka amount + GST) ── */}
           {slots.some((s) => s.vehicleType) && (
-            <div className="mt-5 p-4 bg-blue-50 rounded-xl border border-blue-100">
-              <p className="text-xs font-semibold text-blue-700 mb-2">
-                JSON Preview (jo backend ko jayega)
-              </p>
-              <pre className="text-xs text-blue-900 whitespace-pre-wrap break-all">
-                {JSON.stringify(
-                  slots
-                    .filter((s) => s.vehicleType)
-                    .map((s) => ({
-                      vehicleType: s.vehicleType,
-                      category: s.category,
-                      description: s.description,
-                      amount: Number(s.amount) || 0,
-                    })),
-                  null,
-                  2,
-                )}
-              </pre>
+            <div className="mt-5 flex justify-end">
+              <div className="w-full sm:w-72 bg-slate-50 rounded-xl border border-slate-200 p-4 space-y-1.5">
+                <div className="flex justify-between text-sm text-gray-500">
+                  <span>Subtotal</span>
+                  <span>
+                    ₹
+                    {slots
+                      .filter((s) => s.vehicleType)
+                      .reduce((sum, s) => sum + getGstBreakdown(s).base, 0)
+                      .toLocaleString("en-IN")}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm text-gray-500">
+                  <span>GST</span>
+                  <span>
+                    ₹
+                    {slots
+                      .filter((s) => s.vehicleType)
+                      .reduce((sum, s) => sum + getGstBreakdown(s).gstAmount, 0)
+                      .toLocaleString("en-IN")}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm font-bold text-gray-800 pt-1.5 border-t border-slate-200">
+                  <span>Grand Total</span>
+                  <span>
+                    ₹
+                    {slots
+                      .filter((s) => s.vehicleType)
+                      .reduce((sum, s) => sum + getGstBreakdown(s).total, 0)
+                      .toLocaleString("en-IN")}
+                  </span>
+                </div>
+              </div>
             </div>
           )}
 
@@ -300,13 +450,16 @@ const InfoItem = ({
   </div>
 );
 
-// One vehicle row (type + category + description + amount)
+// One vehicle row (type + category + description + amount + no. of vehicles + GST%)
 const VehicleRow = ({
   index,
   slot,
   vehicleCodes,
   getVehicleName,
   onChange,
+  onRemove,
+  canRemove,
+  gstBreakdown,
 }: {
   index: number;
   slot: VehicleSlot;
@@ -317,6 +470,16 @@ const VehicleRow = ({
     field: keyof VehicleSlot,
     value: string | number,
   ) => void;
+  onRemove: (index: number) => void;
+  canRemove: boolean;
+  gstBreakdown: {
+    rate: number;
+    qty: number;
+    base: number;
+    gstPct: number;
+    gstAmount: number;
+    total: number;
+  };
 }) => {
   const num = index + 1;
 
@@ -335,9 +498,20 @@ const VehicleRow = ({
             {getVehicleName(slot.vehicleType)}
           </span>
         )}
+        {/* ✅ Remove row button (sirf tab dikhega jab 1 se zyada rows hongi) */}
+        {canRemove && (
+          <button
+            type="button"
+            onClick={() => onRemove(index)}
+            title="Remove this vehicle"
+            className={`${slot.vehicleType ? "" : "ml-auto"} p-1.5 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors flex-shrink-0`}
+          >
+            <Trash2 size={16} />
+          </button>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
         {/* Vehicle Type */}
         <div>
           <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">
@@ -369,10 +543,10 @@ const VehicleRow = ({
           </div>
         </div>
 
-        {/* Category */}
+        {/* Category / Variant */}
         <div>
           <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">
-            Category
+            Variant{" "}
           </label>
           <div className="relative">
             <Tag
@@ -384,7 +558,7 @@ const VehicleRow = ({
               onChange={(e) => onChange(index, "category", e.target.value)}
               className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none"
             >
-              <option value="">Select category</option>
+              <option value="">Select Variant</option>
               {CATEGORY_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>
                   {opt.label}
@@ -414,10 +588,31 @@ const VehicleRow = ({
           </div>
         </div>
 
-        {/* Amount */}
+        {/* ✅ No. of Vehicles */}
         <div>
           <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">
-            Total Amount (₹)
+            No. of Vehicles
+          </label>
+          <div className="relative">
+            <Hash
+              size={16}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-500 pointer-events-none"
+            />
+            <input
+              type="number"
+              value={slot.noOfVehicles}
+              onChange={(e) => onChange(index, "noOfVehicles", e.target.value)}
+              placeholder="1"
+              min={1}
+              className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+        </div>
+
+        {/* Amount (per vehicle rate) */}
+        <div>
+          <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wide">
+            Rate per Vehicle (₹)
           </label>
           <div className="relative">
             <IndianRupee
@@ -433,6 +628,23 @@ const VehicleRow = ({
               className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
+          {/* ✅ Qty x Rate + GST wala breakdown, header ke GST dropdown se apply hota hai */}
+          {slot.amount !== "" && (
+            <p className="text-[11px] text-gray-400 mt-1">
+              {gstBreakdown.qty} × ₹{gstBreakdown.rate.toLocaleString("en-IN")}
+              {gstBreakdown.gstPct > 0 && (
+                <>
+                  {" "}
+                  +{gstBreakdown.gstPct}% GST (₹
+                  {gstBreakdown.gstAmount.toLocaleString("en-IN")})
+                </>
+              )}{" "}
+              ={" "}
+              <span className="font-semibold text-gray-600">
+                ₹{gstBreakdown.total.toLocaleString("en-IN")}
+              </span>
+            </p>
+          )}
         </div>
       </div>
     </div>

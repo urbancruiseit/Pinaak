@@ -15,7 +15,6 @@ import {
   setSelectedLeadForRateQuotation,
   setSelectedLeadForDsr,
   setActiveSection,
-  setActiveWebsiteView,
   initFromRole,
 } from "../features/Navigation/navigationSlice";
 import type { LeadRecord } from "@/types/types";
@@ -303,6 +302,30 @@ export default function DashboardPage() {
     </div>
   );
 
+  // ══════════════════════════════════════════════════════════════════════
+  // ✅ FIX: Robust City Manager detection.
+  // Pehle sirf exact-case `=== "City Manager"` check hota tha jo
+  // - case-sensitive tha (e.g. "city manager" ya "CITY MANAGER" fail ho jata)
+  // - sirf top-level currentUser.role / role_name dekhta tha, agar user
+  //   object `currentUser.data.role` jaisi nested shape me aata to bhi fail
+  // Ab dono top-level aur nested (.data) fields check hote hain, aur
+  // case-insensitive + trimmed compare hota hai — navbar.tsx me jaise
+  // `normalizedRole` banaya jata hai, waisi hi approach.
+  // ══════════════════════════════════════════════════════════════════════
+  const rawUserForRole =
+    (currentUser as any)?.data ?? (currentUser as any) ?? {};
+  const normalizedRoleName = (rawUserForRole?.role_name ?? "")
+    .toString()
+    .toLowerCase()
+    .trim();
+  const normalizedRoleValue = (rawUserForRole?.role ?? "")
+    .toString()
+    .toLowerCase()
+    .trim();
+  const isCityManager =
+    normalizedRoleName.includes("city manager") ||
+    normalizedRoleValue.includes("city manager");
+
   // ── Main content ─────────────────────────────────────────────────────────
   const mainContent = (() => {
     if (nav.loginType === "vendor") {
@@ -493,9 +516,14 @@ export default function DashboardPage() {
         );
       }
 
+      // ✅ City Manager ke liye default "leads" view uska apna dashboard hai
       return (
         <div className="space-y-6">
-          <LeadsOverviewModule />
+          {isCityManager ? (
+            <CityManagerDashboardModule />
+          ) : (
+            <LeadsOverviewModule />
+          )}
         </div>
       );
     }
@@ -526,9 +554,14 @@ export default function DashboardPage() {
             <CityManagerDashboardModule />
           </div>
         );
+      // ✅ City Manager ke liye default dashboard view bhi uska apna dashboard ho
       return (
         <div className="space-y-6">
-          <LeadsOverviewModule />
+          {isCityManager ? (
+            <CityManagerDashboardModule />
+          ) : (
+            <LeadsOverviewModule />
+          )}
         </div>
       );
     }
@@ -573,7 +606,6 @@ export default function DashboardPage() {
         </div>
       );
 
-    
     if (
       nav.activeSection === "booking-trip" ||
       nav.activeSection === "vehicle-documents" ||
@@ -595,12 +627,10 @@ export default function DashboardPage() {
       <Navbar />
 
       <div className="flex flex-1 overflow-hidden">
-     
         <div className="relative">
           <Sidebar />
         </div>
 
-       
         <main className="flex-1 px-4 py-1 overflow-y-auto bg-white sm:px-6 ml-[100px]">
           <div className="w-full mx-auto space-y-6">{mainContent}</div>
         </main>

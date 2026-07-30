@@ -11,6 +11,8 @@ import {
   getDueRemindersApi,
   DueReminder,
   checkCustomerPhoneApi,
+  getAdvisorReminderStatsApi,
+  AdvisorReminderStat,
 } from "./leadApi";
 
 interface StatusCounts {
@@ -39,7 +41,8 @@ interface LeadState {
   statusCounts: StatusCounts;
   totalLeads: number;
   search: string;
-
+  advisorReminderStats: AdvisorReminderStat[];
+  advisorReminderStatsLoading: boolean;
   unwantedLeads: LeadRecord[];
   unwantedLeadsLoading: boolean;
   unwantedLeadsTotal: number;
@@ -251,6 +254,17 @@ export const markReminderAsShown = createAsyncThunk(
   },
 );
 
+export const fetchAdvisorReminderStats = createAsyncThunk(
+  "lead/fetchAdvisorReminderStats",
+  async (_, { rejectWithValue }) => {
+    try {
+      return await getAdvisorReminderStatsApi();
+    } catch (err: any) {
+      return rejectWithValue(err.message);
+    }
+  },
+);
+
 export const checkCustomerPhone = createAsyncThunk(
   "lead/checkCustomerPhone",
   async (customerPhone: string, { rejectWithValue }) => {
@@ -406,6 +420,16 @@ const leadSlice = createSlice({
         state.reminderLoading = false;
         state.reminderSuccess = false;
         state.reminderError = action.payload as string;
+      })
+      .addCase(fetchAdvisorReminderStats.pending, (state) => {
+        state.advisorReminderStatsLoading = true;
+      })
+      .addCase(fetchAdvisorReminderStats.fulfilled, (state, action) => {
+        state.advisorReminderStatsLoading = false;
+        state.advisorReminderStats = action.payload;
+      })
+      .addCase(fetchAdvisorReminderStats.rejected, (state) => {
+        state.advisorReminderStatsLoading = false;
       })
       .addCase(fetchDueReminders.pending, (state) => {
         state.dueReminderLoading = true;

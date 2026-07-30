@@ -941,3 +941,235 @@ export const getDueReminders = async (advisorId) => {
 
   return rows;
 };
+
+export const getAdvisorReminderStats = async (cityIds = []) => {
+  try {
+    let where = "";
+    const values = [];
+
+    if (cityIds && cityIds.length > 0) {
+      const placeholders = cityIds.map(() => "?").join(",");
+      where = `WHERE l.city_id IN (${placeholders})`;
+      values.push(...cityIds);
+    }
+
+    const [rows] = await pool.query(
+      `
+      SELECT
+        l.advisor_id,
+        COUNT(*) AS totalReminders,
+        SUM(CASE WHEN s.is_shown = 0 THEN 1 ELSE 0 END) AS pendingReminders,
+        SUM(CASE WHEN s.is_shown = 1 THEN 1 ELSE 0 END) AS shownReminders
+      FROM scheduler s
+      INNER JOIN leads l ON l.id = s.lead_id
+      ${where}
+      GROUP BY l.advisor_id
+      `,
+      values,
+    );
+
+    const advisorIds = rows
+      .map((r) => r.advisor_id)
+      .filter((id) => id !== null && id !== undefined);
+
+    let userMap = {};
+    if (advisorIds.length > 0) {
+      try {
+        const placeholders = advisorIds.map(() => "?").join(",");
+        const [users] = await hrmsPool.query(
+          `SELECT id, aliasName, firstName, middleName, lastName, shortName
+           FROM users WHERE id IN (${placeholders})`,
+          advisorIds,
+        );
+        users.forEach((u) => (userMap[u.id] = u));
+      } catch (err) {
+        console.error("hrmsPool user fetch failed:", err.message);
+      }
+    }
+
+    return rows.map((r) => ({
+      advisorId: r.advisor_id,
+      advisorName:
+        (userMap[r.advisor_id]?.aliasName || "").trim() ||
+        `Advisor ${r.advisor_id}`,
+      totalReminders: Number(r.totalReminders) || 0,
+      pendingReminders: Number(r.pendingReminders) || 0,
+      shownReminders: Number(r.shownReminders) || 0,
+    }));
+  } catch (error) {
+    console.error("getAdvisorReminderStats error:", error);
+    throw error;
+  }
+};
+
+export const getAdvisorReminderDetails = async (advisorId) => {
+  try {
+    const [rows] = await pool.query(
+      `
+      SELECT
+        s.id,
+        s.lead_id,
+        s.message,
+        s.reminder_datetime,
+        s.is_shown,
+        s.created_at,
+        CONCAT_WS(' ', c.firstName, c.middleName, c.lastName) AS fullName,
+        c.customerPhone,
+        c.customerEmail,
+        l.pickupDateTime,
+        l.dropDateTime,
+        l.status
+      FROM scheduler s
+      INNER JOIN leads l ON l.id = s.lead_id
+      LEFT JOIN customers c ON c.id = l.customer_id
+      WHERE l.advisor_id = ?
+      ORDER BY s.reminder_datetime DESC
+      `,
+      [advisorId],
+    );
+
+    return rows;
+  } catch (error) {
+    console.error("getAdvisorReminderDetails error:", error);
+    throw error;
+  }
+};
+
+// ─── FOLLOW-UP STATS (advisor-wise, from leads.follow_ups JSON) ───────────
+export const getAdvisorFollowupStats = async (cityIds = []) => {
+  try {
+    let where = `WHERE l.advisor_id IS NOT NULL AND l.follow_ups IS NOT NULL AND l.follow_ups != '[]'`;
+    const values = [];
+
+    if (cityIds && cityIds.length > 0) {
+      const placeholders = cityIds.map(() => "?").join(",");
+      where += ` AND l.city_id IN (${placeholders})`;
+      values.push(...cityIds);
+    }
+
+    const [rows] = await pool.query(
+      `SELECT l.id, l.advisor_id, l.follow_ups FROM leads l ${where}`,
+      values,
+    );
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+
+    const grouped = {};
+
+    rows.forEach((row) => {
+      let followUps = [];
+      try {
+        followUps =
+          typeof row.follow_ups === "string"
+            ? JSON.parse(row.follow_ups)
+            : row.follow_ups || [];
+      } catch {
+        followUps = [];
+      }
+      if (!Array.isArray(followUps) || followUps.length === 0) return;
+
+      if (!grouped[row.advisor_id]) {
+        grouped[row.advisor_id] = { total: 0, pending: 0, upcoming: 0 };
+      }
+
+      followUps.forEach((f) => {
+        grouped[row.advisor_id].total += 1;
+        if (f.date && f.date <= todayStr) {
+          grouped[row.advisor_id].pending += 1;
+        } else {
+          grouped[row.advisor_id].upcoming += 1;
+        }
+      });
+    });
+
+    const advisorIds = Object.keys(grouped).map((id) => Number(id));
+    let userMap = {};
+    if (advisorIds.length > 0) {
+      try {
+        const placeholders = advisorIds.map(() => "?").join(",");
+        const [users] = await hrmsPool.query(
+          `SELECT id, aliasName, firstName, middleName, lastName, shortName
+           FROM users WHERE id IN (${placeholders})`,
+          advisorIds,
+        );
+        users.forEach((u) => (userMap[u.id] = u));
+      } catch (err) {
+        console.error("hrmsPool user fetch failed:", err.message);
+      }
+    }
+
+    return advisorIds.map((advisorId) => ({
+      advisorId,
+      advisorName:
+        (userMap[advisorId]?.aliasName || "").trim() || `Advisor ${advisorId}`,
+      totalFollowups: grouped[advisorId].total,
+      pendingFollowups: grouped[advisorId].pending,
+      upcomingFollowups: grouped[advisorId].upcoming,
+    }));
+  } catch (error) {
+    console.error("getAdvisorFollowupStats error:", error);
+    throw error;
+  }
+};
+
+export const getAdvisorFollowupDetails = async (advisorId) => {
+  try {
+    const [rows] = await pool.query(
+      `
+      SELECT
+        l.id AS lead_id,
+        l.follow_ups,
+        l.status,
+        l.pickupDateTime,
+        l.dropDateTime,
+        CONCAT_WS(' ', c.firstName, c.middleName, c.lastName) AS fullName,
+        c.customerPhone,
+        c.customerEmail
+      FROM leads l
+      LEFT JOIN customers c ON c.id = l.customer_id
+      WHERE l.advisor_id = ?
+        AND l.follow_ups IS NOT NULL
+        AND l.follow_ups != '[]'
+      `,
+      [advisorId],
+    );
+
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const flattened = [];
+
+    rows.forEach((row) => {
+      let followUps = [];
+      try {
+        followUps =
+          typeof row.follow_ups === "string"
+            ? JSON.parse(row.follow_ups)
+            : row.follow_ups || [];
+      } catch {
+        followUps = [];
+      }
+
+      followUps.forEach((f, idx) => {
+        flattened.push({
+          id: `${row.lead_id}-${idx}`,
+          lead_id: row.lead_id,
+          date: f.date,
+          text: f.text,
+          isPending: !!(f.date && f.date <= todayStr),
+          fullName: row.fullName,
+          customerPhone: row.customerPhone,
+          customerEmail: row.customerEmail,
+          status: row.status,
+          pickupDateTime: row.pickupDateTime,
+          dropDateTime: row.dropDateTime,
+        });
+      });
+    });
+
+    flattened.sort((a, b) => (a.date < b.date ? 1 : -1));
+
+    return flattened;
+  } catch (error) {
+    console.error("getAdvisorFollowupDetails error:", error);
+    throw error;
+  }
+};

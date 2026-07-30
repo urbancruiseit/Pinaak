@@ -35,14 +35,6 @@ export const createLeadApi = async (
 };
 
 // ─── GET LEADS (PAGINATED) ─────────────────────
-export interface PaginatedLeadsResponse {
-  leads: LeadRecord[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
-}
-
 export interface StatusCounts {
   NEW: number;
   RFQ: number;
@@ -80,7 +72,7 @@ export const getLeadApi = async (
   pickupDateTime?: string,
   dropDateTime?: string,
   liveorexpiry?: string,
-  ageFilter?: string, // ADD
+  ageFilter?: string,
 ): Promise<PaginatedLeadsResponse> => {
   try {
     const response = await axiosInstance.get("/lead", {
@@ -94,7 +86,7 @@ export const getLeadApi = async (
           pickupDateTime: pickupDateTime.trim(),
         }),
         ...(dropDateTime?.trim() && { dropDateTime: dropDateTime.trim() }),
-        ...(liveorexpiry?.trim() && { liveorexpiry: liveorexpiry.trim() }), // ← ADD KARO
+        ...(liveorexpiry?.trim() && { liveorexpiry: liveorexpiry.trim() }),
         ...(ageFilter?.trim() && {
           ageFilter: ageFilter.trim(),
         }),
@@ -110,7 +102,7 @@ export const getLeadApi = async (
       totalPages: data.totalPages || 1,
       selectedMonth: data.selectedMonth,
       selectedYear: data.selectedYear,
-      selectedStatus: data.selectedStatus || null, // ✅
+      selectedStatus: data.selectedStatus || null,
       statusCounts: data.statusCounts || {
         NEW: 0,
         RFQ: 0,
@@ -160,9 +152,10 @@ export const checkCustomerPhoneApi = async (
   customerPhone: string,
 ): Promise<CheckCustomerResponse> => {
   try {
-    const response = await axiosInstance.post<
-      ApiResponse<CheckCustomerResponse>
-    >("/lead/check-phone", { customerPhone });
+    const response = await axiosInstance.post<ApiResponse<CheckCustomerResponse>>(
+      "/lead/check-phone",
+      { customerPhone },
+    );
 
     return response.data.data;
   } catch (error: any) {
@@ -228,6 +221,7 @@ export const getAllUnwantedLeadsApi = async (): Promise<LeadRecord[]> => {
   }
 };
 
+// ─── REMINDERS ───────────────────────────────
 export interface ReminderPayload {
   lead_id: number;
   reminder_datetime: string;
@@ -264,6 +258,57 @@ export const createReminderApi = async (
       "Failed to create reminder";
 
     throw new Error(errorMessage);
+  }
+};
+
+export interface AdvisorReminderStat {
+  advisorId: number;
+  advisorName: string;
+  totalReminders: number;
+  pendingReminders: number;
+  shownReminders: number;
+}
+
+export const getAdvisorReminderStatsApi = async (): Promise<AdvisorReminderStat[]> => {
+  try {
+    const response = await axiosInstance.get<ApiResponse<AdvisorReminderStat[]>>(
+      "/lead/reminders/advisor-stats",
+    );
+    return response.data.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message || "Failed to fetch advisor reminder stats",
+    );
+  }
+};
+
+export interface AdvisorReminderDetail {
+  id: number;
+  lead_id: number;
+  message: string;
+  reminder_datetime: string;
+  is_shown: number;
+  created_at: string;
+  fullName: string;
+  customerPhone: string;
+  customerEmail: string;
+  pickupDateTime: string;
+  dropDateTime: string;
+  status: string;
+}
+
+export const getAdvisorReminderDetailsApi = async (
+  advisorId: number,
+): Promise<AdvisorReminderDetail[]> => {
+  try {
+    const response = await axiosInstance.get<ApiResponse<AdvisorReminderDetail[]>>(
+      `/lead/reminders/advisor-stats/${advisorId}/details`,
+    );
+    return response.data.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message || "Failed to fetch reminder messages",
+    );
   }
 };
 
@@ -314,6 +359,58 @@ export const markReminderAsShownApi = async (id: number): Promise<void> => {
 
     throw new Error(
       error.response?.data?.message || "Failed to update reminder",
+    );
+  }
+};
+
+// ─── FOLLOW-UPS ───────────────────────────────
+export interface AdvisorFollowupStat {
+  advisorId: number;
+  advisorName: string;
+  totalFollowups: number;
+  pendingFollowups: number;
+  upcomingFollowups: number;
+}
+
+export interface AdvisorFollowupDetail {
+  id: string;
+  lead_id: number;
+  date: string;
+  text: string;
+  isPending: boolean;
+  fullName: string;
+  customerPhone: string;
+  customerEmail: string;
+  status: string;
+  pickupDateTime: string;
+  dropDateTime: string;
+}
+
+export const getAdvisorFollowupStatsApi = async (): Promise<AdvisorFollowupStat[]> => {
+  try {
+    const response = await axiosInstance.get<ApiResponse<AdvisorFollowupStat[]>>(
+      "/lead/followups/advisor-stats",
+    );
+    return response.data.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+        "Failed to fetch advisor follow-up stats",
+    );
+  }
+};
+
+export const getAdvisorFollowupDetailsApi = async (
+  advisorId: number,
+): Promise<AdvisorFollowupDetail[]> => {
+  try {
+    const response = await axiosInstance.get<ApiResponse<AdvisorFollowupDetail[]>>(
+      `/lead/followups/advisor-stats/${advisorId}/details`,
+    );
+    return response.data.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message || "Failed to fetch follow-up messages",
     );
   }
 };

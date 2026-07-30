@@ -9,6 +9,10 @@ import {
   getDueRemindersController,
   markReminderAsShownController,
   checkCustomerPhoneController,
+  getAdvisorReminderStatsController,
+  getAdvisorReminderDetailsController,
+  getAdvisorFollowupDetailsController,
+  getAdvisorFollowupStatsController,
 } from "./lead.controller.js";
 import { verifyJWT } from "../../middlewares/auth.middleware.js";
 const router = Router();
@@ -22,4 +26,24 @@ router.post("/reminder", createReminderController);
 router.get("/reminders/due", verifyJWT, getDueRemindersController);
 router.patch("/reminders/:id/shown", verifyJWT, markReminderAsShownController);
 router.post("/check-phone", checkCustomerPhoneController);
+router.get(
+  "/reminders/advisor-stats",
+  verifyJWT,
+  getAdvisorReminderStatsController,
+);
+router.get(
+  "/reminders/advisor-stats/:advisorId/details",
+  verifyJWT,
+  getAdvisorReminderDetailsController,
+);
+router.get(
+  "/followups/advisor-stats",
+  verifyJWT,
+  getAdvisorFollowupStatsController,
+);
+router.get(
+  "/followups/advisor-stats/:advisorId/details",
+  verifyJWT,
+  getAdvisorFollowupDetailsController,
+);
 export default router;

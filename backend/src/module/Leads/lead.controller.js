@@ -17,6 +17,10 @@ import {
   getDueReminders,
   markReminderAsShown,
   checkCustomerByPhone,
+  getAdvisorReminderStats,
+  getAdvisorReminderDetails,
+  getAdvisorFollowupDetails,
+  getAdvisorFollowupStats,
 } from "./lead.model.js";
 
 const createLeads = asyncHandler(async (req, res) => {
@@ -383,6 +387,106 @@ export const getDueRemindersController = async (req, res) => {
     });
   }
 };
+export const getAdvisorReminderStatsController = asyncHandler(
+  async (req, res) => {
+    const user = req.user;
+
+    const isCityManager = user?.role_name === "City Manager";
+    const isTeleSales = user?.subDepartment_name === "Tele-Sales";
+
+    let cityIds = [];
+    if (isCityManager && isTeleSales) {
+      const zoneIds = user?.zone_ids || [];
+      cityIds = await getCityIdsByZoneIds(zoneIds);
+    } else {
+      cityIds = user?.city_ids || [];
+    }
+
+    const stats = await getAdvisorReminderStats(cityIds);
+
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          stats,
+          "Advisor reminder stats fetched successfully",
+        ),
+      );
+  },
+);
+export const getAdvisorReminderDetailsController = asyncHandler(
+  async (req, res) => {
+    const { advisorId } = req.params;
+
+    if (!advisorId) {
+      throw new ApiError(400, "advisorId is required");
+    }
+
+    const reminders = await getAdvisorReminderDetails(advisorId);
+
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          reminders,
+          "Advisor reminder messages fetched successfully",
+        ),
+      );
+  },
+);
+
+export const getAdvisorFollowupStatsController = asyncHandler(
+  async (req, res) => {
+    const user = req.user;
+
+    const isCityManager = user?.role_name === "City Manager";
+    const isTeleSales = user?.subDepartment_name === "Tele-Sales";
+
+    let cityIds = [];
+    if (isCityManager && isTeleSales) {
+      const zoneIds = user?.zone_ids || [];
+      cityIds = await getCityIdsByZoneIds(zoneIds);
+    } else {
+      cityIds = user?.city_ids || [];
+    }
+
+    const stats = await getAdvisorFollowupStats(cityIds);
+
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          stats,
+          "Advisor follow-up stats fetched successfully",
+        ),
+      );
+  },
+);
+
+export const getAdvisorFollowupDetailsController = asyncHandler(
+  async (req, res) => {
+    const { advisorId } = req.params;
+
+    if (!advisorId) {
+      throw new ApiError(400, "advisorId is required");
+    }
+
+    const followups = await getAdvisorFollowupDetails(advisorId);
+
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          followups,
+          "Advisor follow-up messages fetched successfully",
+        ),
+      );
+  },
+);
 export {
   createLeads,
   listLeads,

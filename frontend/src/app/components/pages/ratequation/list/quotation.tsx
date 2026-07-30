@@ -174,7 +174,7 @@ export default function QuotationPdf({ data, onClose }: QuotationPdfProps) {
                 <span className="text-orange-500">▶</span>
               </div>
               <div className="border-r border-green-500 p-2 text-center">
-                <p className="font-bold text-[12px]">
+                <p className="font-bold text-black text-[12px]">
                   {data?.travelDate || "—"}
                 </p>
                 <p className="text-green-500 font-bold text-[11px]">
@@ -182,15 +182,15 @@ export default function QuotationPdf({ data, onClose }: QuotationPdfProps) {
                 </p>
               </div>
               <div className="border-r border-green-500 p-2 text-center">
-                <p className="font-bold text-[12px] uppercase">TRIP TYPE</p>
+                <p className="font-bold text-black text-[12px] uppercase">TRIP TYPE</p>
                 <p className="text-[11px] font-bold text-orange-500">
                   {data?.tripType || "—"}
                 </p>
               </div>
               <div className="border-r border-green-500 p-2 text-center">
-                <p className="font-bold text-[12px] uppercase">PAX</p>
+                <p className="font-bold text-black text-[12px] uppercase">PAX</p>
                 <p className="text-cyan-500 font-bold text-[20px] leading-none">
-                  {data?.pax || "—"}
+                  {data?.passangerTotal || "—"}
                 </p>
               </div>
               <div className="p-2 text-[11px]">
@@ -208,17 +208,17 @@ export default function QuotationPdf({ data, onClose }: QuotationPdfProps) {
             <table className="w-full text-xs border-collapse">
               <thead className="bg-gray-100">
                 <tr>
-                  <th className="p-2 border border-gray-200 text-left">#</th>
-                  <th className="p-2 border border-gray-200 text-left">
+                  <th className="p-2 border text-black border-gray-200 text-left">#</th>
+                  <th className="p-2 border text-black border-gray-200 text-left">
                     Vehicle Type
                   </th>
-                  <th className="p-2 border border-gray-200 text-center">
+                  <th className="p-2 border text-black border-gray-200 text-center">
                     Category
                   </th>
-                  <th className="p-2 border border-gray-200 text-left">
+                  <th className="p-2 border text-black border-gray-200 text-left">
                     Description
                   </th>
-                  <th className="p-2 border border-gray-200 text-right">
+                  <th className="p-2 border text-black border-gray-200 text-right">
                     Price
                   </th>
                 </tr>
@@ -227,17 +227,17 @@ export default function QuotationPdf({ data, onClose }: QuotationPdfProps) {
                 {vehicles.length > 0 ? (
                   vehicles.map((v: any, idx: number) => (
                     <tr key={idx} className="hover:bg-gray-50">
-                      <td className="p-2 border border-gray-200">{idx + 1}</td>
-                      <td className="p-2 border border-gray-200 font-medium">
+                      <td className="p-2 border text-black border-gray-200">{idx + 1}</td>
+                      <td className="p-2 border text-black border-gray-200 font-medium">
                         {v?.vehicleType || "—"}
                       </td>
-                      <td className="p-2 border border-gray-200 text-center">
+                      <td className="p-2 border text-black border-gray-200 text-center">
                         {v?.category || "—"}
                       </td>
-                      <td className="p-2 border border-gray-200">
+                      <td className="p-2 border text-black border-gray-200">
                         {v?.description || "—"}
                       </td>
-                      <td className="p-2 border border-gray-200 text-right font-bold text-green-700">
+                      <td className="p-2 border text-black border-gray-200 text-right font-bold text-green-700">
                         ₹{Number(v?.amount || 0).toLocaleString("en-IN")}
                       </td>
                     </tr>
@@ -260,7 +260,7 @@ export default function QuotationPdf({ data, onClose }: QuotationPdfProps) {
           {/* SCAN & PAY + Bank */}
           <div className="mt-4 grid grid-cols-2 gap-4">
             <div className="border border-dashed border-gray-300 rounded p-3 bg-gray-50 text-center">
-              <p className="text-xs font-bold flex items-center justify-center gap-1 mb-1">
+              <p className="text-xs font-bold text-black flex items-center justify-center gap-1 mb-1">
                 <CreditCard size={13} /> SCAN &amp; PAY
               </p>
               <div className="bg-white inline-block p-1.5 rounded shadow-sm">
@@ -297,14 +297,14 @@ export default function QuotationPdf({ data, onClose }: QuotationPdfProps) {
               </div>
               <p className="text-[9px] text-gray-400 mt-1">UPI / QR Code</p>
             </div>
-            <div className="border border-gray-200 rounded p-3 text-[11px] space-y-1">
-              <p className="font-bold text-xs">Bank Transfer Details:</p>
+            <div className="border border-gray-200 text-black rounded p-3 text-[11px] space-y-1">
+              <p className="font-bold text-black text-xs">Bank Transfer Details:</p>
               <p>
                 A/c Name:{" "}
-                <span className="font-mono">Urban Cabs | AX05 Bank</span>
+                <span className="font-mono text-black">Urban Cabs | AX05 Bank</span>
               </p>
               <p>
-                A/c No.: <span className="font-mono">922020012721497</span>
+                A/c No.: <span className="font-mono text-black">922020012721497</span>
               </p>
               <p>
                 IFSC: <span className="font-mono">UTIB00000572</span>
@@ -318,7 +318,7 @@ export default function QuotationPdf({ data, onClose }: QuotationPdfProps) {
             <div className="px-3 py-1.5 font-bold text-white bg-green-600 text-sm">
               OTHER CHARGES (if applicable)
             </div>
-            <div className="p-3 text-[11px] grid grid-cols-2 gap-x-4 gap-y-1">
+            <div className="p-3 text-[11px] text-black grid grid-cols-2 gap-x-4 gap-y-1">
               <p>
                 <span className="font-semibold">✔ Toll:</span> Included in Cost.
               </p>

@@ -1,5 +1,6 @@
 import express from "express";
 import {
+  getAgingReportController,
   getLeadCountByAdviserForMonthController,
   getMonthlyDateWiseStatusReportController,
   getMonthlyStatusWiseReportController,
@@ -36,4 +37,9 @@ router.get("/time-enquiry", timeEnquiryReport);
 router.get("/longweekend", longWeekendReport);
 router.get("/monthlyreporttwo", monthlyreporttwo);
 
+router.get(
+  "/aging-report",
+  verifyJWT,
+  getAgingReportController
+);
 export default router;

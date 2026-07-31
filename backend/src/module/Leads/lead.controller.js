@@ -21,6 +21,8 @@ import {
   getAdvisorReminderDetails,
   getAdvisorFollowupDetails,
   getAdvisorFollowupStats,
+  insertLeadStatusHistory,
+  getRfqTimeByLeadId,
 } from "./lead.model.js";
 
 const createLeads = asyncHandler(async (req, res) => {
@@ -229,15 +231,21 @@ export const getAllUnwantedLeadsController = asyncHandler(async (req, res) => {
 const updateLeadByIdController = asyncHandler(async (req, res) => {
   const { leadId } = req.params;
   const data = req.body;
+
   if (!leadId) {
     throw new ApiError(400, "Lead ID is required");
   }
 
+  // Step 1: Existing Lead
   const existingLead = await getLeadById(leadId);
   if (!existingLead) {
     throw new ApiError(404, "Lead not found");
   }
+
   const customerId = existingLead.customer_id;
+  const oldStatus = existingLead.status;
+  const newStatus = data.status;
+
   // Step 2: Customer update
   const customerFields = {
     firstName: data.firstName,
@@ -260,8 +268,10 @@ const updateLeadByIdController = asyncHandler(async (req, res) => {
   );
 
   let updatedCustomer = null;
+
   if (Object.keys(customerUpdateData).length > 0) {
     updatedCustomer = await updateCustomerById(customerId, customerUpdateData);
+
     if (!updatedCustomer) {
       throw new ApiError(400, "Customer could not be updated");
     }
@@ -269,6 +279,7 @@ const updateLeadByIdController = asyncHandler(async (req, res) => {
 
   // Step 3: Lead data prepare
   const leadData = { ...data };
+
   delete leadData.firstName;
   delete leadData.middleName;
   delete leadData.lastName;
@@ -289,29 +300,45 @@ const updateLeadByIdController = asyncHandler(async (req, res) => {
 
   // Step 4: Lead update
   let updatedLead = null;
+
   if (Object.keys(leadData).length > 0) {
     updatedLead = await updateLeadById(leadId, leadData);
+
     if (!updatedLead) {
       throw new ApiError(400, "Lead could not be updated");
     }
   }
 
-  // ✅ Full lead fetch — customers JOIN + hrmsPool names ke saath
+  // Step 5: Status History
+  if (newStatus && oldStatus && oldStatus !== newStatus) {
+    await insertLeadStatusHistory({
+      lead_id: Number(leadId),
+      old_status: oldStatus,
+      new_status: newStatus,
+      changed_by: req.user?.id ?? null, // ✅ optional chaining + fallback
+    });
+  }
+
+  // Step 6: Full Lead Fetch
   const fullLead = await getLeadById(updatedLead?.id ?? leadId);
 
+  // Step 7: Socket Emit
   try {
     const io = getIO();
+
     emitToHierarchy({
       io,
       eventName: "leadUpdated",
       lead: fullLead ?? updatedLead,
       userIdKey: "presales_id",
     });
+
     console.log("📡 leadUpdated emitted with full data");
   } catch (err) {
     console.error("⚠️ Socket emit failed:", err.message);
   }
 
+  // Step 8: Response
   return res.status(200).json(
     new ApiResponse(
       200,
@@ -487,6 +514,23 @@ export const getAdvisorFollowupDetailsController = asyncHandler(
       );
   },
 );
+
+export const getLeadRfqTimeController = asyncHandler(async (req, res) => {
+  const { leadId } = req.params;
+  if (!leadId) throw new ApiError(400, "leadId is required");
+
+  const rfqTime = await getRfqTimeByLeadId(leadId);
+
+  if (!rfqTime) {
+    return res
+      .status(200)
+      .json(new ApiResponse(200, null, "Lead has not reached RFQ status yet"));
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, rfqTime, "RFQ time fetched successfully"));
+});
 export {
   createLeads,
   listLeads,

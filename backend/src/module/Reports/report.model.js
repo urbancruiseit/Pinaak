@@ -756,3 +756,117 @@ export const getMonthlyReportTwo = async (year, cityIds = []) => {
     throw error;
   }
 };
+
+export const getAgingReport = async (year, cityIds = []) => {
+  try {
+    const [tables] = await pool.query("SHOW TABLES LIKE 'leads'");
+    if (tables.length === 0) return [];
+
+    let whereClause = `WHERE 1=1`;
+    const values = [];
+
+    if (year) {
+      whereClause += ` AND YEAR(l.created_at) = ?`;
+      values.push(year);
+    }
+
+    if (cityIds && cityIds.length > 0) {
+      const placeholders = cityIds.map(() => "?").join(",");
+      whereClause += ` AND l.city_id IN (${placeholders})`;
+      values.push(...cityIds);
+    }
+
+    // ✅ FIX (timezone): l.created_at / lead_status_history.changed_at
+    // MySQL me actually UTC time store ho raha hai (IST nahi — confirmed:
+    // displayed time 09:20 AM tha jabki actual IST time 02:49 PM tha,
+    // yani ~5:30 ka farak, jo exactly UTC→IST offset hai).
+    //
+    // Isliye sirf format karna kaafi nahi tha — humein SQL me hi UTC
+    // value ko IST (+05:30) me convert karna padega, uske baad hi format
+    // karna hai. DATE_ADD(..., INTERVAL 330 MINUTE) use kar rahe hain
+    // (330 minutes = 5 hours 30 minutes) kyunki CONVERT_TZ ke liye MySQL
+    // ke timezone tables (mysql.time_zone_name) load hone chahiye, jo
+    // har server par by-default load nahi hote — DATE_ADD hamesha kaam
+    // karega, kisi extra MySQL config ki zaroorat nahi.
+    //
+    // Raw datetime columns TIMESTAMPDIFF ke liye UTC me hi use ho rahe
+    // hain (dono taraf UTC hone se difference/aging calculation par koi
+    // farak nahi padta) — sirf display wale new_time/rfq_time strings
+    // ko IST me convert karke format kiya ja raha hai.
+    const query = `
+      SELECT
+          l.id AS lead_id,
+
+          CONCAT(
+              IFNULL(c.firstName,''),
+              ' ',
+              IFNULL(c.lastName,'')
+          ) AS customer_name,
+
+          c.customerPhone,
+
+          DATE_FORMAT(
+              DATE_ADD(l.created_at, INTERVAL 330 MINUTE),
+              '%d %b %Y, %h:%i %p'
+          ) AS new_time,
+
+          DATE_FORMAT(
+              DATE_ADD(
+                  (
+                      SELECT h.changed_at
+                      FROM lead_status_history h
+                      WHERE h.lead_id = l.id
+                        AND h.new_status = 'RFQ'
+                      ORDER BY h.changed_at ASC
+                      LIMIT 1
+                  ),
+                  INTERVAL 330 MINUTE
+              ),
+              '%d %b %Y, %h:%i %p'
+          ) AS rfq_time,
+
+          TIMESTAMPDIFF(
+              MINUTE,
+              l.created_at,
+              (
+                  SELECT h.changed_at
+                  FROM lead_status_history h
+                  WHERE h.lead_id = l.id
+                    AND h.new_status='RFQ'
+                  ORDER BY h.changed_at ASC
+                  LIMIT 1
+              )
+          ) AS total_minutes
+
+      FROM leads l
+      LEFT JOIN customers c
+          ON c.id = l.customer_id
+
+      ${whereClause}
+
+      ORDER BY l.created_at DESC
+    `;
+
+    const [rows] = await pool.execute(query, values);
+
+    return rows.map((row) => {
+      let aging = "-";
+
+      if (row.total_minutes !== null) {
+        const days = Math.floor(row.total_minutes / (60 * 24));
+        const hours = Math.floor((row.total_minutes % (60 * 24)) / 60);
+        const minutes = row.total_minutes % 60;
+
+        aging = `${days} Days ${hours} Hours ${minutes} Minutes`;
+      }
+
+      return {
+        ...row,
+        aging,
+      };
+    });
+  } catch (error) {
+    console.error("❌ Aging Report Error:", error.message);
+    throw error;
+  }
+};

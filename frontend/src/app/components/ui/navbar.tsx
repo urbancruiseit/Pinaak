@@ -133,6 +133,9 @@ const DASHBOARD_ITEMS: Record<string, MenuItem[]> = {
   team_leader: [
     { label: "Team Leader Dashboard", value: "teamleader-dashboard" },
   ],
+  "team leader-sales": [
+    { label: "City Manager Dashboard", value: "citymanager-dashboard" },
+  ],
 };
 
 const getMenuIcon = (menuKey: string) => {
@@ -195,9 +198,16 @@ export function Navbar() {
   const isManager = normalizedRole === "manager";
   const isCityManager = normalizedRole === "city manager";
 
-  // ✅ FIX 1: City Manager included in dropdown trigger
+  // ✅ Team Leader-Sales — gets the exact same access as City Manager
+  const isTeamLeaderSales =
+    normalizedRole === "team leader-sales" ||
+    normalizedRole === "team leader sales" ||
+    normalizedRole.includes("team leader-sales") ||
+    normalizedRole.includes("team leader sales");
+
+  // ✅ FIX 1: City Manager (and now Team Leader-Sales) included in dropdown trigger
   const shouldShowLeadManagerDropdown =
-    isSuperAdmin || isManager || isCityManager;
+    isSuperAdmin || isManager || isCityManager || isTeamLeaderSales;
 
   // ✅ SEO Executive (Digital Marketing) special-case checks
   const isSeoExecutive = normalizedRole === "seo executive";
@@ -213,6 +223,7 @@ export function Navbar() {
     "manager",
     "city manager",
     "team leader",
+    "team leader-sales",
     "pre-sales executive",
     "seo executive",
   ];
@@ -308,38 +319,70 @@ export function Navbar() {
         isPresalesExecutive ||
         isTeamLeader ||
         isCityManager ||
+        isTeamLeaderSales ||
         isSeoExecutiveDigitalMarketing,
     },
     {
       label: "Monthly Enquiry PS 2 (MER 2)",
       key: "monthlyLeadsTwo",
       show:
-        isSuperAdmin || isPresalesExecutive || isTeamLeader || isCityManager,
+        isSuperAdmin ||
+        isPresalesExecutive ||
+        isTeamLeader ||
+        isCityManager ||
+        isTeamLeaderSales,
     },
     {
       label: "Lead Distribution PS (LDR)",
       key: "monthlyDistribution",
-      show: isSuperAdmin || isPresalesExecutive || isCityManager,
+      show:
+        isSuperAdmin ||
+        isPresalesExecutive ||
+        isCityManager ||
+        isTeamLeaderSales,
     },
     {
       label: "Long Weekend Distribution (LWD)",
       key: "longWeekendLeads",
-      show: isSuperAdmin || isTravelAdvisor || isTeamLeader || isCityManager,
+      show:
+        isSuperAdmin ||
+        isTravelAdvisor ||
+        isTeamLeader ||
+        isCityManager ||
+        isTeamLeaderSales,
     },
     {
       label: "Employee Performance - TS (EP-TS)",
       key: "employeeReports",
-      show: isSuperAdmin || isTravelAdvisor || isTeamLeader || isCityManager,
+      show:
+        isSuperAdmin ||
+        isTravelAdvisor ||
+        isTeamLeader ||
+        isCityManager ||
+        isTeamLeaderSales,
     },
     {
       label: "Employee Performance - PS (EP-PS)",
       key: "dateEmployeeReports",
-      show: isSuperAdmin || isPresalesExecutive || isCityManager,
+      show:
+        isSuperAdmin ||
+        isPresalesExecutive ||
+        isCityManager ||
+        isTeamLeaderSales,
     },
     {
       label: "Unwanted Leads (ULR)",
       key: "unwantedLeads",
       show: isPresalesExecutive,
+    },
+    {
+      label: "Aging Performance - PS (AP-PS)",
+      key: "agingReports",
+      show:
+        isSuperAdmin ||
+        isPresalesExecutive ||
+        isCityManager ||
+        isTeamLeaderSales,
     },
   ].filter((i) => i.show);
 
@@ -488,7 +531,7 @@ export function Navbar() {
                         />
                       </button>
 
-                      {/* ✅ FIX 2: Dropdown now shows for City Manager too */}
+                      {/* ✅ FIX 2: Dropdown now shows for City Manager / Team Leader-Sales too */}
                       {openMenu === "lead-manager-superadmin" && (
                         <ul className="w-full md:absolute md:left-0 z-50 py-1 mt-1 bg-white border-2 border-emerald-300 rounded-lg shadow-xl md:top-full md:w-64 max-h-80 overflow-y-auto">
                           <li
@@ -767,8 +810,9 @@ export function Navbar() {
 
           {/* ── Right section: User profile ── */}
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:ml-auto md:gap-2 lg:gap-3">
-            {/* Rules — city manager aur pre-sales executive ko dikhega */}
+            {/* Rules — city manager, team leader-sales aur pre-sales executive ko dikhega */}
             {(normalizedRole === "city manager" ||
+              isTeamLeaderSales ||
               normalizedRole === "pre-sales executive") && (
               <button
                 type="button"

@@ -94,14 +94,14 @@ const colorMap: Record<
     activeBg: "bg-indigo-50",
   },
 };
-// Menu access ke liye supported role-tags. Ye woh "canonical" names hain
-// jo employeeMenuItems ke `allowedRoles` array me use honge.
+
 type RoleTag =
   | "advisor"
   | "manager"
   | "presale"
   | "tele-sales"
-  | "seo-executive";
+  | "seo-executive"
+  | "team-leader-sales";
 
 const Sidebar: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -136,10 +136,6 @@ const Sidebar: React.FC = () => {
     loginType || (rawUser?.loginType as string | undefined) || "";
   const isVendor = effectiveLoginType === "vendor";
 
-  // ══════════════════════════════════════════════
-  // ROLE DETECTION — inputs se derive karte hain,
-  // par final access ALLOW-LIST (userRoleTags) se decide hota hai
-  // ══════════════════════════════════════════════
   const isPresale =
     role.includes("presale") ||
     role.includes("pre-sale") ||
@@ -150,26 +146,24 @@ const Sidebar: React.FC = () => {
   const isManager = role.includes("manager") || roleName.includes("manager");
   const isTelesales = subDept === "tele-sales";
 
-  // ✅ FIX: City Manager ka subDepartment bhi "tele-sales" hota hai
-  // (navigationSlice.ts -> initFromRole me `r.includes("city manager") &&
-  // isTelesalesSub` se hi "citymanager-dashboard" set hota hai). Isliye
-  // sirf `isTelesales` check se City Manager galti se Telesales wale
-  // "sale-lead-table" view me chala jaata tha. Ab role/role_name me
-  // explicitly "city manager" dhoondh kar isko alag treat karte hain.
+  const isTeamLeaderSales =
+    roleName === "team leader-sales" ||
+    roleName.includes("team leader-sales") ||
+    roleName.includes("team leader sales");
+
   const isCityManagerRole =
     role.includes("city manager") || roleName.includes("city manager");
 
   const isSeoExecutiveDigitalMarketing =
     departmentName === "digital marketing" && roleName === "seo executive";
 
-  // User ke paas jo bhi role-tags match hote hain, unka list.
-  // Menu items sirf isi list ke against check honge (whitelist).
   const userRoleTags: RoleTag[] = [
     isAdvisor && "advisor",
     isManager && "manager",
     isPresale && "presale",
     isTelesales && "tele-sales",
     isSeoExecutiveDigitalMarketing && "seo-executive",
+    isTeamLeaderSales && "team-leader-sales",
   ].filter(Boolean) as RoleTag[];
 
   const hasAccess = (allowedRoles: RoleTag[]) =>
@@ -178,13 +172,13 @@ const Sidebar: React.FC = () => {
   const [isExpanded, setIsExpanded] = useState(false);
   const iconSize = isExpanded ? 26 : 28;
 
-  // ✅ FIX: City Manager click -> uska apna dashboard (activeSection "leads"
-  // + activeLeadView "dashboard"; page.tsx me isCityManager check isi
-  // combination par CityManagerDashboardModule render karta hai).
-  // Telesales (non-city-manager) click -> "sale-lead-table" (jaisa pehle tha).
-  // Baaki sab -> default leads dashboard/list view.
   const handleLeadsClick = () => {
     if (isCityManagerRole) {
+      dispatch(setActiveSection("leads"));
+      dispatch(setActiveLeadView("dashboard" as any));
+      return;
+    }
+    if (isTeamLeaderSales) {
       dispatch(setActiveSection("leads"));
       dispatch(setActiveLeadView("dashboard" as any));
       return;
@@ -225,6 +219,7 @@ const Sidebar: React.FC = () => {
         "seo-executive",
         "advisor",
         "manager",
+        "team-leader-sales",
       ] as RoleTag[],
     },
     {
@@ -235,7 +230,7 @@ const Sidebar: React.FC = () => {
       isActive: activeSection === "rate-quotation",
       onClick: () => dispatch(setActiveSection("rate-quotation")),
       color: "blue" as Color,
-      allowedRoles: ["advisor", "manager"] as RoleTag[],
+      allowedRoles: ["advisor", "manager", "team-leader-sales"] as RoleTag[],
     },
     {
       key: "booking-trip",
@@ -245,7 +240,12 @@ const Sidebar: React.FC = () => {
       isActive: activeSection === "booking-trip",
       onClick: () => dispatch(setActiveSection("booking-trip")),
       color: "purple" as Color,
-      allowedRoles: ["advisor", "manager", "presale"] as RoleTag[],
+      allowedRoles: [
+        "advisor",
+        "manager",
+        "presale",
+        "team-leader-sales",
+      ] as RoleTag[],
     },
     {
       key: "payment",
@@ -255,7 +255,12 @@ const Sidebar: React.FC = () => {
       isActive: activeSection === "payment",
       onClick: () => dispatch(setActiveSection("payment")),
       color: "yellow" as Color,
-      allowedRoles: ["advisor", "manager", "presale"] as RoleTag[],
+      allowedRoles: [
+        "advisor",
+        "manager",
+        "presale",
+        "team-leader-sales",
+      ] as RoleTag[],
     },
     {
       key: "feedback",

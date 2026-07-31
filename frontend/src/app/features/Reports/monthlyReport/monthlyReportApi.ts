@@ -71,9 +71,14 @@ export interface LeadDistributionParams {
   cityId?: string;
 }
 
+// ✅ merged into a single definition (was duplicated before, causing a
+// "Duplicate identifier 'StatusWiseReportParams'" TS error)
 export interface StatusWiseReportParams {
   month?: number;
   year?: number;
+  regionId?: string;
+  zoneId?: string;
+  cityId?: string;
 }
 
 export interface StatusWiseReportItem {
@@ -121,18 +126,62 @@ export interface MonthlyReportTwoRecord {
   dates: Record<number, number>; // { 1: 0, 2: 3, ... 31: 0 }
 }
 
-export interface MonthlyReportTwoResponse {
-  success: boolean;
-  year: number;
-  data: MonthlyReportTwoRecord[];
+// ✅ New: represents a single "row" (day-level) entry returned inside
+// data.rows by /reports/monthlyreporttwo. Kept flexible since backend
+// can add extra per-city / per-status keys to each row.
+export interface MonthlyReportTwoDayRecord {
+  date: string;
+  day?: number;
+  month?: number | string;
+  year?: number;
+  total?: number;
+  [key: string]: any;
 }
 
-export interface StatusWiseReportParams {
-  month?: number;
+export interface AgingReportItem {
+  lead_id: number;
+  customer_name: string;
+  customerPhone: string;
+  new_time: string;
+  rfq_time: string | null;
+  aging: string;
+}
+
+export interface AgingReportResponse {
+  success: boolean;
+  data: AgingReportItem[];
+}
+
+export interface AgingReportParams {
   year?: number;
   regionId?: string;
   zoneId?: string;
   cityId?: string;
+  cityIds?: number[];
+}
+
+export interface PickupMonthSummary {
+  total: number;
+  activeDays: number;
+  avg: number;
+}
+
+export interface MonthlyReportTwoParams {
+  year?: number;
+  cityIds?: number[];
+  regionId?: string | number;
+  zoneId?: string | number;
+  cityId?: string | number;
+}
+
+// ✅ single definition (was duplicated before). Added `cityIds` so the
+// return value of getMonthlyReportTwoApi actually matches its declared type.
+export interface MonthlyReportTwoResponse {
+  success: boolean;
+  year: number | "all";
+  rows: MonthlyReportTwoDayRecord[];
+  pickupMonthSummary: Record<string, PickupMonthSummary>;
+  cityIds: number[];
 }
 
 // ─── Error Handler ───────────────────────────────────────────────────
@@ -162,6 +211,7 @@ const handleAxiosError = (error: any, context: string): never => {
 };
 
 // ─── APIs ────────────────────────────────────────────────────────────
+
 export const getMonthlyEnquiryApi = async (
   year: number,
   regionId?: string,
@@ -343,7 +393,15 @@ export const getTimeEnquiryApi = async (
   }
 };
 
-export const getStatusWiseDateReportApi = async (params = {}) => {
+export const getStatusWiseDateReportApi = async (
+  params: {
+    month?: number;
+    year?: number;
+    regionId?: string | number;
+    zoneId?: string | number;
+    cityId?: string | number;
+  } = {},
+) => {
   try {
     const response = await axiosInstance.get(
       "/reports/status-wise-date-report",
@@ -380,27 +438,6 @@ export const getLongWeekendReportApi = async (
     );
   }
 };
-
-export interface PickupMonthSummary {
-  total: number;
-  activeDays: number;
-  avg: number;
-}
-export interface MonthlyReportTwoParams {
-  year?: number;
-  cityIds?: number[];
-
-  regionId?: string | number;
-  zoneId?: string | number;
-  cityId?: string | number;
-}
-
-export interface MonthlyReportTwoResponse {
-  success: boolean;
-  year: number;
-  rows: MonthlyReportTwoRecord[];
-  pickupMonthSummary: Record<string, PickupMonthSummary>;
-}
 
 // ✅ updated API function
 export const getMonthlyReportTwoApi = async (
@@ -442,5 +479,46 @@ export const getMonthlyReportTwoApi = async (
     };
   } catch (error) {
     throw handleAxiosError(error, "getMonthlyReportTwoApi");
+  }
+};
+
+export const getAgingReportApi = async (
+  params: AgingReportParams = {},
+): Promise<AgingReportResponse> => {
+  try {
+    // ✅ Backend controller (getAgingReportController) wraps the response
+    // via ApiResponse(200, data, message) where `data` is the raw array
+    // of aging rows directly — it is NOT nested as { success, data }.
+    // So axios response.data looks like:
+    //   { statusCode, success, message, data: AgingReportItem[] }
+    const response = await axiosInstance.get<{
+      statusCode: number;
+      success: boolean;
+      message: string;
+      data: AgingReportItem[];
+    }>("/reports/aging-report", {
+      params: {
+        ...(params.year && { year: params.year }),
+        ...(params.regionId && { regionId: params.regionId }),
+        ...(params.zoneId && { zoneId: params.zoneId }),
+        ...(params.cityId && { cityId: params.cityId }),
+        ...(params.cityIds &&
+          params.cityIds.length > 0 && {
+            cityIds: params.cityIds.join(","),
+          }),
+      },
+      timeout: 15000,
+    });
+
+    const res = response.data;
+
+    return {
+      success: res.success ?? true,
+      // ✅ Array.isArray guard so `.length`/`.map` never crashes on the
+      // frontend even if backend returns null/undefined unexpectedly.
+      data: Array.isArray(res.data) ? res.data : [],
+    };
+  } catch (error) {
+    throw handleAxiosError(error, "getAgingReportApi");
   }
 };

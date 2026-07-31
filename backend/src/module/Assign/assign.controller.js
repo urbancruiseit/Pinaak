@@ -102,7 +102,7 @@ const getMyAssignedLeads = asyncHandler(async (req, res) => {
   let advisorId = scopeAdvisorId;
 
   const roleName = req.user.role_name?.toLowerCase();
-  if (roleName === "city manager") {
+  if (["city manager", "team leader-sales"].includes(roleName)) {
     const paramAdvisorId = req.query.advisorId
       ? parseInt(req.query.advisorId, 10)
       : null;
@@ -253,7 +253,7 @@ export const getMySwapLeads = asyncHandler(async (req, res) => {
   let advisorId = scopeAdvisorId;
 
   const roleName = req.user.role_name?.toLowerCase();
-  if (roleName === "city manager") {
+  if (["city manager", "team leader-sales"].includes(roleName)) {
     const paramAdvisorId = req.query.advisorId
       ? parseInt(req.query.advisorId, 10)
       : null;

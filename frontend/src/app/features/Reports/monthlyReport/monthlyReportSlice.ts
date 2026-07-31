@@ -14,7 +14,10 @@ import {
   getMonthlyReportTwoApi,
   MonthlyReportTwoParams,
   MonthlyReportTwoDayRecord,
-  PickupMonthSummary, // ✅ नया import
+  PickupMonthSummary,
+  getAgingReportApi, // ✅ नया import
+  AgingReportParams, // ✅ नया import
+  AgingReportItem, // ✅ नया import
 } from "./monthlyReportApi";
 
 interface MonthlyEnquiryState {
@@ -70,6 +73,12 @@ interface MonthlyEnquiryState {
     loading: boolean;
     error: string | null;
   };
+  // ✅ नया: agingReport state (interface + initialState दोनों में missing था)
+  agingReport: {
+    data: AgingReportItem[];
+    loading: boolean;
+    error: string | null;
+  };
 }
 
 const initialState: MonthlyEnquiryState = {
@@ -122,6 +131,12 @@ const initialState: MonthlyEnquiryState = {
     },
     year: null,
     cityIds: [],
+    loading: false,
+    error: null,
+  },
+  // ✅ नया
+  agingReport: {
+    data: [],
     loading: false,
     error: null,
   },
@@ -182,6 +197,7 @@ export const fetchStatusWiseReport = createAsyncThunk(
     }
   },
 );
+
 export const fetchTimeEnquiry = createAsyncThunk(
   "report/fetchTimeEnquiry",
   async (year: number, { rejectWithValue }) => {
@@ -192,6 +208,7 @@ export const fetchTimeEnquiry = createAsyncThunk(
     }
   },
 );
+
 export const fetchStatusWiseDateReport = createAsyncThunk(
   "report/fetchStatusWiseDateReport",
   async (
@@ -234,16 +251,23 @@ export const fetchLongWeekendReport = createAsyncThunk(
 export const fetchMonthlyReportTwo = createAsyncThunk(
   "report/fetchMonthlyReportTwo",
   async (
-    params: {
-      year?: number;
-      regionId?: string | number;
-      zoneId?: string | number;
-      cityId?: string | number;
-    },
+    params: MonthlyReportTwoParams,
     { rejectWithValue },
   ) => {
     try {
       return await getMonthlyReportTwoApi(params);
+    } catch (error: any) {
+      return rejectWithValue(error.message);
+    }
+  },
+);
+
+// ✅ नया thunk — AgingReportParams import करके proper typing दी
+export const fetchAgingReport = createAsyncThunk(
+  "report/fetchAgingReport",
+  async (params: AgingReportParams = {}, { rejectWithValue }) => {
+    try {
+      return await getAgingReportApi(params);
     } catch (error: any) {
       return rejectWithValue(error.message);
     }
@@ -278,6 +302,14 @@ const monthlyReportSlice = createSlice({
         },
         year: null,
         cityIds: [],
+        loading: false,
+        error: null,
+      };
+    },
+    // ✅ नया reset reducer
+    resetAgingReport: (state) => {
+      state.agingReport = {
+        data: [],
         loading: false,
         error: null,
       };
@@ -382,6 +414,25 @@ const monthlyReportSlice = createSlice({
         state.longWeekend.error = action.payload as string;
       })
 
+      // Aging Report (✅ अब state.agingReport interface + initialState में defined है, इसलिए error नहीं आएगा)
+      .addCase(fetchAgingReport.pending, (state) => {
+        state.agingReport.loading = true;
+        state.agingReport.error = null;
+      })
+      .addCase(fetchAgingReport.fulfilled, (state, action) => {
+        state.agingReport.loading = false;
+        // ✅ defensive guard — agar kabhi payload.data array na ho to bhi
+        // state.agingReport.data undefined nahi banega (jo pehle crash ki
+        // wajah tha: "Cannot read properties of undefined (reading 'length')")
+        state.agingReport.data = Array.isArray(action.payload?.data)
+          ? action.payload.data
+          : [];
+      })
+      .addCase(fetchAgingReport.rejected, (state, action) => {
+        state.agingReport.loading = false;
+        state.agingReport.error = action.payload as string;
+      })
+
       // Monthly Report Two
       .addCase(fetchMonthlyReportTwo.pending, (state) => {
         state.monthlyReportTwo.loading = true;
@@ -408,6 +459,7 @@ export const {
   resetTimeEnquiry,
   resetAllTimeEnquiry,
   resetMonthlyReportTwo,
+  resetAgingReport,
 } = monthlyReportSlice.actions;
 
 export default monthlyReportSlice.reducer;

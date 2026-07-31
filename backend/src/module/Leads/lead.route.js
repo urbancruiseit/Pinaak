@@ -13,6 +13,7 @@ import {
   getAdvisorReminderDetailsController,
   getAdvisorFollowupDetailsController,
   getAdvisorFollowupStatsController,
+  getLeadRfqTimeController,
 } from "./lead.controller.js";
 import { verifyJWT } from "../../middlewares/auth.middleware.js";
 const router = Router();
@@ -46,4 +47,5 @@ router.get(
   verifyJWT,
   getAdvisorFollowupDetailsController,
 );
+router.get("/leads/:leadId/rfq-time", getLeadRfqTimeController);
 export default router;

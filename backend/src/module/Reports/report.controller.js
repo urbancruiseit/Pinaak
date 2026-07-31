@@ -1,4 +1,5 @@
 import {
+  getAgingReport,
   getLeadCountByDateForYear,
   getLongWeekendReport,
   getMonthlyDateWiseStatusReport,
@@ -162,5 +163,28 @@ export const monthlyreporttwo = asyncHandler(async (req, res) => {
         { year: year ?? "all", data: data || [] },
         "Monthly report two fetched successfully",
       ),
+    );
+});
+
+export const getAgingReportController = asyncHandler(async (req, res) => {
+  const year = req.query.year
+    ? parseInt(req.query.year)
+    : new Date().getFullYear();
+
+  if (isNaN(year) || year < 2000 || year > 2100) {
+    throw new ApiError(400, "Invalid year parameter");
+  }
+
+  const { cityIds: scopedCityIds } = await findZoneCityRegion(req);
+
+  const cityIds =
+    scopedCityIds?.length > 0 ? scopedCityIds : req.user?.city_ids || [];
+
+  const data = await getAgingReport(year, cityIds);
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, data || [], "Aging report fetched successfully"),
     );
 });

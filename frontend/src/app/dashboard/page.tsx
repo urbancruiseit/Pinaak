@@ -93,6 +93,9 @@ const LongWeekendLeadsModule = lazy(
 const DateEmployeeReportsModule = lazy(
   () => import("../components/pages/leads/Reports/EmployeeDateReport"),
 );
+const AgingReportsModule = lazy(
+  () => import("../components/pages/leads/Reports/AgingReport"),
+);
 const GACForm = lazy(() => import("../components/pages/Website/list/gacTable"));
 const GAQTable = lazy(
   () => import("../components/pages/Website/list/gaqTable"),
@@ -456,7 +459,12 @@ export default function DashboardPage() {
             <DateEmployeeReportsModule />
           </div>
         );
-
+      if (nav.showagingReports)
+        return (
+          <div className="space-y-6">
+            <AgingReportsModule />
+          </div>
+        );
       if (nav.activeLeadView === "lead-form")
         return (
           <div className="space-y-6">

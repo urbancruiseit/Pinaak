@@ -1173,3 +1173,55 @@ export const getAdvisorFollowupDetails = async (advisorId) => {
     throw error;
   }
 };
+
+export const insertLeadStatusHistory = async ({
+  lead_id,
+  old_status,
+  new_status,
+  changed_by,
+}) => {
+  const [result] = await pool.query(
+    `INSERT INTO lead_status_history
+     (lead_id, old_status, new_status, changed_by)
+     VALUES (?, ?, ?, ?)`,
+    [lead_id, old_status, new_status, changed_by],
+  );
+
+  return result;
+};
+
+export const getRfqTimeByLeadId = async (leadId) => {
+  try {
+    const [rows] = await pool.query(
+      `
+      SELECT 
+        l.created_at,
+        h.changed_at AS rfq_at,
+        TIMESTAMPDIFF(MINUTE, l.created_at, h.changed_at) AS rfq_minutes
+      FROM leads l
+      INNER JOIN lead_status_history h 
+        ON h.lead_id = l.id AND h.new_status = 'RFQ'
+      WHERE l.id = ?
+      ORDER BY h.changed_at ASC
+      LIMIT 1
+      `,
+      [leadId],
+    );
+
+    if (!rows.length) return null;
+
+    const { created_at, rfq_at, rfq_minutes } = rows[0];
+    const hours = Math.floor(rfq_minutes / 60);
+    const minutes = rfq_minutes % 60;
+
+    return {
+      created_at,
+      rfq_at,
+      rfq_minutes,
+      formatted: `${hours} Hours ${minutes} Minutes`,
+    };
+  } catch (error) {
+    console.error("getRfqTimeByLeadId error:", error);
+    throw error;
+  }
+};

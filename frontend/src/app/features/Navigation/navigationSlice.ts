@@ -83,6 +83,7 @@ interface NavigationState {
   showEmployeeReports: boolean;
   showTimeEnquiryReports: boolean;
   showDateEmployeeReports: boolean;
+  showagingReports: boolean;
   showMonthlyLeadsTwo: boolean;
   showLongWeekendLeads: boolean;
 }
@@ -109,6 +110,7 @@ const initialState: NavigationState = {
   showEmployeeReports: false,
   showTimeEnquiryReports: false,
   showDateEmployeeReports: false,
+  showagingReports: false,
   showMonthlyLeadsTwo: false,
   showLongWeekendLeads: false,
 };
@@ -120,6 +122,7 @@ const resetReports = (state: NavigationState) => {
   state.showEmployeeReports = false;
   state.showTimeEnquiryReports = false;
   state.showDateEmployeeReports = false;
+  state.showagingReports = false;
   state.showMonthlyLeadsTwo = false;
   state.showLongWeekendLeads = false;
 };
@@ -240,6 +243,9 @@ const navigationSlice = createSlice({
           break;
         case "dateEmployeeReports":
           state.showDateEmployeeReports = true;
+          break;
+        case "agingReports":
+          state.showagingReports = true;
           break;
         case "monthlyLeadsTwo":
           state.showMonthlyLeadsTwo = true;

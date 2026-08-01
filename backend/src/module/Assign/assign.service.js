@@ -11,6 +11,7 @@ export const findZoneCityRegion = async (req) => {
     cityIds: [],
     accessDenied: false,
   };
+
   if (sub_department === "pre-sales") {
     if (roleName === "pre-sales executive") {
       let zoneIds = req.user.zone_ids;
@@ -34,16 +35,68 @@ export const findZoneCityRegion = async (req) => {
 
       return result;
     }
-  } else if (roleName === "travel advisor") {
-    result.advisorId = req.user.id;
+  } else if (roleName === "team leader-sales") {
+    // City Manager jaisa hi, bas zone ki jagah city_ids se scope hota hai
+    let cityIds = req.user.city_ids || [];
 
     const paramCityId = req.query.cityId
       ? parseInt(req.query.cityId, 10)
       : null;
 
     if (paramCityId) {
-      result.cityIds = [paramCityId];
+      if (!cityIds.includes(paramCityId)) {
+        result.accessDenied = true;
+        return result;
+      }
+      cityIds = [paramCityId];
     }
+
+    const { zoneAdvisorIds, zoneAdvisors } =
+      await findAdvisorsByCityIds(cityIds);
+
+    result.cityIds = cityIds;
+    result.zoneAdvisorIds = zoneAdvisorIds;
+    result.zoneAdvisors = zoneAdvisors;
+
+    // Default: apne saare advisors ka data
+    result.advisorId = zoneAdvisorIds;
+
+    // Frontend se specific advisor filter
+    const paramAdvisorId = req.query.advisorId
+      ? parseInt(req.query.advisorId, 10)
+      : null;
+
+    if (paramAdvisorId) {
+      if (!zoneAdvisorIds.includes(paramAdvisorId)) {
+        result.accessDenied = true;
+        return result;
+      }
+      result.advisorId = paramAdvisorId;
+    }
+
+    return result;
+  } else if (roleName === "travel advisor") {
+    result.advisorId = req.user.id;
+
+    // 🔧 FIX: advisor ke apne assigned cities bhi set karo.
+    // Pehle sirf paramCityId aane par cityIds set hota tha, warna [] rehta tha
+    // jisse model ka "cityIds.length > 0" wala WHERE condition kabhi lagta hi nahi tha
+    // aur advisor ko city-restriction ke bina sara data dikh jaata tha.
+    let cityIds = req.user.city_ids || [];
+
+    const paramCityId = req.query.cityId
+      ? parseInt(req.query.cityId, 10)
+      : null;
+
+    if (paramCityId) {
+      if (!cityIds.includes(paramCityId)) {
+        result.accessDenied = true;
+        return result;
+      }
+      cityIds = [paramCityId];
+    }
+
+    result.cityIds = cityIds;
 
     return result;
   } else if (

@@ -94,7 +94,12 @@ const getMyAssignedLeads = asyncHandler(async (req, res) => {
     zoneAdvisors,
     zoneAdvisorIds,
     cityIds: scopedCityIds,
+    accessDenied,
   } = await findZoneCityRegion(req);
+
+  if (accessDenied) {
+    return res.status(403).json(new ApiResponse(403, null, "Access denied"));
+  }
 
   let cityIds = req.query.cityIds
     ? req.query.cityIds.split(",").map(Number)
@@ -221,9 +226,8 @@ export const swapTravelAdvisor = asyncHandler(async (req, res) => {
 
 /**
  * Swap leads listing.
- * - Travel Advisor: sees only leads swapped ONTO them.
- * - City Manager: sees ALL swap leads in their assigned zone's cities
- *   (advisorId passed through as the zone's full advisor array),
+ * - Travel Advisor: sees only leads swapped ONTO them (aur unke assigned cities tak scoped).
+ * - City Manager / Team Leader-Sales: sees ALL swap leads in their assigned zone/city's advisors,
  *   unless they explicitly pick one advisor via ?advisorId=.
  */
 export const getMySwapLeads = asyncHandler(async (req, res) => {
@@ -244,7 +248,12 @@ export const getMySwapLeads = asyncHandler(async (req, res) => {
     zoneAdvisors,
     zoneAdvisorIds,
     cityIds: scopedCityIds,
+    accessDenied,
   } = await findZoneCityRegion(req);
+
+  if (accessDenied) {
+    return res.status(403).json(new ApiResponse(403, null, "Access denied"));
+  }
 
   let cityIds = req.query.cityIds
     ? req.query.cityIds.split(",").map(Number)
@@ -253,7 +262,9 @@ export const getMySwapLeads = asyncHandler(async (req, res) => {
   let advisorId = scopeAdvisorId;
 
   const roleName = req.user.role_name?.toLowerCase();
-  if (roleName === "city manager") {
+  // 🔧 FIX: "team leader-sales" pehle yahan missing tha, isliye team leader ka
+  // advisorId-override kaam nahi karta tha aur scope bhi properly enforce nahi hota tha.
+  if (["city manager", "team leader-sales"].includes(roleName)) {
     const paramAdvisorId = req.query.advisorId
       ? parseInt(req.query.advisorId, 10)
       : null;
@@ -272,8 +283,8 @@ export const getMySwapLeads = asyncHandler(async (req, res) => {
       }
       advisorId = paramAdvisorId;
     }
-    // else: advisorId stays as scopeAdvisorId (the zone's full advisor array) —
-    // shows ALL swap leads across the zone's cities, same behaviour as /myleads
+    // else: advisorId stays as scopeAdvisorId (zone/city ke full advisor array) —
+    // shows ALL swap leads across the scoped cities, same behaviour as /myleads
   }
 
   const data = await getSwapLeadsByAdvisorId(

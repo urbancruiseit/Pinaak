@@ -3,8 +3,7 @@ import { hrmsPool } from "../../config/mySqlDB.js";
 export const findZoneCityRegion = async (req) => {
   const roleName = req.user.role_name?.toLowerCase();
   const sub_department = req.user.subDepartment_name?.toLowerCase();
-  console.log("roleName ", roleName);
-  console.log("roleName ", sub_department);
+
   let result = {
     advisorId: null,
     zoneAdvisors: [],
@@ -14,6 +13,8 @@ export const findZoneCityRegion = async (req) => {
   };
   if (sub_department === "pre-sales") {
     if (roleName === "pre-sales executive") {
+      let zoneIds = req.user.zone_ids;
+
       let cityIds = req.user.city_ids || [];
       const paramCityId = req.query.cityId
         ? parseInt(req.query.cityId, 10)
@@ -24,6 +25,12 @@ export const findZoneCityRegion = async (req) => {
       }
 
       result.cityIds = cityIds;
+
+      const { zoneAdvisorIds, zoneAdvisors } =
+        await findAdvisorsByZoneIds(zoneIds);
+
+      result.zoneAdvisorIds = zoneAdvisorIds;
+      result.zoneAdvisors = zoneAdvisors;
 
       return result;
     }
@@ -174,6 +181,66 @@ export const findAdvisorsByZoneIds = async (zoneIds) => {
     return { zoneAdvisorIds, zoneAdvisors };
   } catch (error) {
     console.error("findAdvisorsByZoneIds failed:", error.message);
+    return { zoneAdvisorIds: [], zoneAdvisors: [] };
+  }
+};
+
+export const findAdvisorsByCityIds = async (cityIds) => {
+  try {
+    if (!cityIds || cityIds.length === 0) {
+      return { zoneAdvisorIds: [], zoneAdvisors: [] };
+    }
+
+    // Step 1: City -> Access Control IDs
+    const placeholders = cityIds.map(() => "?").join(",");
+    const [acRows] = await hrmsPool.query(
+      `SELECT DISTINCT access_control_id
+       FROM access_control_cities
+       WHERE city_id IN (${placeholders})`,
+      cityIds,
+    );
+
+    const accessControlIds = acRows.map((r) => r.access_control_id);
+
+    if (accessControlIds.length === 0) {
+      return { zoneAdvisorIds: [], zoneAdvisors: [] };
+    }
+
+    // Step 2: Access Control IDs -> Employee IDs (only role 34 = Travel Advisor)
+    const acPlaceholders = accessControlIds.map(() => "?").join(",");
+    const [empRows] = await hrmsPool.query(
+      `SELECT DISTINCT ac.employee_id
+       FROM access_control ac
+       INNER JOIN users u ON u.id = ac.employee_id
+       WHERE ac.id IN (${acPlaceholders})
+         AND u.role_id = 34`,
+      accessControlIds,
+    );
+
+    const zoneAdvisorIds = empRows.map((r) => r.employee_id);
+
+    if (zoneAdvisorIds.length === 0) {
+      return { zoneAdvisorIds: [], zoneAdvisors: [] };
+    }
+
+    // Step 3: Employee IDs -> Advisor Details
+    const namePlaceholders = zoneAdvisorIds.map(() => "?").join(",");
+    const [advisorUsers] = await hrmsPool.query(
+      `SELECT id, aliasName, firstName, middleName, lastName
+       FROM users
+       WHERE id IN (${namePlaceholders})
+         AND role_id = 34`,
+      zoneAdvisorIds,
+    );
+
+    const zoneAdvisors = advisorUsers.map((u) => ({
+      id: u.id,
+      name: `${u.aliasName || ""}`.trim(),
+    }));
+
+    return { zoneAdvisorIds, zoneAdvisors };
+  } catch (error) {
+    console.error("findAdvisorsByCityIds failed:", error.message);
     return { zoneAdvisorIds: [], zoneAdvisors: [] };
   }
 };

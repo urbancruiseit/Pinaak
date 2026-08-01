@@ -283,8 +283,7 @@ export const getMySwapLeads = asyncHandler(async (req, res) => {
       }
       advisorId = paramAdvisorId;
     }
-    // else: advisorId stays as scopeAdvisorId (zone/city ke full advisor array) —
-    // shows ALL swap leads across the scoped cities, same behaviour as /myleads
+    
   }
 
   const data = await getSwapLeadsByAdvisorId(

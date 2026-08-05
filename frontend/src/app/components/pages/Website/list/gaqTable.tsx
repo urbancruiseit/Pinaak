@@ -316,7 +316,7 @@ const TripBookingsTable: React.FC = () => {
                 </th>
 
                 <th className="px-4 py-3 font-semibold whitespace-nowrap">
-                  Created
+                  Date
                 </th>
                 <th className="px-4 py-3 font-semibold text-center whitespace-nowrap">
                   Mark Read

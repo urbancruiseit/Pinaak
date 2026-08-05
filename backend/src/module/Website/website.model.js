@@ -69,6 +69,7 @@ export const createTripBookingModel = async (data) => {
       dropAddress,
       drop_date,
       itinerary,
+
       passengerTotal,
       baggageTotal,
       vehicle_category,
@@ -103,13 +104,29 @@ export const createTripBookingModel = async (data) => {
 export const getAllTripBookings = async (city) => {
   try {
     let query = `
-      SELECT
-        id, firstName, middleName, lastName, customerPhone, country_code,
-        customerEmail, message, pickupAddress, pickup_date, dropAddress,
-        drop_date, itinerary, passengerTotal, baggageTotal, vehicle_category,
-        vehicle_model, city, created_at, is_read
-      FROM trip_bookings
-    `;
+  SELECT
+    id,
+    firstName,
+    middleName,
+    lastName,
+    customerPhone,
+    country_code,
+    customerEmail,
+    message,
+    pickupAddress,
+    pickup_date,
+    dropAddress,
+    drop_date,
+    itinerary,
+    passengerTotal,
+    baggageTotal,
+    vehicle_category,
+    vehicle_model,
+    city,
+    DATE_ADD(created_at, INTERVAL 330 MINUTE) AS created_at,
+    is_read
+  FROM trip_bookings
+`;
     const params = [];
 
     // city filter (agar "all" nahi hai to WHERE lagao)

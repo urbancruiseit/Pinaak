@@ -72,9 +72,10 @@ export const createTripBookingModel = async (data) => {
       passengerTotal,
       baggageTotal,
       vehicle_category,
-      vehicle_model
+      vehicle_model,
+      city
     )
-    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
     [
       data.full_name,
       data.phone,
@@ -90,6 +91,7 @@ export const createTripBookingModel = async (data) => {
       data.baggages,
       data.vehicle_category,
       data.vehicle_model,
+      data.city, // 🆕 city value add ki
     ],
   );
 

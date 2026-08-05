@@ -26,6 +26,16 @@ const selectGacLoading = (state: RootState): boolean =>
 const selectGacError = (state: RootState): string | null =>
   state.websiteGac.error;
 
+// 🆕 City filter options — single source of truth for buttons + dropdown
+const CITY_OPTIONS = [
+  { label: "All", value: "all" },
+  { label: "Mumbai", value: "mumbai" },
+  { label: "Delhi", value: "delhi" },
+  { label: "Pune", value: "pune" },
+  { label: "Gurugram", value: "gurugram" },
+  { label: "All India", value: "india" },
+];
+
 const GACForm: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
 
@@ -35,11 +45,11 @@ const GACForm: React.FC = () => {
 
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  // 🆕 City filter state: "all" | "mumbai" | "delhi" | "india"
+  // City filter state: "all" | "mumbai" | "delhi" | "pune" | "gurugram" | "india"
   const [cityFilter, setCityFilter] = useState("all");
   const rowsPerPage = 10;
 
-  // 🆕 Jab bhi cityFilter change ho, backend se filtered data fetch karo
+  // Jab bhi cityFilter change ho, backend se filtered data fetch karo
   useEffect(() => {
     dispatch(getWebsiteGacThunk(cityFilter));
   }, [dispatch, cityFilter]);
@@ -86,14 +96,14 @@ const GACForm: React.FC = () => {
     }
   };
 
-  // 🆕 Refresh karte waqt current city filter bhi bhejo
+  // Refresh karte waqt current city filter bhi bhejo
   const handleRefresh = () => dispatch(getWebsiteGacThunk(cityFilter));
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
   };
 
-  // 🆕 City filter change handler (buttons + dropdown dono ke liye common)
+  // City filter change handler (buttons + dropdown dono ke liye common)
   const handleCityFilterChange = (value: string) => {
     setCityFilter(value);
     setCurrentPage(1);
@@ -195,14 +205,9 @@ const GACForm: React.FC = () => {
             />
           </div>
 
-          {/* 🆕 City Filter Buttons */}
+          {/* City Filter Buttons — ab Pune aur Gurugram bhi include */}
           <div className="flex items-center gap-2 flex-wrap">
-            {[
-              { label: "All", value: "all" },
-              { label: "Mumbai", value: "mumbai" },
-              { label: "Delhi", value: "delhi" },
-              { label: "All India", value: "india" },
-            ].map((c) => (
+            {CITY_OPTIONS.map((c) => (
               <button
                 key={c.value}
                 onClick={() => handleCityFilterChange(c.value)}
@@ -217,16 +222,17 @@ const GACForm: React.FC = () => {
             ))}
           </div>
 
-          {/* 🆕 City Filter Dropdown (mobile / compact view ke liye alternative) */}
+          {/* City Filter Dropdown (mobile / compact view ke liye alternative) */}
           <select
             value={cityFilter}
             onChange={(e) => handleCityFilterChange(e.target.value)}
             className="px-3 py-2.5 text-sm rounded-xl bg-slate-50 border border-slate-200 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
           >
-            <option value="all">All</option>
-            <option value="mumbai">Mumbai</option>
-            <option value="delhi">Delhi</option>
-            <option value="india">All India</option>
+            {CITY_OPTIONS.map((c) => (
+              <option key={c.value} value={c.value}>
+                {c.label}
+              </option>
+            ))}
           </select>
 
           <span className="text-sm text-slate-400 hidden sm:block ml-auto">

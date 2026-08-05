@@ -36,7 +36,7 @@ interface TripBooking {
   is_read: number;
 }
 
-// 🆕 Small helper component to render a label + value pair inside the modal
+// Small helper component to render a label + value pair inside the modal
 const DetailRow: React.FC<{
   label: string;
   value?: string | number;
@@ -52,6 +52,16 @@ const DetailRow: React.FC<{
   </div>
 );
 
+// 🆕 City filter options — single source of truth for buttons + dropdown
+const CITY_OPTIONS = [
+  { label: "All", value: "all" },
+  { label: "Mumbai", value: "mumbai" },
+  { label: "Delhi", value: "delhi" },
+  { label: "Pune", value: "pune" },
+  { label: "Gurugram", value: "gurugram" },
+  { label: "All India", value: "india" },
+];
+
 const TripBookingsTable: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
 
@@ -61,10 +71,10 @@ const TripBookingsTable: React.FC = () => {
 
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  // City filter state: "all" | "mumbai" | "delhi" | "india"
+  // City filter state: "all" | "mumbai" | "delhi" | "pune" | "gurugram" | "india"
   const [cityFilter, setCityFilter] = useState("all");
 
-  // 🆕 Currently selected booking for the "View" modal (null = modal closed)
+  // Currently selected booking for the "View" modal (null = modal closed)
   const [viewItem, setViewItem] = useState<TripBooking | null>(null);
 
   const rowsPerPage = 10;
@@ -208,14 +218,9 @@ const TripBookingsTable: React.FC = () => {
             />
           </div>
 
-          {/* City Filter Buttons */}
+          {/* City Filter Buttons — ab Pune aur Gurugram bhi include */}
           <div className="flex items-center gap-2 flex-wrap">
-            {[
-              { label: "All", value: "all" },
-              { label: "Mumbai", value: "mumbai" },
-              { label: "Delhi", value: "delhi" },
-              { label: "All India", value: "india" },
-            ].map((c) => (
+            {CITY_OPTIONS.map((c) => (
               <button
                 key={c.value}
                 onClick={() => handleCityFilterChange(c.value)}
@@ -236,10 +241,11 @@ const TripBookingsTable: React.FC = () => {
             onChange={(e) => handleCityFilterChange(e.target.value)}
             className="px-3 py-2.5 text-sm rounded-xl bg-slate-50 border border-slate-200 text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
           >
-            <option value="all">All</option>
-            <option value="mumbai">Mumbai</option>
-            <option value="delhi">Delhi</option>
-            <option value="india">All India</option>
+            {CITY_OPTIONS.map((c) => (
+              <option key={c.value} value={c.value}>
+                {c.label}
+              </option>
+            ))}
           </select>
 
           <span className="text-sm text-slate-400 hidden sm:block ml-auto">
@@ -275,7 +281,7 @@ const TripBookingsTable: React.FC = () => {
                 <th className="px-4 py-3 font-semibold whitespace-nowrap">
                   No.
                 </th>
-                {/* 🆕 Action column moved right after No. */}
+                {/* Action column moved right after No. */}
                 <th className="px-4 py-3 font-semibold text-center whitespace-nowrap">
                   Action
                 </th>
@@ -285,7 +291,7 @@ const TripBookingsTable: React.FC = () => {
                 <th className="px-4 py-3 font-semibold whitespace-nowrap">
                   Phone
                 </th>
-               
+
                 <th className="px-4 py-3 font-semibold whitespace-nowrap">
                   City
                 </th>
@@ -301,14 +307,14 @@ const TripBookingsTable: React.FC = () => {
                 <th className="px-4 py-3 font-semibold whitespace-nowrap">
                   Drop Date
                 </th>
-              
+
                 <th className="px-4 py-3 font-semibold whitespace-nowrap">
                   Passengers
                 </th>
                 <th className="px-4 py-3 font-semibold whitespace-nowrap">
                   Baggage
                 </th>
-              
+
                 <th className="px-4 py-3 font-semibold whitespace-nowrap">
                   Created
                 </th>
@@ -367,7 +373,7 @@ const TripBookingsTable: React.FC = () => {
                     <td className="px-4 py-4 text-slate-400 whitespace-nowrap">
                       {(currentPage - 1) * rowsPerPage + idx + 1}
                     </td>
-                    {/* 🆕 Action cell -> View button, ab naam se pehle */}
+                    {/* Action cell -> View button, ab naam se pehle */}
                     <td className="px-4 py-4 text-center whitespace-nowrap">
                       <button
                         onClick={() => setViewItem(item)}
@@ -402,7 +408,7 @@ const TripBookingsTable: React.FC = () => {
                     <td className="px-4 py-4 text-slate-600 whitespace-nowrap">
                       +{item.country_code} {item.customerPhone}
                     </td>
-                
+
                     <td className="px-4 py-4 text-slate-600 whitespace-nowrap">
                       {item.city}
                     </td>
@@ -418,14 +424,14 @@ const TripBookingsTable: React.FC = () => {
                     <td className="px-4 py-4 text-slate-500 text-xs whitespace-nowrap">
                       {formatDateTime(item.drop_date)}
                     </td>
-                    
+
                     <td className="px-4 py-4 text-slate-600 text-center">
                       {item.passengerTotal}
                     </td>
                     <td className="px-4 py-4 text-slate-600 text-center">
                       {item.baggageTotal}
                     </td>
-                   
+
                     <td className="px-4 py-4 text-slate-500 text-xs whitespace-nowrap">
                       {formatDateTime(item.created_at)}
                     </td>
@@ -470,7 +476,7 @@ const TripBookingsTable: React.FC = () => {
         />
       </div>
 
-      {/* 🆕 View Details Modal — opens when a row's View button is clicked */}
+      {/* View Details Modal — opens when a row's View button is clicked */}
       {viewItem && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"

@@ -59,6 +59,7 @@ export const createTripBookingController = asyncHandler(async (req, res) => {
     email,
     country_code,
     trip_message,
+    city,              // 🆕
   } = req.body;
 
   // Validation
@@ -73,7 +74,8 @@ export const createTripBookingController = asyncHandler(async (req, res) => {
     !vehicle_category ||
     !vehicle_model ||
     !full_name ||
-    !phone
+    !phone ||
+    !city              // 🆕
   ) {
     throw new ApiError(400, "Please fill all required fields");
   }

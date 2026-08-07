@@ -3,6 +3,7 @@
 import { ApiError } from "../../utils/ApiError.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
+import { verifyMathCaptcha } from "../../utils/mathCaptcha.js"; // 🆕
 import { createWebsiteGac, getAllWebsiteGac } from "./website.model.js";
 import {
   createTripBooking,
@@ -13,10 +14,26 @@ import {
 
 // ================= CREATE WEBSITE GAC =================
 export const createWebsiteGacController = asyncHandler(async (req, res) => {
-  const { name, phone, country_code = "+91", city } = req.body;
-  console.log("req.body", req.body);
+  const {
+    name,
+    phone,
+    country_code = "+91",
+    city,
+    captcha_id, // 🆕
+    captcha_answer, // 🆕
+  } = req.body;
+
   if (!name || !phone || !city) {
     throw new ApiError(400, "Name, Phone and City are required");
+  }
+
+  // 🆕 CAPTCHA verification
+  const isValid = verifyMathCaptcha(captcha_id, captcha_answer);
+  if (!isValid) {
+    throw new ApiError(
+      400,
+      "Captcha is incorrect or expired. Please try again.",
+    );
   }
 
   const data = await createWebsiteGac({
@@ -32,7 +49,7 @@ export const createWebsiteGacController = asyncHandler(async (req, res) => {
 });
 
 export const getWebsiteGacController = asyncHandler(async (req, res) => {
-  const { city } = req.query; // 🆕 query param se city lo
+  const { city } = req.query;
 
   const data = await getAllWebsiteGac(city);
 
@@ -59,10 +76,11 @@ export const createTripBookingController = asyncHandler(async (req, res) => {
     email,
     country_code,
     trip_message,
-    city,              // 🆕
+    city,
+    captcha_id, // 🆕
+    captcha_answer, // 🆕
   } = req.body;
 
-  // Validation
   if (
     !pickup_address ||
     !pickup_date ||
@@ -75,9 +93,18 @@ export const createTripBookingController = asyncHandler(async (req, res) => {
     !vehicle_model ||
     !full_name ||
     !phone ||
-    !city              // 🆕
+    !city
   ) {
     throw new ApiError(400, "Please fill all required fields");
+  }
+
+  // 🆕 CAPTCHA verification
+  const isValid = verifyMathCaptcha(captcha_id, captcha_answer);
+  if (!isValid) {
+    throw new ApiError(
+      400,
+      "Captcha is incorrect or expired. Please try again.",
+    );
   }
 
   const booking = await createTripBooking(req.body);
@@ -90,7 +117,7 @@ export const createTripBookingController = asyncHandler(async (req, res) => {
 // ================= GET ALL TRIP BOOKINGS =================
 
 export const getTripBookingsController = asyncHandler(async (req, res) => {
-  const { city } = req.query; // 🆕 query param se city lo
+  const { city } = req.query;
 
   const bookings = await getTripBookings(city);
 

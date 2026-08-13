@@ -881,22 +881,57 @@ export const getLeadById = async (id) => {
   }
 };
 
+// lead.model.js
+// ─── REMINDER FUNCTIONS — lead.model.js me inn dono ko replace karo ───
+
 export const createReminder = async ({
   lead_id,
   reminder_datetime,
   message,
+  advisor_id,
 }) => {
-  if (!lead_id) throw new Error("Lead ID is required");
+  if (!lead_id) {
+    throw new Error("Lead ID is required");
+  }
+
+  if (!advisor_id) {
+    throw new Error("Advisor ID is required");
+  }
+
+  if (!reminder_datetime) {
+    throw new Error("Reminder datetime is required");
+  }
+
+
+  const formattedReminderDateTime =
+    reminder_datetime.length === 16
+      ? reminder_datetime.replace("T", " ") + ":00"
+      : reminder_datetime.replace("T", " ");
+
 
   const [result] = await pool.query(
-    `INSERT INTO scheduler (lead_id, reminder_datetime, message)
-     VALUES (?, ?, ?)`,
-    [lead_id, reminder_datetime, message],
+    `
+    INSERT INTO scheduler
+      (
+        lead_id,
+        reminder_datetime,
+        message,
+        advisor_id,
+        is_shown
+      )
+    VALUES (?, ?, ?, ?, 0)
+    `,
+    [lead_id, formattedReminderDateTime, message, advisor_id],
   );
 
-  const [rows] = await pool.query(`SELECT * FROM scheduler WHERE id = ?`, [
-    result.insertId,
-  ]);
+  const [rows] = await pool.query(
+    `
+    SELECT *
+    FROM scheduler
+    WHERE id = ?
+    `,
+    [result.insertId],
+  );
 
   return rows[0];
 };
@@ -906,40 +941,76 @@ export const markReminderAsShown = async (id) => {
 };
 
 export const getDueReminders = async (advisorId) => {
-  // IST current time string banao Node se
-  const nowIST = new Date().toLocaleString("sv-SE", {
-    timeZone: "Asia/Kolkata",
-  });
-  // "sv-SE" locale format deta hai: YYYY-MM-DD HH:MM:SS — MySQL datetime ke compatible
+  try {
 
-  const [rows] = await pool.query(
-    `
-    SELECT
-      s.id,
-      s.lead_id,
-      s.message,
-      s.reminder_datetime,
-      CONCAT_WS(' ', c.firstName, c.middleName, c.lastName) AS fullName,
-      c.customerPhone,
-      c.customerEmail,
-      l.pickupDateTime,
-      l.dropDateTime,
-      l.days,
-      l.passengerTotal,
-      l.advisor_id
-    FROM scheduler s
-    INNER JOIN leads l ON l.id = s.lead_id
-    LEFT JOIN customers c ON c.id = l.customer_id
-    WHERE
-      l.advisor_id = ?
-      AND s.is_shown = 0
-      AND s.reminder_datetime <= ?
-    ORDER BY s.reminder_datetime ASC
-    `,
-    [advisorId, nowIST],
-  );
+    const query = `
+      SELECT
+        s.id,
+        s.lead_id,
+        s.advisor_id,
+        s.message,
+        s.reminder_datetime,
 
-  return rows;
+        CONCAT_WS(
+          ' ',
+          c.firstName,
+          c.middleName,
+          c.lastName
+        ) AS fullName,
+
+        c.customerPhone,
+        c.customerEmail,
+
+        l.pickupDateTime,
+        l.dropDateTime,
+        l.days,
+        l.passengerTotal,
+
+        NOW() AS mysql_now_utc,
+        DATE_ADD(NOW(), INTERVAL 330 MINUTE) AS current_ist,
+
+        CASE
+          WHEN s.reminder_datetime <= DATE_ADD(NOW(), INTERVAL 330 MINUTE)
+          THEN 1
+          ELSE 0
+        END AS is_due
+
+      FROM scheduler s
+
+      INNER JOIN leads l
+        ON l.id = s.lead_id
+
+      LEFT JOIN customers c
+        ON c.id = l.customer_id
+
+      WHERE
+        s.advisor_id = ?
+        AND s.is_shown = 0
+        AND s.reminder_datetime <= DATE_ADD(NOW(), INTERVAL 330 MINUTE)
+
+      ORDER BY s.reminder_datetime ASC
+    `;
+
+    const [rows] = await pool.query(query, [advisorId]);
+
+
+    rows.forEach((row) => {
+      console.log("🔔 Reminder:", {
+        id: row.id,
+        lead_id: row.lead_id,
+        advisor_id: row.advisor_id,
+        reminder_datetime: row.reminder_datetime,
+        is_shown: row.is_shown,
+        is_due: row.is_due,
+      });
+    });
+
+
+    return rows;
+  } catch (error) {
+    console.error("❌ [getDueReminders] error:", error);
+    throw error;
+  }
 };
 
 export const getAdvisorReminderStats = async (cityIds = []) => {
@@ -1022,7 +1093,7 @@ export const getAdvisorReminderDetails = async (advisorId) => {
       FROM scheduler s
       INNER JOIN leads l ON l.id = s.lead_id
       LEFT JOIN customers c ON c.id = l.customer_id
-      WHERE l.advisor_id = ?
+      WHERE s.advisor_id = ?
       ORDER BY s.reminder_datetime DESC
       `,
       [advisorId],

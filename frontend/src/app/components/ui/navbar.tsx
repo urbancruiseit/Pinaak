@@ -35,21 +35,65 @@ import { toast } from "react-toastify";
 
 // ─── Static menu data ─────────────────────────────────────────────────────────
 
-type MenuItem = { label: string; value: string };
-type MenuSection = { key: string; label: string; items: MenuItem[] };
+// 👇 allowedRoles added at the item level too — a section can be visible to a
+// role while individual items inside it stay hidden (e.g. Travel Advisor sees
+// the "CUSTOMERS" dropdown, but only the "Existing Customer Search" item).
+type MenuItem = { label: string; value: string; allowedRoles?: string[] };
+type MenuSection = {
+  key: string;
+  label: string;
+  items: MenuItem[];
+
+  allowedRoles?: string[];
+};
+
+// 👇 "travel advisor" added: lets them pass the top-level Master gate. Which
+// sections/items they actually see is controlled further down (per-section
+// and now per-item allowedRoles).
+const MASTER_ALLOWED_ROLES = [
+  "superadmin",
+  "admin",
+  "manager",
+  "city manager",
+  "travel advisor",
+];
 
 const MASTER_MENU_SECTIONS: MenuSection[] = [
   {
     key: "customers",
     label: "CUSTOMERS",
+    // 👇 Travel Advisor added here so this section shows up for them.
+    allowedRoles: [
+      "superadmin",
+      "admin",
+      "manager",
+      "city manager",
+      "travel advisor",
+    ],
     items: [
-      { label: "New Customer Form", value: "customer-personal" },
-      { label: "Existing Customer Search", value: "customer-table" },
+      {
+        label: "New Customer Form",
+        value: "customer-personal",
+        allowedRoles: ["superadmin", "admin", "manager", "city manager"],
+      },
+      {
+        label: "Existing Customer Search",
+        value: "customer-table",
+        // 👇 Travel Advisor can see this one item.
+        allowedRoles: [
+          "superadmin",
+          "admin",
+          "manager",
+          "city manager",
+          "travel advisor",
+        ],
+      },
     ],
   },
   {
     key: "master",
     label: "UC",
+    allowedRoles: ["superadmin", "admin", "manager", "city manager"],
     items: [
       { label: "Corporate Form", value: "corporate-form" },
       { label: "Corporate Event", value: "corporate-event" },
@@ -67,6 +111,7 @@ const MASTER_MENU_SECTIONS: MenuSection[] = [
   {
     key: "vendor",
     label: "VENDOR",
+    allowedRoles: ["superadmin", "admin", "manager", "city manager"],
     items: [
       { label: "Vendor Registration Form", value: "vendor" },
       { label: "Vendor Search", value: "vendor-table" },
@@ -75,8 +120,10 @@ const MASTER_MENU_SECTIONS: MenuSection[] = [
   {
     key: "vehicles",
     label: "VEHICLES",
+    // ✅ City Manager gets this section
+    allowedRoles: ["superadmin", "admin", "manager", "city manager"],
     items: [
-      { label: "Vehicle Registration Form", value: "vehicle-registration" },
+      { label: "Vehicle Manager", value: "vehicle-manager" },
       { label: "Vehicles Master", value: "vehicles" },
       { label: "Vehicle Options", value: "vehicle-category" },
       { label: "Vehicle Add Form", value: "vehicle-add" },
@@ -85,6 +132,7 @@ const MASTER_MENU_SECTIONS: MenuSection[] = [
   {
     key: "drivers",
     label: "DRIVER",
+    allowedRoles: ["superadmin", "admin", "manager", "city manager"],
     items: [
       { label: "Driver Registration Form", value: "driver" },
       { label: "Driver Search", value: "driver-table" },
@@ -183,7 +231,33 @@ export function Navbar() {
 
   const normalizedRole = adminRole.toLowerCase().trim();
 
-  const showMaster = nav.activeSection === "master";
+  // ✅ Master menu role gate — same idea as `trackingItems`'s per-item `show`
+  const canSeeMaster = MASTER_ALLOWED_ROLES.includes(normalizedRole);
+
+  // ✅ Per-section filtering: a section only shows if it has no allowedRoles
+  // restriction (inherits the global canSeeMaster gate) OR the current role
+  // is explicitly listed in its allowedRoles.
+  const visibleMasterSections = useMemo(
+    () =>
+      MASTER_MENU_SECTIONS.filter(
+        (menu) =>
+          !menu.allowedRoles || menu.allowedRoles.includes(normalizedRole),
+      ).map((menu) => ({
+        ...menu,
+        // ✅ Per-item filtering inside each visible section: an item shows if
+        // it has no allowedRoles restriction, or the current role is listed.
+        items: menu.items.filter(
+          (item) =>
+            !item.allowedRoles || item.allowedRoles.includes(normalizedRole),
+        ),
+      })),
+    [normalizedRole],
+  );
+
+  const showMaster =
+    nav.activeSection === "master" &&
+    canSeeMaster &&
+    visibleMasterSections.length > 0;
   const showLeadsMenu =
     nav.activeSection === "leads" || nav.activeSection === "dsr-form";
   const showDashboardMenu = nav.activeSection === "dashboard";
@@ -437,9 +511,13 @@ export function Navbar() {
               />
             </div>
 
-            {/* MASTER */}
+            {/* MASTER — role-gated: only canSeeMaster roles see this, and each
+                section is further filtered by visibleMasterSections (and each
+                item inside a section is filtered too — e.g. Travel Advisor
+                only sees "Existing Customer Search" inside CUSTOMERS) */}
             {showMaster &&
-              MASTER_MENU_SECTIONS.map((menu) => {
+              visibleMasterSections.map((menu) => {
+                if (menu.items.length === 0) return null;
                 const isOpen = openMenu === menu.key;
                 return (
                   <div key={menu.key} className="relative w-full md:w-auto">

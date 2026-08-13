@@ -7,6 +7,7 @@ import {
   setActiveSection,
   setActiveLeadView,
   setActiveWebsiteView,
+  setActiveMaster,
 } from "../../features/Navigation/navigationSlice";
 import {
   Database,
@@ -192,6 +193,22 @@ const Sidebar: React.FC = () => {
   };
 
   // ══════════════════════════════════════════════
+  // Master click handler — role aware
+  // Advisor (non-manager): seedha Customer -> Existing
+  // Customer Search (activeMaster = "customer-table")
+  // par le jaata hai, poora Master menu skip.
+  // Manager (aur baaki jinke paas access hai): normal
+  // Master section khulta hai jisme sab options hote hain.
+  // ══════════════════════════════════════════════
+  const handleMasterClick = () => {
+    if (isAdvisor && !isManager) {
+      dispatch(setActiveMaster("customer-table"));
+      return;
+    }
+    dispatch(setActiveSection("master"));
+  };
+
+  // ══════════════════════════════════════════════
   // EMPLOYEE MENU ITEMS — ab whitelist (allowedRoles) driven
   // ══════════════════════════════════════════════
   const employeeMenuItems = [
@@ -201,7 +218,7 @@ const Sidebar: React.FC = () => {
       label: "Master",
       description: "Manage all forms and data",
       isActive: activeSection === "master",
-      onClick: () => dispatch(setActiveSection("master")),
+      onClick: handleMasterClick,
       color: "orange" as Color,
       allowedRoles: ["advisor", "manager"] as RoleTag[],
     },

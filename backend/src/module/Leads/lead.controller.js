@@ -350,6 +350,10 @@ const updateLeadByIdController = asyncHandler(async (req, res) => {
     ),
   );
 });
+// lead.controller.js
+
+// ─── REMINDER CONTROLLERS — lead.controller.js me inn dono ko replace karo ───
+
 export const createReminderController = async (req, res) => {
   try {
     const { lead_id, reminder_datetime, message } = req.body;
@@ -365,6 +369,7 @@ export const createReminderController = async (req, res) => {
       lead_id,
       reminder_datetime,
       message,
+      advisor_id: req.user.id, // ✅ logged-in advisor ka id, verifyJWT ke baad milta hai
     });
 
     return res.status(201).json({
@@ -373,11 +378,34 @@ export const createReminderController = async (req, res) => {
       data: newReminder,
     });
   } catch (error) {
-    console.error("[reminderController] createReminder:", error);
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
+export const getDueRemindersController = async (req, res) => {
+  try {
+    const advisorId = req.user.id;
+
+
+
+    const reminders = await getDueReminders(advisorId);
+
+  
+
+    return res.status(200).json({
+      success: true,
+      data: reminders,
+      count: reminders.length,
+    });
+  } catch (error) {
+    console.error("❌ [getDueRemindersController] error:", error);
+
+    return res.status(500).json({
+      success: false,
+      message: "Server Error",
+    });
+  }
+};
 export const markReminderAsShownController = async (req, res) => {
   try {
     const { id } = req.params;
@@ -395,25 +423,7 @@ export const markReminderAsShownController = async (req, res) => {
     return res.status(500).json({ success: false, message: "Server error" });
   }
 };
-export const getDueRemindersController = async (req, res) => {
-  try {
-    const advisorId = req.user.id;
 
-    const reminders = await getDueReminders(advisorId);
-
-    return res.status(200).json({
-      success: true,
-      data: reminders,
-    });
-  } catch (error) {
-    console.error(error);
-
-    return res.status(500).json({
-      success: false,
-      message: "Server Error",
-    });
-  }
-};
 export const getAdvisorReminderStatsController = asyncHandler(
   async (req, res) => {
     const user = req.user;

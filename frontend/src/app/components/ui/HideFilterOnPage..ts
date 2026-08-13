@@ -25,7 +25,7 @@
 //   { section: "master", view: "zone" },
 //   { section: "master", view: "region" },
 //   { section: "master", view: "vendor" },
-//   { section: "master", view: "vehicle-registration" },
+//   { section: "master", view: "vehicle-manager" },
 //   { section: "master", view: "vehicles" },
 //   { section: "master", view: "vehicle-category" },
 //   { section: "master", view: "vehicle-add" },

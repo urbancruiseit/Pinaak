@@ -1,11 +1,17 @@
 import axiosInstance from "@/uitils/axioInstance";
 import { Vehicle } from "@/types/types";
 
-// ✅ GET ALL VEHICLES
+export interface PaginatedVehicles {
+  data: Vehicle[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
 export const getVehiclesApi = async (): Promise<Vehicle[]> => {
   try {
     const res = await axiosInstance.get("/vehicle");
-
     return res.data.data;
   } catch (error: any) {
     console.error(
@@ -17,3 +23,43 @@ export const getVehiclesApi = async (): Promise<Vehicle[]> => {
     );
   }
 };
+
+export const createvehiclesApi = async (
+  vehicleData: Omit<Vehicle, "id">,
+): Promise<Vehicle> => {
+  try {
+    const res = await axiosInstance.post("/vehicle", vehicleData);
+    return res.data.data;
+  } catch (error: any) {
+    console.error(
+      "❌ Error creating vehicle:",
+      error.response?.data || error.message,
+    );
+    throw new Error(
+      error.response?.data?.message || "Failed to create vehicle",
+    );
+  }
+};
+
+export const getAllVehiclesApi = async (params?: {
+  search?: string;
+  category?: string;
+  make?: string;
+  page?: number;
+  limit?: number;
+}): Promise<PaginatedVehicles> => {
+  try {
+    const res = await axiosInstance.get("/vehicle/getall", { params });
+    return res.data.data;
+  } catch (error: any) {
+    console.error(
+      "❌ Error fetching all vehicles:",
+      error.response?.data || error.message,
+    );
+    throw new Error(
+      error.response?.data?.message || "Failed to fetch all vehicles",
+    );
+  }
+};
+
+

@@ -26,7 +26,7 @@ export const getAllCustomers = async () => {
         pincode
 
       FROM customers
-      ORDER BY firstName ASC, lastName ASC
+      ORDER BY id ASC
     `;
 
     const [rows] = await pool.execute(sql);

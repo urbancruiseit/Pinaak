@@ -1,7 +1,13 @@
 import { ApiError } from "../../utils/ApiError.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import { asyncHandler } from "../../utils/asyncHandler.js";
-import { getVehicles } from "./vehiclemaster.model.js";
+import {
+  createVehicleModel,
+  getAllVehiclesModel,
+  getVehicleByCode,
+  getVehicles,
+} from "./vehiclemaster.model.js";
+import { generateVehicleCode } from "./vehiclemaster.service.js";
 
 const getVehicleCodeList = asyncHandler(async (req, res) => {
   const vehicleList = await getVehicles();
@@ -15,6 +21,46 @@ const getVehicleCodeList = asyncHandler(async (req, res) => {
     .json(
       new ApiResponse(200, vehicleList, "Vehicle list fetched successfully"),
     );
+});
+
+export const createVehicle = asyncHandler(async (req, res) => {
+  const payload = req.body;
+  const { seat, category, make, config } = payload;
+
+  if (!seat || !category || !make || !config) {
+    throw new ApiError(400, "Seat, category, make and config are required");
+  }
+
+  const code = generateVehicleCode(seat, category, config);
+
+  payload.code = code;
+
+  const existingVehicle = await getVehicleByCode(code);
+  if (existingVehicle) {
+    throw new ApiError(409, "Vehicle already exists with this code");
+  }
+
+  const result = await createVehicleModel(payload);
+
+  return res
+    .status(201)
+    .json(new ApiResponse(201, result, "Vehicle created successfully"));
+});
+
+export const getAllVehicles = asyncHandler(async (req, res) => {
+  const { search, category, make, page, limit } = req.query;
+
+  const result = await getAllVehiclesModel({
+    search,
+    category,
+    make,
+    page: page ? Number(page) : 1,
+    limit: limit ? Number(limit) : 20,
+  });
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, result, "Vehicles fetched successfully"));
 });
 
 export { getVehicleCodeList };

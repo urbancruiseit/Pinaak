@@ -152,10 +152,9 @@ export const checkCustomerPhoneApi = async (
   customerPhone: string,
 ): Promise<CheckCustomerResponse> => {
   try {
-    const response = await axiosInstance.post<ApiResponse<CheckCustomerResponse>>(
-      "/lead/check-phone",
-      { customerPhone },
-    );
+    const response = await axiosInstance.post<
+      ApiResponse<CheckCustomerResponse>
+    >("/lead/check-phone", { customerPhone });
 
     return response.data.data;
   } catch (error: any) {
@@ -269,49 +268,6 @@ export interface AdvisorReminderStat {
   shownReminders: number;
 }
 
-export const getAdvisorReminderStatsApi = async (): Promise<AdvisorReminderStat[]> => {
-  try {
-    const response = await axiosInstance.get<ApiResponse<AdvisorReminderStat[]>>(
-      "/lead/reminders/advisor-stats",
-    );
-    return response.data.data;
-  } catch (error: any) {
-    throw new Error(
-      error.response?.data?.message || "Failed to fetch advisor reminder stats",
-    );
-  }
-};
-
-export interface AdvisorReminderDetail {
-  id: number;
-  lead_id: number;
-  message: string;
-  reminder_datetime: string;
-  is_shown: number;
-  created_at: string;
-  fullName: string;
-  customerPhone: string;
-  customerEmail: string;
-  pickupDateTime: string;
-  dropDateTime: string;
-  status: string;
-}
-
-export const getAdvisorReminderDetailsApi = async (
-  advisorId: number,
-): Promise<AdvisorReminderDetail[]> => {
-  try {
-    const response = await axiosInstance.get<ApiResponse<AdvisorReminderDetail[]>>(
-      `/lead/reminders/advisor-stats/${advisorId}/details`,
-    );
-    return response.data.data;
-  } catch (error: any) {
-    throw new Error(
-      error.response?.data?.message || "Failed to fetch reminder messages",
-    );
-  }
-};
-
 export interface DueReminder {
   id: number;
   lead_id: number;
@@ -328,6 +284,51 @@ export interface DueReminder {
   passengerTotal: number;
   days: number;
 }
+
+export interface AdvisorReminderDetail {
+  id: number;
+  lead_id: number;
+  message: string;
+  reminder_datetime: string;
+  is_shown: number;
+  created_at: string;
+  fullName: string;
+  customerPhone: string;
+  customerEmail: string;
+  pickupDateTime: string;
+  dropDateTime: string;
+  status: string;
+}
+
+export const getAdvisorReminderStatsApi = async (): Promise<
+  AdvisorReminderStat[]
+> => {
+  try {
+    const response = await axiosInstance.get<
+      ApiResponse<AdvisorReminderStat[]>
+    >("/lead/reminders/advisor-stats");
+    return response.data.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message || "Failed to fetch advisor reminder stats",
+    );
+  }
+};
+
+export const getAdvisorReminderDetailsApi = async (
+  advisorId: number,
+): Promise<AdvisorReminderDetail[]> => {
+  try {
+    const response = await axiosInstance.get<
+      ApiResponse<AdvisorReminderDetail[]>
+    >(`/lead/reminders/advisor-stats/${advisorId}/details`);
+    return response.data.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message || "Failed to fetch reminder messages",
+    );
+  }
+};
 
 export const getDueRemindersApi = async (): Promise<DueReminder[]> => {
   try {
@@ -386,11 +387,13 @@ export interface AdvisorFollowupDetail {
   dropDateTime: string;
 }
 
-export const getAdvisorFollowupStatsApi = async (): Promise<AdvisorFollowupStat[]> => {
+export const getAdvisorFollowupStatsApi = async (): Promise<
+  AdvisorFollowupStat[]
+> => {
   try {
-    const response = await axiosInstance.get<ApiResponse<AdvisorFollowupStat[]>>(
-      "/lead/followups/advisor-stats",
-    );
+    const response = await axiosInstance.get<
+      ApiResponse<AdvisorFollowupStat[]>
+    >("/lead/followups/advisor-stats");
     return response.data.data;
   } catch (error: any) {
     throw new Error(
@@ -404,9 +407,9 @@ export const getAdvisorFollowupDetailsApi = async (
   advisorId: number,
 ): Promise<AdvisorFollowupDetail[]> => {
   try {
-    const response = await axiosInstance.get<ApiResponse<AdvisorFollowupDetail[]>>(
-      `/lead/followups/advisor-stats/${advisorId}/details`,
-    );
+    const response = await axiosInstance.get<
+      ApiResponse<AdvisorFollowupDetail[]>
+    >(`/lead/followups/advisor-stats/${advisorId}/details`);
     return response.data.data;
   } catch (error: any) {
     throw new Error(

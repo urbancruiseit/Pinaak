@@ -18,9 +18,7 @@ export default function AdvisorReminderStats({
   selectedAdvisorId,
   zonesAdvisors,
 }: AdvisorReminderStatsProps) {
-  const [reminderStats, setReminderStats] = useState<AdvisorReminderStat[]>(
-    [],
-  );
+  const [reminderStats, setReminderStats] = useState<AdvisorReminderStat[]>([]);
   const [reminderStatsLoading, setReminderStatsLoading] = useState(false);
   const [reminderStatsError, setReminderStatsError] = useState<string | null>(
     null,
@@ -63,17 +61,20 @@ export default function AdvisorReminderStats({
     };
   }, []);
 
-  const handleViewMessages = async (
-    advisorId: number,
-    advisorName: string,
-  ) => {
+  const handleViewMessages = async (advisorId: number, advisorName: string) => {
     setOpenAdvisor({ id: advisorId, name: advisorName });
     setReminderDetailsLoading(true);
     setReminderDetailsError(null);
+
     try {
       const data = await getAdvisorReminderDetailsApi(advisorId);
+
+      console.log("Reminder Data =>", data);
+
       setReminderDetails(data);
     } catch (err: any) {
+      console.error("Reminder Details Error =>", err);
+
       setReminderDetailsError(err.message || "Failed to load messages");
       setReminderDetails([]);
     } finally {
@@ -152,9 +153,7 @@ export default function AdvisorReminderStats({
               <div className="flex items-center justify-between mb-1">
                 <p className="font-semibold text-blue-950">{a.advisorName}</p>
                 <button
-                  onClick={() =>
-                    handleViewMessages(a.advisorId, a.advisorName)
-                  }
+                  onClick={() => handleViewMessages(a.advisorId, a.advisorName)}
                   className="flex items-center gap-1 text-xs font-semibold text-blue-600 hover:text-blue-900"
                 >
                   <Eye size={14} />
@@ -259,8 +258,7 @@ export default function AdvisorReminderStats({
                   <p className="text-sm text-blue-950 mb-1">{r.message}</p>
                   <div className="flex flex-wrap gap-x-4 text-[11px] text-slate-500">
                     <span>
-                      📅{" "}
-                      {new Date(r.reminder_datetime).toLocaleString("en-IN")}
+                      📅 {new Date(r.reminder_datetime).toLocaleString("en-IN")}
                     </span>
                     {r.customerPhone && <span>📞 {r.customerPhone}</span>}
                     {r.status && <span>Status: {r.status}</span>}

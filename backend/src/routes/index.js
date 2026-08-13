@@ -17,6 +17,7 @@ import dsrRouter from "../module/DSR/dsr.route.js";
 import downloadRoute from "../module/Download/download.route.js";
 import rateRoute from "../module/Rate/rate.route.js";
 import ruleRouter from "../module/Rules/rules.route.js";
+import vehiclemanagerRouter from "../module/vehicleManager/vehicleManager.route.js";
 
 const allRoutes = (app) => {
   app.use("/api/v1/user", userRouter);
@@ -39,6 +40,7 @@ const allRoutes = (app) => {
   app.use("/api/v1/download", downloadRoute);
   app.use("/api/v1/rate", rateRoute);
   app.use("/api/v1/rule", ruleRouter);
+  app.use("/api/v1/vehiclemanager", vehiclemanagerRouter);
 };
 
 export default allRoutes;

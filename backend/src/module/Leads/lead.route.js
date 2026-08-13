@@ -23,7 +23,8 @@ router.route("/").get(verifyJWT, listLeads);
 router.route("/unwanted/:id").patch(updateLeadUnwantedStatusController);
 router.route("/unwanted/all").get(getAllUnwantedLeadsController);
 router.route("/updatelead/:leadId").put(updateLeadByIdController);
-router.post("/reminder", createReminderController);
+// lead.route.js
+router.post("/reminder", verifyJWT, createReminderController);
 router.get("/reminders/due", verifyJWT, getDueRemindersController);
 router.patch("/reminders/:id/shown", verifyJWT, markReminderAsShownController);
 router.post("/check-phone", checkCustomerPhoneController);

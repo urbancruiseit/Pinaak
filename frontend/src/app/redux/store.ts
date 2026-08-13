@@ -16,6 +16,7 @@ import downloadReducer from "../features/Download/downloadSlice";
 import rateReducer from "../features/Rate/rateSlice";
 import ruleReducer from "../features/Rules/rulesSlice";
 import navigationReducer from "../features/Navigation/navigationSlice";
+import vehicleManagerReducer from "../features/vehicleManager/vehicleManagerSlice"; // Import the vehicleManager reducer
 
 export const store = configureStore({
   reducer: {
@@ -36,6 +37,7 @@ export const store = configureStore({
     rate: rateReducer,
     rule: ruleReducer,
     navigation: navigationReducer,
+    vehicleManager: vehicleManagerReducer, 
   },
 });
 

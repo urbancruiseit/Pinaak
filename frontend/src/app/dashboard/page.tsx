@@ -133,15 +133,15 @@ const masterTabs = [
   },
   {
     key: "vehicles",
-    component: lazy(() => import("../components/Master/vehiclesmaster")),
+    component: lazy(() => import("../components/Master/vehiclesmasterTable")),
   },
   {
     key: "vehicle-category",
     component: lazy(() => import("../components/Master/vehiclecategory")),
   },
   {
-    key: "vehicle-registration",
-    component: lazy(() => import("../components/Master/Vehicleregistration")),
+    key: "vehicle-manager",
+    component: lazy(() => import("../components/Master/VehicleManagerTable")),
   },
   {
     key: "vehicle-add",
@@ -200,6 +200,20 @@ const vendorAccessibleMasterKeys = [
   "driver-table",
 ];
 
+// ✅ Same role list as navbar.tsx's MASTER_ALLOWED_ROLES — keep both in sync.
+// This is the page-level gate: even if someone reaches nav.activeSection ===
+// "master" without going through the navbar (e.g. via a stored/URL tab param),
+// this stops the Master module from actually rendering for disallowed roles.
+// 👇 "travel advisor" added: they're now allowed into Master, but navbar.tsx
+// restricts WHICH sections/items they see inside it (only the Customers
+// dropdown → Existing Customer Search). This gate only decides yes/no entry.
+const MASTER_ALLOWED_ROLES = [
+  "superadmin",
+  "admin",
+  "manager",
+  "city manager",
+  "travel advisor",
+];
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
@@ -329,6 +343,30 @@ export default function DashboardPage() {
     normalizedRoleName.includes("city manager") ||
     normalizedRoleValue.includes("city manager");
 
+  // ══════════════════════════════════════════════════════════════════════
+  // ✅ NEW: Team Leader-Sales detection — same normalized-string pattern as
+  // City Manager above (case-insensitive, trimmed, checks both `.role` and
+  // `.role_name`, top-level and nested `.data`).
+  // ══════════════════════════════════════════════════════════════════════
+  const isTeamLeaderSales =
+    normalizedRoleName.includes("team leader-sales") ||
+    normalizedRoleName.includes("team leader sales") ||
+    normalizedRoleValue.includes("team leader-sales") ||
+    normalizedRoleValue.includes("team leader sales");
+
+  // ✅ Combined flag: City Manager AND Team Leader-Sales both see the exact
+  // same "City Manager" dashboard when they land on Leads / Dashboard.
+  const showCityManagerDashboard = isCityManager || isTeamLeaderSales;
+
+  // ✅ Master access check — same role logic as navbar's normalizedRole,
+  // built from `.role` (falls back to `.role_name`) on either the raw
+  // user object or its nested `.data` shape.
+  const normalizedRoleForMaster =
+    normalizedRoleValue || normalizedRoleName || "";
+  const canAccessMaster = MASTER_ALLOWED_ROLES.includes(
+    normalizedRoleForMaster,
+  );
+
   // ── Main content ─────────────────────────────────────────────────────────
   const mainContent = (() => {
     if (nav.loginType === "vendor") {
@@ -390,8 +428,15 @@ export default function DashboardPage() {
       );
     }
 
-    // MASTER
+    // MASTER — role-gated. Even if nav.activeSection got set to "master"
+    // some other way (stale state, ?tab= param, etc.), a disallowed role
+    // sees an Access Denied fallback instead of the module.
     if (nav.activeSection === "master") {
+      if (!canAccessMaster)
+        return renderFallback(
+          "Access Denied",
+          "You don't have permission to view the Master section. Contact an admin if you believe this is a mistake.",
+        );
       if (nav.pendingModuleKey)
         return renderFallback(
           "Module coming soon",
@@ -524,10 +569,11 @@ export default function DashboardPage() {
         );
       }
 
-      // ✅ City Manager ke liye default "leads" view uska apna dashboard hai
+      // ✅ City Manager AND Team Leader-Sales — dono ke liye default "leads"
+      // view same dashboard hai (CityManagerDashboardModule).
       return (
         <div className="space-y-6">
-          {isCityManager ? (
+          {showCityManagerDashboard ? (
             <CityManagerDashboardModule />
           ) : (
             <LeadsOverviewModule />
@@ -562,10 +608,11 @@ export default function DashboardPage() {
             <CityManagerDashboardModule />
           </div>
         );
-      // ✅ City Manager ke liye default dashboard view bhi uska apna dashboard ho
+      // ✅ City Manager AND Team Leader-Sales — dono ke liye default
+      // dashboard view bhi same (CityManagerDashboardModule) hai.
       return (
         <div className="space-y-6">
-          {isCityManager ? (
+          {showCityManagerDashboard ? (
             <CityManagerDashboardModule />
           ) : (
             <LeadsOverviewModule />

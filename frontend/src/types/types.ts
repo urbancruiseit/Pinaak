@@ -196,6 +196,14 @@ export interface Vehicle {
   code: string;
   created_at: string;
   updated_at?: string;
+  seat: string;
+  category: string;
+  make: string;
+  variant: string;
+  description: string;
+  amenities: string;
+  config: string;
+  model: string; // Add model field to the Vehicle interface
 }
 
 export interface travelcity {

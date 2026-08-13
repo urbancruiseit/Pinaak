@@ -22,7 +22,7 @@ type MasterKey =
   | "vendor-table"
   | "vehicles"
   | "vehicle-category"
-  | "vehicle-registration"
+  | "vehicle-manager"
   | "vehicle-add"
   | "driver"
   | "driver-table"

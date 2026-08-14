@@ -14,7 +14,6 @@ import {
   createCustomers,
   getLeadById,
   createReminder,
-  getDueReminders,
   markReminderAsShown,
   checkCustomerByPhone,
   getAdvisorReminderStats,
@@ -382,30 +381,30 @@ export const createReminderController = async (req, res) => {
   }
 };
 
-export const getDueRemindersController = async (req, res) => {
-  try {
-    const advisorId = req.user.id;
+// export const getDueRemindersController = async (req, res) => {
+//   try {
+//     const advisorId = req.user.id;
 
 
 
-    const reminders = await getDueReminders(advisorId);
+//     const reminders = await getDueReminders(advisorId);
 
   
 
-    return res.status(200).json({
-      success: true,
-      data: reminders,
-      count: reminders.length,
-    });
-  } catch (error) {
-    console.error("❌ [getDueRemindersController] error:", error);
+//     return res.status(200).json({
+//       success: true,
+//       data: reminders,
+//       count: reminders.length,
+//     });
+//   } catch (error) {
+//     console.error("❌ [getDueRemindersController] error:", error);
 
-    return res.status(500).json({
-      success: false,
-      message: "Server Error",
-    });
-  }
-};
+//     return res.status(500).json({
+//       success: false,
+//       message: "Server Error",
+//     });
+//   }
+// };
 export const markReminderAsShownController = async (req, res) => {
   try {
     const { id } = req.params;

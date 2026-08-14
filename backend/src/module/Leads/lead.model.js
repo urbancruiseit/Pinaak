@@ -940,78 +940,78 @@ export const markReminderAsShown = async (id) => {
   await pool.query(`UPDATE scheduler SET is_shown = 1 WHERE id = ?`, [id]);
 };
 
-export const getDueReminders = async (advisorId) => {
-  try {
+// export const getDueReminders = async (advisorId) => {
+//   try {
 
-    const query = `
-      SELECT
-        s.id,
-        s.lead_id,
-        s.advisor_id,
-        s.message,
-        s.reminder_datetime,
+//     const query = `
+//       SELECT
+//         s.id,
+//         s.lead_id,
+//         s.advisor_id,
+//         s.message,
+//         s.reminder_datetime,
 
-        CONCAT_WS(
-          ' ',
-          c.firstName,
-          c.middleName,
-          c.lastName
-        ) AS fullName,
+//         CONCAT_WS(
+//           ' ',
+//           c.firstName,
+//           c.middleName,
+//           c.lastName
+//         ) AS fullName,
 
-        c.customerPhone,
-        c.customerEmail,
+//         c.customerPhone,
+//         c.customerEmail,
 
-        l.pickupDateTime,
-        l.dropDateTime,
-        l.days,
-        l.passengerTotal,
+//         l.pickupDateTime,
+//         l.dropDateTime,
+//         l.days,
+//         l.passengerTotal,
 
-        NOW() AS mysql_now_utc,
-        DATE_ADD(NOW(), INTERVAL 330 MINUTE) AS current_ist,
+//         NOW() AS mysql_now_utc,
+//         DATE_ADD(NOW(), INTERVAL 330 MINUTE) AS current_ist,
 
-        CASE
-          WHEN s.reminder_datetime <= DATE_ADD(NOW(), INTERVAL 330 MINUTE)
-          THEN 1
-          ELSE 0
-        END AS is_due
+//         CASE
+//           WHEN s.reminder_datetime <= DATE_ADD(NOW(), INTERVAL 330 MINUTE)
+//           THEN 1
+//           ELSE 0
+//         END AS is_due
 
-      FROM scheduler s
+//       FROM scheduler s
 
-      INNER JOIN leads l
-        ON l.id = s.lead_id
+//       INNER JOIN leads l
+//         ON l.id = s.lead_id
 
-      LEFT JOIN customers c
-        ON c.id = l.customer_id
+//       LEFT JOIN customers c
+//         ON c.id = l.customer_id
 
-      WHERE
-        s.advisor_id = ?
-        AND s.is_shown = 0
-        AND s.reminder_datetime <= DATE_ADD(NOW(), INTERVAL 330 MINUTE)
+//       WHERE
+//         s.advisor_id = ?
+//         AND s.is_shown = 0
+//         AND s.reminder_datetime <= DATE_ADD(NOW(), INTERVAL 330 MINUTE)
 
-      ORDER BY s.reminder_datetime ASC
-    `;
+//       ORDER BY s.reminder_datetime ASC
+//     `;
 
-    const [rows] = await pool.query(query, [advisorId]);
-
-
-    rows.forEach((row) => {
-      console.log("🔔 Reminder:", {
-        id: row.id,
-        lead_id: row.lead_id,
-        advisor_id: row.advisor_id,
-        reminder_datetime: row.reminder_datetime,
-        is_shown: row.is_shown,
-        is_due: row.is_due,
-      });
-    });
+//     const [rows] = await pool.query(query, [advisorId]);
 
 
-    return rows;
-  } catch (error) {
-    console.error("❌ [getDueReminders] error:", error);
-    throw error;
-  }
-};
+//     rows.forEach((row) => {
+//       console.log("🔔 Reminder:", {
+//         id: row.id,
+//         lead_id: row.lead_id,
+//         advisor_id: row.advisor_id,
+//         reminder_datetime: row.reminder_datetime,
+//         is_shown: row.is_shown,
+//         is_due: row.is_due,
+//       });
+//     });
+
+
+//     return rows;
+//   } catch (error) {
+//     console.error("❌ [getDueReminders] error:", error);
+//     throw error;
+//   }
+// };
 
 export const getAdvisorReminderStats = async (cityIds = []) => {
   try {

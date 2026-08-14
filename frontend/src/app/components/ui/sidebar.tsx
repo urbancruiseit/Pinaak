@@ -25,6 +25,7 @@ import {
   Users,
   Store,
 } from "lucide-react";
+import { de } from "zod/v4/locales";
 
 type Color =
   | "orange"
@@ -102,6 +103,7 @@ type RoleTag =
   | "presale"
   | "tele-sales"
   | "seo-executive"
+  | "seo-tl"
   | "team-leader-sales";
 
 const Sidebar: React.FC = () => {
@@ -158,12 +160,16 @@ const Sidebar: React.FC = () => {
   const isSeoExecutiveDigitalMarketing =
     departmentName === "digital marketing" && roleName === "seo executive";
 
+  const isSeoTlDigitalMarketing =
+    departmentName === "digital marketing" && roleName === "seo tl";
+
   const userRoleTags: RoleTag[] = [
     isAdvisor && "advisor",
     isManager && "manager",
     isPresale && "presale",
     isTelesales && "tele-sales",
     isSeoExecutiveDigitalMarketing && "seo-executive",
+    isSeoTlDigitalMarketing && "seo-tl",
     isTeamLeaderSales && "team-leader-sales",
   ].filter(Boolean) as RoleTag[];
 
@@ -236,6 +242,7 @@ const Sidebar: React.FC = () => {
         "seo-executive",
         "advisor",
         "manager",
+        "seo-tl",
         "team-leader-sales",
       ] as RoleTag[],
     },

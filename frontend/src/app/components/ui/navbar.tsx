@@ -283,13 +283,15 @@ export function Navbar() {
   const shouldShowLeadManagerDropdown =
     isSuperAdmin || isManager || isCityManager || isTeamLeaderSales;
 
-  // ✅ SEO Executive (Digital Marketing) special-case checks
   const isSeoExecutive = normalizedRole === "seo executive";
+  const isSeoTl = normalizedRole === "seo tl"; // 👈 add
   const isDigitalMarketingDept =
     (userDepartment ?? "").toLowerCase().trim() === "digital marketing";
 
   const isSeoExecutiveDigitalMarketing =
     isSeoExecutive && isDigitalMarketingDept;
+
+  const isSeoTlDigitalMarketing = isSeoTl && isDigitalMarketingDept; // 👈 add
 
   // ✅ Allowlist for who can see the Leads menu (New Lead / Lead Manager)
   const leadsAllowedRoles = [
@@ -394,7 +396,8 @@ export function Navbar() {
         isTeamLeader ||
         isCityManager ||
         isTeamLeaderSales ||
-        isSeoExecutiveDigitalMarketing,
+        isSeoExecutiveDigitalMarketing ||
+        isSeoTlDigitalMarketing, // 👈 yahan use karo
     },
     {
       label: "Monthly Enquiry PS 2 (MER 2)",
@@ -570,6 +573,7 @@ export function Navbar() {
                 {canSeeLeadsMenu &&
                   !isSales &&
                   !isTravelAdvisor &&
+                  !isSeoTlDigitalMarketing && // 👈 yahan use karo
                   !isSeoExecutiveDigitalMarketing && (
                     <div className="relative w-full md:w-auto">
                       <button

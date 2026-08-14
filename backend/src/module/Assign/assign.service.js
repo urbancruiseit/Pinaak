@@ -100,7 +100,9 @@ export const findZoneCityRegion = async (req) => {
 
     return result;
   } else if (
-    ["city manager", "seo executive"].includes(roleName?.toLowerCase())
+    ["city manager", "seo executive", "seo tl"].includes(
+      roleName?.toLowerCase(),
+    )
   ) {
     let zoneIds = req.user.zone_ids;
 

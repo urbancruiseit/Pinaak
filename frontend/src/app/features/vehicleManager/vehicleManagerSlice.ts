@@ -9,25 +9,20 @@ import {
   getVehicleMasterCodesApi,
   getVehicleManagerVendorsApi,
   getVehicleMasterAmenitiesApi,
+  getAllCitiesApi,
   VehicleMasterCode,
   VehicleManagerVendor,
   VehicleMasterAmenity,
+  VehicleCity,
 } from "./vehicleManagerApi";
-
 
 // =====================================================
 // CREATE PAYLOAD
 // =====================================================
 
-type CreateVehicleManagerPayload = Omit<
-  Vehicle,
-  "id"
->;
+type CreateVehicleManagerPayload = Omit<Vehicle, "id">;
 
 
-// =====================================================
-// STATE
-// =====================================================
 
 interface VehicleManagerState {
   // Vehicle Manager Table
@@ -47,13 +42,14 @@ interface VehicleManagerState {
   vehicleMasterCodes: VehicleMasterCode[];
   vendors: VehicleManagerVendor[];
   vehicleMasterAmenities: VehicleMasterAmenity[];
+  cities: VehicleCity[];
 
   // Dropdown loading
   codesLoading: boolean;
   vendorsLoading: boolean;
   amenitiesLoading: boolean;
+  citiesLoading: boolean;
 }
-
 
 // =====================================================
 // INITIAL STATE
@@ -73,415 +69,319 @@ const initialState: VehicleManagerState = {
   vehicleMasterCodes: [],
   vendors: [],
   vehicleMasterAmenities: [],
+  cities: [],
 
   codesLoading: false,
   vendorsLoading: false,
   amenitiesLoading: false,
+  citiesLoading: false,
 };
-
 
 // =====================================================
 // CREATE VEHICLE MANAGER
 // =====================================================
 
-export const createVehicleManager =
-  createAsyncThunk<
-    Vehicle,
-    CreateVehicleManagerPayload,
-    { rejectValue: string }
-  >(
-    "vehicleManager/createVehicleManager",
+export const createVehicleManager = createAsyncThunk<
+  Vehicle,
+  CreateVehicleManagerPayload,
+  { rejectValue: string }
+>(
+  "vehicleManager/createVehicleManager",
 
-    async (
-      vehicleData,
-      { rejectWithValue },
-    ) => {
-      try {
-        const response =
-          await createVehiclesManagerApi(
-            vehicleData,
-          );
+  async (vehicleData, { rejectWithValue }) => {
+    try {
+      const response = await createVehiclesManagerApi(vehicleData);
 
-        return response;
-      } catch (error: any) {
-        return rejectWithValue(
-          error?.message ||
-            "Failed to create vehicle manager",
-        );
-      }
-    },
-  );
-
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(
+        error?.message || "Failed to create vehicle manager",
+      );
+    }
+  },
+);
 
 // =====================================================
 // GET ALL VEHICLE MANAGERS
 // =====================================================
 
-export const getVehicleManagers =
-  createAsyncThunk<
-    GetVehicleManagersResponse,
-    GetVehicleManagersParams | undefined,
-    { rejectValue: string }
-  >(
-    "vehicleManager/getVehicleManagers",
+export const getVehicleManagers = createAsyncThunk<
+  GetVehicleManagersResponse,
+  GetVehicleManagersParams | undefined,
+  { rejectValue: string }
+>(
+  "vehicleManager/getVehicleManagers",
 
-    async (
-      params,
-      { rejectWithValue },
-    ) => {
-      try {
-        const response =
-          await getVehicleManagersApi(
-            params,
-          );
+  async (params, { rejectWithValue }) => {
+    try {
+      const response = await getVehicleManagersApi(params);
 
-        return response;
-      } catch (error: any) {
-        return rejectWithValue(
-          error?.message ||
-            "Failed to fetch vehicle managers",
-        );
-      }
-    },
-  );
-
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(
+        error?.message || "Failed to fetch vehicle managers",
+      );
+    }
+  },
+);
 
 // =====================================================
 // GET VEHICLE MASTER CODES
 // =====================================================
 
-export const getVehicleMasterCodes =
-  createAsyncThunk<
-    VehicleMasterCode[],
-    void,
-    { rejectValue: string }
-  >(
-    "vehicleManager/getVehicleMasterCodes",
+export const getVehicleMasterCodes = createAsyncThunk<
+  VehicleMasterCode[],
+  void,
+  { rejectValue: string }
+>(
+  "vehicleManager/getVehicleMasterCodes",
 
-    async (
-      _,
-      { rejectWithValue },
-    ) => {
-      try {
-        const response =
-          await getVehicleMasterCodesApi();
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await getVehicleMasterCodesApi();
 
-        return response;
-      } catch (error: any) {
-        return rejectWithValue(
-          error?.message ||
-            "Failed to fetch vehicle master codes",
-        );
-      }
-    },
-  );
-
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(
+        error?.message || "Failed to fetch vehicle master codes",
+      );
+    }
+  },
+);
 
 // =====================================================
 // GET VEHICLE MASTER AMENITIES
 // =====================================================
 
-export const getVehicleMasterAmenities =
-  createAsyncThunk<
-    VehicleMasterAmenity[],
-    void,
-    { rejectValue: string }
-  >(
-    "vehicleManager/getVehicleMasterAmenities",
+export const getVehicleMasterAmenities = createAsyncThunk<
+  VehicleMasterAmenity[],
+  void,
+  { rejectValue: string }
+>(
+  "vehicleManager/getVehicleMasterAmenities",
 
-    async (
-      _,
-      { rejectWithValue },
-    ) => {
-      try {
-        const response =
-          await getVehicleMasterAmenitiesApi();
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await getVehicleMasterAmenitiesApi();
 
-        return response;
-      } catch (error: any) {
-        return rejectWithValue(
-          error?.message ||
-            "Failed to fetch vehicle master amenities",
-        );
-      }
-    },
-  );
-
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(
+        error?.message || "Failed to fetch vehicle master amenities",
+      );
+    }
+  },
+);
 
 // =====================================================
 // GET VENDORS
 // =====================================================
 
-export const getVehicleManagerVendors =
-  createAsyncThunk<
-    VehicleManagerVendor[],
-    void,
-    { rejectValue: string }
-  >(
-    "vehicleManager/getVehicleManagerVendors",
+export const getVehicleManagerVendors = createAsyncThunk<
+  VehicleManagerVendor[],
+  void,
+  { rejectValue: string }
+>(
+  "vehicleManager/getVehicleManagerVendors",
 
-    async (
-      _,
-      { rejectWithValue },
-    ) => {
-      try {
-        const response =
-          await getVehicleManagerVendorsApi();
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await getVehicleManagerVendorsApi();
 
-        return response;
-      } catch (error: any) {
-        return rejectWithValue(
-          error?.message ||
-            "Failed to fetch vendors",
-        );
-      }
-    },
-  );
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error?.message || "Failed to fetch vendors");
+    }
+  },
+);
 
+// =====================================================
+// GET ALL CITIES
+// =====================================================
+
+export const getAllCities = createAsyncThunk<
+  VehicleCity[],
+  void,
+  { rejectValue: string }
+>(
+  "vehicleManager/getAllCities",
+
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await getAllCitiesApi();
+
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error?.message || "Failed to fetch cities");
+    }
+  },
+);
 
 // =====================================================
 // SLICE
 // =====================================================
 
-const vehicleManagerSlice =
-  createSlice({
-    name: "vehicleManager",
+const vehicleManagerSlice = createSlice({
+  name: "vehicleManager",
 
-    initialState,
+  initialState,
 
-    reducers: {},
+  reducers: {},
 
-    extraReducers: (builder) => {
+  extraReducers: (builder) => {
+    // =================================================
+    // CREATE VEHICLE MANAGER
+    // =================================================
 
-      // =================================================
-      // CREATE VEHICLE MANAGER
-      // =================================================
+    builder
 
-      builder
+      .addCase(createVehicleManager.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
 
-        .addCase(
-          createVehicleManager.pending,
-          (state) => {
-            state.loading = true;
-            state.error = null;
-          },
-        )
+      .addCase(createVehicleManager.fulfilled, (state, action) => {
+        state.loading = false;
+        state.error = null;
 
-        .addCase(
-          createVehicleManager.fulfilled,
-          (
-            state,
-            action,
-          ) => {
-            state.loading = false;
-            state.error = null;
+        // Add newly created vehicle
+        state.vehicles.unshift(action.payload);
 
-            // Add newly created vehicle
-            state.vehicles.unshift(
-              action.payload,
-            );
+        // Update total
+        state.total += 1;
+      })
 
-            // Update total
-            state.total += 1;
-          },
-        )
+      .addCase(createVehicleManager.rejected, (state, action) => {
+        state.loading = false;
 
-        .addCase(
-          createVehicleManager.rejected,
-          (
-            state,
-            action,
-          ) => {
-            state.loading = false;
+        state.error = action.payload || "Failed to create vehicle manager";
+      });
 
-            state.error =
-              action.payload ||
-              "Failed to create vehicle manager";
-          },
-        );
+    // =================================================
+    // GET ALL VEHICLE MANAGERS
+    // =================================================
 
+    builder
 
-      // =================================================
-      // GET ALL VEHICLE MANAGERS
-      // =================================================
+      .addCase(getVehicleManagers.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
 
-      builder
+      .addCase(getVehicleManagers.fulfilled, (state, action) => {
+        state.loading = false;
+        state.error = null;
 
-        .addCase(
-          getVehicleManagers.pending,
-          (state) => {
-            state.loading = true;
-            state.error = null;
-          },
-        )
+        state.vehicles = action.payload.data;
 
-        .addCase(
-          getVehicleManagers.fulfilled,
-          (
-            state,
-            action,
-          ) => {
-            state.loading = false;
-            state.error = null;
+        state.total = action.payload.total;
 
-            state.vehicles =
-              action.payload.data;
+        state.page = action.payload.page;
 
-            state.total =
-              action.payload.total;
+        state.limit = action.payload.limit;
 
-            state.page =
-              action.payload.page;
+        state.totalPages = action.payload.totalPages;
+      })
 
-            state.limit =
-              action.payload.limit;
+      .addCase(getVehicleManagers.rejected, (state, action) => {
+        state.loading = false;
 
-            state.totalPages =
-              action.payload.totalPages;
-          },
-        )
+        state.error = action.payload || "Failed to fetch vehicle managers";
+      });
 
-        .addCase(
-          getVehicleManagers.rejected,
-          (
-            state,
-            action,
-          ) => {
-            state.loading = false;
+    // =================================================
+    // GET VEHICLE MASTER CODES
+    // =================================================
 
-            state.error =
-              action.payload ||
-              "Failed to fetch vehicle managers";
-          },
-        );
+    builder
 
+      .addCase(getVehicleMasterCodes.pending, (state) => {
+        state.codesLoading = true;
+        state.error = null;
+      })
 
-      // =================================================
-      // GET VEHICLE MASTER CODES
-      // =================================================
+      .addCase(getVehicleMasterCodes.fulfilled, (state, action) => {
+        state.codesLoading = false;
 
-      builder
+        state.vehicleMasterCodes = action.payload;
+      })
 
-        .addCase(
-          getVehicleMasterCodes.pending,
-          (state) => {
-            state.codesLoading = true;
-            state.error = null;
-          },
-        )
+      .addCase(getVehicleMasterCodes.rejected, (state, action) => {
+        state.codesLoading = false;
 
-        .addCase(
-          getVehicleMasterCodes.fulfilled,
-          (
-            state,
-            action,
-          ) => {
-            state.codesLoading = false;
+        state.error = action.payload || "Failed to fetch vehicle master codes";
+      });
 
-            state.vehicleMasterCodes =
-              action.payload;
-          },
-        )
+    // =================================================
+    // GET VEHICLE MASTER AMENITIES
+    // =================================================
 
-        .addCase(
-          getVehicleMasterCodes.rejected,
-          (
-            state,
-            action,
-          ) => {
-            state.codesLoading = false;
+    builder
 
-            state.error =
-              action.payload ||
-              "Failed to fetch vehicle master codes";
-          },
-        );
+      .addCase(getVehicleMasterAmenities.pending, (state) => {
+        state.amenitiesLoading = true;
+        state.error = null;
+      })
 
+      .addCase(getVehicleMasterAmenities.fulfilled, (state, action) => {
+        state.amenitiesLoading = false;
 
-      // =================================================
-      // GET VEHICLE MASTER AMENITIES
-      // =================================================
+        state.vehicleMasterAmenities = action.payload;
+      })
 
-      builder
+      .addCase(getVehicleMasterAmenities.rejected, (state, action) => {
+        state.amenitiesLoading = false;
 
-        .addCase(
-          getVehicleMasterAmenities.pending,
-          (state) => {
-            state.amenitiesLoading = true;
-            state.error = null;
-          },
-        )
+        state.error =
+          action.payload || "Failed to fetch vehicle master amenities";
+      });
 
-        .addCase(
-          getVehicleMasterAmenities.fulfilled,
-          (
-            state,
-            action,
-          ) => {
-            state.amenitiesLoading = false;
+    // =================================================
+    // GET VENDORS
+    // =================================================
 
-            state.vehicleMasterAmenities =
-              action.payload;
-          },
-        )
+    builder
 
-        .addCase(
-          getVehicleMasterAmenities.rejected,
-          (
-            state,
-            action,
-          ) => {
-            state.amenitiesLoading = false;
+      .addCase(getVehicleManagerVendors.pending, (state) => {
+        state.vendorsLoading = true;
+        state.error = null;
+      })
 
-            state.error =
-              action.payload ||
-              "Failed to fetch vehicle master amenities";
-          },
-        );
+      .addCase(getVehicleManagerVendors.fulfilled, (state, action) => {
+        state.vendorsLoading = false;
 
+        state.vendors = action.payload;
+      })
 
-      // =================================================
-      // GET VENDORS
-      // =================================================
+      .addCase(getVehicleManagerVendors.rejected, (state, action) => {
+        state.vendorsLoading = false;
 
-      builder
+        state.error = action.payload || "Failed to fetch vendors";
+      });
 
-        .addCase(
-          getVehicleManagerVendors.pending,
-          (state) => {
-            state.vendorsLoading = true;
-            state.error = null;
-          },
-        )
+    // =================================================
+    // GET ALL CITIES
+    // =================================================
 
-        .addCase(
-          getVehicleManagerVendors.fulfilled,
-          (
-            state,
-            action,
-          ) => {
-            state.vendorsLoading = false;
+    builder
 
-            state.vendors =
-              action.payload;
-          },
-        )
+      .addCase(getAllCities.pending, (state) => {
+        state.citiesLoading = true;
+        state.error = null;
+      })
 
-        .addCase(
-          getVehicleManagerVendors.rejected,
-          (
-            state,
-            action,
-          ) => {
-            state.vendorsLoading = false;
+      .addCase(getAllCities.fulfilled, (state, action) => {
+        state.citiesLoading = false;
 
-            state.error =
-              action.payload ||
-              "Failed to fetch vendors";
-          },
-        );
-    },
-  });
+        state.cities = action.payload;
+      })
 
+      .addCase(getAllCities.rejected, (state, action) => {
+        state.citiesLoading = false;
+
+        state.error = action.payload || "Failed to fetch cities";
+      });
+  },
+});
 
 export default vehicleManagerSlice.reducer;

@@ -27,6 +27,8 @@ export interface GetVehicleManagersParams {
   search?: string;
   vendor?: string;
   garage?: string;
+  city?: string;
+  year?: number | string;
   page?: number;
   limit?: number;
 }
@@ -48,13 +50,12 @@ export const getVehicleManagersApi = async (
         search: params.search || undefined,
         vendor: params.vendor || undefined,
         garage: params.garage || undefined,
+        city: params.city || undefined,
+        year: params.year || undefined,
         page: params.page || 1,
         limit: params.limit || 20,
       },
     });
-
-    console.log("✅ Vehicle managers fetched successfully:", res.data?.data);
-
     return res.data.data;
   } catch (error: any) {
     console.error(
@@ -67,12 +68,6 @@ export const getVehicleManagersApi = async (
     );
   }
 };
-
-// =====================================================
-// VEHICLE MASTER CODE
-// (ab amenities bhi sath aayenge, taaki code select hote hi
-// uske amenities checkbox me pre-check ho sakein)
-// =====================================================
 
 export interface VehicleMasterCode {
   code: string;
@@ -99,10 +94,6 @@ export const getVehicleMasterCodesApi = async (): Promise<
     );
   }
 };
-
-// =====================================================
-// VEHICLE MASTER AMENITIES (unique list, checkboxes ke liye)
-// =====================================================
 
 export interface VehicleMasterAmenity {
   name: string;
@@ -156,5 +147,51 @@ export const getVehicleManagerVendorsApi = async (): Promise<
     throw new Error(
       error?.response?.data?.message || "Failed to fetch vendors",
     );
+  }
+};
+
+// =====================================================
+// CITIES (generic /vehiclemanager/citys endpoint)
+// =====================================================
+
+// ⚠️ IMPORTANT: backend (getAllCitiesModel) returns rows shaped like
+// { id, city_name } — NOT { id, name }. That mismatch was the bug:
+// the <select> was rendering `city.name`, which was always undefined,
+// so every option showed up blank even though the array had data.
+// We normalize the shape here so the rest of the app can keep using
+// `.name` consistently (same as vendors/codes).
+
+export interface VehicleCity {
+  id: number;
+  name: string;
+}
+
+interface RawCityFromApi {
+  id: number;
+  city_name: string;
+}
+
+export const getAllCitiesApi = async (): Promise<VehicleCity[]> => {
+  try {
+    const res = await axiosInstance.get("/vehiclemanager/citys");
+
+    console.log("✅ Cities raw response:", res.data?.data);
+
+    const rawCities: RawCityFromApi[] = res.data?.data || [];
+
+    // Normalize city_name -> name
+    const normalized: VehicleCity[] = rawCities.map((c) => ({
+      id: c.id,
+      name: c.city_name,
+    }));
+
+    return normalized;
+  } catch (error: any) {
+    console.error(
+      "❌ Error fetching cities:",
+      error?.response?.data || error?.message,
+    );
+
+    throw new Error(error?.response?.data?.message || "Failed to fetch cities");
   }
 };

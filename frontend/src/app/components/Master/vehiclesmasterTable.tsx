@@ -108,7 +108,7 @@ const VehicleTable: React.FC = () => {
                 <th className="px-5 py-3.5">Model</th>
                 <th className="px-5 py-3.5">Variant</th>
                 <th className="px-5 py-3.5">Description</th>
-                <th className="px-5 py-3.5">Amenities</th>
+                <th className="px-5 py-3.5">Highlight</th>
               </tr>
             </thead>
 

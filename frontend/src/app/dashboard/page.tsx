@@ -171,6 +171,14 @@ const masterTabs = [
       () => import("../components/Master/Customer/customertable"),
     ),
   },
+
+  {
+    key: "customer-history",
+    component: lazy(
+      () => import("../components/Master/Customer/CustomerHistory"),
+    ),
+  },
+
   {
     key: "driver-table",
     component: lazy(() => import("../components/Master/Driver/drivertable")),

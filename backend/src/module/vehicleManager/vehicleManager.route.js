@@ -6,9 +6,11 @@ import {
   getVehicleManagerVendors,
   getVehicleMasterCodes,
   getVehicleMasterAmenities,
+  getAllCitiesController,
 } from "./vehicleManager.controller.js";
 
 const router = Router();
+router.route("/citys").get(getAllCitiesController);
 
 // ⚠️ Static/named routes ALWAYS "/:id" se pehle honi chahiye
 router.get("/options/codes", getVehicleMasterCodes);

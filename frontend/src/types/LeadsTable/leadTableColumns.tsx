@@ -429,79 +429,69 @@ export const useLeadColumns = ({
           );
         }
 
-        // Follow Ups Column
+        // Follow Up Column
         if (col.key === "follow_ups") {
-          const raw = lead.follow_ups;
-          const data: { date: string; text: string }[] = !raw
-            ? []
-            : typeof raw === "string"
-              ? (() => {
-                  try {
-                    return JSON.parse(raw);
-                  } catch {
-                    return [];
-                  }
-                })()
-              : Array.isArray(raw)
-                ? raw
-                : [];
+          const date = lead.followup_date;
+          const remark = lead.followup_remark;
 
-          if (!data.length)
+          if (!date && !remark) {
             return <span className="text-gray-400 italic text-xs">—</span>;
-
-          const first = data[0];
-          const rest = data.slice(1);
+          }
 
           return (
             <div className="relative group w-full">
-              {/* Pehla item hamesha dikhe */}
+              {/* Main Follow Up */}
               <div className="flex items-center gap-1 whitespace-nowrap">
-                <span className="text-blue-700 font-semibold text-xs">
-                  {first.date}
-                </span>
-                <span className="text-gray-600 text-xs truncate max-w-[80px]">
-                  {first.text}
-                </span>
+                {date && (
+                  <span className="text-blue-700 font-semibold text-xs">
+                    {date}
+                  </span>
+                )}
 
-                {/* Sirf tab dikhao jab rest bhi ho */}
-                {rest.length > 0 && (
-                  <span className="ml-1 text-[10px] bg-orange-500 text-white rounded-full px-1.5 py-0.5 font-bold cursor-pointer select-none">
-                    +{rest.length}
+                {remark && (
+                  <span className="text-gray-600 text-xs truncate max-w-[120px]">
+                    {remark}
                   </span>
                 )}
               </div>
 
-              {/* Hover pe dropdown — right side se bahar na jaye */}
-              {rest.length > 0 && (
+              {/* Hover Details */}
+              {(date || remark) && (
                 <div
                   className="absolute top-full mt-1 hidden group-hover:block z-[9999] bg-white border border-gray-200 rounded-lg shadow-xl min-w-[260px]"
                   style={{ right: 0, left: "auto" }}
                 >
                   <div className="px-2 py-1 bg-gray-100 rounded-t-lg border-b border-gray-200">
                     <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wide">
-                      All Follow Ups ({data.length})
+                      Follow Up
                     </span>
                   </div>
+
                   <table className="text-xs w-full">
                     <tbody>
-                      {data.map((item, index) => (
-                        <tr
-                          key={index}
-                          className={
-                            index % 2 === 0 ? "bg-white" : "bg-gray-50"
-                          }
-                        >
-                          <td className="px-1 py-1.5 text-gray-400 font-bold w-4 pl-2">
-                            {index + 1}.
+                      {date && (
+                        <tr className="bg-white">
+                          <td className="px-2 py-2 text-gray-500 font-semibold w-[80px]">
+                            Date
                           </td>
-                          <td className="px-2 py-1.5 text-blue-700 font-semibold whitespace-nowrap">
-                            {item.date}
-                          </td>
-                          <td className="px-2 py-1.5 text-gray-700 whitespace-normal max-w-[180px] pr-3">
-                            {item.text}
+
+                          <td className="px-2 py-2 text-blue-700 font-semibold">
+                            {date}
                           </td>
                         </tr>
-                      ))}
+                      )}
+
+                      {remark && (
+                        <tr className="bg-gray-50">
+                          <td className="px-2 py-2 text-gray-500 font-semibold align-top">
+                            Remark
+                          </td>
+
+                          <td className="px-2 py-2 text-gray-700 whitespace-normal max-w-[180px]">
+                            {remark}
+                          </td>
+                        </tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -509,6 +499,7 @@ export const useLeadColumns = ({
             </div>
           );
         }
+
         // Pickup DateTime Column
         if (col.key === "pickupDateTime") {
           const dateTimeStr = formatDateTime(String(val));

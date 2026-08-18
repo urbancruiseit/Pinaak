@@ -15,7 +15,6 @@ import {
   MapPin,
   UserRound,
   ChevronDown,
-  SlidersHorizontal,
 } from "lucide-react";
 
 import {
@@ -39,11 +38,6 @@ const TABLE_COLUMNS: { label: string; key: string }[] = [
   { label: "Company", key: "companyName" },
   { label: "Customer Type", key: "customerType" },
   { label: "Category Type", key: "customerCategoryType" },
-  { label: "Country", key: "countryName" },
-  { label: "City", key: "customerCity" },
-  { label: "State", key: "state" },
-  { label: "Pincode", key: "pincode" },
-  { label: "Address", key: "address" },
 ];
 
 const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
@@ -144,7 +138,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
   const paginatedCustomers = filteredCustomers.slice(
     (currentPage - 1) * pageSize,
     currentPage * pageSize,
-  );50
+  );
 
   /* =========================================================
      RESET PAGE WHEN FILTER CHANGES
@@ -243,24 +237,24 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
 
   if (loading || editLoading) {
     return (
-      <div className="min-h-[70vh] flex items-center justify-center bg-slate-50">
-        <div className="w-[320px] bg-white rounded-2xl border border-slate-200 shadow-sm p-8 text-center">
+      <div className="min-h-[70vh] flex items-center justify-center bg-[#f6f7fb]">
+        <div className="w-[320px] bg-white rounded-2xl border border-[#e7e9f2] shadow-sm p-8 text-center">
           <div className="relative mx-auto w-14 h-14">
-            <div className="absolute inset-0 rounded-full border-[3px] border-slate-100" />
+            <div className="absolute inset-0 rounded-full border-[3px] border-[#eef0f5]" />
 
-            <div className="absolute inset-0 rounded-full border-[3px] border-transparent border-t-orange-500 animate-spin" />
+            <div className="absolute inset-0 rounded-full border-[3px] border-transparent border-t-[#6d5dfc] animate-spin" />
 
             <Users
               size={20}
-              className="absolute inset-0 m-auto text-slate-500"
+              className="absolute inset-0 m-auto text-[#7b849b]"
             />
           </div>
 
-          <p className="mt-6 text-base font-semibold text-slate-800">
+          <p className="mt-6 text-base font-semibold text-[#172033]">
             {editLoading ? "Fetching customer details" : "Loading customers"}
           </p>
 
-          <p className="text-sm text-slate-400 mt-1">Please wait a moment...</p>
+          <p className="text-sm text-[#98a1b5] mt-1">Please wait a moment...</p>
         </div>
       </div>
     );
@@ -272,17 +266,17 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
 
   if (error) {
     return (
-      <div className="min-h-[70vh] flex items-center justify-center bg-slate-50 px-4">
-        <div className="w-full max-w-md bg-white border border-slate-200 rounded-2xl shadow-sm p-9 text-center">
+      <div className="min-h-[70vh] flex items-center justify-center bg-[#f6f7fb] px-4">
+        <div className="w-full max-w-md bg-white border border-[#e7e9f2] rounded-2xl shadow-sm p-9 text-center">
           <div className="mx-auto h-16 w-16 rounded-2xl bg-red-50 border border-red-100 flex items-center justify-center text-xl">
             ⚠️
           </div>
 
-          <h3 className="mt-5 text-xl font-bold text-slate-800">
+          <h3 className="mt-5 text-xl font-bold text-[#172033]">
             Unable to load customers
           </h3>
 
-          <p className="text-sm text-slate-500 mt-2">{error}</p>
+          <p className="text-sm text-[#7b849b] mt-2">{error}</p>
 
           <button
             onClick={() => {
@@ -293,11 +287,11 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
               mt-6
               px-6 py-3
               rounded-xl
-              bg-slate-800
+              bg-[#111827]
               text-white
               text-sm
               font-semibold
-              hover:bg-slate-900
+              hover:bg-[#0b1020]
               transition-all
             "
           >
@@ -310,27 +304,27 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
 
   return (
     <>
-      <div className="flex flex-col h-[calc(100vh-120px)] min-h-0 bg-slate-50">
+      <div className="flex flex-col h-[calc(100vh-120px)] min-h-0 bg-[#f6f7fb]">
         {/* =====================================================
             HEADER
         ====================================================== */}
 
         <div className="shrink-0 mb-5">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="h-1 bg-orange-500 w-full" />
+          <div className="bg-white rounded-[24px] border border-[#e7e9f2] shadow-[0_10px_35px_rgba(31,41,55,0.06)] overflow-hidden">
+            <div className="h-1.5 bg-gradient-to-r from-[#6d5dfc] via-[#8b5cf6] to-[#22c55e] w-full" />
 
             <div className="px-6 py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
               <div className="flex items-center gap-4">
-                <div className="h-12 w-12 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center">
-                  <Users size={23} className="text-slate-600" />
+                <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-[#111827] to-[#343b55] shadow-lg shadow-slate-300/30 flex items-center justify-center">
+                  <Users size={23} className="text-[#59627a]" />
                 </div>
 
                 <div>
-                  <h2 className="text-2xl md:text-[27px] font-bold text-slate-800 tracking-tight">
-                    Customer
+                  <h2 className="text-2xl md:text-[27px] font-bold text-[#172033] tracking-tight">
+                    Customer history
                   </h2>
 
-                  <p className="text-sm md:text-[15px] text-slate-400 mt-1">
+                  <p className="text-sm md:text-[15px] text-[#98a1b5] mt-1">
                     Manage and view customer records
                   </p>
                 </div>
@@ -338,19 +332,19 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
 
               <div className="flex items-center gap-4">
                 <div className="text-right">
-                  <p className="text-[11px] uppercase tracking-wider font-bold text-slate-400">
+                  <p className="text-[11px] uppercase tracking-wider font-bold text-[#98a1b5]">
                     Total Customers
                   </p>
 
-                  <p className="text-2xl font-bold text-slate-800">{total}</p>
+                  <p className="text-2xl font-bold text-[#172033]">{total}</p>
                 </div>
 
                 <div className="h-10 w-px bg-slate-200" />
 
-                <div className="hidden sm:flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                <div className="hidden sm:flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#f6f7fb] border border-[#e7e9f2]">
                   <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
 
-                  <span className="text-sm font-medium text-slate-600">
+                  <span className="text-sm font-medium text-[#59627a]">
                     Active
                   </span>
                 </div>
@@ -363,7 +357,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
             FILTER BAR
         ====================================================== */}
 
-        <div className="shrink-0 bg-white rounded-2xl border border-slate-200 shadow-sm p-4 mb-5">
+        <div className="shrink-0 bg-white rounded-[22px] border border-[#e7e9f2] shadow-[0_8px_30px_rgba(31,41,55,0.045)] p-4 mb-5">
           <div className="flex items-center gap-3 mb-4"></div>
 
           <div className="flex flex-col xl:flex-row xl:items-center gap-3">
@@ -377,7 +371,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
                   left-3.5
                   top-1/2
                   -translate-y-1/2
-                  text-slate-400
+                  text-[#98a1b5]
                 "
               />
 
@@ -392,17 +386,17 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
                   pl-11
                   pr-4
                   text-[15px]
-                  bg-slate-50
-                  border border-slate-200
+                  bg-[#f6f7fb]
+                  border border-[#e7e9f2]
                   rounded-xl
                   outline-none
-                  text-slate-700
-                  placeholder:text-slate-400
+                  text-[#273149]
+                  placeholder:text-[#98a1b5]
                   transition-all
                   focus:bg-white
-                  focus:border-orange-400
+                  focus:border-[#6d5dfc]
                   focus:ring-4
-                  focus:ring-orange-50
+                  focus:ring-[#6d5dfc]/10
                 "
               />
             </div>
@@ -417,7 +411,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
                   left-3.5
                   top-1/2
                   -translate-y-1/2
-                  text-slate-400
+                  text-[#98a1b5]
                   pointer-events-none
                 "
               />
@@ -431,18 +425,18 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
                   pl-10
                   pr-9
                   text-[15px]
-                  bg-slate-50
-                  border border-slate-200
+                  bg-[#f6f7fb]
+                  border border-[#e7e9f2]
                   rounded-xl
                   outline-none
-                  text-slate-600
+                  text-[#59627a]
                   cursor-pointer
                   appearance-none
                   transition-all
                   focus:bg-white
-                  focus:border-orange-400
+                  focus:border-[#6d5dfc]
                   focus:ring-4
-                  focus:ring-orange-50
+                  focus:ring-[#6d5dfc]/10
                 "
               >
                 <option value="">All Cities</option>
@@ -461,7 +455,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
                   right-3
                   top-1/2
                   -translate-y-1/2
-                  text-slate-400
+                  text-[#98a1b5]
                   pointer-events-none
                 "
               />
@@ -477,7 +471,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
                   left-3.5
                   top-1/2
                   -translate-y-1/2
-                  text-slate-400
+                  text-[#98a1b5]
                   pointer-events-none
                 "
               />
@@ -491,18 +485,18 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
                   pl-10
                   pr-9
                   text-[15px]
-                  bg-slate-50
-                  border border-slate-200
+                  bg-[#f6f7fb]
+                  border border-[#e7e9f2]
                   rounded-xl
                   outline-none
-                  text-slate-600
+                  text-[#59627a]
                   cursor-pointer
                   appearance-none
                   transition-all
                   focus:bg-white
-                  focus:border-orange-400
+                  focus:border-[#6d5dfc]
                   focus:ring-4
-                  focus:ring-orange-50
+                  focus:ring-[#6d5dfc]/10
                 "
               >
                 <option value="">All Customer Types</option>
@@ -521,7 +515,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
                   right-3
                   top-1/2
                   -translate-y-1/2
-                  text-slate-400
+                  text-[#98a1b5]
                   pointer-events-none
                 "
               />
@@ -540,12 +534,12 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
                   justify-center
                   gap-2
                   rounded-xl
-                  bg-slate-100
-                  border border-slate-200
-                  text-slate-600
+                  bg-[#f1f3f8]
+                  border border-[#e7e9f2]
+                  text-[#59627a]
                   text-sm
                   font-semibold
-                  hover:bg-slate-800
+                  hover:bg-[#111827]
                   hover:text-white
                   hover:border-slate-800
                   transition-all
@@ -569,7 +563,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
               mt-4
               pt-4
               border-t
-              border-slate-100
+              border-[#eef0f5]
             "
             >
               <span
@@ -578,7 +572,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
                 uppercase
                 tracking-wider
                 font-bold
-                text-slate-400
+                text-[#98a1b5]
               "
               >
                 Active:
@@ -589,10 +583,10 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
                   className="
                   px-3
                   py-1.5
-                  bg-slate-100
+                  bg-[#f1f3f8]
                   border
-                  border-slate-200
-                  text-slate-600
+                  border-[#e7e9f2]
+                  text-[#59627a]
                   text-sm
                   font-medium
                 "
@@ -606,10 +600,10 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
                   className="
                   px-3
                   py-1.5
-                  bg-slate-100
+                  bg-[#f1f3f8]
                   border
-                  border-slate-200
-                  text-slate-600
+                  border-[#e7e9f2]
+                  text-[#59627a]
                   text-sm
                   font-medium
                 "
@@ -623,10 +617,10 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
                   className="
                   px-3
                   py-1.5
-                  bg-slate-100
+                  bg-[#f1f3f8]
                   border
-                  border-slate-200
-                  text-slate-600
+                  border-[#e7e9f2]
+                  text-[#59627a]
                   text-sm
                   font-medium
                 "
@@ -645,7 +639,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
         <div
           className="
           bg-white
-          border border-slate-200
+          border border-[#e7e9f2]
           rounded-2xl
           shadow-sm
           flex flex-col
@@ -666,13 +660,13 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
               {/* TABLE HEADER */}
 
               <thead className="sticky top-0 z-30">
-                <tr className="bg-slate-800">
+                <tr className="bg-[#111827] shadow-[0_3px_12px_rgba(17,24,39,0.16)]">
                   <th
                     className="
                       sticky
                       left-0
                       z-40
-                      bg-slate-800
+                      bg-[#111827]
                       px-5
                       py-4
                       text-left
@@ -682,7 +676,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
                       tracking-wider
                       text-slate-200
                       border-r
-                      border-slate-700
+                      border-[#293247]
                       whitespace-nowrap
                     "
                   >
@@ -702,7 +696,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
                           tracking-wider
                           text-slate-200
                           border-r
-                          border-slate-700
+                          border-[#293247]
                           whitespace-nowrap
                         "
                     >
@@ -715,7 +709,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
                       sticky
                       right-0
                       z-40
-                      bg-slate-800
+                      bg-[#111827]
                       px-5
                       py-4
                       text-center
@@ -725,7 +719,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
                       tracking-wider
                       text-slate-200
                       border-l
-                      border-slate-700
+                      border-[#293247]
                       whitespace-nowrap
                     "
                   >
@@ -744,8 +738,8 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
                       className="
                           group
                           border-b
-                          border-slate-100
-                          hover:bg-slate-50
+                          border-[#eef0f5]
+                          hover:bg-[#f6f7fb]
                           transition-colors
                         "
                     >
@@ -757,14 +751,14 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
                             left-0
                             z-10
                             bg-white
-                            group-hover:bg-slate-50
+                            group-hover:bg-[#f6f7fb]
                             px-5
                             py-4
                             border-r
-                            border-slate-100
+                            border-[#eef0f5]
                             text-sm
                             font-semibold
-                            text-slate-500
+                            text-[#7b849b]
                             whitespace-nowrap
                           "
                       >
@@ -803,22 +797,39 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
                                   py-4
                                   text-[14px]
                                   leading-6
-                                  text-slate-600
+                                  text-[#59627a]
                                   whitespace-nowrap
                                   border-r
-                                  border-slate-50
+                                  border-[#f4f5f8]
                                 "
                           >
                             {isEmpty ? (
-                              <span className="text-slate-300 text-[14px]">
+                              <span className="text-[#c4cad8] text-[14px]">
                                 —
                               </span>
-                            ) : emphasizedKeys.includes(col.key) ? (
-                              <span className="font-semibold text-slate-700 text-[14px]">
+                            ) : col.key === "customerType" ? (
+                              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#eef2ff] px-3 py-1.5 text-[12px] font-bold text-[#4f46e5] ring-1 ring-inset ring-[#c7d2fe]">
+                                <span className="h-1.5 w-1.5 rounded-full bg-[#6366f1]" />
+                                {String(value)}
+                              </span>
+                            ) : col.key === "customerCategoryType" ? (
+                              <span className="inline-flex items-center gap-1.5 rounded-full bg-[#f5f3ff] px-3 py-1.5 text-[12px] font-bold text-[#7c3aed] ring-1 ring-inset ring-[#ddd6fe]">
+                                <span className="h-1.5 w-1.5 rounded-full bg-[#8b5cf6]" />
+                                {String(value)}
+                              </span>
+                            ) : col.key === "fullName" ? (
+                              <span className="inline-flex items-center gap-2 font-bold text-[#172033]">
+                                <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-[#6d5dfc] to-[#8b5cf6] text-[11px] font-extrabold text-white shadow-sm">
+                                  {String(value).charAt(0).toUpperCase()}
+                                </span>
+                                {String(value)}
+                              </span>
+                            ) : col.key === "customerPhone" ? (
+                              <span className="font-semibold text-[#273149] text-[14px]">
                                 {String(value)}
                               </span>
                             ) : (
-                              <span className="text-[14px] text-slate-600">
+                              <span className="text-[14px] text-[#59627a]">
                                 {String(value)}
                               </span>
                             )}
@@ -834,11 +845,11 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
                             right-0
                             z-10
                             bg-white
-                            group-hover:bg-slate-50
+                            group-hover:bg-[#f6f7fb]
                             px-5
                             py-3
                             border-l
-                            border-slate-100
+                            border-[#eef0f5]
                           "
                       >
                         <div
@@ -859,12 +870,12 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
                                 flex
                                 items-center
                                 justify-center
-                                bg-slate-50
-                                text-slate-600
+                                bg-[#f6f7fb]
+                                text-[#59627a]
                                 border
-                                border-slate-200
+                                border-[#e7e9f2]
                                 rounded-lg
-                                hover:bg-slate-800
+                                hover:bg-[#111827]
                                 hover:text-white
                                 hover:border-slate-800
                                 transition-all
@@ -884,12 +895,12 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
                                 flex
                                 items-center
                                 justify-center
-                                bg-slate-50
-                                text-slate-600
+                                bg-[#f6f7fb]
+                                text-[#59627a]
                                 border
-                                border-slate-200
+                                border-[#e7e9f2]
                                 rounded-lg
-                                hover:bg-slate-800
+                                hover:bg-[#111827]
                                 hover:text-white
                                 hover:border-slate-800
                                 transition-all
@@ -922,15 +933,15 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
                           h-18
                           w-18
                           rounded-2xl
-                          bg-slate-100
+                          bg-[#f1f3f8]
                           border
-                          border-slate-200
+                          border-[#e7e9f2]
                           flex
                           items-center
                           justify-center
                         "
                         >
-                          <Users size={30} className="text-slate-300" />
+                          <Users size={30} className="text-[#c4cad8]" />
                         </div>
 
                         <h3
@@ -938,7 +949,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
                           mt-5
                           text-lg
                           font-bold
-                          text-slate-700
+                          text-[#273149]
                         "
                         >
                           {searchTerm || cityFilter || typeFilter
@@ -949,7 +960,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
                         <p
                           className="
                           text-sm
-                          text-slate-400
+                          text-[#98a1b5]
                           mt-2
                           text-center
                           max-w-sm
@@ -967,12 +978,12 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
                               mt-5
                               px-5
                               py-2.5
-                              bg-slate-800
+                              bg-[#111827]
                               text-white
                               text-sm
                               font-semibold
                               rounded-xl
-                              hover:bg-slate-900
+                              hover:bg-[#0b1020]
                               transition-all
                             "
                           >
@@ -996,7 +1007,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
               className="
               shrink-0
               border-t
-              border-slate-200
+              border-[#e7e9f2]
               bg-white
               px-5
               py-4
@@ -1057,7 +1068,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
               shadow-2xl
               overflow-hidden
               border
-              border-slate-200
+              border-[#e7e9f2]
             "
             >
               {/* MODAL HEADER */}
@@ -1069,7 +1080,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
                 z-20
                 bg-white
                 border-b
-                border-slate-200
+                border-[#e7e9f2]
               "
               >
                 <div
@@ -1094,15 +1105,15 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
                       h-11
                       w-11
                       rounded-xl
-                      bg-slate-100
+                      bg-[#f1f3f8]
                       border
-                      border-slate-200
+                      border-[#e7e9f2]
                       flex
                       items-center
                       justify-center
                     "
                     >
-                      <UserRound size={20} className="text-slate-600" />
+                      <UserRound size={20} className="text-[#59627a]" />
                     </div>
 
                     <div>
@@ -1110,7 +1121,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
                         className="
                         text-xl
                         font-bold
-                        text-slate-800
+                        text-[#172033]
                       "
                       >
                         Customer Details
@@ -1119,7 +1130,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
                       <p
                         className="
                         text-sm
-                        text-slate-400
+                        text-[#98a1b5]
                         mt-0.5
                       "
                       >
@@ -1137,13 +1148,13 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
                       flex
                       items-center
                       justify-center
-                      text-slate-400
-                      bg-slate-50
+                      text-[#98a1b5]
+                      bg-[#f6f7fb]
                       border
-                      border-slate-200
-                      hover:bg-red-50
-                      hover:text-red-500
-                      hover:border-red-100
+                      border-[#e7e9f2]
+                      hover:bg-[#fff1f2]
+                      hover:text-[#e11d48]
+                      hover:border-[#ffe4e6]
                       transition-all
                     "
                     title="Close"
@@ -1161,7 +1172,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
                 max-h-[calc(92vh-81px)]
                 p-6
                 md:p-8
-                bg-slate-50
+                bg-[#f6f7fb]
               "
               >
                 {viewLoading ? (
@@ -1178,7 +1189,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
                       bg-white
                       rounded-2xl
                       border
-                      border-slate-200
+                      border-[#e7e9f2]
                       shadow-sm
                       px-9
                       py-7
@@ -1193,8 +1204,8 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
                         w-11
                         rounded-full
                         border-[3px]
-                        border-slate-100
-                        border-t-orange-500
+                        border-[#eef0f5]
+                        border-t-[#6d5dfc]
                         animate-spin
                       "
                       />
@@ -1204,7 +1215,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
                         mt-5
                         text-base
                         font-semibold
-                        text-slate-700
+                        text-[#273149]
                       "
                       >
                         Loading customer details...
@@ -1213,7 +1224,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
                       <p
                         className="
                         text-sm
-                        text-slate-400
+                        text-[#98a1b5]
                         mt-1
                       "
                       >
@@ -1227,7 +1238,7 @@ const CustomerTable: React.FC<CustomerTableProps> = ({ onEdit }) => {
                     bg-white
                     rounded-2xl
                     border
-                    border-slate-200
+                    border-[#e7e9f2]
                     shadow-sm
                     p-5
                     md:p-7

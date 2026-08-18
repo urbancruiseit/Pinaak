@@ -9,12 +9,14 @@ import {
   getVehicleManagerVendorsModel,
   getVehicleMasterCodesModel,
   getVehicleMasterAmenitiesModel,
+  getAllCitiesModel,
 } from "./vehicleManager.model.js";
+import { calculateVehicleAging } from "./vehicleManager.service.js";
 
 const createVehicleManager = asyncHandler(async (req, res) => {
   const payload = req.body;
 
-  const { code, vendor, model, veh_no, garage, reg_date, aging, amenities } =
+  const { code, vendor, model, veh_no, garage, city, reg_date, amenities } =
     payload;
 
   // Required fields
@@ -32,12 +34,15 @@ const createVehicleManager = asyncHandler(async (req, res) => {
     );
   }
 
+  const aging = calculateVehicleAging(reg_date);
+
   const result = await createVehicleManagerModel({
     code,
     vendor,
     model,
     veh_no,
     garage,
+    city,
     reg_date,
     aging,
     amenities,
@@ -52,6 +57,18 @@ const createVehicleManager = asyncHandler(async (req, res) => {
         "Vehicle manager entry created successfully",
       ),
     );
+});
+
+const getAllCitiesController = asyncHandler(async (req, res) => {
+  const cities = await getAllCitiesModel();
+  console.log(cities);
+  if (!cities || cities.length === 0) {
+    throw new ApiError(404, "No cities found");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, cities, "Cities fetched successfully"));
 });
 
 const getVehicleManagerByIdController = asyncHandler(async (req, res) => {
@@ -75,12 +92,14 @@ const getVehicleManagerByIdController = asyncHandler(async (req, res) => {
 });
 
 const getAllVehicleManagers = asyncHandler(async (req, res) => {
-  const { search, vendor, garage, page, limit } = req.query;
+  const { search, vendor, garage, city, year, page, limit } = req.query;
 
   const result = await getAllVehicleManagersModel({
     search,
     vendor,
     garage,
+    city,
+    year,
     page: page ? Number(page) : 1,
     limit: limit ? Number(limit) : 20,
   });
@@ -139,4 +158,5 @@ export {
   getVehicleMasterCodes,
   getVehicleMasterAmenities,
   getVehicleManagerVendors,
+  getAllCitiesController,
 };

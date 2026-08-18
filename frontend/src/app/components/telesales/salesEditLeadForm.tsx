@@ -72,6 +72,16 @@ const EditLeadForm: React.FC<{
   const { countries } = useSelector((state: RootState) => state.country);
   const { vehicleCodes } = useSelector((state: RootState) => state.vehicle);
   const { travelcity } = useSelector((state: RootState) => state.travelcity);
+  // The `leads` array in the lead slice is populated via fetchLeads → the
+  // list API, whose backend model batch-joins `lead_followups` and attaches
+  // a correct `follow_ups` array per lead. The `initialData` prop, however,
+  // is often the raw row returned from the single "updateLead"/edit source,
+  // which does NOT join lead_followups — so its `follow_ups` is stale/null.
+  // We use the Redux list copy (matched by id) as the source of truth for
+  // follow-ups, falling back to initialData if not found in the list yet.
+  const { leads: reduxLeadsList } = useSelector(
+    (state: RootState) => (state as any).lead ?? { leads: [] },
+  );
   const [isInitialized, setIsInitialized] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -97,7 +107,11 @@ const EditLeadForm: React.FC<{
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
+  // NOTE: `replace` added here — needed to sync the `fields` array (used for
+  // rendering) when we hydrate followUps from server data. `setValue` alone
+  // updates the RHF form value but does NOT update `fields`, since fields
+  // has its own internal state driven only by append/remove/replace/etc.
+  const { fields, append, remove, replace } = useFieldArray({
     control,
     name: "followUps" as any,
   });
@@ -249,13 +263,36 @@ const EditLeadForm: React.FC<{
       setValue("state", (initialData as any).state);
     if ((initialData as any).address)
       setValue("address", (initialData as any).address);
+
+    // Prefer the copy of this lead from the Redux list (populated by
+    // fetchLeads → getLeads, which batch-joins lead_followups and always
+    // has a correct, up-to-date follow_ups array). Fall back to whatever
+    // initialData carries (may be null/stale — see comment above).
+    const matchedListLead = Array.isArray(reduxLeadsList)
+      ? reduxLeadsList.find(
+          (l: any) => String(l?.id) === String((initialData as any)?.id),
+        )
+      : undefined;
+
+    console.log("matchedListLead from redux leads list:", matchedListLead);
+    console.log("initialData for follow-ups debug:", initialData);
+
     const followUpsRaw =
-      (initialData as any).follow_ups ?? (initialData as any).followUps;
-    const followUpsData =
+      (matchedListLead as any)?.follow_ups ??
+      (initialData as any).follow_ups ??
+      (initialData as any).followUps ??
+      (initialData as any).followups ??
+      (initialData as any).follow_up ??
+      (initialData as any).followUp ??
+      (initialData as any).lead_follow_ups ??
+      (initialData as any).leadFollowUps;
+
+    const parsedFollowUps =
       typeof followUpsRaw === "string"
         ? (() => {
             try {
-              return JSON.parse(followUpsRaw);
+              const parsed = JSON.parse(followUpsRaw);
+              return Array.isArray(parsed) ? parsed : [];
             } catch {
               return [];
             }
@@ -263,14 +300,28 @@ const EditLeadForm: React.FC<{
         : Array.isArray(followUpsRaw)
           ? followUpsRaw
           : [];
-    if (followUpsData.length > 0) {
-      setValue("followUps" as any, followUpsData);
-    }
+
+    console.log("parsedFollowUps:", parsedFollowUps);
+
+    // Backend → Frontend mapping
+    const followUpsData = parsedFollowUps.map((item: any) => ({
+      followup_date: item.followup_date ?? item.follow_date ?? item.date ?? "",
+      followup_remark:
+        item.remark ?? item.followup_remark ?? item.note ?? item.notes ?? "",
+    }));
+
+    console.log("followUpsData (mapped for form):", followUpsData);
+
+    // `replace` (from useFieldArray) instead of `setValue` — `setValue`
+    // alone updates RHF form state but NOT the field-array's internal
+    // `fields` state that we map over to render rows below.
+    replace(followUpsData);
+
     setTimeout(() => {
       trigger();
       setIsInitialized(true);
     }, 150);
-  }, [initialData, setValue, trigger]);
+  }, [initialData, setValue, trigger, replace, reduxLeadsList]);
 
   const handleFieldChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
@@ -1580,40 +1631,58 @@ const EditLeadForm: React.FC<{
                   <label className="block text-md font-extrabold text-gray-700">
                     Follow Up
                   </label>
+
+                  {/* Add Button */}
                   <button
                     type="button"
-                    onClick={() => append({ date: "", text: "" })}
+                    onClick={() =>
+                      append({
+                        followup_date: "",
+                        followup_remark: "",
+                      })
+                    }
                     className="flex items-center gap-1 text-sm text-green-600 hover:text-green-800 font-semibold"
                   >
-                    <Plus size={16} /> Add
+                    <Plus size={16} />
+                    Add
                   </button>
                 </div>
+
                 <div className="flex flex-col gap-2 max-h-48 overflow-y-auto pr-1">
                   {fields.length === 0 && (
                     <p className="text-sm text-gray-400 italic">
                       No follow ups added yet.
                     </p>
                   )}
+
                   {fields.map((field, index) => (
                     <div
                       key={field.id}
                       className="flex gap-2 items-start border border-gray-200 rounded-md p-2 bg-gray-50"
                     >
+                      {/* Follow Up Date */}
                       <input
                         type="date"
-                        {...register(`followUps.${index}.date` as any)}
+                        {...register(`followUps.${index}.followup_date` as any)}
                         className="border border-gray-300 rounded-md px-2 py-1.5 text-sm bg-white w-36 shrink-0"
                       />
+
+                      {/* Follow Up Remark */}
                       <textarea
-                        {...register(`followUps.${index}.text` as any)}
+                        {...register(
+                          `followUps.${index}.followup_remark` as any,
+                        )}
                         rows={2}
                         placeholder="Enter follow up note..."
                         className="flex-1 border border-gray-300 rounded-md px-2 py-1.5 text-sm bg-white resize-none"
                       />
+
+                      {/* Delete */}
                       <button
                         type="button"
                         onClick={() => remove(index)}
                         className="text-red-400 hover:text-red-600 mt-1 shrink-0"
+                        title="Remove follow up"
                       >
                         <Trash2 size={16} />
                       </button>

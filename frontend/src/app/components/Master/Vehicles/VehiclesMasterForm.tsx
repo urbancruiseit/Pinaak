@@ -153,12 +153,12 @@ const VehicleForm: React.FC<VehicleFormProps> = ({ onSuccess }) => {
             <span className="mr-2 rounded-md bg-blue-600 px-3 py-1 text-white">
               1
             </span>
-            Vehicle Information
+            Add New Vehicle Type{" "}
           </h3>
 
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
             {/* Code */}
-            <div>
+            {/* <div>
               <label className="mb-1 block text-sm font-extrabold text-gray-700">
                 Code <span className="text-red-500">*</span>
               </label>
@@ -171,7 +171,7 @@ const VehicleForm: React.FC<VehicleFormProps> = ({ onSuccess }) => {
                 className="w-full rounded-lg border border-gray-300 bg-white p-2.5 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
                 placeholder="🔢 e.g., 9-TT 1x1"
               />
-            </div>
+            </div> */}
 
             {/* Seat */}
             <div>
@@ -272,7 +272,7 @@ const VehicleForm: React.FC<VehicleFormProps> = ({ onSuccess }) => {
             {/* Amenities */}
             <div className="md:col-span-2 lg:col-span-3">
               <label className="mb-1 block text-sm font-extrabold text-gray-700">
-                Amenities
+                Heightlights{" "}
               </label>
 
               <textarea

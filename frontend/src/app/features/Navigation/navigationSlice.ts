@@ -33,6 +33,7 @@ type MasterKey =
   | "corporate-event"
   | "customer-personal"
   | "customer-table"
+  | "customer-history"
   | "rate-quotation"
   | "dsr-form"
   | "card-reel"

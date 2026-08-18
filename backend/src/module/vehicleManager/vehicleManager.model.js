@@ -1,4 +1,5 @@
-import { pool } from "../../config/mySqlDB.js";
+import { hrmsPool, pool } from "../../config/mySqlDB.js";
+
 export const getVehicleManagerByVehNo = async (veh_no) => {
   try {
     const [rows] = await pool.execute(
@@ -28,19 +29,29 @@ export const getVehicleManagerById = async (id) => {
 
 export const createVehicleManagerModel = async (payload) => {
   try {
-    const { code, vendor, model, veh_no, garage, reg_date, aging, amenities } =
-      payload;
+    const {
+      code,
+      vendor,
+      model,
+      veh_no,
+      garage,
+      city,
+      reg_date,
+      aging,
+      amenities,
+    } = payload;
 
     const [result] = await pool.execute(
       `INSERT INTO vehicle_manager
-        (code, vendor, model, veh_no, garage, reg_date, aging, amenities)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        (code, vendor, model, veh_no, garage, city, reg_date, aging, amenities)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         code,
         vendor || null,
         model || null,
         veh_no,
         garage || null,
+        city || null,
         reg_date || null,
         aging ?? null,
         amenities || null,
@@ -54,6 +65,7 @@ export const createVehicleManagerModel = async (payload) => {
       model: model || null,
       veh_no,
       garage: garage || null,
+      city: city || null,
       reg_date: reg_date || null,
       aging: aging ?? null,
       amenities: amenities || null,
@@ -63,10 +75,139 @@ export const createVehicleManagerModel = async (payload) => {
     throw error;
   }
 };
+// export const getAllVehicleManagersModel = async ({
+//   search = "",
+//   vendor = "",
+//   garage = "",
+//   city = "",
+//   year = "", // <-- naya parameter
+//   page = 1,
+//   limit = 20,
+// } = {}) => {
+//   try {
+//     const offset = (page - 1) * limit;
+
+//     let query = `SELECT * FROM vehicle_manager WHERE 1=1`;
+//     let countQuery = `SELECT COUNT(*) as total FROM vehicle_manager WHERE 1=1`;
+//     const params = [];
+//     const countParams = [];
+
+//     if (search) {
+//       query += `
+//     AND (
+//       code LIKE ?
+//       OR vendor LIKE ?
+//       OR model LIKE ?
+//       OR veh_no LIKE ?
+//       OR garage LIKE ?
+//       OR city LIKE ?
+//       OR reg_date LIKE ?
+//       OR aging LIKE ?
+//     )
+//   `;
+
+//       countQuery += `
+//     AND (
+//       code LIKE ?
+//       OR vendor LIKE ?
+//       OR model LIKE ?
+//       OR veh_no LIKE ?
+//       OR garage LIKE ?
+//       OR city LIKE ?
+//       OR reg_date LIKE ?
+//       OR aging LIKE ?
+//     )
+//   `;
+
+//       const likeSearch = `%${search}%`;
+
+//       params.push(
+//         likeSearch,
+//         likeSearch,
+//         likeSearch,
+//         likeSearch,
+//         likeSearch,
+//         likeSearch,
+//         likeSearch,
+//       );
+
+//       countParams.push(
+//         likeSearch,
+//         likeSearch,
+//         likeSearch,
+//         likeSearch,
+//         likeSearch,
+//         likeSearch,
+//         likeSearch,
+//       );
+//     }
+
+//     if (vendor) {
+//       query += ` AND vendor = ?`;
+//       countQuery += ` AND vendor = ?`;
+//       params.push(vendor);
+//       countParams.push(vendor);
+//     }
+
+//     if (garage) {
+//       query += ` AND garage = ?`;
+//       countQuery += ` AND garage = ?`;
+//       params.push(garage);
+//       countParams.push(garage);
+//     }
+
+//     if (city) {
+//       query += ` AND city = ?`;
+//       countQuery += ` AND city = ?`;
+//       params.push(city);
+//       countParams.push(city);
+//     }
+
+//     if (year) {
+//       const years = String(year)
+//         .split(",")
+//         .map((y) => Number(y.trim()))
+//         .filter((y) => !isNaN(y));
+
+//       if (years.length > 0) {
+//         const placeholders = years.map(() => "?").join(",");
+//         query += ` AND YEAR(reg_date) IN (${placeholders})`;
+//         countQuery += ` AND YEAR(reg_date) IN (${placeholders})`;
+//         params.push(...years);
+//         countParams.push(...years);
+//       }
+//     }
+
+//     query += ` ORDER BY id ASC LIMIT ? OFFSET ?`;
+//     params.push(Number(limit), Number(offset));
+
+//     const [rows] = await pool.execute(query, params);
+//     const [countRows] = await pool.execute(countQuery, countParams);
+
+//     return {
+//       data: rows,
+//       total: countRows[0].total,
+//       page: Number(page),
+//       limit: Number(limit),
+//       totalPages: Math.ceil(countRows[0].total / limit),
+//     };
+//   } catch (error) {
+//     console.error("getAllVehicleManagersModel error:", error);
+//     throw error;
+//   }
+// };
+
+// =====================================================
+// GET VEHICLE MASTER CODES (ab amenities bhi sath aayenge,
+// taaki jab code select ho, uske amenities pata chal sake)
+// =====================================================
+
 export const getAllVehicleManagersModel = async ({
   search = "",
   vendor = "",
   garage = "",
+  city = "",
+  year = "",
   page = 1,
   limit = 20,
 } = {}) => {
@@ -140,14 +281,62 @@ export const getAllVehicleManagersModel = async ({
       countParams.push(garage);
     }
 
+    if (city) {
+      query += ` AND city = ?`;
+      countQuery += ` AND city = ?`;
+      params.push(Number(city));
+      countParams.push(Number(city));
+    }
+
+    if (year) {
+      const years = String(year)
+        .split(",")
+        .map((y) => Number(y.trim()))
+        .filter((y) => !isNaN(y));
+
+      if (years.length > 0) {
+        const placeholders = years.map(() => "?").join(",");
+        query += ` AND YEAR(reg_date) IN (${placeholders})`;
+        countQuery += ` AND YEAR(reg_date) IN (${placeholders})`;
+        params.push(...years);
+        countParams.push(...years);
+      }
+    }
     query += ` ORDER BY id ASC LIMIT ? OFFSET ?`;
     params.push(Number(limit), Number(offset));
 
     const [rows] = await pool.execute(query, params);
     const [countRows] = await pool.execute(countQuery, countParams);
 
+    // ---- City name doosre DB se fetch karo ----
+    const cityIds = [
+      ...new Set(
+        rows.map((r) => r.city).filter((id) => id !== null && id !== undefined),
+      ),
+    ];
+
+    let cityMap = {};
+
+    if (cityIds.length > 0) {
+      const placeholders = cityIds.map(() => "?").join(",");
+      const [cityRows] = await hrmsPool.execute(
+        `SELECT id, city_name FROM city WHERE id IN (${placeholders})`,
+        cityIds,
+      );
+
+      cityMap = cityRows.reduce((acc, c) => {
+        acc[c.id] = c.city_name;
+        return acc;
+      }, {});
+    }
+
+    const dataWithCityName = rows.map((r) => ({
+      ...r,
+      city_name: cityMap[r.city] ?? null,
+    }));
+
     return {
-      data: rows,
+      data: dataWithCityName,
       total: countRows[0].total,
       page: Number(page),
       limit: Number(limit),
@@ -159,10 +348,18 @@ export const getAllVehicleManagersModel = async ({
   }
 };
 
-// =====================================================
-// GET VEHICLE MASTER CODES (ab amenities bhi sath aayenge,
-// taaki jab code select ho, uske amenities pata chal sake)
-// =====================================================
+export const getAllCitiesModel = async () => {
+  try {
+    const [rows] = await hrmsPool.execute(
+      `SELECT id, city_name FROM city ORDER BY city_name ASC`,
+    );
+
+    return rows;
+  } catch (error) {
+    console.error("getAllCitiesModel error:", error);
+    throw error;
+  }
+};
 
 export const getVehicleMasterCodesModel = async () => {
   try {

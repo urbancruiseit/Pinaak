@@ -77,8 +77,8 @@ export const leadSchema = z.object({
   followUps: z
     .array(
       z.object({
-        date: z.string().optional(),
-        text: z.string().optional(),
+        followup_date: z.string().optional(),
+        followup_remark: z.string().optional(),
       }),
     )
     .optional()

@@ -508,7 +508,6 @@ export const getLeads = async (
       l.message,
       l.lost_reason,
       l.lostReasonDetails,
-      l.follow_ups,
         DATEDIFF(CURDATE(), l.date) AS aged,
 
 CASE
@@ -641,11 +640,42 @@ END AS liveorexpiry,
     return cityMap[cityId] || null;
   };
 
+  // ── Follow-ups batch fetch (lead_followups table se, sab leads ke liye ek saath) ──
+  const leadIds = leads.map((l) => l.id).filter(Boolean);
+  const followupsMap = {};
+
+  if (leadIds.length > 0) {
+    try {
+      const placeholders = leadIds.map(() => "?").join(",");
+      const [followupRows] = await pool.query(
+        `SELECT id, leads_id, adviser_id, 
+          DATE_FORMAT(followup_date, '%Y-%m-%d') AS followup_date,
+          remark, created_at
+   FROM lead_followups
+   WHERE leads_id IN (${placeholders})
+   ORDER BY followup_date DESC, created_at DESC`,
+        leadIds,
+      );
+
+      followupRows.forEach((f) => {
+        if (!followupsMap[f.leads_id]) {
+          followupsMap[f.leads_id] = [];
+        }
+        followupsMap[f.leads_id].push(f);
+      });
+    } catch (err) {
+      console.error("lead_followups batch fetch failed:", err.message);
+    }
+  }
+
+  const getFollowups = (leadId) => followupsMap[leadId] || [];
+
   const leadsWithNames = leads.map((lead) => ({
     ...lead,
     advisorFullName: getName(lead.advisor_id, "advisor"),
     presalesFullName: getName(lead.presales_id, "presales"),
     cityName: getCityName(lead.city_id),
+    follow_ups: getFollowups(lead.id), // ✅ naya table se attach
   }));
 
   return {
@@ -660,6 +690,311 @@ END AS liveorexpiry,
     totalLeads,
   };
 };
+
+// export const getLeads = async (
+//   page,
+//   limit,
+//   cityIds,
+//   search,
+//   presalesId,
+//   month,
+//   year,
+//   status,
+//   pickupDateTime,
+//   dropDateTime,
+//   liveorexpiry,
+//   ageFilter,
+// ) => {
+//   const pageNumber = parseInt(page, 10);
+//   const limitNumber = parseInt(limit, 10);
+//   const offset = (pageNumber - 1) * limitNumber;
+
+//   const now = new Date();
+//   const selectedMonth = month ? parseInt(month, 10) : null;
+//   const selectedYear = year ? parseInt(year, 10) : now.getFullYear();
+
+//   let whereClause = `WHERE (l.unwanted_status IS NULL OR l.unwanted_status != 'unwanted')`;
+//   let values = [];
+
+//   if (presalesId && Number(presalesId) > 0) {
+//     whereClause += ` AND l.presales_id = ?`;
+//     values.push(presalesId);
+//   }
+
+//   if (selectedMonth) {
+//     const startDate = new Date(selectedYear, selectedMonth - 1, 1);
+//     const endDate = new Date(selectedYear, selectedMonth, 1);
+//     whereClause += ` AND l.created_at >= ? AND l.created_at < ?`;
+//     values.push(startDate, endDate);
+//   }
+
+//   if (cityIds && cityIds.length > 0) {
+//     const placeholders = cityIds.map(() => "?").join(",");
+//     whereClause += ` AND l.city_id IN (${placeholders})`;
+//     values.push(...cityIds);
+//   }
+
+//   if (search && search.trim()) {
+//     const like = `%${search.trim()}%`;
+//     whereClause += ` AND (
+//       CONCAT_WS(' ', c.firstName, c.middleName, c.lastName) LIKE ?
+//       OR c.customerEmail LIKE ?
+//       OR c.customerPhone LIKE ?
+//       OR c.alternatePhone LIKE ?
+//     )`;
+//     values.push(like, like, like, like);
+//   }
+
+//   let statusWhereClause = "";
+//   if (status && status.trim()) {
+//     statusWhereClause = ` AND l.status = ?`;
+//     whereClause += statusWhereClause;
+//     values.push(status.trim().toUpperCase());
+//   }
+
+//   if (liveorexpiry && liveorexpiry.trim()) {
+//     if (liveorexpiry.trim().toUpperCase() === "LIVE") {
+//       whereClause += ` AND l.pickupDateTime > NOW()`;
+//     } else if (liveorexpiry.trim().toUpperCase() === "EXPIRY") {
+//       whereClause += ` AND l.pickupDateTime <= NOW()`;
+//     }
+//   }
+
+//   if (ageFilter) {
+//     switch (ageFilter) {
+//       case "0-5":
+//         whereClause += ` AND DATEDIFF(CURDATE(), l.date) BETWEEN 0 AND 5`;
+//         break;
+
+//       case "6-10":
+//         whereClause += ` AND DATEDIFF(CURDATE(), l.date) BETWEEN 6 AND 10`;
+//         break;
+
+//       case "11+":
+//         whereClause += ` AND DATEDIFF(CURDATE(), l.date) >= 11`;
+//         break;
+//     }
+//   }
+
+//   if (pickupDateTime && dropDateTime) {
+//     whereClause += ` AND DATE(l.pickupDateTime) BETWEEN ? AND ?`;
+//     values.push(pickupDateTime, dropDateTime);
+//   } else if (pickupDateTime) {
+//     whereClause += ` AND DATE(l.pickupDateTime) >= ?`;
+//     values.push(pickupDateTime);
+//   } else if (dropDateTime) {
+//     whereClause += ` AND DATE(l.pickupDateTime) <= ?`;
+//     values.push(dropDateTime);
+//   }
+
+//   const statusCountWhereClause = statusWhereClause
+//     ? whereClause.replace(statusWhereClause, "")
+//     : whereClause;
+
+//   const statusCountValues =
+//     status && status.trim() ? values.slice(0, -1) : values;
+
+//   const leadsQuery = `
+//     SELECT
+//       l.id,
+//       l.uuid,
+//       l.customer_id,
+//       l.advisor_id,
+//       l.presales_id,
+//       l.status,
+//       l.source,
+//       l.city_id,
+//       l.city,
+//       l.unwanted_status,
+//       l.created_at,
+//       l.updated_at,
+//       l.date,
+//       l.enquiryTime,
+//       l.serviceType,
+//       l.occasion,
+//       l.tripType,
+//       l.days,
+//       l.pickupDateTime,
+//       l.dropDateTime,
+//       l.pickupAddress,
+//       l.dropAddress,
+//       l.pickupcity,
+//       l.dropcity,
+//       l.multiplepickup,
+//       l.multipledrop,
+//       l.km,
+//       l.passengerTotal,
+//       l.petsNumber,
+//       l.petsNames,
+//       l.smallBaggage,
+//       l.mediumBaggage,
+//       l.largeBaggage,
+//       l.airportBaggage,
+//       l.totalBaggage,
+//       l.itinerary,
+//       l.vehicles,
+//       l.vehicle2,
+//       l.vehicle3,
+//       l.vehicle1Quantity,
+//       l.vehicle2Quantity,
+//       l.vehicle3Quantity,
+//       l.requirementVehicle,
+//       l.remarks,
+//       l.message,
+//       l.lost_reason,
+//       l.lostReasonDetails,
+//       l.follow_ups,
+//         DATEDIFF(CURDATE(), l.date) AS aged,
+
+// CASE
+//   WHEN l.pickupDateTime <= NOW()
+//   THEN 'EXPIRY'
+//   ELSE 'LIVE'
+// END AS liveorexpiry,
+//       c.uuid AS customer_uuid,
+//       CONCAT_WS(' ', c.firstName, c.middleName, c.lastName) AS fullName,
+//       c.firstName,
+//       c.middleName,
+//       c.lastName,
+//       c.customerPhone,
+//       c.customerEmail,
+//       c.companyName,
+//       c.customerType,
+//       c.customerCategoryType,
+//       c.alternatePhone,
+//       c.countryName,
+//       c.customerCity,
+//       c.address,
+//       c.date_of_birth,
+//       c.anniversary,
+//       c.gender,
+//       c.state,
+//       c.pincode
+//     FROM leads l
+//     LEFT JOIN customers c ON l.customer_id = c.id
+//     ${whereClause}
+//     ORDER BY l.created_at DESC
+//     LIMIT ? OFFSET ?
+//   `;
+
+//   const combinedCountQuery = `
+//     SELECT
+//       COUNT(*) AS total,
+//       SUM(CASE WHEN l.status = 'NEW'   THEN 1 ELSE 0 END) AS new_count,
+//       SUM(CASE WHEN l.status = 'RFQ'   THEN 1 ELSE 0 END) AS rfq_count,
+//       SUM(CASE WHEN l.status = 'KYC'   THEN 1 ELSE 0 END) AS kyc_count,
+//       SUM(CASE WHEN l.status = 'HOT'   THEN 1 ELSE 0 END) AS hot_count,
+//       SUM(CASE WHEN l.status = 'VEH-N' THEN 1 ELSE 0 END) AS vehn_count,
+//       SUM(CASE WHEN l.status = 'LOST'  THEN 1 ELSE 0 END) AS lost_count,
+//       SUM(CASE WHEN l.status = 'BOOK'  THEN 1 ELSE 0 END) AS book_count
+//     FROM leads l
+//     LEFT JOIN customers c ON l.customer_id = c.id
+//     ${statusCountWhereClause}
+//   `;
+
+//   const [[leads], [countResult]] = await Promise.all([
+//     pool.query(leadsQuery, [...values, limitNumber, offset]),
+//     pool.query(combinedCountQuery, statusCountValues),
+//   ]);
+
+//   const row = countResult[0];
+//   const statusCounts = {
+//     NEW: parseInt(row.new_count, 10) || 0,
+//     RFQ: parseInt(row.rfq_count, 10) || 0,
+//     KYC: parseInt(row.kyc_count, 10) || 0,
+//     HOT: parseInt(row.hot_count, 10) || 0,
+//     "VEH-N": parseInt(row.vehn_count, 10) || 0,
+//     LOST: parseInt(row.lost_count, 10) || 0,
+//     BOOK: parseInt(row.book_count, 10) || 0,
+//   };
+
+//   const totalLeads = Object.values(statusCounts).reduce((a, b) => a + b, 0);
+
+//   const advisorIds = leads
+//     .map((l) => l.advisor_id)
+//     .filter((id) => id !== null && id !== undefined);
+
+//   const presalesIds = leads
+//     .map((l) => l.presales_id)
+//     .filter((id) => id !== null && id !== undefined);
+
+//   const allUserIds = [...new Set([...advisorIds, ...presalesIds])];
+//   let userMap = {};
+
+//   if (allUserIds.length > 0) {
+//     try {
+//       const placeholders = allUserIds.map(() => "?").join(",");
+//       const [users] = await hrmsPool.query(
+//         `SELECT id, aliasName, firstName, middleName, lastName, shortName
+//          FROM users
+//          WHERE id IN (${placeholders})`,
+//         allUserIds,
+//       );
+//       users.forEach((u) => {
+//         userMap[u.id] = u;
+//       });
+//     } catch (err) {
+//       console.error("hrmsPool user fetch failed:", err.message);
+//     }
+//   }
+
+//   const getName = (userId, type) => {
+//     const user = userMap[userId];
+//     if (!user) return null;
+//     const name =
+//       type === "advisor" ? user.aliasName || "" : user.shortName || "";
+//     return name.trim() || null;
+//   };
+
+//   // Fetch city names from hrmsPool using city_id present in leads
+//   const leadCityIds = leads
+//     .map((l) => l.city_id)
+//     .filter((id) => id !== null && id !== undefined);
+
+//   const uniqueCityIds = [...new Set(leadCityIds)];
+//   let cityMap = {};
+
+//   if (uniqueCityIds.length > 0) {
+//     try {
+//       const placeholders = uniqueCityIds.map(() => "?").join(",");
+//       const [cities] = await hrmsPool.query(
+//         `SELECT id, city_name
+//          FROM city
+//          WHERE id IN (${placeholders})`,
+//         uniqueCityIds,
+//       );
+//       cities.forEach((c) => {
+//         cityMap[c.id] = c.city_name;
+//       });
+//     } catch (err) {
+//       console.error("hrmsPool city fetch failed:", err.message);
+//     }
+//   }
+
+//   const getCityName = (cityId) => {
+//     if (cityId === null || cityId === undefined) return null;
+//     return cityMap[cityId] || null;
+//   };
+
+//   const leadsWithNames = leads.map((lead) => ({
+//     ...lead,
+//     advisorFullName: getName(lead.advisor_id, "advisor"),
+//     presalesFullName: getName(lead.presales_id, "presales"),
+//     cityName: getCityName(lead.city_id),
+//   }));
+
+//   return {
+//     leads: leadsWithNames,
+//     total: parseInt(row.total, 10),
+//     page: pageNumber,
+//     totalPages: Math.ceil(parseInt(row.total, 10) / limitNumber),
+//     selectedMonth,
+//     selectedYear,
+//     selectedStatus: status ? status.trim().toUpperCase() : null,
+//     statusCounts,
+//     totalLeads,
+//   };
+// };
 export const updateLeadUnwantedStatus = async (leadId, status) => {
   try {
     // validation
@@ -726,6 +1061,33 @@ export const getAllUnwantedLeadsModel = async () => {
   }
 };
 
+// export const updateLeadById = async (leadId, data) => {
+//   if (!leadId) throw new Error("Lead ID is required");
+
+//   const fields = Object.keys(data);
+//   if (fields.length === 0) return null;
+
+//   const sanitizedData = {};
+//   for (const [key, value] of Object.entries(data)) {
+//     if (Array.isArray(value) || (typeof value === "object" && value !== null)) {
+//       sanitizedData[key] = JSON.stringify(value); // Array → '["jhv","hgg"]'
+//     } else {
+//       sanitizedData[key] = value;
+//     }
+//   }
+
+//   const sanitizedFields = Object.keys(sanitizedData);
+//   const setClause = sanitizedFields.map((key) => `\`${key}\` = ?`).join(", ");
+//   const values = [...Object.values(sanitizedData), leadId];
+//   const [result] = await pool.query(
+//     `UPDATE leads SET ${setClause} WHERE id = ?`,
+//     values,
+//   );
+//   if (result.affectedRows === 0) return null;
+//   const [rows] = await pool.query(`SELECT * FROM leads WHERE id = ?`, [leadId]);
+//   return rows[0];
+// };
+
 export const updateLeadById = async (leadId, data) => {
   if (!leadId) throw new Error("Lead ID is required");
 
@@ -786,6 +1148,103 @@ export const updateCustomerById = async (customerId, data) => {
   return rows[0];
 };
 
+// export const getLeadById = async (id) => {
+//   try {
+//     const query = `
+//       SELECT
+//         l.*,
+//         c.uuid AS customer_uuid,
+//         CONCAT_WS(' ', c.firstName, c.middleName, c.lastName) AS fullName,
+//         c.firstName,
+//         c.middleName,
+//         c.lastName,
+//         c.customerPhone,
+//         c.customerEmail,
+//         c.companyName,
+//         c.customerType,
+//         c.customerCategoryType,
+//         c.alternatePhone,
+//         c.countryName,
+//         c.customerCity,
+//         c.address,
+//         c.date_of_birth,
+//         c.anniversary,
+//         c.gender,
+//         c.state,
+//         c.pincode
+//       FROM leads l
+//       LEFT JOIN customers c ON l.customer_id = c.id
+//       WHERE l.id = ?
+//       LIMIT 1
+//     `;
+
+//     const [rows] = await pool.execute(query, [id]);
+
+//     if (!rows || rows.length === 0) return null;
+
+//     const lead = rows[0];
+
+//     // Itinerary parse
+//     if (lead.itinerary && typeof lead.itinerary === "string") {
+//       try {
+//         lead.itinerary = JSON.parse(lead.itinerary);
+//       } catch {
+//         lead.itinerary = [];
+//       }
+//     }
+
+//     if (lead.follow_ups && typeof lead.follow_ups === "string") {
+//       try {
+//         lead.follow_ups = JSON.parse(lead.follow_ups);
+//       } catch {
+//         lead.follow_ups = [];
+//       }
+//     }
+
+//     // ── Presales name fetch (hrmsPool se) ──
+//     const userIds = [lead.advisor_id, lead.presales_id].filter(Boolean);
+
+//     if (userIds.length > 0) {
+//       try {
+//         const placeholders = userIds.map(() => "?").join(",");
+//         const [users] = await hrmsPool.query(
+//           `SELECT id, aliasName, firstName, middleName, lastName, shortName
+//            FROM users
+//            WHERE id IN (${placeholders})`,
+//           userIds,
+//         );
+
+//         const userMap = {};
+//         users.forEach((u) => {
+//           userMap[u.id] = u;
+//         });
+
+//         const getUser = (userId, type) => {
+//           const user = userMap[userId];
+//           if (!user) return null;
+//           return type === "advisor"
+//             ? (user.aliasName || "").trim() || null
+//             : (user.shortName || "").trim() || null;
+//         };
+
+//         lead.advisorFullName = getUser(lead.advisor_id, "advisor");
+//         lead.presalesFullName = getUser(lead.presales_id, "presales");
+//       } catch (err) {
+//         console.error("hrmsPool fetch failed in getLeadById:", err.message);
+//         lead.advisorFullName = null;
+//         lead.presalesFullName = null;
+//       }
+//     }
+
+//     return lead;
+//   } catch (error) {
+//     console.error("getLeadById Error:", error);
+//     return null;
+//   }
+// };
+
+// ─── REMINDER FUNCTIONS — lead.model.js me inn dono ko replace karo ───
+
 export const getLeadById = async (id) => {
   try {
     const query = `
@@ -831,14 +1290,6 @@ export const getLeadById = async (id) => {
       }
     }
 
-    if (lead.follow_ups && typeof lead.follow_ups === "string") {
-      try {
-        lead.follow_ups = JSON.parse(lead.follow_ups);
-      } catch {
-        lead.follow_ups = [];
-      }
-    }
-
     // ── Presales name fetch (hrmsPool se) ──
     const userIds = [lead.advisor_id, lead.presales_id].filter(Boolean);
 
@@ -874,16 +1325,28 @@ export const getLeadById = async (id) => {
       }
     }
 
+    // ── Follow-ups fetch (lead_followups table se) ──
+    try {
+      const [followups] = await pool.query(
+        `SELECT id, leads_id, adviser_id, followup_date, remark, created_at
+         FROM lead_followups
+         WHERE leads_id = ?
+         ORDER BY followup_date DESC, created_at DESC`,
+        [lead.id],
+      );
+
+      lead.follow_ups = followups || [];
+    } catch (err) {
+      console.error("Followups fetch failed in getLeadById:", err.message);
+      lead.follow_ups = [];
+    }
+
     return lead;
   } catch (error) {
     console.error("getLeadById Error:", error);
     return null;
   }
 };
-
-// lead.model.js
-// ─── REMINDER FUNCTIONS — lead.model.js me inn dono ko replace karo ───
-
 export const createReminder = async ({
   lead_id,
   reminder_datetime,
@@ -902,12 +1365,10 @@ export const createReminder = async ({
     throw new Error("Reminder datetime is required");
   }
 
-
   const formattedReminderDateTime =
     reminder_datetime.length === 16
       ? reminder_datetime.replace("T", " ") + ":00"
       : reminder_datetime.replace("T", " ");
-
 
   const [result] = await pool.query(
     `
@@ -993,7 +1454,6 @@ export const markReminderAsShown = async (id) => {
 
 //     const [rows] = await pool.query(query, [advisorId]);
 
-
 //     rows.forEach((row) => {
 //       console.log("🔔 Reminder:", {
 //         id: row.id,
@@ -1004,7 +1464,6 @@ export const markReminderAsShown = async (id) => {
 //         is_due: row.is_due,
 //       });
 //     });
-
 
 //     return rows;
 //   } catch (error) {

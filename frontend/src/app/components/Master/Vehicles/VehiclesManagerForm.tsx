@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { CheckCircle2, XCircle } from "lucide-react";
+import { CheckCircle2, XCircle, Info, FileText } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 
 // ⚠️ Path apne project ke structure ke hisab se sahi karo
@@ -13,15 +13,15 @@ import {
   createVehicleManager,
   getVehicleMasterCodes,
   getVehicleManagerVendors,
-  getVehicleMasterAmenities,
+  getAllCities,
 } from "../../../features/vehicleManager/vehicleManagerSlice";
 
 import { Vehicle } from "@/types/types";
+import { AMENITIES_OPTIONS } from "./vehicleMasterDropdown";
 
-// amenities ab UI me array (checkbox selections) ke roop me handle
-// hongi, submit karte waqt comma-separated string me convert honge
 type VehicleFormData = Omit<Vehicle, "id" | "amenities"> & {
   amenities: string;
+  city: string;
 };
 
 const initialFormState: VehicleFormData = {
@@ -33,31 +33,24 @@ const initialFormState: VehicleFormData = {
   garage: "",
   aging: "",
   amenities: "",
+  city: "",
 };
 
 const VehicleForm: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
 
-  // =====================================================
-  // REDUX DATA
-  // =====================================================
-
   const {
     vehicleMasterCodes,
     vendors,
-    vehicleMasterAmenities,
     codesLoading,
     vendorsLoading,
-    amenitiesLoading,
+    cities,
+    citiesLoading,
   } = useSelector((state: RootState) => state.vehicleManager);
-
-  // =====================================================
-  // LOCAL STATE
-  // =====================================================
 
   const [formData, setFormData] = useState<VehicleFormData>(initialFormState);
 
-  // Checkbox selections ke liye alag array state (easy toggle ke liye)
+  // Checkbox selections ke liye alag array state (codes store honge)
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -66,20 +59,11 @@ const VehicleForm: React.FC = () => {
 
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // =====================================================
-  // LOAD CODE + VENDOR + AMENITIES DROPDOWNS
-  // =====================================================
-
   useEffect(() => {
     dispatch(getVehicleMasterCodes());
     dispatch(getVehicleManagerVendors());
-    dispatch(getVehicleMasterAmenities());
+    dispatch(getAllCities());
   }, [dispatch]);
-
-  // =====================================================
-  // Jab bhi selectedAmenities change ho, formData.amenities
-  // ko comma-separated string me sync kar do (submit ke liye)
-  // =====================================================
 
   useEffect(() => {
     setFormData((prev) => ({
@@ -87,10 +71,6 @@ const VehicleForm: React.FC = () => {
       amenities: selectedAmenities.join(","),
     }));
   }, [selectedAmenities]);
-
-  // =====================================================
-  // INPUT CHANGE (for text/date/textarea fields)
-  // =====================================================
 
   const handleInputChange = (
     e: React.ChangeEvent<
@@ -116,20 +96,20 @@ const VehicleForm: React.FC = () => {
     }));
 
     // Jab CODE select ho, uske against vehicle_master me jo
-    // amenities stored hain unhe dhoondo aur checkbox me
-    // pre-check kar do (user baad me toggle kar sakta hai)
+    // amenities (CODES, comma-separated) stored hain unhe
+    // checkbox me pre-check kar do (user baad me toggle kar sakta hai)
     if (name === "code") {
       const matchedCode = vehicleMasterCodes.find(
         (item) => item.code === value,
       );
 
       if (matchedCode?.amenities) {
-        const amenitiesFromMaster = matchedCode.amenities
+        const amenityCodesFromMaster = matchedCode.amenities
           .split(",")
           .map((a) => a.trim())
           .filter((a) => a.length > 0);
 
-        setSelectedAmenities(amenitiesFromMaster);
+        setSelectedAmenities(amenityCodesFromMaster);
       } else {
         setSelectedAmenities([]);
       }
@@ -137,15 +117,15 @@ const VehicleForm: React.FC = () => {
   };
 
   // =====================================================
-  // AMENITY CHECKBOX TOGGLE
+  // AMENITY CHECKBOX TOGGLE (code ke basis par)
   // =====================================================
 
-  const handleAmenityToggle = (amenityName: string) => {
+  const handleAmenityToggle = (amenityCode: string) => {
     setSelectedAmenities(
       (prev) =>
-        prev.includes(amenityName)
-          ? prev.filter((a) => a !== amenityName) // uncheck -> remove
-          : [...prev, amenityName], // check -> add
+        prev.includes(amenityCode)
+          ? prev.filter((a) => a !== amenityCode) // uncheck -> remove
+          : [...prev, amenityCode], // check -> add
     );
   };
 
@@ -183,10 +163,6 @@ const VehicleForm: React.FC = () => {
 
   return (
     <div>
-      {/* =====================================================
-          SUCCESS TOAST
-      ===================================================== */}
-
       {isSuccess && (
         <div className="fixed right-5 top-5 z-[9999] flex items-center gap-3 rounded-lg border border-green-200 bg-green-50 px-5 py-4 shadow-lg">
           <CheckCircle2 className="text-green-600" size={22} />
@@ -197,10 +173,6 @@ const VehicleForm: React.FC = () => {
         </div>
       )}
 
-      {/* =====================================================
-          ERROR TOAST
-      ===================================================== */}
-
       {errorMsg && (
         <div className="fixed right-5 top-5 z-[9999] flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-5 py-4 shadow-lg">
           <XCircle className="text-red-600" size={22} />
@@ -209,29 +181,17 @@ const VehicleForm: React.FC = () => {
         </div>
       )}
 
-      {/* =====================================================
-          HEADER
-      ===================================================== */}
-
       <div className="mb-6 rounded-md bg-orange-100 p-3 shadow-sm">
         <div className="flex items-center">
           <div className="rounded-md border-l-8 border-orange-500 bg-white px-3 shadow-md">
             <h2 className="py-4 text-3xl font-bold text-orange-600 md:text-4xl">
-              Vehicles Manager Table
+              Add Vehicles Manager Details
             </h2>
           </div>
         </div>
       </div>
 
-      {/* =====================================================
-          FORM
-      ===================================================== */}
-
       <form onSubmit={handleSubmit} className="mt-12 space-y-14">
-        {/* =====================================================
-            BASIC VEHICLE INFORMATION
-        ===================================================== */}
-
         <div className="rounded-xl border bg-blue-50 p-6">
           <h3 className="mb-6 border-b border-blue-200 pb-3 text-xl font-semibold text-blue-800">
             <span className="mr-2 rounded-md bg-blue-600 px-3 py-1 text-white">
@@ -241,10 +201,6 @@ const VehicleForm: React.FC = () => {
           </h3>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {/* =================================================
-                CODE DROPDOWN (Searchable)
-            ================================================= */}
-
             <SearchableSelect
               label="Code"
               name="code"
@@ -255,11 +211,6 @@ const VehicleForm: React.FC = () => {
               placeholder="Select Code"
               required
             />
-
-            {/* =================================================
-                VENDOR DROPDOWN (Searchable)
-            ================================================= */}
-
             <SearchableSelect
               label="Vendor Name"
               name="vendor"
@@ -270,30 +221,6 @@ const VehicleForm: React.FC = () => {
               placeholder="Select Vendor"
               required
             />
-
-            {/* =================================================
-                MODEL
-            ================================================= */}
-
-            <div>
-              <label className="mb-1 block text-sm font-extrabold text-gray-700">
-                Model <span className="text-red-500">*</span>
-              </label>
-
-              <input
-                type="text"
-                name="model"
-                value={formData.model}
-                onChange={handleInputChange}
-                className="w-full rounded-lg border border-gray-300 bg-white p-2.5 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
-                required
-                placeholder="🚙 e.g., Innova, XUV700, Safari"
-              />
-            </div>
-
-            {/* =================================================
-                VEHICLE NUMBER
-            ================================================= */}
 
             <div>
               <label className="mb-1 block text-sm font-extrabold text-gray-700">
@@ -311,10 +238,6 @@ const VehicleForm: React.FC = () => {
               />
             </div>
 
-            {/* =================================================
-                REGISTRATION DATE
-            ================================================= */}
-
             <div>
               <label className="mb-1 block text-sm font-extrabold text-gray-700">
                 Registration Date <span className="text-red-500">*</span>
@@ -329,10 +252,6 @@ const VehicleForm: React.FC = () => {
                 required
               />
             </div>
-
-            {/* =================================================
-                GARAGE
-            ================================================= */}
 
             <div>
               <label className="mb-1 block text-sm font-extrabold text-gray-700">
@@ -350,83 +269,95 @@ const VehicleForm: React.FC = () => {
               />
             </div>
 
-            {/* =================================================
-                MANUFACTURING YEAR
-            ================================================= */}
-
+            {/* City */}
             <div>
-              <label className="mb-1 block text-sm font-extrabold text-gray-700">
-                Manufacturing Year <span className="text-red-500">*</span>
+              <label className="block text-md font-extrabold text-gray-700 mb-1">
+                City
               </label>
-
-              <input
-                type="text"
-                name="aging"
-                value={formData.aging}
-                onChange={handleInputChange}
-                className="w-full rounded-lg border border-gray-300 bg-white p-2.5 focus:border-blue-500 focus:ring-2 focus:ring-blue-500"
-                required
-                placeholder="📅 e.g., 2023"
-              />
-            </div>
-
-            {/* =================================================
-                AMENITIES (Checkboxes - vehicle_master se)
-                Code select karte hi is code ke amenities
-                auto-checked ho jaate hain. User inhe
-                check/uncheck kar sakta hai.
-            ================================================= */}
-
-            <div className="md:col-span-2 lg:col-span-3">
-              <label className="mb-2 block text-sm font-extrabold text-gray-700">
-                Amenities
-              </label>
-
-              {amenitiesLoading ? (
-                <p className="text-sm text-gray-400">Loading amenities...</p>
-              ) : vehicleMasterAmenities.length === 0 ? (
-                <p className="text-sm text-gray-400">
-                  No amenities found in vehicle master
-                </p>
-              ) : (
-                <div className="grid grid-cols-2 gap-3 rounded-lg border border-gray-300 bg-white p-4 sm:grid-cols-3 lg:grid-cols-4">
-                  {vehicleMasterAmenities.map((item, index) => {
-                    const isChecked = selectedAmenities.includes(item.name);
-
-                    return (
-                      <label
-                        key={`${item.name}-${index}`}
-                        className={`flex cursor-pointer items-center gap-2 rounded-md border p-2 text-sm transition-colors ${
-                          isChecked
-                            ? "border-blue-500 bg-blue-50 font-semibold text-blue-700"
-                            : "border-gray-200 text-gray-700 hover:bg-gray-50"
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => handleAmenityToggle(item.name)}
-                          className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                        />
-                        {item.name}
-                      </label>
-                    );
-                  })}
-                </div>
-              )}
-
-              {selectedAmenities.length > 0 && (
-                <p className="mt-2 text-xs text-gray-500">
-                  Selected: {selectedAmenities.join(", ")}
-                </p>
-              )}
+              <div className="relative group">
+                <Info
+                  size={15}
+                  className="absolute -top-4 right-0 text-blue-500 cursor-help"
+                />
+                <select
+                  name="city"
+                  value={formData.city}
+                  onChange={handleInputChange}
+                  disabled={citiesLoading}
+                  className="w-full py-2 border bg-white px-12 border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">
+                    {citiesLoading ? "Loading cities..." : "Select City"}
+                  </option>
+                  {cities.length > 0
+                    ? cities.map((city) => (
+                        <option key={city.id} value={city.id}>
+                          {city.name}
+                        </option>
+                      ))
+                    : !citiesLoading && (
+                        <option disabled>No cities available</option>
+                      )}
+                </select>
+                <FileText
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-blue-600"
+                  size={20}
+                />
+              </div>
             </div>
           </div>
         </div>
+        <div className="rounded-xl border border-green-200 bg-green-50 p-6">
+          <h3 className="mb-6 border-b border-green-200 pb-3 text-xl font-semibold text-green-800">
+            <span className="mr-2 rounded-md bg-green-600 px-3 py-1 text-white">
+              2
+            </span>
+            Amenities
+          </h3>
 
-        {/* =====================================================
-            SUBMIT
-        ===================================================== */}
+          <div className="space-y-4">
+            {AMENITIES_OPTIONS.map((category) => (
+              <div
+                key={category.label}
+                className="overflow-hidden rounded-lg border border-gray-200 bg-white"
+              >
+                <div className="border-b border-gray-200 bg-gray-50 px-4 py-3">
+                  <h4 className="text-sm font-bold text-gray-800">
+                    {category.label}
+                  </h4>
+                </div>
+                <div className="p-4">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                    {category.options.map((item, index) => {
+                      const isChecked = selectedAmenities.includes(item.code);
+
+                      return (
+                        <label
+                          key={`${item.code}-${index}`}
+                          className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2.5 text-sm transition-all ${
+                            isChecked
+                              ? "border-green-500 bg-green-50 font-semibold text-green-700"
+                              : "border-gray-200 bg-white text-gray-700 hover:border-green-300 hover:bg-green-50"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => handleAmenityToggle(item.code)}
+                            className="h-4 w-4 shrink-0 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                          />
+                          <span className="truncate">
+                            {item.code} ({item.label})
+                          </span>{" "}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
 
         <div className="flex flex-col justify-between gap-4 border-t pt-8 sm:flex-row">
           <div className="flex gap-4">

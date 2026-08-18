@@ -88,6 +88,11 @@ const MASTER_MENU_SECTIONS: MenuSection[] = [
           "travel advisor",
         ],
       },
+      {
+        label: "Customer History",
+        value: "customer-history",
+        allowedRoles: ["superadmin", "admin", "city manager"],
+      },
     ],
   },
   {
@@ -120,11 +125,16 @@ const MASTER_MENU_SECTIONS: MenuSection[] = [
   {
     key: "vehicles",
     label: "VEHICLES",
-    // ✅ City Manager gets this section
-    allowedRoles: ["superadmin", "admin", "manager", "city manager"],
+    allowedRoles: [
+      "superadmin",
+      "admin",
+      "manager",
+      "city manager",
+      "travel advisor",
+    ],
     items: [
-      { label: "Vehicle Manager", value: "vehicle-manager" },
       { label: "Vehicles Master", value: "vehicles" },
+      { label: "Vehicle Manager", value: "vehicle-manager" },
       { label: "Vehicle Options", value: "vehicle-category" },
       { label: "Vehicle Add Form", value: "vehicle-add" },
     ],

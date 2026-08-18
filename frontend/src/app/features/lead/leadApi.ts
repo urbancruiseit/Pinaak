@@ -92,8 +92,9 @@ export const getLeadApi = async (
         }),
       },
     });
-
+    console.log("Get Leads Response:", response.data);
     const data: PaginatedLeadsResponse = response.data.data;
+
     return {
       leads: data.leads || [],
       total: data.total || 0,
@@ -133,6 +134,7 @@ export const updateLeadApi = async (
   leadData: Partial<LeadRecord>,
 ): Promise<LeadRecord> => {
   try {
+    console.log("Updating lead with ID:", id, "Data:", leadData);
     const response = await axiosInstance.put<ApiResponse<LeadRecord>>(
       `/lead/updatelead/${id}`,
       leadData,

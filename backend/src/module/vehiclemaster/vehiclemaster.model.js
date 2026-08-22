@@ -97,12 +97,13 @@ export const getAllVehiclesModel = async ({
   search = "",
   category = "",
   make = "",
+  seat = "",
+  variant = "",
   page = 1,
   limit = 20,
 } = {}) => {
   try {
     const offset = (page - 1) * limit;
-
     let query = `SELECT * FROM vehicle_master WHERE 1=1`;
     let countQuery = `SELECT COUNT(*) as total FROM vehicle_master WHERE 1=1`;
     const params = [];
@@ -116,11 +117,19 @@ export const getAllVehiclesModel = async ({
       countParams.push(likeSearch, likeSearch, likeSearch);
     }
 
+    // ===== CATEGORY =====
     if (category) {
-      query += ` AND category = ?`;
-      countQuery += ` AND category = ?`;
-      params.push(category);
-      countParams.push(category);
+      const categoryArr = category
+        .split(",")
+        .map((v) => v.trim())
+        .filter(Boolean);
+      if (categoryArr.length > 0) {
+        const placeholders = categoryArr.map(() => "?").join(", ");
+        query += ` AND category IN (${placeholders})`;
+        countQuery += ` AND category IN (${placeholders})`;
+        params.push(...categoryArr);
+        countParams.push(...categoryArr);
+      }
     }
 
     if (make) {
@@ -130,8 +139,40 @@ export const getAllVehiclesModel = async ({
       countParams.push(make);
     }
 
+    // ===== SEAT =====
+    if (seat) {
+      const seatArr = seat
+        .split(",")
+        .map((v) => v.trim())
+        .filter(Boolean);
+      if (seatArr.length > 0) {
+        const placeholders = seatArr.map(() => "?").join(", ");
+        query += ` AND seat IN (${placeholders})`;
+        countQuery += ` AND seat IN (${placeholders})`;
+        params.push(...seatArr);
+        countParams.push(...seatArr);
+      }
+    }
+
+    // ===== VARIANT — case-insensitive + trim-safe match =====
+    if (variant) {
+      const variantArr = variant
+        .split(",")
+        .map((v) => v.trim())
+        .filter(Boolean);
+      if (variantArr.length > 0) {
+        const placeholders = variantArr.map(() => "UPPER(TRIM(?))").join(", ");
+        query += ` AND UPPER(TRIM(variant)) IN (${placeholders})`;
+        countQuery += ` AND UPPER(TRIM(variant)) IN (${placeholders})`;
+        params.push(...variantArr);
+        countParams.push(...variantArr);
+      }
+    }
+
     query += ` ORDER BY id ASC LIMIT ? OFFSET ?`;
     params.push(Number(limit), Number(offset));
+
+   
 
     const [rows] = await pool.execute(query, params);
     const [countRows] = await pool.execute(countQuery, countParams);
@@ -145,6 +186,19 @@ export const getAllVehiclesModel = async ({
     };
   } catch (error) {
     console.error("getAllVehiclesModel error:", error);
+    throw error;
+  }
+};
+
+// ✅ NAYA — sirf seat ke distinct DB values ke liye
+export const getSeatOptionsModel = async () => {
+  try {
+    const [rows] = await pool.execute(
+      `SELECT DISTINCT seat FROM vehicle_master WHERE seat IS NOT NULL AND seat != '' ORDER BY CAST(seat AS UNSIGNED) ASC`,
+    );
+    return rows.map((r) => r.seat);
+  } catch (error) {
+    console.error("getSeatOptionsModel error:", error);
     throw error;
   }
 };

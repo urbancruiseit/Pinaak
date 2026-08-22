@@ -1,6 +1,20 @@
 import axiosInstance from "@/uitils/axioInstance";
 import { Vehicle } from "@/types/types";
 
+// =====================================================
+// VEHICLE STATUS
+// =====================================================
+
+export type VehicleStatus = "Active" | "Suspended" | "Blocked";
+
+export interface UpdateVehicleStatusPayload {
+  status: VehicleStatus;
+}
+
+// =====================================================
+// CREATE VEHICLE MANAGER
+// =====================================================
+
 export const createVehiclesManagerApi = async (
   vehicleData: Omit<Vehicle, "id">,
 ): Promise<Vehicle> => {
@@ -22,16 +36,31 @@ export const createVehiclesManagerApi = async (
   }
 };
 
-// GET ALL VEHICLE MANAGERS
+// =====================================================
+// GET VEHICLE MANAGERS PARAMS
+// =====================================================
+
 export interface GetVehicleManagersParams {
   search?: string;
+
   vendor?: string;
   garage?: string;
+
   city?: string;
+  code?: string;
   year?: number | string;
+
+  category?: string;
+  seat?: string;
+  variant?: string;
+
   page?: number;
   limit?: number;
 }
+
+// =====================================================
+// GET VEHICLE MANAGERS RESPONSE
+// =====================================================
 
 export interface GetVehicleManagersResponse {
   data: Vehicle[];
@@ -41,6 +70,10 @@ export interface GetVehicleManagersResponse {
   totalPages: number;
 }
 
+// =====================================================
+// GET ALL VEHICLE MANAGERS
+// =====================================================
+
 export const getVehicleManagersApi = async (
   params: GetVehicleManagersParams = {},
 ): Promise<GetVehicleManagersResponse> => {
@@ -48,14 +81,23 @@ export const getVehicleManagersApi = async (
     const res = await axiosInstance.get("/vehiclemanager", {
       params: {
         search: params.search || undefined,
+
         vendor: params.vendor || undefined,
         garage: params.garage || undefined,
+
         city: params.city || undefined,
+        code: params.code || undefined,
         year: params.year || undefined,
+
+        category: params.category || undefined,
+        seat: params.seat || undefined,
+        variant: params.variant || undefined,
+
         page: params.page || 1,
         limit: params.limit || 20,
       },
     });
+
     return res.data.data;
   } catch (error: any) {
     console.error(
@@ -69,6 +111,10 @@ export const getVehicleManagersApi = async (
   }
 };
 
+// =====================================================
+// VEHICLE MASTER CODES
+// =====================================================
+
 export interface VehicleMasterCode {
   code: string;
   amenities: string | null;
@@ -79,8 +125,6 @@ export const getVehicleMasterCodesApi = async (): Promise<
 > => {
   try {
     const res = await axiosInstance.get("/vehiclemanager/options/codes");
-
-    console.log("✅ Vehicle master codes:", res.data?.data);
 
     return res.data?.data || [];
   } catch (error: any) {
@@ -95,6 +139,10 @@ export const getVehicleMasterCodesApi = async (): Promise<
   }
 };
 
+// =====================================================
+// AMENITIES
+// =====================================================
+
 export interface VehicleMasterAmenity {
   name: string;
 }
@@ -104,8 +152,6 @@ export const getVehicleMasterAmenitiesApi = async (): Promise<
 > => {
   try {
     const res = await axiosInstance.get("/vehiclemanager/options/amenities");
-
-    console.log("✅ Vehicle master amenities:", res.data?.data);
 
     return res.data?.data || [];
   } catch (error: any) {
@@ -135,8 +181,6 @@ export const getVehicleManagerVendorsApi = async (): Promise<
   try {
     const res = await axiosInstance.get("/vehiclemanager/options/vendors");
 
-    console.log("✅ Vendors:", res.data?.data);
-
     return res.data?.data || [];
   } catch (error: any) {
     console.error(
@@ -151,15 +195,8 @@ export const getVehicleManagerVendorsApi = async (): Promise<
 };
 
 // =====================================================
-// CITIES (generic /vehiclemanager/citys endpoint)
+// CITIES
 // =====================================================
-
-// ⚠️ IMPORTANT: backend (getAllCitiesModel) returns rows shaped like
-// { id, city_name } — NOT { id, name }. That mismatch was the bug:
-// the <select> was rendering `city.name`, which was always undefined,
-// so every option showed up blank even though the array had data.
-// We normalize the shape here so the rest of the app can keep using
-// `.name` consistently (same as vendors/codes).
 
 export interface VehicleCity {
   id: number;
@@ -175,17 +212,12 @@ export const getAllCitiesApi = async (): Promise<VehicleCity[]> => {
   try {
     const res = await axiosInstance.get("/vehiclemanager/citys");
 
-    console.log("✅ Cities raw response:", res.data?.data);
-
     const rawCities: RawCityFromApi[] = res.data?.data || [];
 
-    // Normalize city_name -> name
-    const normalized: VehicleCity[] = rawCities.map((c) => ({
-      id: c.id,
-      name: c.city_name,
+    return rawCities.map((city) => ({
+      id: city.id,
+      name: city.city_name,
     }));
-
-    return normalized;
   } catch (error: any) {
     console.error(
       "❌ Error fetching cities:",
@@ -193,5 +225,43 @@ export const getAllCitiesApi = async (): Promise<VehicleCity[]> => {
     );
 
     throw new Error(error?.response?.data?.message || "Failed to fetch cities");
+  }
+};
+
+// =====================================================
+// UPDATE VEHICLE STATUS
+// =====================================================
+
+export const updateVehicleStatusApi = async (
+  vehicleId: number | string,
+  status: VehicleStatus,
+): Promise<Vehicle> => {
+  try {
+    console.log("🚗 Updating vehicle status:", {
+      vehicleId,
+      status,
+    });
+
+    const res = await axiosInstance.patch(
+      `/vehiclemanager/updatestatus/${vehicleId}`,
+      {
+        status,
+      },
+    );
+
+    console.log("✅ Vehicle status updated:", res.data);
+
+    return res.data?.data;
+  } catch (error: any) {
+    console.error(
+      "❌ Error updating vehicle status:",
+      error?.response?.status,
+      error?.response?.data,
+      error?.message,
+    );
+
+    throw new Error(
+      error?.response?.data?.message || "Failed to update vehicle status",
+    );
   }
 };

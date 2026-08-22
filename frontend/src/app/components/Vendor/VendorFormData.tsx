@@ -590,35 +590,34 @@ const VendorForm: React.FC<VendorFormProps> = ({
      RENDER
   ================================================================ */
   return (
-    <div className="p-6 w-full mx-auto bg-white shadow-xl rounded-lg">
-      <div className="p-6">
-        {/* ── Header ── */}
-        <div className="p-4 mb-8 bg-orange-100 rounded-xl">
-          <div className="flex justify-between items-center">
-            <div>
-              <h2 className="text-2xl font-bold text-center text-orange-600">
-                {isViewMode
-                  ? "View Vendor"
-                  : isEditMode
-                    ? "Edit Vendor"
-                    : "Vendor Registration Form"}
-              </h2>
-              <p className="mt-2 text-center text-orange-700">
-                {"All fields are optional — Fill as needed"}
-              </p>
-            </div>
-            {(isEditMode || isViewMode) && (
-              <button
-                type="button"
-                onClick={handleBack}
-                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
-              >
-                {"← Back to Table"}
-              </button>
-            )}
+    <div className="w-full min-h-screen bg-gray-50">
+      <div className="sticky top-0 z-30 bg-orange-100 p-3 rounded-md shadow-sm">
+        <div className="flex items-center justify-between gap-4">
+          <div className="pl-4 border-l-8 border-orange-500 bg-white px-3 rounded-md shadow-md">
+            <h2 className="text-2xl font-bold text-center text-orange-600">
+              {isViewMode
+                ? "View Vendor"
+                : isEditMode
+                  ? "Edit Vendor"
+                  : "Vendor Registration Form"}
+            </h2>
+            <p className="mt-2 text-center text-orange-700">
+              {"All fields are optional — Fill as needed"}
+            </p>
           </div>
-        </div>
 
+          {(isEditMode || isViewMode) && (
+            <button
+              type="button"
+              onClick={handleBack}
+              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
+            >
+              ← Back to Table
+            </button>
+          )}
+        </div>
+      </div>
+      <div className="p-4 md:p-6 w-full mx-auto bg-white shadow-xl rounded-lg my-6">
         {/* ── Alerts ── */}
         {submitError && (
           <div className="flex items-center gap-2 px-4 py-3 mb-6 text-red-700 border border-red-200 rounded-lg bg-red-50">
@@ -896,37 +895,37 @@ const VendorForm: React.FC<VendorFormProps> = ({
                 },
                 {
                   name: "managerName1",
-                  label: "Manager 1 Name",
+                  label: "Ops Manager",
                   type: "text",
                   Icon: User,
                 },
                 {
                   name: "managerPhone1",
-                  label: "Manager 1 Phone",
+                  label: " Ops Mgr Number",
                   type: "tel",
                   Icon: Phone,
                 },
                 {
                   name: "managerEmail1",
-                  label: "Manager 1 Email",
+                  label: "Ops Manager Email",
                   type: "email",
                   Icon: Mail,
                 },
                 {
                   name: "managerName2",
-                  label: "Manager 2 Name",
+                  label: "Accountant Name",
                   type: "text",
                   Icon: User,
                 },
                 {
                   name: "managerPhone2",
-                  label: "Manager 2 Phone",
+                  label: " Accountant Phone Number.",
                   type: "tel",
                   Icon: Phone,
                 },
                 {
                   name: "managerEmail2",
-                  label: "Manager 2 Email",
+                  label: "Accountant Email",
                   type: "email",
                   Icon: Mail,
                 },
@@ -1021,8 +1020,8 @@ const VendorForm: React.FC<VendorFormProps> = ({
                 { name: "registeredAddress", label: "Registered Address" },
                 { name: "garageAddress", label: "Garage Address" },
                 { name: "garagePhone", label: "Garage Phone" },
-                { name: "cooperativeName", label: "Cooperative Name" },
-                { name: "cooperativeNumber", label: "Cooperative Number" },
+                { name: "cooperativeName", label: "Fleet Details" },
+                // { name: "cooperativeNumber", label: "Cooperative Number" },
               ].map(({ name, label }) => (
                 <div key={name}>
                   <label className="block mb-1 font-extrabold text-gray-700">
@@ -1054,10 +1053,10 @@ const VendorForm: React.FC<VendorFormProps> = ({
               {(
                 [
                   { key: "passportPhoto", label: "Passport Photo" },
-                  { key: "panDoc", label: "PAN Document" },
-                  { key: "gstDoc", label: "GST Document" },
-                  { key: "vendorProof", label: "Vendor Proof" },
-                  { key: "vehicleDoc", label: "Vehicle Document" },
+                  { key: "panDoc", label: "PAN Card" },
+                  { key: "gstDoc", label: "GST Certificate" },
+                  { key: "vendorProof", label: "Ofc Photo Outside" },
+                  // { key: "vehicleDoc", label: "Vehicle Document" },
                 ] as const
               ).map(({ key, label }) => (
                 <div key={key}>

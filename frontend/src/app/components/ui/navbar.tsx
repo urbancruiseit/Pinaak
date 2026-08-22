@@ -21,35 +21,78 @@ import userAvatar from "../../assets/user-pic.png";
 import pinaak from "../../assets/pinnak.png";
 import { AppDispatch, RootState } from "@/app/redux/store";
 import { logoutEmployeeThunk } from "@/app/features/user/userSlice";
+import UserProfileDropdown from "./UserProfileDropdown";
 import {
   setActiveMaster,
   setActiveLeadView,
   setActiveDashboardView,
   setActiveWebsiteView,
-  setActiveAccessKey,
   showReport,
   setActiveSection,
 } from "../../features/Navigation/navigationSlice";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 
-// ─── Static menu data ─────────────────────────────────────────────────────────
+type MenuItem = {
+  label: string;
+  value: string;
+  allowedRoles?: string[];
+};
 
-// 👇 allowedRoles added at the item level too — a section can be visible to a
-// role while individual items inside it stay hidden (e.g. Travel Advisor sees
-// the "CUSTOMERS" dropdown, but only the "Existing Customer Search" item).
-type MenuItem = { label: string; value: string; allowedRoles?: string[] };
 type MenuSection = {
   key: string;
   label: string;
   items: MenuItem[];
-
   allowedRoles?: string[];
 };
 
-// 👇 "travel advisor" added: lets them pass the top-level Master gate. Which
-// sections/items they actually see is controlled further down (per-section
-// and now per-item allowedRoles).
+const normalizeRole = (role: unknown): string => {
+  const value = String(role ?? "")
+    .toLowerCase()
+    .trim()
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ");
+
+  const roleMap: Record<string, string> = {
+    "super admin": "superadmin",
+    superadmin: "superadmin",
+
+    "city manager": "city manager",
+
+    "team leader": "team leader",
+
+    "team leader sales": "team leader-sales",
+
+    "pre sales executive": "pre-sales executive",
+    "pre-sales executive": "pre-sales executive",
+
+    "seo executive": "seo executive",
+    "seo tl": "seo tl",
+
+    "travel advisor": "travel advisor",
+
+    manager: "manager",
+    admin: "admin",
+
+    sales: "sales",
+    bdm: "bdm",
+    presales: "presales",
+    presale: "presale",
+  };
+
+  return roleMap[value] ?? value;
+};
+
+const getEffectiveRole = (roleName: unknown, accessRole: unknown): string => {
+  const roleNameValue = String(roleName ?? "").trim();
+
+  if (roleNameValue !== "") {
+    return roleNameValue;
+  }
+
+  return String(accessRole ?? "").trim();
+};
+
 const MASTER_ALLOWED_ROLES = [
   "superadmin",
   "admin",
@@ -62,7 +105,6 @@ const MASTER_MENU_SECTIONS: MenuSection[] = [
   {
     key: "customers",
     label: "CUSTOMERS",
-    // 👇 Travel Advisor added here so this section shows up for them.
     allowedRoles: [
       "superadmin",
       "admin",
@@ -72,14 +114,13 @@ const MASTER_MENU_SECTIONS: MenuSection[] = [
     ],
     items: [
       {
-        label: "New Customer Form",
+        label: "Customer Form",
         value: "customer-personal",
         allowedRoles: ["superadmin", "admin", "manager", "city manager"],
       },
       {
-        label: "Existing Customer Search",
+        label: "Customer Search",
         value: "customer-table",
-        // 👇 Travel Advisor can see this one item.
         allowedRoles: [
           "superadmin",
           "admin",
@@ -95,6 +136,7 @@ const MASTER_MENU_SECTIONS: MenuSection[] = [
       },
     ],
   },
+
   {
     key: "master",
     label: "UC",
@@ -113,15 +155,23 @@ const MASTER_MENU_SECTIONS: MenuSection[] = [
       { label: "Add Region", value: "region" },
     ],
   },
+
   {
     key: "vendor",
     label: "VENDOR",
     allowedRoles: ["superadmin", "admin", "manager", "city manager"],
     items: [
-      { label: "Vendor Registration Form", value: "vendor" },
-      { label: "Vendor Search", value: "vendor-table" },
+      {
+        label: "Vendor Registration Form",
+        value: "vendor",
+      },
+      {
+        label: "Vendor Search",
+        value: "vendor-table",
+      },
     ],
   },
+
   {
     key: "vehicles",
     label: "VEHICLES",
@@ -133,120 +183,192 @@ const MASTER_MENU_SECTIONS: MenuSection[] = [
       "travel advisor",
     ],
     items: [
-      { label: "Vehicles Master", value: "vehicles" },
-      { label: "Vehicle Manager", value: "vehicle-manager" },
-      { label: "Vehicle Options", value: "vehicle-category" },
-      { label: "Vehicle Add Form", value: "vehicle-add" },
+      {
+        label: "Vehicles Master",
+        value: "vehicles",
+        allowedRoles: ["superadmin", "admin", "city manager"],
+      },
+      {
+        label: "Vehicle Manager",
+        value: "vehicle-manager",
+        allowedRoles: ["city manager", "superadmin", "admin"],
+      },
+      {
+        label: "Vehicle Options",
+        value: "vehicle-category",
+        allowedRoles: ["superadmin", "city manager", "travel advisor"],
+      },
+      // {
+      //   label: "Vehicle Add Form",
+      //   value: "vehicle-add",
+      //   allowedRoles: ["superadmin", "city manager", "travel advisor"],
+      // },
     ],
   },
+
   {
     key: "drivers",
     label: "DRIVER",
     allowedRoles: ["superadmin", "admin", "manager", "city manager"],
     items: [
-      { label: "Driver Registration Form", value: "driver" },
-      { label: "Driver Search", value: "driver-table" },
+      {
+        label: "Driver Registration Form",
+        value: "driver",
+      },
+      {
+        label: "Driver Search",
+        value: "driver-table",
+      },
     ],
   },
 ];
 
-const ACCESS_MENU: MenuSection = {
-  key: "access-menu",
-  label: "Access Level",
-  items: [
-    { label: "City Access", value: "city-manager" },
-    { label: "Team Access", value: "team-leader" },
-    { label: "Sales Access", value: "sales-member" },
-    { label: "BDM Access", value: "bdm" },
-  ],
-};
-
 const DASHBOARD_ITEMS: Record<string, MenuItem[]> = {
   admin: [
-    { label: "Leads Dashboard", value: "leads-dashboard" },
-    { label: "Pre-Sales Team Dashboard", value: "presales-dashboard" },
-    { label: "City Manager Dashboard", value: "citymanager-dashboard" },
-    { label: "BDM Dashboard", value: "bdm-dashboard" },
-    { label: "Sales Team Dashboard", value: "salesteam-dashboard" },
-    { label: "Team Leader Dashboard", value: "teamleader-dashboard" },
+    {
+      label: "Leads Dashboard",
+      value: "leads-dashboard",
+    },
+    {
+      label: "Pre-Sales Team Dashboard",
+      value: "presales-dashboard",
+    },
+    {
+      label: "City Manager Dashboard",
+      value: "citymanager-dashboard",
+    },
+    {
+      label: "BDM Dashboard",
+      value: "bdm-dashboard",
+    },
+    {
+      label: "Sales Team Dashboard",
+      value: "salesteam-dashboard",
+    },
+    {
+      label: "Team Leader Dashboard",
+      value: "teamleader-dashboard",
+    },
   ],
+
   presales: [
-    { label: "Pre-Sales Team Dashboard", value: "presales-dashboard" },
+    {
+      label: "Pre-Sales Team Dashboard",
+      value: "presales-dashboard",
+    },
   ],
-  presale: [{ label: "Pre-Sales Team Dashboard", value: "presales-dashboard" }],
-  bdm: [{ label: "BDM Dashboard", value: "bdm-dashboard" }],
-  sales: [{ label: "Sales Team Dashboard", value: "salesteam-dashboard" }],
+
+  presale: [
+    {
+      label: "Pre-Sales Team Dashboard",
+      value: "presales-dashboard",
+    },
+  ],
+
+  bdm: [
+    {
+      label: "BDM Dashboard",
+      value: "bdm-dashboard",
+    },
+  ],
+
+  sales: [
+    {
+      label: "Sales Team Dashboard",
+      value: "salesteam-dashboard",
+    },
+  ],
+
   "city manager": [
-    { label: "City Manager Dashboard", value: "citymanager-dashboard" },
+    {
+      label: "City Manager Dashboard",
+      value: "citymanager-dashboard",
+    },
   ],
+
   citymanager: [
-    { label: "City Manager Dashboard", value: "citymanager-dashboard" },
+    {
+      label: "City Manager Dashboard",
+      value: "citymanager-dashboard",
+    },
   ],
+
   "team leader": [
-    { label: "Team Leader Dashboard", value: "teamleader-dashboard" },
+    {
+      label: "Team Leader Dashboard",
+      value: "teamleader-dashboard",
+    },
   ],
+
   teamleader: [
-    { label: "Team Leader Dashboard", value: "teamleader-dashboard" },
+    {
+      label: "Team Leader Dashboard",
+      value: "teamleader-dashboard",
+    },
   ],
+
   team_leader: [
-    { label: "Team Leader Dashboard", value: "teamleader-dashboard" },
+    {
+      label: "Team Leader Dashboard",
+      value: "teamleader-dashboard",
+    },
   ],
+
   "team leader-sales": [
-    { label: "City Manager Dashboard", value: "citymanager-dashboard" },
+    {
+      label: "City Manager Dashboard",
+      value: "citymanager-dashboard",
+    },
   ],
 };
 
 const getMenuIcon = (menuKey: string) => {
-  if (menuKey.includes("customer"))
+  if (menuKey.includes("customer")) {
     return <Users size={16} className="mr-1.5" />;
-  if (menuKey.includes("master"))
+  }
+  if (menuKey.includes("master")) {
     return <Building2 size={16} className="mr-1.5" />;
-  if (menuKey.includes("vendor"))
+  }
+  if (menuKey.includes("vendor")) {
     return <FileText size={16} className="mr-1.5" />;
-  if (menuKey.includes("vehicle")) return <Car size={16} className="mr-1.5" />;
-  if (menuKey.includes("driver"))
+  }
+
+  if (menuKey.includes("vehicle")) {
+    return <Car size={16} className="mr-1.5" />;
+  }
+
+  if (menuKey.includes("driver")) {
     return <UserCircle size={16} className="mr-1.5" />;
-  if (menuKey.includes("access"))
+  }
+
+  if (menuKey.includes("access")) {
     return <Shield size={16} className="mr-1.5" />;
+  }
+
   return null;
 };
-
-// ─── Navbar ───────────────────────────────────────────────────────────────────
 
 export function Navbar() {
   const dispatch = useDispatch<AppDispatch>();
   const router = useRouter();
-
-  // ── Redux state ──────────────────────────────────────────────────────────
   const { currentUser } = useSelector((state: RootState) => state.user);
   const nav = useSelector((state: RootState) => state.navigation);
-
   const rawUser = (currentUser as any) ?? {};
   const userData = rawUser?.data ?? rawUser;
-
   const userEmail = rawUser?.officeEmail ?? userData?.officeEmail ?? "";
   const userAliasName = rawUser?.aliasName ?? userData?.aliasName ?? "";
   const userDepartment = rawUser?.department ?? userData?.department ?? "";
   const userSubDepartment =
     rawUser?.subDepartment ?? userData?.subDepartment ?? "";
-  const userRegionNames = (currentUser as any)?.region_names ?? [];
-  const userZoneNames = (currentUser as any)?.zone_names ?? [];
-  const userCityNames = (currentUser as any)?.city_names ?? [];
-
-  const adminRole = (rawUser?.role ??
-    userData?.role ??
-    rawUser?.role ??
-    userData?.role ??
-    "") as string;
-
-  const normalizedRole = adminRole.toLowerCase().trim();
-
-  // ✅ Master menu role gate — same idea as `trackingItems`'s per-item `show`
+  const userRegionNames = rawUser?.region_names ?? userData?.region_names ?? [];
+  const userZoneNames = rawUser?.zone_names ?? userData?.zone_names ?? [];
+  const userCityNames = rawUser?.city_names ?? userData?.city_names ?? [];
+  const roleName = rawUser?.role_name ?? userData?.role_name ?? "";
+  const accessRole = rawUser?.access_role ?? userData?.access_role ?? "";
+  const effectiveRole = getEffectiveRole(roleName, accessRole);
+  const normalizedRole = normalizeRole(effectiveRole);
+  const adminRole = effectiveRole;
   const canSeeMaster = MASTER_ALLOWED_ROLES.includes(normalizedRole);
-
-  // ✅ Per-section filtering: a section only shows if it has no allowedRoles
-  // restriction (inherits the global canSeeMaster gate) OR the current role
-  // is explicitly listed in its allowedRoles.
   const visibleMasterSections = useMemo(
     () =>
       MASTER_MENU_SECTIONS.filter(
@@ -254,8 +376,6 @@ export function Navbar() {
           !menu.allowedRoles || menu.allowedRoles.includes(normalizedRole),
       ).map((menu) => ({
         ...menu,
-        // ✅ Per-item filtering inside each visible section: an item shows if
-        // it has no allowedRoles restriction, or the current role is listed.
         items: menu.items.filter(
           (item) =>
             !item.allowedRoles || item.allowedRoles.includes(normalizedRole),
@@ -268,42 +388,29 @@ export function Navbar() {
     nav.activeSection === "master" &&
     canSeeMaster &&
     visibleMasterSections.length > 0;
+
   const showLeadsMenu =
     nav.activeSection === "leads" || nav.activeSection === "dsr-form";
   const showDashboardMenu = nav.activeSection === "dashboard";
   const showWebsiteMenu = nav.activeSection === "website";
-  const showAccess =
-    normalizedRole === "superadmin" || normalizedRole === "admin";
-
   const isSales = normalizedRole === "sales";
   const isTravelAdvisor = normalizedRole === "travel advisor";
   const isTeamLeader = normalizedRole === "team leader";
   const isSuperAdmin = normalizedRole === "superadmin";
   const isManager = normalizedRole === "manager";
   const isCityManager = normalizedRole === "city manager";
-
-  // ✅ Team Leader-Sales — gets the exact same access as City Manager
-  const isTeamLeaderSales =
-    normalizedRole === "team leader-sales" ||
-    normalizedRole === "team leader sales" ||
-    normalizedRole.includes("team leader-sales") ||
-    normalizedRole.includes("team leader sales");
-
-  // ✅ FIX 1: City Manager (and now Team Leader-Sales) included in dropdown trigger
-  const shouldShowLeadManagerDropdown =
-    isSuperAdmin || isManager || isCityManager || isTeamLeaderSales;
-
+  const isTeamLeaderSales = normalizedRole === "team leader-sales";
   const isSeoExecutive = normalizedRole === "seo executive";
-  const isSeoTl = normalizedRole === "seo tl"; // 👈 add
+  const isSeoTl = normalizedRole === "seo tl";
   const isDigitalMarketingDept =
-    (userDepartment ?? "").toLowerCase().trim() === "digital marketing";
-
+    String(userDepartment ?? "")
+      .toLowerCase()
+      .trim() === "digital marketing";
   const isSeoExecutiveDigitalMarketing =
     isSeoExecutive && isDigitalMarketingDept;
+  const isSeoTlDigitalMarketing = isSeoTl && isDigitalMarketingDept;
+  const isPresalesExecutive = normalizedRole === "pre-sales executive";
 
-  const isSeoTlDigitalMarketing = isSeoTl && isDigitalMarketingDept; // 👈 add
-
-  // ✅ Allowlist for who can see the Leads menu (New Lead / Lead Manager)
   const leadsAllowedRoles = [
     "superadmin",
     "manager",
@@ -313,23 +420,27 @@ export function Navbar() {
     "pre-sales executive",
     "seo executive",
   ];
+
   const canSeeLeadsMenu = leadsAllowedRoles.includes(normalizedRole);
+  const shouldShowLeadManagerDropdown =
+    isSuperAdmin || isManager || isCityManager || isTeamLeaderSales;
 
-  // ── Dashboard items for current role ─────────────────────────────────────
   const dashboardItems = DASHBOARD_ITEMS[normalizedRole] ?? [];
-
-  // ── Local UI state ────────────────────────────────────────────────────────
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const navbarRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (navbarRef.current && !navbarRef.current.contains(e.target as Node))
+      if (navbarRef.current && !navbarRef.current.contains(e.target as Node)) {
         setOpenMenu(null);
+      }
     };
-    if (openMenu) document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    if (openMenu) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
   }, [openMenu]);
 
   const close = () => {
@@ -337,7 +448,6 @@ export function Navbar() {
     setMobileOpen(false);
   };
 
-  // ── Handlers → dispatch to Redux ─────────────────────────────────────────
   const handleMasterSelect = (value: string) => {
     dispatch(setActiveMaster(value as any));
     close();
@@ -368,11 +478,6 @@ export function Navbar() {
     close();
   };
 
-  const handleAccessSelect = (value: string) => {
-    dispatch(setActiveAccessKey(value));
-    close();
-  };
-
   const handleWebsiteSelect = (key: string) => {
     dispatch(setActiveWebsiteView(key as "gac" | "gaq"));
     close();
@@ -386,16 +491,16 @@ export function Navbar() {
   const handleLogout = async () => {
     try {
       await dispatch(logoutEmployeeThunk()).unwrap();
+
       toast.success("Logout successfully");
-      setTimeout(() => router.push("/"), 500);
+
+      setTimeout(() => {
+        router.push("/");
+      }, 500);
     } catch {
       toast.error("Logout failed");
     }
   };
-
-  // ── Tracking menu items ───────────────────────────────────────────────────
-  const isPresalesExecutive = normalizedRole === "pre-sales executive";
-
   const trackingItems = [
     {
       label: "Monthly Enquiry PS (MER)",
@@ -407,8 +512,9 @@ export function Navbar() {
         isCityManager ||
         isTeamLeaderSales ||
         isSeoExecutiveDigitalMarketing ||
-        isSeoTlDigitalMarketing, // 👈 yahan use karo
+        isSeoTlDigitalMarketing,
     },
+
     {
       label: "Monthly Enquiry PS 2 (MER 2)",
       key: "monthlyLeadsTwo",
@@ -419,6 +525,7 @@ export function Navbar() {
         isCityManager ||
         isTeamLeaderSales,
     },
+
     {
       label: "Lead Distribution PS (LDR)",
       key: "monthlyDistribution",
@@ -428,6 +535,7 @@ export function Navbar() {
         isCityManager ||
         isTeamLeaderSales,
     },
+
     {
       label: "Long Weekend Distribution (LWD)",
       key: "longWeekendLeads",
@@ -438,6 +546,7 @@ export function Navbar() {
         isCityManager ||
         isTeamLeaderSales,
     },
+
     {
       label: "Employee Performance - TS (EP-TS)",
       key: "employeeReports",
@@ -448,6 +557,7 @@ export function Navbar() {
         isCityManager ||
         isTeamLeaderSales,
     },
+
     {
       label: "Employee Performance - PS (EP-PS)",
       key: "dateEmployeeReports",
@@ -457,11 +567,13 @@ export function Navbar() {
         isCityManager ||
         isTeamLeaderSales,
     },
+
     {
       label: "Unwanted Leads (ULR)",
       key: "unwantedLeads",
       show: isPresalesExecutive,
     },
+
     {
       label: "Aging Performance - PS (AP-PS)",
       key: "agingReports",
@@ -471,24 +583,31 @@ export function Navbar() {
         isCityManager ||
         isTeamLeaderSales,
     },
-  ].filter((i) => i.show);
+  ].filter((item) => item.show);
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────────────
+  // Render
+  // ─────────────────────────────────────────────────────────────────────────
+
   return (
     <nav
       ref={navbarRef}
       className="w-full h-16 z-50 flex flex-col border-b border-gray-200 shadow-sm bg-orange-50 relative"
     >
-      {/* Mobile top bar */}
+      {/* ─────────────────────────────────────────────────────────────────── */}
+      {/* Mobile Header */}
+      {/* ─────────────────────────────────────────────────────────────────── */}
+
       <div className="flex items-center h-16 w-full px-4 justify-between md:hidden">
         <button
           type="button"
           className="flex items-center justify-center p-2 text-orange-600 transition border border-orange-200 rounded-full bg-white/80 hover:bg-white hover:shadow-md"
-          onClick={() => setMobileOpen((p) => !p)}
+          onClick={() => setMobileOpen((prev) => !prev)}
           aria-label="Toggle navigation"
         >
           {mobileOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
+
         <div className="flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 shadow-sm border border-orange-100">
           <Image
             src={userAvatar}
@@ -497,23 +616,22 @@ export function Navbar() {
             height={28}
             className="object-cover border-2 border-orange-500 rounded-full"
           />
+
           <div className="text-left">
             <p className="text-sm font-semibold text-gray-800">
               {userAliasName}
             </p>
+
             <p className="text-[11px] uppercase text-gray-500">{adminRole}</p>
           </div>
         </div>
       </div>
 
-      {/* Main nav */}
       <div
         className={`${mobileOpen ? "block" : "hidden"} w-full px-4 pb-4 md:block md:pb-0`}
       >
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between md:h-16">
-          {/* ── Left section ── */}
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:flex-wrap md:gap-2 lg:gap-4">
-            {/* Logo */}
             <div className="flex items-center gap-2 flex-shrink-0 h-full">
               <Image
                 src={pinaak}
@@ -524,48 +642,57 @@ export function Navbar() {
               />
             </div>
 
-            {/* MASTER — role-gated: only canSeeMaster roles see this, and each
-                section is further filtered by visibleMasterSections (and each
-                item inside a section is filtered too — e.g. Travel Advisor
-                only sees "Existing Customer Search" inside CUSTOMERS) */}
             {showMaster &&
               visibleMasterSections.map((menu) => {
-                if (menu.items.length === 0) return null;
+                if (menu.items.length === 0) {
+                  return null;
+                }
                 const isOpen = openMenu === menu.key;
                 return (
                   <div key={menu.key} className="relative w-full md:w-auto">
                     <button
                       type="button"
-                      className={`w-full md:w-auto flex items-center justify-between gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200
-                      ${isOpen ? "bg-orange-600 text-white shadow-lg md:scale-105" : "bg-white text-orange-700 border-2 border-orange-300 hover:border-orange-500 hover:shadow-md hover:scale-[1.02]"}
-                      md:min-w-[100px] md:h-9 md:py-2`}
+                      className={`w-full md:w-auto flex items-center justify-between gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200 ${
+                        isOpen
+                          ? "bg-orange-600 text-white shadow-lg md:scale-105"
+                          : "bg-white text-orange-700 border-2 border-orange-300 hover:border-orange-500 hover:shadow-md hover:scale-[1.02]"
+                      } md:min-w-[100px] md:h-9 md:py-2`}
                       onClick={() =>
-                        setOpenMenu((p) => (p === menu.key ? null : menu.key))
+                        setOpenMenu((prev) =>
+                          prev === menu.key ? null : menu.key,
+                        )
                       }
                     >
                       <span className="flex items-center truncate">
                         {getMenuIcon(menu.key)}
                         {menu.label}
                       </span>
+
                       <ChevronDown
                         size={14}
                         className={`transition-transform duration-200 flex-shrink-0 ${isOpen ? "rotate-180" : ""}`}
                       />
                     </button>
+
                     {isOpen && (
                       <ul className="w-full md:absolute md:left-0 z-50 py-1 mt-1 bg-white border-2 border-orange-300 rounded-lg shadow-xl md:top-full md:w-56 max-h-80 overflow-y-auto">
                         {menu.items.map((item) => {
                           const isActive = item.value === nav.activeMaster;
+
                           return (
                             <li
                               key={item.value}
                               onClick={() => handleMasterSelect(item.value)}
-                              className={`px-3 py-2.5 md:py-2 text-sm transition-all cursor-pointer flex items-center gap-2
-                              ${isActive ? "bg-orange-600 text-white font-semibold" : "text-gray-700 hover:bg-orange-50 hover:text-orange-700 hover:pl-4"}`}
+                              className={`px-3 py-2.5 md:py-2 text-sm transition-all cursor-pointer flex items-center gap-2 ${
+                                isActive
+                                  ? "bg-orange-600 text-white font-semibold"
+                                  : "text-gray-700 hover:bg-orange-50 hover:text-orange-700 hover:pl-4"
+                              }`}
                             >
                               <span
                                 className={`w-1 h-1 rounded-full ${isActive ? "bg-white" : "bg-orange-300"}`}
                               />
+
                               {item.label}
                             </li>
                           );
@@ -575,15 +702,14 @@ export function Navbar() {
                   </div>
                 );
               })}
-
-            {/* LEADS MENU */}
             {showLeadsMenu && (
               <>
-                {/* New Lead button */}
+                {/* New Lead */}
+
                 {canSeeLeadsMenu &&
                   !isSales &&
                   !isTravelAdvisor &&
-                  !isSeoTlDigitalMarketing && // 👈 yahan use karo
+                  !isSeoTlDigitalMarketing &&
                   !isSeoExecutiveDigitalMarketing && (
                     <div className="relative w-full md:w-auto">
                       <button
@@ -592,12 +718,14 @@ export function Navbar() {
                         onClick={() => handleLeadSelect("lead-form")}
                       >
                         <FileText size={16} className="mr-1.5 flex-shrink-0" />
+
                         <span className="truncate">New Lead</span>
                       </button>
                     </div>
                   )}
 
                 {/* Lead Manager */}
+
                 {canSeeLeadsMenu &&
                   !isSales &&
                   !isTravelAdvisor &&
@@ -608,22 +736,27 @@ export function Navbar() {
                         type="button"
                         className="w-full md:w-auto flex items-center justify-between gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200 bg-white text-emerald-700 border-2 border-emerald-300 hover:border-emerald-500 hover:shadow-md hover:scale-[1.02] md:min-w-[100px] md:h-9 md:py-2"
                         onClick={() =>
-                          setOpenMenu((p) =>
-                            p === "lead-manager-superadmin"
+                          setOpenMenu((prev) =>
+                            prev === "lead-manager-superadmin"
                               ? null
                               : "lead-manager-superadmin",
                           )
                         }
                       >
                         <FileText size={16} className="mr-1.5 flex-shrink-0" />
+
                         <span className="truncate">Lead Manager</span>
+
                         <ChevronDown
                           size={14}
-                          className={`transition-transform duration-200 flex-shrink-0 ${openMenu === "lead-manager-superadmin" ? "rotate-180" : ""}`}
+                          className={`transition-transform duration-200 ${
+                            openMenu === "lead-manager-superadmin"
+                              ? "rotate-180"
+                              : ""
+                          }`}
                         />
                       </button>
 
-                      {/* ✅ FIX 2: Dropdown now shows for City Manager / Team Leader-Sales too */}
                       {openMenu === "lead-manager-superadmin" && (
                         <ul className="w-full md:absolute md:left-0 z-50 py-1 mt-1 bg-white border-2 border-emerald-300 rounded-lg shadow-xl md:top-full md:w-64 max-h-80 overflow-y-auto">
                           <li
@@ -645,7 +778,9 @@ export function Navbar() {
                           </li>
 
                           <li
-                            onClick={() => handleLeadSelect("swap-lead-table")}
+                            onClick={() =>
+                              handleSwapLeadSelect("swap-lead-table")
+                            }
                             className="px-3 py-2.5 md:py-2 text-sm cursor-pointer flex items-center gap-2 text-gray-700 hover:bg-emerald-50 hover:text-emerald-700 hover:pl-4"
                           >
                             <span className="w-1 h-1 rounded-full bg-emerald-300" />
@@ -662,12 +797,14 @@ export function Navbar() {
                         onClick={() => handleLeadSelect("lead-table")}
                       >
                         <FileText size={16} className="mr-1.5 flex-shrink-0" />
+
                         <span className="truncate">Lead Manager</span>
                       </button>
                     </div>
                   ))}
 
                 {/* TL Tables */}
+
                 {isTeamLeader && (
                   <div className="relative w-full md:w-auto">
                     <button
@@ -676,12 +813,14 @@ export function Navbar() {
                       onClick={handleTlTablesSelect}
                     >
                       <FileText size={16} className="mr-1.5 flex-shrink-0" />
+
                       <span className="truncate">TL Tables</span>
                     </button>
                   </div>
                 )}
 
-                {/* Travel Advisor buttons */}
+                {/* Travel Advisor */}
+
                 {isTravelAdvisor && (
                   <div className="relative flex flex-col md:flex-row gap-3 w-full md:w-auto">
                     <button
@@ -690,6 +829,7 @@ export function Navbar() {
                       onClick={() => handleSalesLeadSelect("sale-lead-table")}
                     >
                       <FileText size={16} className="mr-1.5 flex-shrink-0" />
+
                       <span className="truncate">Sales Lead Manager</span>
                     </button>
 
@@ -699,6 +839,7 @@ export function Navbar() {
                       onClick={() => handleSwapLeadSelect("swap-lead-table")}
                     >
                       <FileText size={16} className="mr-1.5 flex-shrink-0" />
+
                       <span className="truncate">Swap Lead Manager</span>
                     </button>
 
@@ -708,22 +849,26 @@ export function Navbar() {
                       onClick={handleDsrSelect}
                     >
                       <FileText size={16} className="mr-1.5 flex-shrink-0" />
+
                       <span className="truncate">DSR Lead Manager</span>
                     </button>
                   </div>
                 )}
 
-                {/* Tracking menu */}
+                {/* Tracking */}
+
                 {trackingItems.length > 0 && (
                   <div className="relative w-full md:w-auto">
                     <button
                       type="button"
-                      className={`w-full md:w-auto flex items-center justify-between gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200
-                        ${openMenu === "lead-track-menu" ? "bg-green-600 text-white shadow-lg md:scale-105" : "bg-white text-green-700 border-2 border-green-300 hover:border-green-500 hover:shadow-md hover:scale-[1.02] hover:bg-green-50"}
-                        md:min-w-[100px] md:h-9 md:py-2`}
+                      className={`w-full md:w-auto flex items-center justify-between gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200 ${
+                        openMenu === "lead-track-menu"
+                          ? "bg-green-600 text-white shadow-lg md:scale-105"
+                          : "bg-white text-green-700 border-2 border-green-300 hover:border-green-500 hover:shadow-md hover:scale-[1.02] hover:bg-green-50"
+                      } md:min-w-[100px] md:h-9 md:py-2`}
                       onClick={() =>
-                        setOpenMenu((p) =>
-                          p === "lead-track-menu" ? null : "lead-track-menu",
+                        setOpenMenu((prev) =>
+                          prev === "lead-track-menu" ? null : "lead-track-menu",
                         )
                       }
                     >
@@ -731,11 +876,15 @@ export function Navbar() {
                         <MapPin size={16} className="mr-1.5 flex-shrink-0" />
                         Tracking
                       </span>
+
                       <ChevronDown
                         size={14}
-                        className={`transition-transform duration-200 flex-shrink-0 ${openMenu === "lead-track-menu" ? "rotate-180" : ""}`}
+                        className={`transition-transform duration-200 ${
+                          openMenu === "lead-track-menu" ? "rotate-180" : ""
+                        }`}
                       />
                     </button>
+
                     {openMenu === "lead-track-menu" && (
                       <ul className="w-full md:absolute md:left-0 z-50 py-1 mt-1 bg-white border-2 border-green-300 rounded-lg shadow-xl md:top-full md:w-56 max-h-80 overflow-y-auto">
                         {trackingItems.map(({ label, key }) => (
@@ -758,17 +907,18 @@ export function Navbar() {
               </>
             )}
 
-            {/* DASHBOARD MENU */}
             {showDashboardMenu && dashboardItems.length > 0 && (
               <div className="relative w-full md:w-auto">
                 <button
                   type="button"
-                  className={`w-full md:w-auto flex items-center justify-between gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200
-                    ${openMenu === "dashboard-menu" ? "bg-green-600 text-white shadow-lg md:scale-105" : "bg-white text-green-700 border-2 border-green-300 hover:border-green-500 hover:shadow-md hover:scale-[1.02] hover:bg-green-50"}
-                    md:min-w-[100px] md:h-9 md:py-2`}
+                  className={`w-full md:w-auto flex items-center justify-between gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200 ${
+                    openMenu === "dashboard-menu"
+                      ? "bg-green-600 text-white shadow-lg md:scale-105"
+                      : "bg-white text-green-700 border-2 border-green-300 hover:border-green-500 hover:shadow-md hover:scale-[1.02] hover:bg-green-50"
+                  } md:min-w-[100px] md:h-9 md:py-2`}
                   onClick={() =>
-                    setOpenMenu((p) =>
-                      p === "dashboard-menu" ? null : "dashboard-menu",
+                    setOpenMenu((prev) =>
+                      prev === "dashboard-menu" ? null : "dashboard-menu",
                     )
                   }
                 >
@@ -779,25 +929,32 @@ export function Navbar() {
                     />
                     Dashboards
                   </span>
+
                   <ChevronDown
                     size={14}
-                    className={`transition-transform duration-200 flex-shrink-0 ${openMenu === "dashboard-menu" ? "rotate-180" : ""}`}
+                    className={`transition-transform duration-200 ${openMenu === "dashboard-menu" ? "rotate-180" : ""}`}
                   />
                 </button>
+
                 {openMenu === "dashboard-menu" && (
                   <ul className="w-full md:absolute md:left-0 z-50 py-1 mt-1 bg-white border-2 border-green-300 rounded-lg shadow-xl md:top-full md:w-60 max-h-80 overflow-y-auto">
                     {dashboardItems.map((item) => {
                       const isActive = item.value === nav.activeDashboardView;
+
                       return (
                         <li
                           key={item.value}
                           onClick={() => handleDashboardSelect(item.value)}
-                          className={`px-3 py-2.5 md:py-2 text-sm cursor-pointer flex items-center gap-2
-                            ${isActive ? "bg-green-600 text-white font-semibold" : "text-gray-700 hover:bg-green-50 hover:text-green-700 hover:pl-4"}`}
+                          className={`px-3 py-2.5 md:py-2 text-sm cursor-pointer flex items-center gap-2 ${
+                            isActive
+                              ? "bg-green-600 text-white font-semibold"
+                              : "text-gray-700 hover:bg-green-50 hover:text-green-700 hover:pl-4"
+                          }`}
                         >
                           <span
                             className={`w-1 h-1 rounded-full ${isActive ? "bg-white" : "bg-green-300"}`}
                           />
+
                           {item.label}
                         </li>
                       );
@@ -807,63 +964,18 @@ export function Navbar() {
               </div>
             )}
 
-            {/* ACCESS MENU */}
-            {showAccess && (
-              <div className="relative w-full md:w-auto">
-                <button
-                  type="button"
-                  className={`w-full md:w-auto flex items-center justify-between gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200
-                    ${openMenu === ACCESS_MENU.key ? "bg-yellow-600 text-white shadow-lg md:scale-105" : "bg-white text-yellow-700 border-2 border-yellow-300 hover:border-yellow-500 hover:shadow-md hover:scale-[1.02] hover:bg-yellow-50"}
-                    md:min-w-[100px] md:h-9 md:py-2`}
-                  onClick={() =>
-                    setOpenMenu((p) =>
-                      p === ACCESS_MENU.key ? null : ACCESS_MENU.key,
-                    )
-                  }
-                >
-                  <span className="flex items-center truncate">
-                    <Shield size={16} className="mr-1.5" />
-                    {ACCESS_MENU.label}
-                  </span>
-                  <ChevronDown
-                    size={14}
-                    className={`transition-transform duration-200 flex-shrink-0 ${openMenu === ACCESS_MENU.key ? "rotate-180" : ""}`}
-                  />
-                </button>
-                {openMenu === ACCESS_MENU.key && (
-                  <ul className="w-full md:absolute md:left-0 z-50 py-1 mt-1 bg-white border-2 border-yellow-300 rounded-lg shadow-xl md:top-full md:w-56 max-h-80 overflow-y-auto">
-                    {ACCESS_MENU.items.map((item) => {
-                      const isActive = item.value === nav.activeAccessKey;
-                      return (
-                        <li
-                          key={item.value}
-                          onClick={() => handleAccessSelect(item.value)}
-                          className={`px-3 py-2.5 md:py-2 text-sm cursor-pointer flex items-center gap-2
-                            ${isActive ? "bg-yellow-600 text-white font-semibold" : "text-gray-700 hover:bg-yellow-50 hover:text-yellow-700 hover:pl-4"}`}
-                        >
-                          <span
-                            className={`w-1 h-1 rounded-full ${isActive ? "bg-white" : "bg-yellow-300"}`}
-                          />
-                          {item.label}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </div>
-            )}
-
-            {/* WEBSITE MENU */}
             {showWebsiteMenu && (
               <div className="relative w-full md:w-auto">
                 <button
                   type="button"
-                  className={`w-full md:w-auto flex items-center justify-between gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200
-                    ${openMenu === "website-menu" ? "bg-blue-600 text-white shadow-lg md:scale-105" : "bg-white text-blue-700 border-2 border-blue-300 hover:border-blue-500 hover:shadow-md hover:scale-[1.02] hover:bg-blue-50"}
-                    md:min-w-[100px] md:h-9 md:py-2`}
+                  className={`w-full md:w-auto flex items-center justify-between gap-1 rounded-full px-4 py-2.5 text-sm font-semibold uppercase tracking-wide transition-all duration-200 ${
+                    openMenu === "website-menu"
+                      ? "bg-blue-600 text-white shadow-lg md:scale-105"
+                      : "bg-white text-blue-700 border-2 border-blue-300 hover:border-blue-500 hover:shadow-md hover:scale-[1.02] hover:bg-blue-50"
+                  } md:min-w-[100px] md:h-9 md:py-2`}
                   onClick={() =>
-                    setOpenMenu((p) =>
-                      p === "website-menu" ? null : "website-menu",
+                    setOpenMenu((prev) =>
+                      prev === "website-menu" ? null : "website-menu",
                     )
                   }
                 >
@@ -871,26 +983,42 @@ export function Navbar() {
                     <Monitor size={16} className="mr-1.5 flex-shrink-0" />
                     Website
                   </span>
+
                   <ChevronDown
                     size={14}
-                    className={`transition-transform duration-200 flex-shrink-0 ${openMenu === "website-menu" ? "rotate-180" : ""}`}
+                    className={`transition-transform duration-200 ${openMenu === "website-menu" ? "rotate-180" : ""}`}
                   />
                 </button>
+
                 {openMenu === "website-menu" && (
                   <ul className="w-full md:absolute md:left-0 z-50 py-1 mt-1 bg-white border-2 border-blue-300 rounded-lg shadow-xl md:top-full md:w-56 max-h-80 overflow-y-auto">
                     {[
-                      { key: "gac", label: "GAC Table" },
-                      { key: "gaq", label: "GAQ Table" },
+                      {
+                        key: "gac",
+                        label: "GAC Table",
+                      },
+                      {
+                        key: "gaq",
+                        label: "GAQ Table",
+                      },
                     ].map(({ key, label }) => (
                       <li
                         key={key}
                         onClick={() => handleWebsiteSelect(key)}
-                        className={`px-3 py-2.5 md:py-2 text-sm cursor-pointer flex items-center gap-2
-                          ${nav.activeWebsiteView === key ? "bg-blue-600 text-white font-semibold" : "text-gray-700 hover:bg-blue-50 hover:text-blue-700 hover:pl-4"}`}
+                        className={`px-3 py-2.5 md:py-2 text-sm cursor-pointer flex items-center gap-2 ${
+                          nav.activeWebsiteView === key
+                            ? "bg-blue-600 text-white font-semibold"
+                            : "text-gray-700 hover:bg-blue-50 hover:text-blue-700 hover:pl-4"
+                        }`}
                       >
                         <span
-                          className={`w-1 h-1 rounded-full ${nav.activeWebsiteView === key ? "bg-white" : "bg-blue-300"}`}
+                          className={`w-1 h-1 rounded-full ${
+                            nav.activeWebsiteView === key
+                              ? "bg-white"
+                              : "bg-blue-300"
+                          }`}
                         />
+
                         {label}
                       </li>
                     ))}
@@ -900,9 +1028,13 @@ export function Navbar() {
             )}
           </div>
 
-          {/* ── Right section: User profile ── */}
+          {/* ─────────────────────────────────────────────────────────────── */}
+          {/* RIGHT - USER */}
+          {/* ─────────────────────────────────────────────────────────────── */}
+
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:ml-auto md:gap-2 lg:gap-3">
-            {/* Rules — city manager, team leader-sales aur pre-sales executive ko dikhega */}
+            {/* Rules */}
+
             {(normalizedRole === "city manager" ||
               isTeamLeaderSales ||
               normalizedRole === "pre-sales executive") && (
@@ -916,106 +1048,25 @@ export function Navbar() {
               </button>
             )}
 
-            <div className="relative">
-              <button
-                onClick={() =>
-                  setOpenMenu((p) => (p === "user" ? null : "user"))
-                }
-                className={`flex items-center gap-2 rounded-full bg-white px-2 py-1 text-xs font-semibold text-gray-700 shadow-sm border-2 transition-all duration-200 hover:shadow-md hover:scale-[1.02]
-                  ${openMenu === "user" ? "border-orange-500 shadow-md" : "border-orange-300 hover:border-orange-500"}`}
-              >
-                <Image
-                  src={userAvatar}
-                  alt="User"
-                  width={28}
-                  height={28}
-                  className="object-cover border-2 border-orange-500 rounded-full flex-shrink-0"
-                />
-                <div className="text-left hidden lg:block">
-                  <p className="text-sm font-semibold text-gray-900">
-                    {userAliasName ||
-                      (rawUser?.shortName ?? userData?.shortName) ||
-                      "-"}
-                  </p>
-                  <p className="text-[11px] uppercase text-gray-500">
-                    {adminRole || "-"}
-                  </p>
-                </div>
-                <ChevronDown
-                  size={14}
-                  className={`ml-1 transition-transform duration-200 flex-shrink-0 ${openMenu === "user" ? "rotate-180" : ""}`}
-                />
-              </button>
+            <div className="flex items-center gap-3">
+              {/* Other Navbar items */}
 
-              {openMenu === "user" && (
-                <div className="absolute right-0 z-50 mt-2 w-72 bg-white border border-gray-200 rounded-xl shadow-xl overflow-hidden">
-                  <div className="p-4 border-b border-gray-100">
-                    <p className="text-sm font-semibold text-gray-900">
-                      {userAliasName ||
-                        (rawUser?.shortName ?? userData?.shortName) ||
-                        "-"}
-                    </p>
-                    <p className="text-xs text-gray-500 truncate">
-                      {userEmail}
-                    </p>
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      {userDepartment && (
-                        <span className="text-[11px] px-2 py-[2px] bg-blue-100 text-blue-700 rounded-full">
-                          {userDepartment}
-                        </span>
-                      )}
-                      {userSubDepartment && (
-                        <span className="text-[11px] px-2 py-[2px] bg-purple-100 text-purple-700 rounded-full">
-                          {userSubDepartment}
-                        </span>
-                      )}
-                      {adminRole && (
-                        <span className="text-[11px] px-2 py-[2px] bg-green-100 text-green-700 rounded-full">
-                          {adminRole}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="px-4 py-3 space-y-2 text-sm">
-                    {[
-                      ["Role", adminRole],
-                      ["Department", userDepartment],
-                      ["Sub Dept", userSubDepartment],
-                      [
-                        "Region",
-                        Array.isArray(userRegionNames)
-                          ? userRegionNames.join(", ")
-                          : userRegionNames,
-                      ],
-                      [
-                        "Zone",
-                        userZoneNames?.length ? userZoneNames.join(", ") : "-",
-                      ],
-                      [
-                        "City",
-                        userCityNames?.length ? userCityNames.join(", ") : "-",
-                      ],
-                    ].map(([label, value]) => (
-                      <div key={label} className="flex justify-between">
-                        <span className="text-gray-500">{label}</span>
-                        <span className="text-gray-800 font-medium">
-                          {value || "-"}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                  <button
-                    onClick={() => {
-                      handleLogout();
-                      setOpenMenu(null);
-                    }}
-                    className="w-full px-4 py-2.5 md:py-2 text-sm text-left text-gray-700 hover:bg-orange-50 hover:text-orange-700 transition-all hover:pl-6 flex items-center gap-2"
-                  >
-                    <span className="w-1 h-1 rounded-full bg-orange-300" />
-                    Sign out
-                  </button>
-                </div>
-              )}
+              <UserProfileDropdown
+                openMenu={openMenu}
+                setOpenMenu={setOpenMenu}
+                userAvatar={userAvatar}
+                userAliasName={userAliasName}
+                userEmail={userEmail}
+                rawUser={rawUser}
+                userData={userData}
+                adminRole={adminRole}
+                userDepartment={userDepartment}
+                userSubDepartment={userSubDepartment}
+                userRegionNames={userRegionNames}
+                userZoneNames={userZoneNames}
+                userCityNames={userCityNames}
+                handleLogout={handleLogout}
+              />
             </div>
           </div>
         </div>

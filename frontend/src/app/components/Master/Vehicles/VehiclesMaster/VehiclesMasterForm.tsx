@@ -3,12 +3,12 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
-import type { AppDispatch, RootState } from "../../../redux/store";
-import { createVehicle } from "../../../features/vehicle/vehicleSlice";
+import type { AppDispatch, RootState } from "../../../../redux/store";
+import { createVehicle } from "../../../../features/vehicle/vehicleSlice";
 import { Vehicle } from "@/types/types";
 
 // ⚠️ Path apne project ke structure ke hisab se sahi karo
-import SearchableSelect from "../Vehicles/SearchableSelect";
+import SearchableSelect from "../../Vehicles/SearchableSelect";
 
 import {
   VARIANT_DISPLAY_OPTIONS,
@@ -39,9 +39,7 @@ interface VehicleFormProps {
 const VehicleForm: React.FC<VehicleFormProps> = ({ onSuccess }) => {
   const dispatch = useDispatch<AppDispatch>();
 
-  const { creating, createError } = useSelector(
-    (state: RootState) => state.vehicle,
-  );
+  const { creating, createError } = useSelector((state: RootState) => state.vehicle);
 
   const [formData, setFormData] = useState<VehicleFormState>(emptyForm);
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -50,9 +48,7 @@ const VehicleForm: React.FC<VehicleFormProps> = ({ onSuccess }) => {
   // Variant ka display value ("Economy -ECO") — dropdown me yही dikhega
   const [variantDisplay, setVariantDisplay] = useState<string>("");
 
-  const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
-  ) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
 
     setFormData((prev) => ({
@@ -130,9 +126,7 @@ const VehicleForm: React.FC<VehicleFormProps> = ({ onSuccess }) => {
         <div className="fixed top-5 right-5 z-[9999] flex items-center gap-3 rounded-lg border border-green-200 bg-green-50 px-5 py-4 shadow-lg">
           <CheckCircle2 className="text-green-600" size={22} />
 
-          <span className="font-semibold text-green-700">
-            Vehicle registered successfully!
-          </span>
+          <span className="font-semibold text-green-700">Vehicle registered successfully!</span>
         </div>
       )}
 
@@ -150,9 +144,7 @@ const VehicleForm: React.FC<VehicleFormProps> = ({ onSuccess }) => {
         {/* Vehicle Information */}
         <div className="rounded-xl border bg-blue-50 p-5 md:p-6">
           <h3 className="mb-6 flex items-center border-b border-blue-200 pb-3 text-xl font-semibold text-blue-800">
-            <span className="mr-2 rounded-md bg-blue-600 px-3 py-1 text-white">
-              1
-            </span>
+            <span className="mr-2 rounded-md bg-blue-600 px-3 py-1 text-white">1</span>
             Add New Vehicle Type{" "}
           </h3>
 
@@ -175,9 +167,7 @@ const VehicleForm: React.FC<VehicleFormProps> = ({ onSuccess }) => {
 
             {/* Seat */}
             <div>
-              <label className="mb-1 block text-sm font-extrabold text-gray-700">
-                Seat
-              </label>
+              <label className="mb-1 block text-sm font-extrabold text-gray-700">Seat</label>
 
               <input
                 type="text"
@@ -191,9 +181,7 @@ const VehicleForm: React.FC<VehicleFormProps> = ({ onSuccess }) => {
 
             {/* Config */}
             <div>
-              <label className="mb-1 block text-sm font-extrabold text-gray-700">
-                Config
-              </label>
+              <label className="mb-1 block text-sm font-extrabold text-gray-700">Config</label>
 
               <input
                 type="text"
@@ -255,9 +243,7 @@ const VehicleForm: React.FC<VehicleFormProps> = ({ onSuccess }) => {
 
             {/* Description */}
             <div className="md:col-span-2 lg:col-span-3">
-              <label className="mb-1 block text-sm font-extrabold text-gray-700">
-                Description
-              </label>
+              <label className="mb-1 block text-sm font-extrabold text-gray-700">Description</label>
 
               <textarea
                 name="description"
@@ -271,9 +257,7 @@ const VehicleForm: React.FC<VehicleFormProps> = ({ onSuccess }) => {
 
             {/* Amenities */}
             <div className="md:col-span-2 lg:col-span-3">
-              <label className="mb-1 block text-sm font-extrabold text-gray-700">
-                Heightlights{" "}
-              </label>
+              <label className="mb-1 block text-sm font-extrabold text-gray-700">Heightlights </label>
 
               <textarea
                 name="amenities"

@@ -5,19 +5,19 @@ import { CheckCircle2, XCircle, Info, FileText } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 
 // ⚠️ Path apne project ke structure ke hisab se sahi karo
-import SearchableSelect from "../Vehicles/SearchableSelect";
+import SearchableSelect from "../SearchableSelect";
 
-import type { AppDispatch, RootState } from "../../../redux/store";
+import type { AppDispatch, RootState } from "../../../../redux/store";
 
 import {
   createVehicleManager,
   getVehicleMasterCodes,
   getVehicleManagerVendors,
   getAllCities,
-} from "../../../features/vehicleManager/vehicleManagerSlice";
+} from "../../../../features/vehicleManager/vehicleManagerSlice";
 
 import { Vehicle } from "@/types/types";
-import { AMENITIES_OPTIONS } from "./vehicleMasterDropdown";
+import { AMENITIES_OPTIONS } from "../VehiclesMaster/vehicleMasterDropdown";
 
 type VehicleFormData = Omit<Vehicle, "id" | "amenities"> & {
   amenities: string;
@@ -307,6 +307,7 @@ const VehicleForm: React.FC = () => {
             </div>
           </div>
         </div>
+
         <div className="rounded-xl border border-green-200 bg-green-50 p-6">
           <h3 className="mb-6 border-b border-green-200 pb-3 text-xl font-semibold text-green-800">
             <span className="mr-2 rounded-md bg-green-600 px-3 py-1 text-white">
@@ -319,14 +320,17 @@ const VehicleForm: React.FC = () => {
             {AMENITIES_OPTIONS.map((category) => (
               <div
                 key={category.label}
-                className="overflow-hidden rounded-lg border border-gray-200 bg-white"
+                className="overflow-hidden rounded-lg border border-green-200 bg-white"
               >
-                <div className="border-b border-gray-200 bg-gray-50 px-4 py-3">
-                  <h4 className="text-sm font-bold text-gray-800">
+                {/* Category Header */}
+                <div className="border-b border-green-200 bg-green-100 px-4 py-3">
+                  <h4 className="text-base font-bold text-green-800">
                     {category.label}
                   </h4>
                 </div>
-                <div className="p-4">
+
+                {/* Options */}
+                <div className="bg-green-50/50 p-4">
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                     {category.options.map((item, index) => {
                       const isChecked = selectedAmenities.includes(item.code);
@@ -334,21 +338,22 @@ const VehicleForm: React.FC = () => {
                       return (
                         <label
                           key={`${item.code}-${index}`}
-                          className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2.5 text-sm transition-all ${
+                          className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-3 transition-all ${
                             isChecked
-                              ? "border-green-500 bg-green-50 font-semibold text-green-700"
-                              : "border-gray-200 bg-white text-gray-700 hover:border-green-300 hover:bg-green-50"
+                              ? "border-green-600 bg-green-200 font-semibold text-green-900 shadow-sm"
+                              : "border-green-200 bg-white text-gray-800 hover:border-green-400 hover:bg-green-100"
                           }`}
                         >
                           <input
                             type="checkbox"
                             checked={isChecked}
                             onChange={() => handleAmenityToggle(item.code)}
-                            className="h-4 w-4 shrink-0 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                            className="h-5 w-5 shrink-0 rounded border-gray-300 text-green-600 focus:ring-green-500"
                           />
-                          <span className="truncate">
-                            {item.code} ({item.label})
-                          </span>{" "}
+
+                          <span className="truncate text-base font-medium">
+                            {item.code} - {item.label}
+                          </span>
                         </label>
                       );
                     })}

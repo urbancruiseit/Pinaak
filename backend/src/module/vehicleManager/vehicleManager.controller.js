@@ -10,6 +10,7 @@ import {
   getVehicleMasterCodesModel,
   getVehicleMasterAmenitiesModel,
   getAllCitiesModel,
+  updateVehicleManagerStatusModel,
 } from "./vehicleManager.model.js";
 import { calculateVehicleAging } from "./vehicleManager.service.js";
 
@@ -92,7 +93,20 @@ const getVehicleManagerByIdController = asyncHandler(async (req, res) => {
 });
 
 const getAllVehicleManagers = asyncHandler(async (req, res) => {
-  const { search, vendor, garage, city, year, page, limit } = req.query;
+  const {
+    search,
+    vendor,
+    garage,
+    city,
+    year,
+    seat,
+    variant,
+    category,
+    code, // 👈 destructure to kiya
+
+    page,
+    limit,
+  } = req.query;
 
   const result = await getAllVehicleManagersModel({
     search,
@@ -100,6 +114,10 @@ const getAllVehicleManagers = asyncHandler(async (req, res) => {
     garage,
     city,
     year,
+    seat,
+    variant,
+    category,
+    code,
     page: page ? Number(page) : 1,
     limit: limit ? Number(limit) : 20,
   });
@@ -151,6 +169,26 @@ const getVehicleManagerVendors = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, result, "Vendors fetched successfully"));
 });
 
+const updateVehicleManagerStatus = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  console.log(id, status);
+
+  if (!status) {
+    throw new ApiError(400, "Status is required");
+  }
+
+  const updatedRecord = await updateVehicleManagerStatusModel({ id, status });
+
+  if (!updatedRecord) {
+    throw new ApiError(404, "Vehicle manager record not found");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, updatedRecord, "Status updated successfully"));
+});
+
 export {
   getVehicleManagerByIdController,
   createVehicleManager,
@@ -159,4 +197,5 @@ export {
   getVehicleMasterAmenities,
   getVehicleManagerVendors,
   getAllCitiesController,
+  updateVehicleManagerStatus,
 };

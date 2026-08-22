@@ -1,7 +1,9 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
+
 import { Vehicle } from "@/types/types";
 
 import {
+  VehicleStatus,
   createVehiclesManagerApi,
   getVehicleManagersApi,
   GetVehicleManagersParams,
@@ -10,6 +12,7 @@ import {
   getVehicleManagerVendorsApi,
   getVehicleMasterAmenitiesApi,
   getAllCitiesApi,
+  updateVehicleStatusApi,
   VehicleMasterCode,
   VehicleManagerVendor,
   VehicleMasterAmenity,
@@ -22,33 +25,36 @@ import {
 
 type CreateVehicleManagerPayload = Omit<Vehicle, "id">;
 
-
+// =====================================================
+// STATE
+// =====================================================
 
 interface VehicleManagerState {
-  // Vehicle Manager Table
   vehicles: Vehicle[];
 
-  // Loading / Error
   loading: boolean;
   error: string | null;
 
-  // Pagination
+  categories: string[];
+  variants: string[];
+  seats: string[];
+
   total: number;
   page: number;
   limit: number;
   totalPages: number;
 
-  // Dropdowns
   vehicleMasterCodes: VehicleMasterCode[];
   vendors: VehicleManagerVendor[];
   vehicleMasterAmenities: VehicleMasterAmenity[];
   cities: VehicleCity[];
 
-  // Dropdown loading
   codesLoading: boolean;
   vendorsLoading: boolean;
   amenitiesLoading: boolean;
   citiesLoading: boolean;
+
+  statusUpdatingId: number | string | null;
 }
 
 // =====================================================
@@ -60,6 +66,10 @@ const initialState: VehicleManagerState = {
 
   loading: false,
   error: null,
+
+  categories: [],
+  variants: [],
+  seats: [],
 
   total: 0,
   page: 1,
@@ -75,6 +85,8 @@ const initialState: VehicleManagerState = {
   vendorsLoading: false,
   amenitiesLoading: false,
   citiesLoading: false,
+
+  statusUpdatingId: null,
 };
 
 // =====================================================
@@ -90,9 +102,7 @@ export const createVehicleManager = createAsyncThunk<
 
   async (vehicleData, { rejectWithValue }) => {
     try {
-      const response = await createVehiclesManagerApi(vehicleData);
-
-      return response;
+      return await createVehiclesManagerApi(vehicleData);
     } catch (error: any) {
       return rejectWithValue(
         error?.message || "Failed to create vehicle manager",
@@ -102,7 +112,7 @@ export const createVehicleManager = createAsyncThunk<
 );
 
 // =====================================================
-// GET ALL VEHICLE MANAGERS
+// GET VEHICLE MANAGERS
 // =====================================================
 
 export const getVehicleManagers = createAsyncThunk<
@@ -114,9 +124,7 @@ export const getVehicleManagers = createAsyncThunk<
 
   async (params, { rejectWithValue }) => {
     try {
-      const response = await getVehicleManagersApi(params);
-
-      return response;
+      return await getVehicleManagersApi(params);
     } catch (error: any) {
       return rejectWithValue(
         error?.message || "Failed to fetch vehicle managers",
@@ -126,7 +134,7 @@ export const getVehicleManagers = createAsyncThunk<
 );
 
 // =====================================================
-// GET VEHICLE MASTER CODES
+// GET MASTER CODES
 // =====================================================
 
 export const getVehicleMasterCodes = createAsyncThunk<
@@ -138,9 +146,7 @@ export const getVehicleMasterCodes = createAsyncThunk<
 
   async (_, { rejectWithValue }) => {
     try {
-      const response = await getVehicleMasterCodesApi();
-
-      return response;
+      return await getVehicleMasterCodesApi();
     } catch (error: any) {
       return rejectWithValue(
         error?.message || "Failed to fetch vehicle master codes",
@@ -150,7 +156,7 @@ export const getVehicleMasterCodes = createAsyncThunk<
 );
 
 // =====================================================
-// GET VEHICLE MASTER AMENITIES
+// GET AMENITIES
 // =====================================================
 
 export const getVehicleMasterAmenities = createAsyncThunk<
@@ -162,9 +168,7 @@ export const getVehicleMasterAmenities = createAsyncThunk<
 
   async (_, { rejectWithValue }) => {
     try {
-      const response = await getVehicleMasterAmenitiesApi();
-
-      return response;
+      return await getVehicleMasterAmenitiesApi();
     } catch (error: any) {
       return rejectWithValue(
         error?.message || "Failed to fetch vehicle master amenities",
@@ -186,9 +190,7 @@ export const getVehicleManagerVendors = createAsyncThunk<
 
   async (_, { rejectWithValue }) => {
     try {
-      const response = await getVehicleManagerVendorsApi();
-
-      return response;
+      return await getVehicleManagerVendorsApi();
     } catch (error: any) {
       return rejectWithValue(error?.message || "Failed to fetch vendors");
     }
@@ -196,7 +198,7 @@ export const getVehicleManagerVendors = createAsyncThunk<
 );
 
 // =====================================================
-// GET ALL CITIES
+// GET CITIES
 // =====================================================
 
 export const getAllCities = createAsyncThunk<
@@ -208,11 +210,36 @@ export const getAllCities = createAsyncThunk<
 
   async (_, { rejectWithValue }) => {
     try {
-      const response = await getAllCitiesApi();
+      return await getAllCitiesApi();
+    } catch (error: any) {
+      return rejectWithValue(error?.message || "Failed to fetch cities");
+    }
+  },
+);
+
+// =====================================================
+// UPDATE VEHICLE STATUS
+// =====================================================
+
+export const updateVehicleStatus = createAsyncThunk<
+  Vehicle,
+  {
+    vehicleId: number | string;
+    status: VehicleStatus;
+  },
+  { rejectValue: string }
+>(
+  "vehicleManager/updateVehicleStatus",
+
+  async ({ vehicleId, status }, { rejectWithValue }) => {
+    try {
+      const response = await updateVehicleStatusApi(vehicleId, status);
 
       return response;
     } catch (error: any) {
-      return rejectWithValue(error?.message || "Failed to fetch cities");
+      return rejectWithValue(
+        error?.message || "Failed to update vehicle status",
+      );
     }
   },
 );
@@ -230,11 +257,10 @@ const vehicleManagerSlice = createSlice({
 
   extraReducers: (builder) => {
     // =================================================
-    // CREATE VEHICLE MANAGER
+    // CREATE
     // =================================================
 
     builder
-
       .addCase(createVehicleManager.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -244,25 +270,21 @@ const vehicleManagerSlice = createSlice({
         state.loading = false;
         state.error = null;
 
-        // Add newly created vehicle
         state.vehicles.unshift(action.payload);
 
-        // Update total
         state.total += 1;
       })
 
       .addCase(createVehicleManager.rejected, (state, action) => {
         state.loading = false;
-
         state.error = action.payload || "Failed to create vehicle manager";
       });
 
     // =================================================
-    // GET ALL VEHICLE MANAGERS
+    // GET VEHICLES
     // =================================================
 
     builder
-
       .addCase(getVehicleManagers.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -285,19 +307,16 @@ const vehicleManagerSlice = createSlice({
 
       .addCase(getVehicleManagers.rejected, (state, action) => {
         state.loading = false;
-
         state.error = action.payload || "Failed to fetch vehicle managers";
       });
 
     // =================================================
-    // GET VEHICLE MASTER CODES
+    // CODES
     // =================================================
 
     builder
-
       .addCase(getVehicleMasterCodes.pending, (state) => {
         state.codesLoading = true;
-        state.error = null;
       })
 
       .addCase(getVehicleMasterCodes.fulfilled, (state, action) => {
@@ -313,14 +332,12 @@ const vehicleManagerSlice = createSlice({
       });
 
     // =================================================
-    // GET VEHICLE MASTER AMENITIES
+    // AMENITIES
     // =================================================
 
     builder
-
       .addCase(getVehicleMasterAmenities.pending, (state) => {
         state.amenitiesLoading = true;
-        state.error = null;
       })
 
       .addCase(getVehicleMasterAmenities.fulfilled, (state, action) => {
@@ -337,14 +354,12 @@ const vehicleManagerSlice = createSlice({
       });
 
     // =================================================
-    // GET VENDORS
+    // VENDORS
     // =================================================
 
     builder
-
       .addCase(getVehicleManagerVendors.pending, (state) => {
         state.vendorsLoading = true;
-        state.error = null;
       })
 
       .addCase(getVehicleManagerVendors.fulfilled, (state, action) => {
@@ -360,14 +375,12 @@ const vehicleManagerSlice = createSlice({
       });
 
     // =================================================
-    // GET ALL CITIES
+    // CITIES
     // =================================================
 
     builder
-
       .addCase(getAllCities.pending, (state) => {
         state.citiesLoading = true;
-        state.error = null;
       })
 
       .addCase(getAllCities.fulfilled, (state, action) => {
@@ -380,6 +393,39 @@ const vehicleManagerSlice = createSlice({
         state.citiesLoading = false;
 
         state.error = action.payload || "Failed to fetch cities";
+      });
+
+    // =================================================
+    // STATUS UPDATE
+    // =================================================
+
+    builder
+      .addCase(updateVehicleStatus.pending, (state, action) => {
+        state.error = null;
+
+        state.statusUpdatingId = action.meta.arg.vehicleId;
+      })
+
+      .addCase(updateVehicleStatus.fulfilled, (state, action) => {
+        state.error = null;
+
+        state.statusUpdatingId = null;
+
+        const updatedVehicle = action.payload;
+
+        const index = state.vehicles.findIndex(
+          (vehicle) => vehicle.id === updatedVehicle.id,
+        );
+
+        if (index !== -1) {
+          state.vehicles[index] = updatedVehicle;
+        }
+      })
+
+      .addCase(updateVehicleStatus.rejected, (state, action) => {
+        state.statusUpdatingId = null;
+
+        state.error = action.payload || "Failed to update vehicle status";
       });
   },
 });

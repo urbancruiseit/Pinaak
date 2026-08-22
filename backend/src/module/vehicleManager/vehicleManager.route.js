@@ -7,6 +7,7 @@ import {
   getVehicleMasterCodes,
   getVehicleMasterAmenities,
   getAllCitiesController,
+  updateVehicleManagerStatus,
 } from "./vehicleManager.controller.js";
 
 const router = Router();
@@ -18,6 +19,7 @@ router.get("/options/vendors", getVehicleManagerVendors);
 router.get("/options/amenities", getVehicleMasterAmenities);
 
 router.route("/").post(createVehicleManager).get(getAllVehicleManagers);
+router.route("/updatestatus/:id").patch(updateVehicleManagerStatus);
 router.route("/:id").get(getVehicleManagerByIdController);
 
 export default router;

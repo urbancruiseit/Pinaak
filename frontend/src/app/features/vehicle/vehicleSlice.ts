@@ -5,6 +5,7 @@ import {
   createvehiclesApi,
   getAllVehiclesApi,
   PaginatedVehicles,
+  getSeatOptionsApi,
 } from "./vehicleApi";
 
 interface VehicleState {
@@ -17,6 +18,10 @@ interface VehicleState {
   page: number;
   limit: number;
   totalPages: number;
+
+  seatOptions: string[];
+  seatOptionsLoading: boolean;
+  seatOptionsError: string | null;
 }
 
 const initialState: VehicleState = {
@@ -29,6 +34,9 @@ const initialState: VehicleState = {
   page: 1,
   limit: 20,
   totalPages: 0,
+  seatOptions: [],
+  seatOptionsLoading: false,
+  seatOptionsError: null,
 };
 
 export const fetchVehicles = createAsyncThunk(
@@ -61,6 +69,8 @@ export const vehicleslice = createAsyncThunk(
           search?: string;
           category?: string;
           make?: string;
+          seat?: string; // ✅ add kiya
+          variant?: string; // ✅ add kiya
           page?: number;
           limit?: number;
         }
@@ -76,6 +86,16 @@ export const vehicleslice = createAsyncThunk(
   },
 );
 
+export const fetchSeatOptions = createAsyncThunk(
+  "vehicle/fetchSeatOptions",
+  async (_, { rejectWithValue }) => {
+    try {
+      return await getSeatOptionsApi();
+    } catch (error: any) {
+      return rejectWithValue(error.message);
+    }
+  },
+);
 const vehicleSlice = createSlice({
   name: "vehicle",
   initialState,
@@ -121,6 +141,18 @@ const vehicleSlice = createSlice({
       .addCase(vehicleslice.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
+      })
+      .addCase(fetchSeatOptions.pending, (state) => {
+        state.seatOptionsLoading = true;
+        state.seatOptionsError = null;
+      })
+      .addCase(fetchSeatOptions.fulfilled, (state, action) => {
+        state.seatOptionsLoading = false;
+        state.seatOptions = action.payload;
+      })
+      .addCase(fetchSeatOptions.rejected, (state, action) => {
+        state.seatOptionsLoading = false;
+        state.seatOptionsError = action.payload as string;
       });
   },
 });

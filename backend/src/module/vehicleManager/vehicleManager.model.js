@@ -75,132 +75,6 @@ export const createVehicleManagerModel = async (payload) => {
     throw error;
   }
 };
-// export const getAllVehicleManagersModel = async ({
-//   search = "",
-//   vendor = "",
-//   garage = "",
-//   city = "",
-//   year = "", // <-- naya parameter
-//   page = 1,
-//   limit = 20,
-// } = {}) => {
-//   try {
-//     const offset = (page - 1) * limit;
-
-//     let query = `SELECT * FROM vehicle_manager WHERE 1=1`;
-//     let countQuery = `SELECT COUNT(*) as total FROM vehicle_manager WHERE 1=1`;
-//     const params = [];
-//     const countParams = [];
-
-//     if (search) {
-//       query += `
-//     AND (
-//       code LIKE ?
-//       OR vendor LIKE ?
-//       OR model LIKE ?
-//       OR veh_no LIKE ?
-//       OR garage LIKE ?
-//       OR city LIKE ?
-//       OR reg_date LIKE ?
-//       OR aging LIKE ?
-//     )
-//   `;
-
-//       countQuery += `
-//     AND (
-//       code LIKE ?
-//       OR vendor LIKE ?
-//       OR model LIKE ?
-//       OR veh_no LIKE ?
-//       OR garage LIKE ?
-//       OR city LIKE ?
-//       OR reg_date LIKE ?
-//       OR aging LIKE ?
-//     )
-//   `;
-
-//       const likeSearch = `%${search}%`;
-
-//       params.push(
-//         likeSearch,
-//         likeSearch,
-//         likeSearch,
-//         likeSearch,
-//         likeSearch,
-//         likeSearch,
-//         likeSearch,
-//       );
-
-//       countParams.push(
-//         likeSearch,
-//         likeSearch,
-//         likeSearch,
-//         likeSearch,
-//         likeSearch,
-//         likeSearch,
-//         likeSearch,
-//       );
-//     }
-
-//     if (vendor) {
-//       query += ` AND vendor = ?`;
-//       countQuery += ` AND vendor = ?`;
-//       params.push(vendor);
-//       countParams.push(vendor);
-//     }
-
-//     if (garage) {
-//       query += ` AND garage = ?`;
-//       countQuery += ` AND garage = ?`;
-//       params.push(garage);
-//       countParams.push(garage);
-//     }
-
-//     if (city) {
-//       query += ` AND city = ?`;
-//       countQuery += ` AND city = ?`;
-//       params.push(city);
-//       countParams.push(city);
-//     }
-
-//     if (year) {
-//       const years = String(year)
-//         .split(",")
-//         .map((y) => Number(y.trim()))
-//         .filter((y) => !isNaN(y));
-
-//       if (years.length > 0) {
-//         const placeholders = years.map(() => "?").join(",");
-//         query += ` AND YEAR(reg_date) IN (${placeholders})`;
-//         countQuery += ` AND YEAR(reg_date) IN (${placeholders})`;
-//         params.push(...years);
-//         countParams.push(...years);
-//       }
-//     }
-
-//     query += ` ORDER BY id ASC LIMIT ? OFFSET ?`;
-//     params.push(Number(limit), Number(offset));
-
-//     const [rows] = await pool.execute(query, params);
-//     const [countRows] = await pool.execute(countQuery, countParams);
-
-//     return {
-//       data: rows,
-//       total: countRows[0].total,
-//       page: Number(page),
-//       limit: Number(limit),
-//       totalPages: Math.ceil(countRows[0].total / limit),
-//     };
-//   } catch (error) {
-//     console.error("getAllVehicleManagersModel error:", error);
-//     throw error;
-//   }
-// };
-
-// =====================================================
-// GET VEHICLE MASTER CODES (ab amenities bhi sath aayenge,
-// taaki jab code select ho, uske amenities pata chal sake)
-// =====================================================
 
 export const getAllVehicleManagersModel = async ({
   search = "",
@@ -208,44 +82,74 @@ export const getAllVehicleManagersModel = async ({
   garage = "",
   city = "",
   year = "",
+  seat = "",
+  variant = "",
+  category = "",
+  code = "",
   page = 1,
   limit = 20,
 } = {}) => {
   try {
     const offset = (page - 1) * limit;
 
-    let query = `SELECT * FROM vehicle_manager WHERE 1=1`;
-    let countQuery = `SELECT COUNT(*) as total FROM vehicle_manager WHERE 1=1`;
+    let query = `
+      SELECT vm.*, vmst.seat, vmst.variant, vmst.category
+      FROM vehicle_manager vm
+      LEFT JOIN vehicle_master vmst ON vm.code = vmst.code
+      WHERE 1=1
+    `;
+    let countQuery = `
+      SELECT COUNT(*) as total
+      FROM vehicle_manager vm
+      LEFT JOIN vehicle_master vmst ON vm.code = vmst.code
+      WHERE 1=1
+    `;
     const params = [];
     const countParams = [];
 
+    // Helper: comma-separated string ko clean array me convert karta hai
+    const toArray = (val, isNumeric = false) =>
+      String(val)
+        .split(",")
+        .map((v) => v.trim())
+        .filter((v) => v !== "")
+        .map((v) => (isNumeric ? Number(v) : v))
+        .filter((v) => !isNumeric || !isNaN(v));
+
+    // Helper: dono query me IN (...) clause add karta hai
+    const addInClause = (column, values) => {
+      const placeholders = values.map(() => "?").join(",");
+      query += ` AND ${column} IN (${placeholders})`;
+      countQuery += ` AND ${column} IN (${placeholders})`;
+      params.push(...values);
+      countParams.push(...values);
+    };
+
     if (search) {
       query += `
-    AND (
-      code LIKE ?
-      OR vendor LIKE ?
-      OR model LIKE ?
-      OR veh_no LIKE ?
-      OR garage LIKE ?
-      OR reg_date LIKE ?
-      OR aging LIKE ?
-    )
-  `;
-
+        AND (
+          vm.code LIKE ?
+          OR vm.vendor LIKE ?
+          OR vm.model LIKE ?
+          OR vm.veh_no LIKE ?
+          OR vm.garage LIKE ?
+          OR vm.reg_date LIKE ?
+          OR vm.aging LIKE ?
+        )
+      `;
       countQuery += `
-    AND (
-      code LIKE ?
-      OR vendor LIKE ?
-      OR model LIKE ?
-      OR veh_no LIKE ?
-      OR garage LIKE ?
-      OR reg_date LIKE ?
-      OR aging LIKE ?
-    )
-  `;
+        AND (
+          vm.code LIKE ?
+          OR vm.vendor LIKE ?
+          OR vm.model LIKE ?
+          OR vm.veh_no LIKE ?
+          OR vm.garage LIKE ?
+          OR vm.reg_date LIKE ?
+          OR vm.aging LIKE ?
+        )
+      `;
 
       const likeSearch = `%${search}%`;
-
       params.push(
         likeSearch,
         likeSearch,
@@ -255,7 +159,6 @@ export const getAllVehicleManagersModel = async ({
         likeSearch,
         likeSearch,
       );
-
       countParams.push(
         likeSearch,
         likeSearch,
@@ -267,42 +170,49 @@ export const getAllVehicleManagersModel = async ({
       );
     }
 
+    // ---- Multi-select filters (comma-separated values ke liye) ----
+
     if (vendor) {
-      query += ` AND vendor = ?`;
-      countQuery += ` AND vendor = ?`;
-      params.push(vendor);
-      countParams.push(vendor);
+      const vendors = toArray(vendor);
+      if (vendors.length > 0) addInClause("vm.vendor", vendors);
     }
 
     if (garage) {
-      query += ` AND garage = ?`;
-      countQuery += ` AND garage = ?`;
-      params.push(garage);
-      countParams.push(garage);
+      const garages = toArray(garage);
+      if (garages.length > 0) addInClause("vm.garage", garages);
     }
 
     if (city) {
-      query += ` AND city = ?`;
-      countQuery += ` AND city = ?`;
-      params.push(Number(city));
-      countParams.push(Number(city));
+      const cities = toArray(city, true); // numeric
+      if (cities.length > 0) addInClause("vm.city", cities);
     }
 
     if (year) {
-      const years = String(year)
-        .split(",")
-        .map((y) => Number(y.trim()))
-        .filter((y) => !isNaN(y));
-
-      if (years.length > 0) {
-        const placeholders = years.map(() => "?").join(",");
-        query += ` AND YEAR(reg_date) IN (${placeholders})`;
-        countQuery += ` AND YEAR(reg_date) IN (${placeholders})`;
-        params.push(...years);
-        countParams.push(...years);
-      }
+      const years = toArray(year, true); // numeric
+      if (years.length > 0) addInClause("YEAR(vm.reg_date)", years);
     }
-    query += ` ORDER BY id ASC LIMIT ? OFFSET ?`;
+
+    if (code) {
+      const codes = toArray(code);
+      if (codes.length > 0) addInClause("vm.code", codes);
+    }
+
+    if (seat) {
+      const seats = toArray(seat);
+      if (seats.length > 0) addInClause("vmst.seat", seats);
+    }
+
+    if (variant) {
+      const variants = toArray(variant);
+      if (variants.length > 0) addInClause("vmst.variant", variants);
+    }
+
+    if (category) {
+      const categories = toArray(category);
+      if (categories.length > 0) addInClause("vmst.category", categories);
+    }
+
+    query += ` ORDER BY vm.id ASC LIMIT ? OFFSET ?`;
     params.push(Number(limit), Number(offset));
 
     const [rows] = await pool.execute(query, params);
@@ -379,13 +289,6 @@ export const getVehicleMasterCodesModel = async () => {
   }
 };
 
-// =====================================================
-// GET UNIQUE AMENITIES LIST (checkboxes ke liye)
-// vehicle_master.amenities column me comma-separated
-// values hoti hain (e.g. "AC,Music System,Charging Port")
-// isliye sab rows le kar, split kar ke, unique nikaal rahe hain
-// =====================================================
-
 export const getVehicleMasterAmenitiesModel = async () => {
   try {
     const [rows] = await pool.execute(`
@@ -419,10 +322,6 @@ export const getVehicleMasterAmenitiesModel = async () => {
   }
 };
 
-// =====================================================
-// GET VENDORS
-// =====================================================
-
 export const getVehicleManagerVendorsModel = async () => {
   try {
     const [rows] = await pool.execute(`
@@ -437,6 +336,35 @@ export const getVehicleManagerVendorsModel = async () => {
   } catch (error) {
     console.error("getVehicleManagerVendorsModel error:", error);
 
+    throw error;
+  }
+};
+
+export const updateVehicleManagerStatusModel = async ({ id, status }) => {
+  try {
+    if (!id) {
+      throw new Error("id is required");
+    }
+
+    if (!status) {
+      throw new Error("status is required");
+    }
+
+    const query = `UPDATE vehicle_manager SET status = ? WHERE id = ?`;
+    const [result] = await pool.execute(query, [status, id]);
+
+    if (result.affectedRows === 0) {
+      return null; // record not found
+    }
+
+    const [rows] = await pool.execute(
+      `SELECT * FROM vehicle_manager WHERE id = ?`,
+      [id],
+    );
+
+    return rows[0];
+  } catch (error) {
+    console.error("updateVehicleManagerStatusModel error:", error);
     throw error;
   }
 };

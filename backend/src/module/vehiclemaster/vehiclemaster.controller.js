@@ -4,6 +4,7 @@ import { asyncHandler } from "../../utils/asyncHandler.js";
 import {
   createVehicleModel,
   getAllVehiclesModel,
+  getSeatOptionsModel,
   getVehicleByCode,
   getVehicles,
 } from "./vehiclemaster.model.js";
@@ -48,12 +49,14 @@ export const createVehicle = asyncHandler(async (req, res) => {
 });
 
 export const getAllVehicles = asyncHandler(async (req, res) => {
-  const { search, category, make, page, limit } = req.query;
+  const { search, category, make, seat, variant, page, limit } = req.query;
 
   const result = await getAllVehiclesModel({
     search,
     category,
     make,
+    seat,
+    variant,
     page: page ? Number(page) : 1,
     limit: limit ? Number(limit) : 20,
   });
@@ -61,6 +64,14 @@ export const getAllVehicles = asyncHandler(async (req, res) => {
   return res
     .status(200)
     .json(new ApiResponse(200, result, "Vehicles fetched successfully"));
+});
+
+export const getSeatOptions = asyncHandler(async (req, res) => {
+  const seats = await getSeatOptionsModel();
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, seats, "Seat options fetched successfully"));
 });
 
 export { getVehicleCodeList };

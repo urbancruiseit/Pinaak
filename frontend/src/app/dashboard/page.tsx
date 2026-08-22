@@ -3,11 +3,15 @@
 import dynamic from "next/dynamic";
 import { useEffect, useMemo } from "react";
 import type { ComponentType } from "react";
+
 import Navbar from "../components/ui/navbar";
 import Sidebar from "../components/ui/sidebar";
+
 import { useDispatch, useSelector } from "react-redux";
-import { AppDispatch, RootState } from "../redux/store";
+import type { AppDispatch, RootState } from "../redux/store";
+
 import { currentUserThunk } from "../features/user/userSlice";
+
 import {
   setActiveMaster,
   setActiveLeadView,
@@ -17,9 +21,137 @@ import {
   setActiveSection,
   initFromRole,
 } from "../features/Navigation/navigationSlice";
+
 import type { LeadRecord } from "@/types/types";
 
-// ─── Lazy modules ─────────────────────────────────────────────────────────────
+/* ============================================================================
+   ROLE HELPERS
+============================================================================ */
+
+const normalizeRole = (role: unknown): string => {
+  const value = String(role ?? "")
+    .toLowerCase()
+    .trim()
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ");
+
+  const roleMap: Record<string, string> = {
+    "super admin": "superadmin",
+    superadmin: "superadmin",
+
+    "city manager": "city manager",
+
+    "team leader": "team leader",
+
+    "team leader sales": "team leader-sales",
+
+    "pre sales executive": "pre-sales executive",
+    "pre-sales executive": "pre-sales executive",
+
+    "seo executive": "seo executive",
+    "seo tl": "seo tl",
+
+    "travel advisor": "travel advisor",
+
+    manager: "manager",
+    admin: "admin",
+
+    sales: "sales",
+    bdm: "bdm",
+    presales: "presales",
+    presale: "presale",
+  };
+
+  return roleMap[value] ?? value;
+};
+
+const getEffectiveRole = (roleName: unknown, accessRole: unknown): string => {
+  const roleNameValue = String(roleName ?? "").trim();
+
+  if (roleNameValue !== "") {
+    return roleNameValue;
+  }
+
+  return String(accessRole ?? "").trim();
+};
+
+/* ============================================================================
+   MASTER PERMISSIONS
+============================================================================ */
+
+const MASTER_ALLOWED_ROLES = [
+  "superadmin",
+  "admin",
+  "manager",
+  "city manager",
+  "travel advisor",
+];
+
+const MASTER_ITEM_ALLOWED_ROLES: Record<string, string[]> = {
+  /* ---------------- Customers ---------------- */
+
+  "customer-personal": ["superadmin", "admin", "manager", "city manager"],
+
+  "customer-table": [
+    "superadmin",
+    "admin",
+    "manager",
+    "city manager",
+    "travel advisor",
+  ],
+
+  "customer-history": ["superadmin", "admin", "manager", "city manager"],
+
+  /* ---------------- Vendor ---------------- */
+
+  vendor: ["superadmin", "admin", "manager", "city manager"],
+
+  "vendor-table": ["superadmin", "admin", "manager", "city manager"],
+
+  /* ---------------- Vehicles ---------------- */
+
+  vehicles: ["superadmin", "admin", "city manager"],
+
+  "vehicle-manager": ["superadmin", "admin", "city manager"],
+
+  "vehicle-category": ["superadmin", "city manager", "travel advisor"],
+
+  /* ---------------- Driver ---------------- */
+
+  driver: ["superadmin", "admin", "manager", "city manager"],
+
+  "driver-table": ["superadmin", "admin", "manager", "city manager"],
+
+  /* ---------------- Other Master ---------------- */
+
+  employee: ["superadmin", "admin", "manager", "city manager"],
+
+  "corporate-form": ["superadmin", "admin", "manager", "city manager"],
+
+  "quotation-pdf": ["superadmin", "admin", "manager", "city manager"],
+
+  "rate-quotation": ["superadmin", "admin", "manager", "city manager"],
+
+  "card-reel": ["superadmin", "admin", "manager", "city manager"],
+
+  "country-code": ["superadmin", "admin", "manager", "city manager"],
+
+  /* ---------------- Future / placeholder ---------------- */
+
+  "corporate-event": ["superadmin", "admin", "manager", "city manager"],
+
+  hr: ["superadmin", "admin", "manager", "city manager"],
+
+  city: ["superadmin", "admin", "manager", "city manager"],
+
+  zone: ["superadmin", "admin", "manager", "city manager"],
+
+  region: ["superadmin", "admin", "manager", "city manager"],
+};
+
+/* ============================================================================
+   LAZY LOADING
+============================================================================ */
 
 const LoadingPanel = () => (
   <div className="flex min-h-[200px] items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-500">
@@ -28,99 +160,140 @@ const LoadingPanel = () => (
 );
 
 const lazy = (fn: () => Promise<any>) =>
-  dynamic(fn, { ssr: false, loading: LoadingPanel });
+  dynamic(fn, {
+    ssr: false,
+    loading: LoadingPanel,
+  });
+
+/* ============================================================================
+   LAZY MODULES
+============================================================================ */
 
 const LeadsOverviewModule = lazy(
   () => import("../components/pages/leads/dashboard"),
 );
+
 const LeadFormModule = lazy(
   () => import("../components/pages/leads/list/leadsfrom"),
 );
+
 const LeadTableModule = lazy(
   () => import("../components/pages/leads/list/leadtable"),
-) as ComponentType<{ selectedRegion?: string; selectedCity?: string }>;
+) as ComponentType<{
+  selectedRegion?: string;
+  selectedCity?: string;
+}>;
+
 const LeadSaleTableModule = lazy(
   () => import("../components/telesales/saleleadable"),
 );
+
 const LeadSwapTableModule = lazy(
   () => import("../components/telesales/Swap/swapTable"),
 );
+
 const EditLeadFormModule = lazy(
   () => import("../components/pages/leads/list/EditForm/editleadform"),
 );
+
 const DsrTableModule = lazy(
   () => import("../components/telesales/DSR/DsrTable"),
 );
+
 const DsrFormModule = lazy(
   () => import("../components/telesales/DSR/DsrForm"),
-) as ComponentType<{ leadData?: LeadRecord | null }>;
+) as ComponentType<{
+  leadData?: LeadRecord | null;
+}>;
+
 const PresalesDashboardModule = lazy(
   () => import("../components/presalesteam/dashboardpresales"),
 );
+
 const SalesTeamDashboardModule = lazy(
   () => import("../components/telesales/telesalesdahboard"),
 );
+
 const TeamLeaderDashboardModule = lazy(
   () => import("../components/pages/teamleader/teamleaderdashboard"),
 );
+
 const CityManagerDashboardModule = lazy(
   () => import("../components/citymanger/citymanagerdashboard"),
 );
+
 const RateQuotationTableModule = lazy(
   () => import("../components/pages/ratequation/list/ratequotationtable"),
-) as ComponentType<{ leadData?: LeadRecord | null }>;
+) as ComponentType<{
+  leadData?: LeadRecord | null;
+}>;
+
 const MonthlyEnquiryModule = lazy(
   () => import("../components/pages/leads/Reports/mereReport"),
 );
+
 const LeadDistributionModule = lazy(
   () => import("../components/pages/leads/Reports/leadDistribution"),
 );
+
 const UnwantedLeadsModule = lazy(
   () => import("../components/pages/leads/Reports/UnwantedLead"),
 );
+
 const EmployeeReportsModule = lazy(
   () => import("../components/pages/leads/Reports/EmployeeReport"),
 );
+
 const TimeEnquiryReportsModule = lazy(
   () => import("../components/pages/leads/Reports/TimeEnquiryReports"),
 );
+
 const MonthlyLeadsTwoModule = lazy(
   () => import("../components/pages/leads/Reports/MereReportTwo"),
 );
+
 const LongWeekendLeadsModule = lazy(
   () => import("../components/pages/leads/Reports/LongWeekendReport"),
 );
+
 const DateEmployeeReportsModule = lazy(
   () => import("../components/pages/leads/Reports/EmployeeDateReport"),
 );
+
 const AgingReportsModule = lazy(
   () => import("../components/pages/leads/Reports/AgingReport"),
 );
+
 const GACForm = lazy(() => import("../components/pages/Website/list/gacTable"));
+
 const GAQTable = lazy(
   () => import("../components/pages/Website/list/gaqTable"),
 );
+
 const DownloadReportModule = lazy(
   () => import("../components/Download/download"),
 );
 
-// ─── Vendor-only lazy modules ───────────────────────────────────────────────
-// NOTE: Trip/Booking is still a placeholder — swap this import path once that
-// component exists. "Vehicle Documents" reuses the existing Vehicleaddform
-// module (same one used under Master → Vehicle Add), so vendor and Master
-// both point at the exact same component/import.
+/* ============================================================================
+   VENDOR MODULES
+============================================================================ */
 
 const VendorProfileModule = lazy(
   () => import("../components/Vendor/vendorProfile"),
 );
+
 const VendorVehicleDocumentsModule = lazy(
-  () => import("../components/Master/Vehicleaddform"),
+  () =>
+    import("../components/Master/Vehicles/VehiclesManager/VehicleManagerCalenderPopup"),
 );
+
 const VenderDashboardModule = lazy(
   () => import("../components/Vendor/venderDashboard"),
 );
 
-// ─── Master tabs ──────────────────────────────────────────────────────────────
+/* ============================================================================
+   MASTER TABS
+============================================================================ */
 
 const masterTabs = [
   {
@@ -133,7 +306,10 @@ const masterTabs = [
   },
   {
     key: "vehicles",
-    component: lazy(() => import("../components/Master/vehiclesmasterTable")),
+    component: lazy(
+      () =>
+        import("../components/Master/Vehicles/VehiclesMaster/vehiclesmasterTable"),
+    ),
   },
   {
     key: "vehicle-category",
@@ -141,12 +317,12 @@ const masterTabs = [
   },
   {
     key: "vehicle-manager",
-    component: lazy(() => import("../components/Master/VehicleManagerTable")),
+    component: lazy(
+      () =>
+        import("../components/Master/Vehicles/VehiclesManager/VehicleManagerTable"),
+    ),
   },
-  {
-    key: "vehicle-add",
-    component: lazy(() => import("../components/Master/Vehicleaddform")),
-  },
+
   {
     key: "driver",
     component: lazy(() => import("../components/Master/Driver/DriverFormData")),
@@ -171,14 +347,12 @@ const masterTabs = [
       () => import("../components/Master/Customer/customertable"),
     ),
   },
-
   {
     key: "customer-history",
     component: lazy(
       () => import("../components/Master/Customer/CustomerHistory"),
     ),
   },
-
   {
     key: "driver-table",
     component: lazy(() => import("../components/Master/Driver/drivertable")),
@@ -199,8 +373,10 @@ const masterTabs = [
   },
 ];
 
-// 👇 In yeh master keys ko vendor login ke liye bhi directly accessible banaya
-// (sidebar mein separate menu item ke through dispatch(setActiveSection(key)) karna hoga)
+/* ============================================================================
+   VENDOR DIRECT MASTER ACCESS
+============================================================================ */
+
 const vendorAccessibleMasterKeys = [
   "vendor-table",
   "vehicles",
@@ -208,81 +384,136 @@ const vendorAccessibleMasterKeys = [
   "driver-table",
 ];
 
-// ✅ Same role list as navbar.tsx's MASTER_ALLOWED_ROLES — keep both in sync.
-// This is the page-level gate: even if someone reaches nav.activeSection ===
-// "master" without going through the navbar (e.g. via a stored/URL tab param),
-// this stops the Master module from actually rendering for disallowed roles.
-// 👇 "travel advisor" added: they're now allowed into Master, but navbar.tsx
-// restricts WHICH sections/items they see inside it (only the Customers
-// dropdown → Existing Customer Search). This gate only decides yes/no entry.
-const MASTER_ALLOWED_ROLES = [
-  "superadmin",
-  "admin",
-  "manager",
-  "city manager",
-  "travel advisor",
-];
-// ─── Page ─────────────────────────────────────────────────────────────────────
+/* ============================================================================
+   PAGE
+============================================================================ */
 
 export default function DashboardPage() {
   const dispatch = useDispatch<AppDispatch>();
 
-  // All state from Redux
   const { currentUser } = useSelector((state: RootState) => state.user);
+
   const nav = useSelector((state: RootState) => state.navigation);
 
-  // ── Fetch current user on mount ──────────────────────────────────────────
+  /* --------------------------------------------------------------------------
+     CURRENT USER
+  -------------------------------------------------------------------------- */
+
   useEffect(() => {
     dispatch(currentUserThunk());
   }, [dispatch]);
 
-  // ── Init navigation from role + loginType when user loads ────────────────
+  /* --------------------------------------------------------------------------
+     ROLE + LOGIN TYPE
+  -------------------------------------------------------------------------- */
+
   useEffect(() => {
     if (!currentUser) return;
-    const u = currentUser as any;
-    const role = u.role || u.role_name || "user";
-    const department = u.department_name || u.departmentname || "";
+
+    const rawUser = (currentUser as any) ?? {};
+    const userData = rawUser?.data ?? rawUser;
+
+    const roleName = rawUser?.role_name ?? userData?.role_name ?? "";
+
+    const accessRole = rawUser?.access_role ?? userData?.access_role ?? "";
+
+    const effectiveRole = getEffectiveRole(roleName, accessRole);
+
+    const normalizedRole = normalizeRole(effectiveRole);
+
+    const department =
+      rawUser?.department_name ??
+      userData?.department_name ??
+      rawUser?.department ??
+      userData?.department ??
+      "";
+
     const subDepartment =
-      u.subDepartment_name || u.subdepartname_name || u.department || "";
-    // loginType comes from the JWT (decoded.loginType), set on req.user by
-    // verifyJWT middleware — e.g. "employee" | "vendor" | "driver" | "customer"
-    const loginType = u.loginType || "";
-    dispatch(initFromRole({ role, department, subDepartment, loginType }));
+      rawUser?.subDepartment_name ??
+      userData?.subDepartment_name ??
+      rawUser?.subDepartment ??
+      userData?.subDepartment ??
+      rawUser?.subdepartname_name ??
+      userData?.subdepartname_name ??
+      "";
+
+    const loginType = rawUser?.loginType ?? userData?.loginType ?? "";
+
+    dispatch(
+      initFromRole({
+        role: normalizedRole,
+        department,
+        subDepartment,
+        loginType,
+      }),
+    );
   }, [currentUser, dispatch]);
 
-  // ── URL tab param on first load ──────────────────────────────────────────
+  /* --------------------------------------------------------------------------
+     URL TAB
+  -------------------------------------------------------------------------- */
+
   useEffect(() => {
     if (typeof window === "undefined") return;
+
     const tab = new URLSearchParams(window.location.search).get("tab");
-    if (tab) dispatch(setActiveMaster(tab as any));
+
+    if (tab) {
+      dispatch(setActiveMaster(tab as any));
+    }
   }, [dispatch]);
 
-  // ── Custom events from child components ──────────────────────────────────
+  /* --------------------------------------------------------------------------
+     CUSTOM EVENT: VIEW LEAD
+  -------------------------------------------------------------------------- */
+
   useEffect(() => {
     const onViewLead = (e: CustomEvent<LeadRecord>) => {
-      if (e.detail) {
-        dispatch(setSelectedLeadForEdit(e.detail));
-        dispatch(setActiveLeadView("sales-edit-form"));
-      }
+      if (!e.detail) return;
+
+      dispatch(setSelectedLeadForEdit(e.detail));
+
+      dispatch(setActiveLeadView("sales-edit-form"));
     };
+
     window.addEventListener("viewLead", onViewLead as EventListener);
+
     return () =>
       window.removeEventListener("viewLead", onViewLead as EventListener);
   }, [dispatch]);
 
+  /* --------------------------------------------------------------------------
+     NAVIGATE LEAD TABLE
+  -------------------------------------------------------------------------- */
+
   useEffect(() => {
-    const onNavToLeadTable = () => dispatch(setActiveLeadView("lead-table"));
+    const onNavToLeadTable = () => {
+      dispatch(setActiveLeadView("lead-table"));
+    };
+
     window.addEventListener("navigateToLeadTable", onNavToLeadTable);
+
     return () =>
       window.removeEventListener("navigateToLeadTable", onNavToLeadTable);
   }, [dispatch]);
 
+  /* --------------------------------------------------------------------------
+     RATE QUOTATION
+  -------------------------------------------------------------------------- */
+
   useEffect(() => {
-    const onRateQuotation = (e: CustomEvent<{ lead: LeadRecord }>) => {
-      if (e.detail?.lead)
-        dispatch(setSelectedLeadForRateQuotation(e.detail.lead));
+    const onRateQuotation = (
+      e: CustomEvent<{
+        lead: LeadRecord;
+      }>,
+    ) => {
+      if (!e.detail?.lead) return;
+
+      dispatch(setSelectedLeadForRateQuotation(e.detail.lead));
     };
+
     window.addEventListener("rateQuotation", onRateQuotation as EventListener);
+
     return () =>
       window.removeEventListener(
         "rateQuotation",
@@ -290,115 +521,147 @@ export default function DashboardPage() {
       );
   }, [dispatch]);
 
+  /* --------------------------------------------------------------------------
+     DSR
+  -------------------------------------------------------------------------- */
+
   useEffect(() => {
-    const onDsrForm = (e: CustomEvent<{ lead: LeadRecord }>) => {
-      if (e.detail?.lead) dispatch(setSelectedLeadForDsr(e.detail.lead));
-      else dispatch(setActiveSection("dsr-form" as any));
+    const onDsrForm = (
+      e: CustomEvent<{
+        lead: LeadRecord;
+      }>,
+    ) => {
+      if (e.detail?.lead) {
+        dispatch(setSelectedLeadForDsr(e.detail.lead));
+      } else {
+        dispatch(setActiveSection("dsr-form" as any));
+      }
     };
+
     window.addEventListener("dsr-form", onDsrForm as EventListener);
+
     return () =>
       window.removeEventListener("dsr-form", onDsrForm as EventListener);
   }, [dispatch]);
 
-  // ── Active master component ──────────────────────────────────────────────
+  /* --------------------------------------------------------------------------
+     ROLE
+  -------------------------------------------------------------------------- */
+
+  const rawUserForRole = (currentUser as any) ?? {};
+
+  const userDataForRole = rawUserForRole?.data ?? rawUserForRole;
+
+  const roleName =
+    rawUserForRole?.role_name ?? userDataForRole?.role_name ?? "";
+
+  const accessRole =
+    rawUserForRole?.access_role ?? userDataForRole?.access_role ?? "";
+
+  const effectiveRole = getEffectiveRole(roleName, accessRole);
+
+  const normalizedRole = normalizeRole(effectiveRole);
+
+  /* --------------------------------------------------------------------------
+     ROLE FLAGS
+  -------------------------------------------------------------------------- */
+
+  const isCityManager = normalizedRole === "city manager";
+
+  const isTeamLeaderSales = normalizedRole === "team leader-sales";
+
+  const showCityManagerDashboard = isCityManager || isTeamLeaderSales;
+
+  /* --------------------------------------------------------------------------
+     MASTER ACCESS
+  -------------------------------------------------------------------------- */
+
+  const canAccessMaster = MASTER_ALLOWED_ROLES.includes(normalizedRole);
+
+  const activeMasterAllowed =
+    !nav.activeMaster ||
+    !MASTER_ITEM_ALLOWED_ROLES[nav.activeMaster] ||
+    MASTER_ITEM_ALLOWED_ROLES[nav.activeMaster].includes(normalizedRole);
+
+  /* --------------------------------------------------------------------------
+     ACTIVE MASTER COMPONENT
+  -------------------------------------------------------------------------- */
+
   const ActiveMasterComponent = useMemo(() => {
-    if (nav.activeSection !== "master") return null;
+    if (nav.activeSection !== "master") {
+      return null;
+    }
+
     return (
-      masterTabs.find((t) => t.key === nav.activeMaster)?.component ?? null
+      masterTabs.find((tab) => tab.key === nav.activeMaster)?.component ?? null
     );
   }, [nav.activeMaster, nav.activeSection]);
 
-  // 👇 Vendor ke liye: agar activeSection directly ek master-tab key ho
-  // (e.g. sidebar se "vendor-table" / "vehicles" / "driver" pe click hua)
+  /* --------------------------------------------------------------------------
+     VENDOR DIRECT MASTER
+  -------------------------------------------------------------------------- */
+
   const VendorDirectMasterComponent = useMemo(() => {
-    if (nav.loginType !== "vendor") return null;
-    if (!vendorAccessibleMasterKeys.includes(nav.activeSection as string))
+    if (nav.loginType !== "vendor") {
       return null;
+    }
+
+    if (!vendorAccessibleMasterKeys.includes(nav.activeSection as string)) {
+      return null;
+    }
+
     return (
-      masterTabs.find((t) => t.key === nav.activeSection)?.component ?? null
+      masterTabs.find((tab) => tab.key === nav.activeSection)?.component ?? null
     );
   }, [nav.loginType, nav.activeSection]);
 
-  // ── Fallback UI ──────────────────────────────────────────────────────────
+  /* --------------------------------------------------------------------------
+     FALLBACK
+  -------------------------------------------------------------------------- */
+
   const renderFallback = (title: string, desc: string) => (
     <div className="flex min-h-[400px] flex-col items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-slate-50 text-center">
       <h1 className="text-2xl font-semibold text-slate-800">{title}</h1>
-      <p className="max-w-xl mt-2 text-sm text-slate-500">{desc}</p>
+
+      <p className="mt-2 max-w-xl text-sm text-slate-500">{desc}</p>
     </div>
   );
 
-  // ══════════════════════════════════════════════════════════════════════
-  // ✅ FIX: Robust City Manager detection.
-  // Pehle sirf exact-case `=== "City Manager"` check hota tha jo
-  // - case-sensitive tha (e.g. "city manager" ya "CITY MANAGER" fail ho jata)
-  // - sirf top-level currentUser.role / role_name dekhta tha, agar user
-  //   object `currentUser.data.role` jaisi nested shape me aata to bhi fail
-  // Ab dono top-level aur nested (.data) fields check hote hain, aur
-  // case-insensitive + trimmed compare hota hai — navbar.tsx me jaise
-  // `normalizedRole` banaya jata hai, waisi hi approach.
-  // ══════════════════════════════════════════════════════════════════════
-  const rawUserForRole =
-    (currentUser as any)?.data ?? (currentUser as any) ?? {};
-  const normalizedRoleName = (rawUserForRole?.role_name ?? "")
-    .toString()
-    .toLowerCase()
-    .trim();
-  const normalizedRoleValue = (rawUserForRole?.role ?? "")
-    .toString()
-    .toLowerCase()
-    .trim();
-  const isCityManager =
-    normalizedRoleName.includes("city manager") ||
-    normalizedRoleValue.includes("city manager");
+  /* ==========================================================================
+     MAIN CONTENT
+  ========================================================================== */
 
-  // ══════════════════════════════════════════════════════════════════════
-  // ✅ NEW: Team Leader-Sales detection — same normalized-string pattern as
-  // City Manager above (case-insensitive, trimmed, checks both `.role` and
-  // `.role_name`, top-level and nested `.data`).
-  // ══════════════════════════════════════════════════════════════════════
-  const isTeamLeaderSales =
-    normalizedRoleName.includes("team leader-sales") ||
-    normalizedRoleName.includes("team leader sales") ||
-    normalizedRoleValue.includes("team leader-sales") ||
-    normalizedRoleValue.includes("team leader sales");
-
-  // ✅ Combined flag: City Manager AND Team Leader-Sales both see the exact
-  // same "City Manager" dashboard when they land on Leads / Dashboard.
-  const showCityManagerDashboard = isCityManager || isTeamLeaderSales;
-
-  // ✅ Master access check — same role logic as navbar's normalizedRole,
-  // built from `.role` (falls back to `.role_name`) on either the raw
-  // user object or its nested `.data` shape.
-  const normalizedRoleForMaster =
-    normalizedRoleValue || normalizedRoleName || "";
-  const canAccessMaster = MASTER_ALLOWED_ROLES.includes(
-    normalizedRoleForMaster,
-  );
-
-  // ── Main content ─────────────────────────────────────────────────────────
   const mainContent = (() => {
+    /* ------------------------------------------------------------------------
+       VENDOR
+    ------------------------------------------------------------------------ */
+
     if (nav.loginType === "vendor") {
-      if (nav.activeSection === "venderDashboard")
+      if (nav.activeSection === "venderDashboard") {
         return (
           <div className="space-y-6">
             <VenderDashboardModule />
           </div>
         );
-      if (nav.activeSection === "vehicle-documents")
+      }
+
+      if (nav.activeSection === "vehicle-documents") {
         return (
           <div className="space-y-6">
             <VendorVehicleDocumentsModule />
           </div>
         );
-      if (nav.activeSection === "vendor-profile")
+      }
+
+      if (nav.activeSection === "vendor-profile") {
         return (
           <div className="space-y-6">
             <VendorProfileModule />
           </div>
         );
+      }
 
-      // 👇 Rate Quotation — vendor ke liye bhi wahi module jo employee use karta hai
-      if (nav.activeSection === "rate-quotation")
+      if (nav.activeSection === "rate-quotation") {
         return (
           <div className="space-y-6">
             <RateQuotationTableModule
@@ -406,21 +669,25 @@ export default function DashboardPage() {
             />
           </div>
         );
+      }
 
-      // 👇 Booking & Trip — abhi module ready nahi hai, "coming soon" dikhao
-      if (nav.activeSection === "booking-trip")
+      if (nav.activeSection === "booking-trip") {
         return renderFallback(
           "Booking module coming soon",
           "Trip booking feature is under development.",
         );
-      if (nav.activeSection === "payment")
+      }
+
+      if (nav.activeSection === "payment") {
         return renderFallback(
-          "Trip module coming soon",
+          "Payment module coming soon",
           "Trip/payment feature is under development.",
         );
+      }
 
       if (VendorDirectMasterComponent) {
         const Comp = VendorDirectMasterComponent;
+
         return (
           <div className="space-y-6">
             <Comp />
@@ -428,7 +695,6 @@ export default function DashboardPage() {
         );
       }
 
-      // 👇 Default: koi bhi sidebar item active na ho to vendor dashboard dikhao
       return (
         <div className="space-y-6">
           <VenderDashboardModule />
@@ -436,95 +702,132 @@ export default function DashboardPage() {
       );
     }
 
-    // MASTER — role-gated. Even if nav.activeSection got set to "master"
-    // some other way (stale state, ?tab= param, etc.), a disallowed role
-    // sees an Access Denied fallback instead of the module.
+    /* ------------------------------------------------------------------------
+       MASTER
+    ------------------------------------------------------------------------ */
+
     if (nav.activeSection === "master") {
-      if (!canAccessMaster)
+      if (!canAccessMaster) {
         return renderFallback(
           "Access Denied",
-          "You don't have permission to view the Master section. Contact an admin if you believe this is a mistake.",
+          "You don't have permission to view the Master section.",
         );
-      if (nav.pendingModuleKey)
+      }
+
+      if (!activeMasterAllowed) {
+        return renderFallback(
+          "Access Denied",
+          "You don't have permission to view this Master module.",
+        );
+      }
+
+      if (nav.pendingModuleKey) {
         return renderFallback(
           "Module coming soon",
           `The ${nav.pendingModuleKey.replace(/-/g, " ")} module is not ready yet.`,
         );
-      if (ActiveMasterComponent)
+      }
+
+      if (ActiveMasterComponent) {
         return (
           <div className="space-y-6">
             <ActiveMasterComponent />
           </div>
         );
+      }
+
       return renderFallback(
         "Module not found",
         "Select a different master module.",
       );
     }
 
-    // LEADS
+    /* ------------------------------------------------------------------------
+       LEADS
+    ------------------------------------------------------------------------ */
+
     if (nav.activeSection === "leads") {
-      if (nav.showMonthlyEnquiry)
+      if (nav.showMonthlyEnquiry) {
         return (
           <div className="space-y-6">
             <MonthlyEnquiryModule />
           </div>
         );
-      if (nav.showMonthlyDistribution)
+      }
+
+      if (nav.showMonthlyDistribution) {
         return (
           <div className="space-y-6">
             <LeadDistributionModule />
           </div>
         );
-      if (nav.showUnwantedLeads)
+      }
+
+      if (nav.showUnwantedLeads) {
         return (
           <div className="space-y-6">
             <UnwantedLeadsModule />
           </div>
         );
-      if (nav.showEmployeeReports)
+      }
+
+      if (nav.showEmployeeReports) {
         return (
           <div className="space-y-6">
             <EmployeeReportsModule />
           </div>
         );
-      if (nav.showTimeEnquiryReports)
+      }
+
+      if (nav.showTimeEnquiryReports) {
         return (
           <div className="space-y-6">
             <TimeEnquiryReportsModule />
           </div>
         );
-      if (nav.showLongWeekendLeads)
+      }
+
+      if (nav.showLongWeekendLeads) {
         return (
           <div className="space-y-6">
             <LongWeekendLeadsModule />
           </div>
         );
-      if (nav.showMonthlyLeadsTwo)
+      }
+
+      if (nav.showMonthlyLeadsTwo) {
         return (
           <div className="space-y-6">
             <MonthlyLeadsTwoModule />
           </div>
         );
-      if (nav.showDateEmployeeReports)
+      }
+
+      if (nav.showDateEmployeeReports) {
         return (
           <div className="space-y-6">
             <DateEmployeeReportsModule />
           </div>
         );
-      if (nav.showagingReports)
+      }
+
+      if (nav.showagingReports) {
         return (
           <div className="space-y-6">
             <AgingReportsModule />
           </div>
         );
-      if (nav.activeLeadView === "lead-form")
+      }
+
+      if (nav.activeLeadView === "lead-form") {
         return (
           <div className="space-y-6">
             <LeadFormModule />
           </div>
         );
-      if (nav.activeLeadView === "lead-table")
+      }
+
+      if (nav.activeLeadView === "lead-table") {
         return (
           <div className="space-y-6">
             <LeadTableModule
@@ -533,43 +836,52 @@ export default function DashboardPage() {
             />
           </div>
         );
-      if (nav.activeLeadView === "sale-lead-table")
+      }
+
+      if (nav.activeLeadView === "sale-lead-table") {
         return (
           <div className="space-y-6">
             <LeadSaleTableModule />
           </div>
         );
+      }
 
-      if (nav.activeLeadView === "swap-lead-table")
+      if (nav.activeLeadView === "swap-lead-table") {
         return (
           <div className="space-y-6">
             <LeadSwapTableModule />
           </div>
         );
+      }
 
-      if (nav.activeLeadView === "dsr-lead-table")
+      if (nav.activeLeadView === "dsr-lead-table") {
         return (
           <div className="space-y-6">
             <DsrTableModule />
           </div>
         );
+      }
 
       if (nav.activeLeadView === "sales-edit-form") {
-        if (!nav.selectedLeadForEdit)
+        if (!nav.selectedLeadForEdit) {
           return renderFallback(
             "No Lead Selected",
             "Please select a lead from the table to edit.",
           );
+        }
+
         return (
           <div className="space-y-6">
             <EditLeadFormModule
               initialData={nav.selectedLeadForEdit}
               onSuccess={() => {
                 dispatch(setSelectedLeadForEdit(null));
+
                 dispatch(setActiveLeadView("sale-lead-table"));
               }}
               onCancel={() => {
                 dispatch(setSelectedLeadForEdit(null));
+
                 dispatch(setActiveLeadView("sale-lead-table"));
               }}
             />
@@ -577,8 +889,6 @@ export default function DashboardPage() {
         );
       }
 
-      // ✅ City Manager AND Team Leader-Sales — dono ke liye default "leads"
-      // view same dashboard hai (CityManagerDashboardModule).
       return (
         <div className="space-y-6">
           {showCityManagerDashboard ? (
@@ -590,34 +900,43 @@ export default function DashboardPage() {
       );
     }
 
-    // DASHBOARD
+    /* ------------------------------------------------------------------------
+       DASHBOARD
+    ------------------------------------------------------------------------ */
+
     if (nav.activeSection === "dashboard") {
-      if (nav.activeDashboardView === "presales-dashboard")
+      if (nav.activeDashboardView === "presales-dashboard") {
         return (
           <div className="space-y-6">
             <PresalesDashboardModule />
           </div>
         );
-      if (nav.activeDashboardView === "telesales-dashboard")
+      }
+
+      if (nav.activeDashboardView === "telesales-dashboard") {
         return (
           <div className="space-y-6">
             <SalesTeamDashboardModule />
           </div>
         );
-      if (nav.activeDashboardView === "teamleader-dashboard")
+      }
+
+      if (nav.activeDashboardView === "teamleader-dashboard") {
         return (
           <div className="space-y-6">
             <TeamLeaderDashboardModule />
           </div>
         );
-      if (nav.activeDashboardView === "citymanager-dashboard")
+      }
+
+      if (nav.activeDashboardView === "citymanager-dashboard") {
         return (
           <div className="space-y-6">
             <CityManagerDashboardModule />
           </div>
         );
-      // ✅ City Manager AND Team Leader-Sales — dono ke liye default
-      // dashboard view bhi same (CityManagerDashboardModule) hai.
+      }
+
       return (
         <div className="space-y-6">
           {showCityManagerDashboard ? (
@@ -629,12 +948,19 @@ export default function DashboardPage() {
       );
     }
 
-    // ✅ Rules section
+    /* ------------------------------------------------------------------------
+       RULES
+    ------------------------------------------------------------------------ */
+
     if (nav.activeSection === "rules") {
       const RulesBoard = dynamic(
         () => import("../components/Rules/RulesBoard"),
-        { ssr: false, loading: LoadingPanel },
+        {
+          ssr: false,
+          loading: LoadingPanel,
+        },
       );
+
       return (
         <div className="space-y-6">
           <RulesBoard />
@@ -642,7 +968,11 @@ export default function DashboardPage() {
       );
     }
 
-    if (nav.activeSection === "rate-quotation")
+    /* ------------------------------------------------------------------------
+       RATE QUOTATION
+    ------------------------------------------------------------------------ */
+
+    if (nav.activeSection === "rate-quotation") {
       return (
         <div className="space-y-6">
           <RateQuotationTableModule
@@ -650,24 +980,47 @@ export default function DashboardPage() {
           />
         </div>
       );
-    if (nav.activeSection === "dsr-form")
+    }
+
+    /* ------------------------------------------------------------------------
+       DSR FORM
+    ------------------------------------------------------------------------ */
+
+    if (nav.activeSection === "dsr-form") {
       return (
         <div className="space-y-6">
           <DsrFormModule leadData={nav.selectedLeadForDsr} />
         </div>
       );
-    if (nav.activeSection === "website")
+    }
+
+    /* ------------------------------------------------------------------------
+       WEBSITE
+    ------------------------------------------------------------------------ */
+
+    if (nav.activeSection === "website") {
       return (
         <div className="space-y-6">
           {nav.activeWebsiteView === "gac" ? <GACForm /> : <GAQTable />}
         </div>
       );
-    if (nav.activeSection === "download-report")
+    }
+
+    /* ------------------------------------------------------------------------
+       DOWNLOAD
+    ------------------------------------------------------------------------ */
+
+    if (nav.activeSection === "download-report") {
       return (
         <div className="space-y-6">
           <DownloadReportModule />
         </div>
       );
+    }
+
+    /* ------------------------------------------------------------------------
+       DEFAULT
+    ------------------------------------------------------------------------ */
 
     if (
       nav.activeSection === "booking-trip" ||
@@ -684,9 +1037,12 @@ export default function DashboardPage() {
     return null;
   })();
 
-  // ── Layout ───────────────────────────────────────────────────────────────
+  /* ==========================================================================
+     LAYOUT
+  ========================================================================== */
+
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-slate-100 text-slate-900">
+    <div className="flex h-screen flex-col overflow-hidden bg-slate-100 text-slate-900">
       <Navbar />
 
       <div className="flex flex-1 overflow-hidden">
@@ -694,8 +1050,8 @@ export default function DashboardPage() {
           <Sidebar />
         </div>
 
-        <main className="flex-1 px-4 py-1 overflow-y-auto bg-white sm:px-6 ml-[100px]">
-          <div className="w-full mx-auto space-y-6">{mainContent}</div>
+        <main className="ml-[100px] flex-1 overflow-y-auto bg-white px-4 py-1 sm:px-6">
+          <div className="mx-auto w-full space-y-6">{mainContent}</div>
         </main>
       </div>
     </div>

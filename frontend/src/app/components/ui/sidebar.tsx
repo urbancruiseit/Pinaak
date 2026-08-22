@@ -3,12 +3,14 @@
 import React, { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/app/redux/store";
+
 import {
   setActiveSection,
   setActiveLeadView,
   setActiveWebsiteView,
   setActiveMaster,
 } from "../../features/Navigation/navigationSlice";
+
 import {
   Database,
   Search,
@@ -25,7 +27,10 @@ import {
   Users,
   Store,
 } from "lucide-react";
-import { de } from "zod/v4/locales";
+
+// ============================================================
+// COLORS
+// ============================================================
 
 type Color =
   | "orange"
@@ -53,6 +58,7 @@ const colorMap: Record<
     border: "border-orange-500",
     activeBg: "bg-orange-50",
   },
+
   green: {
     bg: "bg-green-100",
     hoverBg: "hover:bg-green-50",
@@ -60,6 +66,7 @@ const colorMap: Record<
     border: "border-green-500",
     activeBg: "bg-green-50",
   },
+
   blue: {
     bg: "bg-blue-100",
     hoverBg: "hover:bg-blue-50",
@@ -67,6 +74,7 @@ const colorMap: Record<
     border: "border-blue-500",
     activeBg: "bg-blue-50",
   },
+
   purple: {
     bg: "bg-purple-100",
     hoverBg: "hover:bg-purple-50",
@@ -74,6 +82,7 @@ const colorMap: Record<
     border: "border-purple-500",
     activeBg: "bg-purple-50",
   },
+
   yellow: {
     bg: "bg-yellow-100",
     hoverBg: "hover:bg-yellow-50",
@@ -81,6 +90,7 @@ const colorMap: Record<
     border: "border-yellow-500",
     activeBg: "bg-yellow-50",
   },
+
   red: {
     bg: "bg-red-100",
     hoverBg: "hover:bg-red-50",
@@ -88,6 +98,7 @@ const colorMap: Record<
     border: "border-red-500",
     activeBg: "bg-red-50",
   },
+
   indigo: {
     bg: "bg-indigo-100",
     hoverBg: "hover:bg-indigo-50",
@@ -97,6 +108,10 @@ const colorMap: Record<
   },
 };
 
+// ============================================================
+// ROLE TAGS
+// ============================================================
+
 type RoleTag =
   | "advisor"
   | "manager"
@@ -104,80 +119,215 @@ type RoleTag =
   | "tele-sales"
   | "seo-executive"
   | "seo-tl"
-  | "team-leader-sales";
+  | "super-admin"
+  | "team-leader-sales"
+  | "city-manager";
+
+// ============================================================
+// SIDEBAR
+// ============================================================
 
 const Sidebar: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
 
   const currentUser = useSelector((state: RootState) => state.user.currentUser);
+
   const activeSection = useSelector(
     (state: RootState) => state.navigation.activeSection,
   );
+
   const loginType = useSelector(
     (state: RootState) => state.navigation.loginType,
   );
 
+  // ============================================================
+  // USER DATA
+  // ============================================================
+
   const rawUser = (currentUser as any) ?? {};
-  const role = (rawUser?.role ?? rawUser?.data?.role ?? "").toLowerCase();
-  const subDept = (
-    rawUser?.subDepartment ??
-    rawUser?.data?.subDepartment ??
-    ""
-  ).toLowerCase();
-  const departmentName = (
+
+  const userData = rawUser?.data ?? rawUser;
+
+  /*
+   * ROLE PRIORITY:
+   *
+   * 1. role_name
+   * 2. access_role
+   * 3. role
+   *
+   * Example:
+   *
+   * role_name = "CITY MANAGER"
+   * access_role = "SUPER_ADMIN"
+   *
+   * => CITY MANAGER access
+   *
+   * If:
+   *
+   * role_name = null
+   * access_role = "SUPER_ADMIN"
+   *
+   * => SUPER ADMIN access
+   */
+
+  const roleName = String(rawUser?.role_name ?? userData?.role_name ?? "")
+    .trim()
+    .toLowerCase();
+
+  const accessRole = String(rawUser?.access_role ?? userData?.access_role ?? "")
+    .trim()
+    .toLowerCase();
+
+  const oldRole = String(rawUser?.role ?? userData?.role ?? "")
+    .trim()
+    .toLowerCase();
+
+  /*
+   * Effective role:
+   *
+   * role_name has highest priority.
+   * If role_name doesn't exist, access_role is used.
+   * Finally old role is used as fallback.
+   */
+
+  const effectiveRole = roleName || accessRole || oldRole;
+
+  // ============================================================
+  // OTHER USER DATA
+  // ============================================================
+
+  const subDept = String(
+    rawUser?.subDepartment ?? userData?.subDepartment ?? "",
+  )
+    .trim()
+    .toLowerCase();
+
+  const departmentName = String(
     rawUser?.department_name ??
-    rawUser?.data?.department_name ??
-    ""
-  ).toLowerCase();
-  const roleName = (
-    rawUser?.role_name ??
-    rawUser?.data?.role_name ??
-    ""
-  ).toLowerCase();
+      userData?.department_name ??
+      rawUser?.department ??
+      userData?.department ??
+      "",
+  )
+    .trim()
+    .toLowerCase();
 
   const effectiveLoginType =
-    loginType || (rawUser?.loginType as string | undefined) || "";
-  const isVendor = effectiveLoginType === "vendor";
+    loginType || rawUser?.loginType || userData?.loginType || "";
+
+  const isVendor = String(effectiveLoginType).toLowerCase() === "vendor";
+
+  // ============================================================
+  // SUPER ADMIN
+  // ============================================================
+
+  /*
+   * SUPER ADMIN can come from:
+   *
+   * role_name = SUPER_ADMIN
+   * access_role = SUPER_ADMIN
+   * role = SUPER_ADMIN
+   *
+   * All are normalized to lowercase.
+   */
+
+  const isSuperAdmin =
+    effectiveRole === "super_admin" ||
+    effectiveRole === "superadmin" ||
+    effectiveRole === "super admin";
+
+  // ============================================================
+  // ROLE DETECTION
+  // ============================================================
 
   const isPresale =
-    role.includes("presale") ||
-    role.includes("pre-sale") ||
-    roleName.includes("presale") ||
-    roleName.includes("pre-sale");
+    effectiveRole.includes("presale") || effectiveRole.includes("pre-sale");
 
-  const isAdvisor = role.includes("advisor") || role.includes("travel");
-  const isManager = role.includes("manager") || roleName.includes("manager");
-  const isTelesales = subDept === "tele-sales";
+  const isAdvisor =
+    effectiveRole.includes("advisor") || effectiveRole.includes("travel");
+
+  const isManager = effectiveRole.includes("manager");
+
+  const isTelesales =
+    subDept === "tele-sales" ||
+    effectiveRole === "tele-sales" ||
+    effectiveRole === "telesales" ||
+    effectiveRole === "tele sales";
 
   const isTeamLeaderSales =
-    roleName === "team leader-sales" ||
-    roleName.includes("team leader-sales") ||
-    roleName.includes("team leader sales");
+    effectiveRole === "team leader-sales" ||
+    effectiveRole === "team leader sales" ||
+    effectiveRole.includes("team leader-sales") ||
+    effectiveRole.includes("team leader sales");
 
   const isCityManagerRole =
-    role.includes("city manager") || roleName.includes("city manager");
+    effectiveRole === "city manager" || effectiveRole.includes("city manager");
 
   const isSeoExecutiveDigitalMarketing =
-    departmentName === "digital marketing" && roleName === "seo executive";
+    departmentName === "digital marketing" && effectiveRole === "seo executive";
 
   const isSeoTlDigitalMarketing =
-    departmentName === "digital marketing" && roleName === "seo tl";
+    departmentName === "digital marketing" && effectiveRole === "seo tl";
+
+  // ============================================================
+  // ROLE TAGS
+  // ============================================================
+
+  /*
+   * IMPORTANT:
+   *
+   * Super Admin ko directly super-admin tag diya gaya hai.
+   */
 
   const userRoleTags: RoleTag[] = [
+    isSuperAdmin && "super-admin",
+
     isAdvisor && "advisor",
+
     isManager && "manager",
+
     isPresale && "presale",
+
     isTelesales && "tele-sales",
+
     isSeoExecutiveDigitalMarketing && "seo-executive",
+
     isSeoTlDigitalMarketing && "seo-tl",
+
     isTeamLeaderSales && "team-leader-sales",
+
+    isCityManagerRole && "city-manager",
   ].filter(Boolean) as RoleTag[];
 
-  const hasAccess = (allowedRoles: RoleTag[]) =>
-    allowedRoles.some((r) => userRoleTags.includes(r));
+  // ============================================================
+  // ACCESS CHECK
+  // ============================================================
+
+  /*
+   * SUPER ADMIN = FULL ACCESS
+   *
+   * Otherwise allowedRoles are checked.
+   */
+
+  const hasAccess = (allowedRoles: RoleTag[]) => {
+    if (isSuperAdmin) {
+      return true;
+    }
+
+    return allowedRoles.some((role) => userRoleTags.includes(role));
+  };
+
+  // ============================================================
+  // SIDEBAR STATE
+  // ============================================================
 
   const [isExpanded, setIsExpanded] = useState(false);
+
   const iconSize = isExpanded ? 26 : 28;
+
+  // ============================================================
+  // LEADS CLICK
+  // ============================================================
 
   const handleLeadsClick = () => {
     if (isCityManagerRole) {
@@ -185,57 +335,87 @@ const Sidebar: React.FC = () => {
       dispatch(setActiveLeadView("dashboard" as any));
       return;
     }
+
     if (isTeamLeaderSales) {
       dispatch(setActiveSection("leads"));
       dispatch(setActiveLeadView("dashboard" as any));
       return;
     }
+
     if (isTelesales) {
+      dispatch(setActiveSection("leads"));
       dispatch(setActiveLeadView("sale-lead-table"));
       return;
     }
+
     dispatch(setActiveSection("leads"));
     dispatch(setActiveLeadView("dashboard" as any));
   };
 
-  // ══════════════════════════════════════════════
-  // Master click handler — role aware
-  // Advisor (non-manager): seedha Customer -> Existing
-  // Customer Search (activeMaster = "customer-table")
-  // par le jaata hai, poora Master menu skip.
-  // Manager (aur baaki jinke paas access hai): normal
-  // Master section khulta hai jisme sab options hote hain.
-  // ══════════════════════════════════════════════
+  // ============================================================
+  // MASTER CLICK
+  // ============================================================
+
   const handleMasterClick = () => {
-    if (isAdvisor && !isManager) {
+    /*
+     * Travel Advisor:
+     * directly Existing Customer Search.
+     *
+     * Super Admin / Manager / others:
+     * open Master section.
+     */
+
+    if (isAdvisor && !isManager && !isSuperAdmin) {
       dispatch(setActiveMaster("customer-table"));
       return;
     }
+
     dispatch(setActiveSection("master"));
   };
 
-  // ══════════════════════════════════════════════
-  // EMPLOYEE MENU ITEMS — ab whitelist (allowedRoles) driven
-  // ══════════════════════════════════════════════
+  // ============================================================
+  // EMPLOYEE MENU
+  // ============================================================
+
   const employeeMenuItems = [
     {
       key: "master",
+
       icon: <Database size={iconSize} />,
+
       label: "Master",
+
       description: "Manage all forms and data",
+
       isActive: activeSection === "master",
+
       onClick: handleMasterClick,
+
       color: "orange" as Color,
-      allowedRoles: ["advisor", "manager"] as RoleTag[],
+
+      allowedRoles: [
+        "advisor",
+        "manager",
+        "super-admin",
+        "city-manager",
+      ] as RoleTag[],
     },
+
     {
       key: "leads",
+
       icon: <Search size={iconSize} />,
+
       label: "Leads",
+
       description: "Manage leads & inquiries",
+
       isActive: activeSection === "leads",
+
       onClick: handleLeadsClick,
+
       color: "green" as Color,
+
       allowedRoles: [
         "presale",
         "tele-sales",
@@ -244,93 +424,180 @@ const Sidebar: React.FC = () => {
         "manager",
         "seo-tl",
         "team-leader-sales",
+        "city-manager",
+        "super-admin",
       ] as RoleTag[],
     },
+
     {
       key: "rate-quotation",
+
       icon: <FileText size={iconSize} />,
+
       label: "Rate Quotation",
+
       description: "Generate & manage quotations",
+
       isActive: activeSection === "rate-quotation",
+
       onClick: () => dispatch(setActiveSection("rate-quotation")),
+
       color: "blue" as Color,
-      allowedRoles: ["advisor", "manager", "team-leader-sales"] as RoleTag[],
+
+      allowedRoles: [
+        "advisor",
+        "manager",
+        "team-leader-sales",
+        "super-admin",
+      ] as RoleTag[],
     },
+
     {
       key: "booking-trip",
+
       icon: <Calendar size={iconSize} />,
+
       label: "Booking",
+
       description: "Manage trip bookings",
+
       isActive: activeSection === "booking-trip",
+
       onClick: () => dispatch(setActiveSection("booking-trip")),
+
       color: "purple" as Color,
+
       allowedRoles: [
         "advisor",
         "manager",
         "presale",
         "team-leader-sales",
+        "super-admin",
       ] as RoleTag[],
     },
+
     {
       key: "payment",
+
       icon: <Car size={iconSize} />,
+
       label: "Trip",
+
       description: "Handle payments & transactions",
+
       isActive: activeSection === "payment",
+
       onClick: () => dispatch(setActiveSection("payment")),
+
       color: "yellow" as Color,
+
       allowedRoles: [
         "advisor",
         "manager",
         "presale",
         "team-leader-sales",
+        "super-admin",
       ] as RoleTag[],
     },
+
     {
       key: "feedback",
+
       icon: <MessageSquare size={iconSize} />,
+
       label: "Feedback",
+
       description: "Collect & manage feedback",
+
       isActive: activeSection === "feedback",
+
       onClick: () => dispatch(setActiveSection("feedback")),
+
       color: "red" as Color,
+
       allowedRoles: [
         "advisor",
         "manager",
         "presale",
         "seo-executive",
+        "super-admin",
       ] as RoleTag[],
     },
+
     {
       key: "website",
+
       icon: <Monitor size={iconSize} />,
+
       label: "Website",
+
       description: "Manage website content",
+
       isActive: activeSection === "website",
+
       onClick: () => dispatch(setActiveWebsiteView("gac")),
+
       color: "red" as Color,
-      allowedRoles: ["manager", "presale"] as RoleTag[],
+
+      allowedRoles: ["manager", "presale", "super-admin"] as RoleTag[],
     },
+
     {
       key: "download-report",
+
       icon: <Download size={iconSize} />,
+
       label: "Download Report",
+
       description: "Download & export reports",
+
       isActive: activeSection === "download-report",
+
       onClick: () => dispatch(setActiveSection("download-report")),
+
       color: "indigo" as Color,
-      allowedRoles: ["manager"] as RoleTag[],
+
+      allowedRoles: ["manager", "super-admin"] as RoleTag[],
     },
   ].filter((item) => hasAccess(item.allowedRoles));
+
+  // ============================================================
+  // DEBUG
+  // ============================================================
+
+  /*
+   * Temporary console:
+   *
+   * Aap browser console me check kar sakti hain.
+   */
+
+  console.log("SIDEBAR ACCESS:", {
+    roleName,
+    accessRole,
+    oldRole,
+    effectiveRole,
+    isSuperAdmin,
+    userRoleTags,
+  });
+
+  // ============================================================
+  // RENDER
+  // ============================================================
 
   return (
     <div
       className="absolute top-0 left-0 z-40 h-full bg-white border-r border-gray-200 shadow-xl transition-all duration-300 ease-in-out overflow-y-auto overflow-x-hidden"
-      style={{ width: isExpanded ? "280px" : "100px" }}
+      style={{
+        width: isExpanded ? "280px" : "100px",
+      }}
       onMouseEnter={() => setIsExpanded(true)}
       onMouseLeave={() => setIsExpanded(false)}
     >
       <div className={`${isExpanded ? "px-3" : "px-2"} space-y-1.5 pb-4`}>
+        {/* ================================================== */}
+        {/* VENDOR */}
+        {/* ================================================== */}
+
         {isVendor ? (
           <>
             <SidebarItem
@@ -342,6 +609,7 @@ const Sidebar: React.FC = () => {
               onClick={() => dispatch(setActiveSection("venderDashboard"))}
               color="indigo"
             />
+
             <SidebarItem
               icon={<Car size={iconSize} />}
               label="Trip / Booking"
@@ -351,6 +619,7 @@ const Sidebar: React.FC = () => {
               onClick={() => dispatch(setActiveSection("booking-trip"))}
               color="purple"
             />
+
             <SidebarItem
               icon={<FileBadge size={iconSize} />}
               label="Vehicle Documents"
@@ -360,6 +629,7 @@ const Sidebar: React.FC = () => {
               onClick={() => dispatch(setActiveSection("vehicle-documents"))}
               color="blue"
             />
+
             <SidebarItem
               icon={<UserCircle size={iconSize} />}
               label="Vendor Profile"
@@ -369,6 +639,7 @@ const Sidebar: React.FC = () => {
               onClick={() => dispatch(setActiveSection("vendor-profile"))}
               color="orange"
             />
+
             <SidebarItem
               icon={<Truck size={iconSize} />}
               label="Vehicles"
@@ -378,6 +649,7 @@ const Sidebar: React.FC = () => {
               onClick={() => dispatch(setActiveSection("vehicles"))}
               color="yellow"
             />
+
             <SidebarItem
               icon={<Users size={iconSize} />}
               label="Driver"
@@ -387,6 +659,7 @@ const Sidebar: React.FC = () => {
               onClick={() => dispatch(setActiveSection("driver"))}
               color="green"
             />
+
             <SidebarItem
               icon={<FileText size={iconSize} />}
               label="Rate Quotation"
@@ -396,6 +669,7 @@ const Sidebar: React.FC = () => {
               onClick={() => dispatch(setActiveSection("rate-quotation"))}
               color="blue"
             />
+
             <SidebarItem
               icon={<Calendar size={iconSize} />}
               label="Booking"
@@ -405,6 +679,7 @@ const Sidebar: React.FC = () => {
               onClick={() => dispatch(setActiveSection("booking-trip"))}
               color="purple"
             />
+
             <SidebarItem
               icon={<Car size={iconSize} />}
               label="Trip"
@@ -417,6 +692,10 @@ const Sidebar: React.FC = () => {
           </>
         ) : (
           <>
+            {/* ================================================== */}
+            {/* EMPLOYEE MENU */}
+            {/* ================================================== */}
+
             {employeeMenuItems.map((item) => (
               <SidebarItem
                 key={item.key}
@@ -433,6 +712,10 @@ const Sidebar: React.FC = () => {
         )}
       </div>
 
+      {/* ================================================== */}
+      {/* COLLAPSED ARROW */}
+      {/* ================================================== */}
+
       {!isExpanded && (
         <div className="absolute -right-3 top-1/2 -translate-y-1/2 bg-white border border-gray-300 rounded-full p-1 shadow-md animate-pulse">
           <ChevronRight size={16} className="text-gray-600" />
@@ -441,6 +724,10 @@ const Sidebar: React.FC = () => {
     </div>
   );
 };
+
+// ============================================================
+// SIDEBAR ITEM
+// ============================================================
 
 interface SidebarItemProps {
   icon: React.ReactNode;
@@ -463,33 +750,50 @@ const SidebarItem: React.FC<SidebarItemProps> = ({
 }) => {
   const c = colorMap[color];
 
+  // ==========================================================
+  // EXPANDED
+  // ==========================================================
+
   if (isExpanded) {
     return (
       <button
+        type="button"
         onClick={onClick}
-        className={`w-full flex items-start gap-3 p-3 rounded-lg transition-all group relative ${c.hoverBg} ${isActive ? `${c.activeBg} border-r-4 ${c.border}` : "text-gray-700"}`}
+        className={`w-full flex items-start gap-3 p-3 rounded-lg transition-all group relative ${c.hoverBg} ${
+          isActive ? `${c.activeBg} border-r-4 ${c.border}` : "text-gray-700"
+        }`}
       >
         <div
           className={`p-2 ${c.bg} rounded-lg group-hover:bg-opacity-80 flex-shrink-0`}
         >
           <span className={c.text}>{icon}</span>
         </div>
+
         <div className="text-left flex-1 min-w-0">
           <p className="font-extrabold text-md truncate">{label}</p>
+
           <p className="text-sm text-gray-500 truncate">{description}</p>
         </div>
       </button>
     );
   }
 
+  // ==========================================================
+  // COLLAPSED
+  // ==========================================================
+
   return (
     <button
+      type="button"
       onClick={onClick}
-      className={`w-full flex flex-col items-center gap-1 py-3 px-1 rounded-lg transition-all group relative ${c.hoverBg} ${isActive ? `${c.activeBg} border-r-4 ${c.border}` : ""}`}
+      className={`w-full flex flex-col items-center gap-1 py-3 px-1 rounded-lg transition-all group relative ${
+        c.hoverBg
+      } ${isActive ? `${c.activeBg} border-r-4 ${c.border}` : ""}`}
     >
       <div className={`p-1.5 ${c.bg} rounded-lg group-hover:bg-opacity-80`}>
         <span className={c.text}>{icon}</span>
       </div>
+
       <span className="text-xs font-bold text-gray-600 truncate w-full text-center">
         {label}
       </span>

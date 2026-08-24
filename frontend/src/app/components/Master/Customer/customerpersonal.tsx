@@ -33,6 +33,7 @@ import {
 } from "../../../features/NewCustomer/NewCustomerSlice";
 
 import { getCountriesThunk } from "../../../features/countrycode/countrycodeSlice";
+import FormPageHeader from "../../ui/PageHeader/FormPageHeader";
 
 /* ============================================================
    TYPES
@@ -54,7 +55,7 @@ interface CustomerRecord {
   state: string;
   city: string;
   pincode: string;
-alternateCountryCode?: string;
+  alternateCountryCode?: string;
   stateId?: number;
   cityId?: number;
 
@@ -107,11 +108,23 @@ const initialFormState: CustomerRecord = {
   customerAddress: "",
 };
 
-
 const CATEGORY_OPTIONS: Record<string, string[]> = {
   Personal: ["Personal"],
-  Corporate: ["Company", "NGO", "Educational Institution", "Sporting Company", "Government Organization", "Other"],
-  "Travel Agent": ["Travel Agenct","Tour Operator", "Hotel","Wedding Planner", "DMC"],
+  Corporate: [
+    "Company",
+    "NGO",
+    "Educational Institution",
+    "Sporting Company",
+    "Government Organization",
+    "Other",
+  ],
+  "Travel Agent": [
+    "Travel Agenct",
+    "Tour Operator",
+    "Hotel",
+    "Wedding Planner",
+    "DMC",
+  ],
 };
 
 const CustomerPersonal: React.FC<CustomerPersonalProps> = ({
@@ -146,7 +159,6 @@ const CustomerPersonal: React.FC<CustomerPersonalProps> = ({
 
   const { countries = [], loading: countriesLoading = false } =
     countrycodeSlice || {};
-
 
   const [formData, setFormData] = useState<CustomerRecord>(initialFormState);
   const [editCustomerId, setEditCustomerId] = useState<number | null>(null);
@@ -199,8 +211,6 @@ const CustomerPersonal: React.FC<CustomerPersonalProps> = ({
     };
   }, [dispatch]);
 
- 
-
   useEffect(() => {
     dispatch(getCountriesThunk());
   }, [dispatch]);
@@ -252,7 +262,6 @@ const CustomerPersonal: React.FC<CustomerPersonalProps> = ({
 
     setEditCustomerId(selectedCustomer.id ? Number(selectedCustomer.id) : null);
 
-  
     const customerAlternateCode =
       selectedCustomer.alternateCountryCode ||
       selectedCustomer.alternate_country_code ||
@@ -319,7 +328,6 @@ const CustomerPersonal: React.FC<CustomerPersonalProps> = ({
       console.error("States fetch error:", error);
     }
   };
-
 
   const handleStateChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const selectedStateName = e.target.value;
@@ -807,28 +815,16 @@ const CustomerPersonal: React.FC<CustomerPersonalProps> = ({
           HEADER
       ======================================================== */}
 
-      <div className="sticky top-0 z-30 bg-orange-100 p-3 rounded-md shadow-sm">
-        <div className="flex items-center justify-between gap-4">
-          <div className="pl-4 border-l-8 border-orange-500 bg-white px-3 rounded-md shadow-md">
-            <h2 className="text-3xl md:text-4xl font-bold text-left py-4 text-orange-600">
-              {isViewMode
-                ? "View Customer"
-                : isEditMode
-                  ? "Edit Customer"
-                  : "Customer Registration Form"}
-            </h2>
-          </div>
-
-          {(isEditMode || isViewMode) && (
-            <button
-              type="button"
-              onClick={handleBack}
-              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
-            >
-              ← Back to Table
-            </button>
-          )}
-        </div>
+      <div className="sticky top-0 z-30">
+        <FormPageHeader
+          title={
+            isViewMode
+              ? "View Customer"
+              : isEditMode
+                ? "Edit Customer"
+                : "Customer Registration Form"
+          }
+        />
       </div>
 
       {/* ========================================================

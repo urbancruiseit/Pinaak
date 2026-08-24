@@ -14,7 +14,6 @@ export const createVendorThunk = createAsyncThunk(
   "vendor/createVendor",
   async (vendorData: VendorFormData, { rejectWithValue }) => {
     try {
-      console.log("Vendor data received in thunk:", vendorData);
       const response = await createVendorAPI(vendorData);
       return response;
     } catch (error: any) {
@@ -48,7 +47,6 @@ export const getVendorsThunk = createAsyncThunk(
         },
       });
 
-      console.log("Get Vendors Response:", response.data);
 
       if (response.data?.data?.vendors) {
         return response.data.data.vendors;
@@ -77,7 +75,6 @@ export const getVendorByIdThunk = createAsyncThunk(
         },
       });
 
-      console.log("Get Vendor By ID Response:", response.data);
 
       if (response.data?.data) {
         return response.data.data;

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Plus, X, Car } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import Pagination from "../../../ui/pagination";
 import type { AppDispatch, RootState } from "../../../../redux/store";
 import {
@@ -17,6 +17,7 @@ import TableHeader from "../../../../components/ui/Table/TableHeader";
 import TableRow from "../../../../components/ui/Table/TableRow";
 import TableCell from "../../../../components/ui/Table/TableCell";
 import VehicleCodeHover from "../VehicleCodeHover";
+import LeadPageHeader from "../../../../components/ui/PageHeader/TablePageHeader";
 
 const VehicleTable: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -169,24 +170,12 @@ const VehicleTable: React.FC = () => {
   // =====================================================
   return (
     <div className="w-full">
-      <div className="sticky top-0 z-30 mb-6 rounded-2xl border border-orange-100 bg-white/90 p-4 shadow-sm backdrop-blur-md">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 text-white shadow-md">
-              <Car size={22} />
-            </div>
-
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900">
-                Vehicles Master
-              </h2>
-              <p className="text-xs font-medium text-gray-400">
-                {total ?? 0} vehicles registered
-              </p>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <div className="mb-4 shrink-0">
+        <LeadPageHeader
+          title="Vehicles Master"
+          description={`${total ?? 0} vehicles registered`}
+        >
+          <div className="shrink-0">
             <VehicleFilters
               categoryOptions={categoryOptions}
               seatDropdownOptions={seatDropdownOptions}
@@ -200,18 +189,19 @@ const VehicleTable: React.FC = () => {
               setSelectedVariants={setSelectedVariants}
               setCurrentPage={setCurrentPage}
             />
-
-            <button
-              type="button"
-              onClick={() => setShowForm(true)}
-              className="flex shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-gradient-to-r from-orange-500 to-orange-600 px-5 py-2.5 text-sm font-bold text-white shadow-md shadow-orange-200 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-orange-300 active:scale-[0.98]"
-            >
-              <Plus size={18} />
-              Add Vehicle
-            </button>
           </div>
-        </div>
+
+          <button
+            type="button"
+            onClick={() => setShowForm(true)}
+            className="flex h-10 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-gradient-to-r from-orange-500 to-orange-600 px-4 text-sm font-bold text-white shadow-md shadow-orange-200 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-orange-300 active:scale-[0.98]"
+          >
+            <Plus size={16} />
+            Add Vehicle
+          </button>
+        </LeadPageHeader>
       </div>
+
       {error && (
         <div className="mb-5 rounded-lg border border-red-200 bg-red-50 p-4 font-semibold text-red-700">
           {error}
@@ -256,8 +246,6 @@ const VehicleTable: React.FC = () => {
             <tr>
               <td colSpan={10} className="px-5 py-16 text-center text-gray-500">
                 <div className="flex flex-col items-center gap-2">
-                  <Car size={34} className="text-gray-300" />
-
                   <span className="text-sm font-medium">No vehicles found</span>
                 </div>
               </td>

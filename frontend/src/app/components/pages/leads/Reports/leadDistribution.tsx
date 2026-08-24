@@ -44,7 +44,6 @@ export default function DailyLeadReport() {
   const [selectedCity, setSelectedCity] = useState("");
   const dispatch = useDispatch<AppDispatch>();
   const { distribution } = useSelector((state: RootState) => state.report);
-  console.log(" distribution ", distribution);
   const [showImageModal, setShowImageModal] = useState(false);
   useEffect(() => {
     dispatch(

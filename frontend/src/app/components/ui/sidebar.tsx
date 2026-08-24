@@ -561,28 +561,7 @@ const Sidebar: React.FC = () => {
     },
   ].filter((item) => hasAccess(item.allowedRoles));
 
-  // ============================================================
-  // DEBUG
-  // ============================================================
 
-  /*
-   * Temporary console:
-   *
-   * Aap browser console me check kar sakti hain.
-   */
-
-  console.log("SIDEBAR ACCESS:", {
-    roleName,
-    accessRole,
-    oldRole,
-    effectiveRole,
-    isSuperAdmin,
-    userRoleTags,
-  });
-
-  // ============================================================
-  // RENDER
-  // ============================================================
 
   return (
     <div

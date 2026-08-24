@@ -69,8 +69,6 @@ export default function AdvisorReminderStats({
     try {
       const data = await getAdvisorReminderDetailsApi(advisorId);
 
-      console.log("Reminder Data =>", data);
-
       setReminderDetails(data);
     } catch (err: any) {
       console.error("Reminder Details Error =>", err);

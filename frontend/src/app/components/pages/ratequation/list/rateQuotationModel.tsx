@@ -223,7 +223,6 @@ const RateQuotationModel = ({
 
     try {
       const res = await dispatch(createRateQuotation(payload)).unwrap();
-      console.log("Rate Quotation Created:", res);
       onClose();
     } catch (error) {
       console.error("Rate Quotation Failed:", error);

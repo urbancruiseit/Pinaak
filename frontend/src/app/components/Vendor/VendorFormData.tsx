@@ -26,6 +26,7 @@ import {
   fetchStatesByCity,
   resetStatesForCity,
 } from "../../features/State/stateSlice";
+import FormPageHeader from "../ui/PageHeader/FormPageHeader";
 
 /* ================================================================
    TYPES
@@ -366,7 +367,6 @@ const VendorForm: React.FC<VendorFormProps> = ({
       },
     };
 
-    console.log("Mapped form data:", mapped);
     setFormData(mapped);
 
     // Fetch states for the city if city is selected
@@ -591,32 +591,18 @@ const VendorForm: React.FC<VendorFormProps> = ({
   ================================================================ */
   return (
     <div className="w-full min-h-screen bg-gray-50">
-      <div className="sticky top-0 z-30 bg-orange-100 p-3 rounded-md shadow-sm">
-        <div className="flex items-center justify-between gap-4">
-          <div className="pl-4 border-l-8 border-orange-500 bg-white px-3 rounded-md shadow-md">
-            <h2 className="text-2xl font-bold text-center text-orange-600">
-              {isViewMode
-                ? "View Vendor"
-                : isEditMode
-                  ? "Edit Vendor"
-                  : "Vendor Registration Form"}
-            </h2>
-            <p className="mt-2 text-center text-orange-700">
-              {"All fields are optional — Fill as needed"}
-            </p>
-          </div>
-
-          {(isEditMode || isViewMode) && (
-            <button
-              type="button"
-              onClick={handleBack}
-              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
-            >
-              ← Back to Table
-            </button>
-          )}
-        </div>
+      <div className="sticky top-0 z-30">
+        <FormPageHeader
+          title={
+            isViewMode
+              ? "View Vendor "
+              : isEditMode
+                ? "Edit Vendor"
+                : "Vendor Registration Form"
+          }
+        />
       </div>
+
       <div className="p-4 md:p-6 w-full mx-auto bg-white shadow-xl rounded-lg my-6">
         {/* ── Alerts ── */}
         {submitError && (

@@ -194,7 +194,6 @@ export const updateUserController = asyncHandler(async (req, res) => {
 
 export const userLogout = asyncHandler(async (req, res) => {
   await updateUserRefreshToken(req.user.id, null);
-  console.log(req.user.id);
   const options = {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",

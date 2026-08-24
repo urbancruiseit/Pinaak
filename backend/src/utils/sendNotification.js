@@ -1,18 +1,12 @@
 // import admin from "../config/firebase.js";
 
 // export const sendNotification = async (title, body, tokens) => {
-//   console.log("\n🔔 ===== NOTIFICATION ATTEMPT =====");
-//   console.log("📨 Title:", title);
-//   console.log("📨 Body:", body);
-//   console.log("📱 Target devices:", tokens.length);
+
 
 //   if (!tokens || tokens.length === 0) {
 //     console.log("⚠️ No tokens available - aborting");
 //     return null;
 //   }
-
-//   console.log("📤 Sending multicast message...");
-//   console.log("📝 First few tokens:", tokens.slice(0, 2));
 
 //   const message = {
 //     notification: {
@@ -37,9 +31,7 @@
 //     const response = await admin.messaging().sendEachForMulticast(message);
 //     const endTime = Date.now();
     
-//     console.log(`⏱️ Notification took: ${endTime - startTime}ms`);
-//     console.log("✅ Successfully sent:", response.successCount);
-//     console.log("❌ Failed:", response.failureCount);
+
     
 //     // Handle failed tokens
 //     if (response.failureCount > 0) {

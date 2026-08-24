@@ -64,9 +64,7 @@ const assignTravelAdvisor = asyncHandler(async (req, res) => {
         "adviserLeadAssigned",
         fullLead,
       );
-      console.log(
-        `📡 adviserLeadAssigned emitted to user_${fullLead.advisor_id}`,
-      );
+  
     }
   } catch (err) {
     console.error("⚠️ Socket emit failed:", err.message);
@@ -224,12 +222,6 @@ export const swapTravelAdvisor = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, result, "Travel Advisor swapped successfully"));
 });
 
-/**
- * Swap leads listing.
- * - Travel Advisor: sees only leads swapped ONTO them (aur unke assigned cities tak scoped).
- * - City Manager / Team Leader-Sales: sees ALL swap leads in their assigned zone/city's advisors,
- *   unless they explicitly pick one advisor via ?advisorId=.
- */
 export const getMySwapLeads = asyncHandler(async (req, res) => {
   const page = Math.max(1, parseInt(req.query.page) || 1);
   const limit = 50;

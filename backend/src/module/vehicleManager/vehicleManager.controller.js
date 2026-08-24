@@ -62,7 +62,6 @@ const createVehicleManager = asyncHandler(async (req, res) => {
 
 const getAllCitiesController = asyncHandler(async (req, res) => {
   const cities = await getAllCitiesModel();
-  console.log(cities);
   if (!cities || cities.length === 0) {
     throw new ApiError(404, "No cities found");
   }
@@ -121,7 +120,6 @@ const getAllVehicleManagers = asyncHandler(async (req, res) => {
     page: page ? Number(page) : 1,
     limit: limit ? Number(limit) : 20,
   });
-
   return res
     .status(200)
     .json(
@@ -172,7 +170,6 @@ const getVehicleManagerVendors = asyncHandler(async (req, res) => {
 const updateVehicleManagerStatus = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
-  console.log(id, status);
 
   if (!status) {
     throw new ApiError(400, "Status is required");

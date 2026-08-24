@@ -8,7 +8,7 @@ import {
   getAllUnwantedLeadsApi,
   createReminderApi,
   markReminderAsShownApi,
-  getDueRemindersApi,
+  // getDueRemindersApi,
   DueReminder,
   checkCustomerPhoneApi,
   getAdvisorReminderStatsApi,
@@ -231,16 +231,16 @@ export const createReminder = createAsyncThunk(
   },
 );
 
-export const fetchDueReminders = createAsyncThunk(
-  "lead/fetchDueReminders",
-  async (_, { rejectWithValue }) => {
-    try {
-      return await getDueRemindersApi();
-    } catch (err: any) {
-      return rejectWithValue(err.message);
-    }
-  },
-);
+// export const fetchDueReminders = createAsyncThunk(
+//   "lead/fetchDueReminders",
+//   async (_, { rejectWithValue }) => {
+//     try {
+//       return await getDueRemindersApi();
+//     } catch (err: any) {
+//       return rejectWithValue(err.message);
+//     }
+//   },
+// );
 
 export const markReminderAsShown = createAsyncThunk(
   "lead/markReminderAsShown",
@@ -431,19 +431,19 @@ const leadSlice = createSlice({
       .addCase(fetchAdvisorReminderStats.rejected, (state) => {
         state.advisorReminderStatsLoading = false;
       })
-      .addCase(fetchDueReminders.pending, (state) => {
-        state.dueReminderLoading = true;
-      })
+      // .addCase(fetchDueReminders.pending, (state) => {
+      //   state.dueReminderLoading = true;
+      // })
 
-      .addCase(fetchDueReminders.fulfilled, (state, action) => {
-        state.dueReminderLoading = false;
-        state.dueReminders = action.payload;
-      })
+      // .addCase(fetchDueReminders.fulfilled, (state, action) => {
+      //   state.dueReminderLoading = false;
+      //   state.dueReminders = action.payload;
+      // })
 
-      .addCase(fetchDueReminders.rejected, (state, action) => {
-        state.dueReminderLoading = false;
-        state.dueReminderError = action.payload as string;
-      })
+      // .addCase(fetchDueReminders.rejected, (state, action) => {
+      //   state.dueReminderLoading = false;
+      //   state.dueReminderError = action.payload as string;
+      // })
 
       .addCase(markReminderAsShown.fulfilled, (state, action) => {
         state.dueReminders = state.dueReminders.filter(

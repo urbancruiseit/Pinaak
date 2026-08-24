@@ -8,7 +8,6 @@ import {
 } from "../DSR/dsr.model.js";
 
 const createDsr = asyncHandler(async (req, res) => {
-  console.log("🔥 createDsr hit!");
   const payload = req.body;
 
   const { leadId, customerId, dsrDate } = payload;

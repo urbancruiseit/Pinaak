@@ -111,7 +111,6 @@ const createLeads = asyncHandler(async (req, res) => {
       lead: fullLead ?? newLead,
       userIdKey: "presales_id",
     });
-    console.log("📡 presalesLeadCreated emitted with full data");
   } catch (err) {
     console.error("⚠️ Socket emit failed:", err.message);
   }
@@ -139,7 +138,6 @@ export const checkCustomerPhoneController = asyncHandler(async (req, res) => {
 });
 
 const listLeads = asyncHandler(async (req, res) => {
-  console.log("Full req.query =", req.query);
   const user = req.user;
 
   const isCityManager = user?.role_name === "City Manager";
@@ -333,7 +331,6 @@ export const getAllUnwantedLeadsController = asyncHandler(async (req, res) => {
 //       userIdKey: "presales_id",
 //     });
 
-//     console.log("📡 leadUpdated emitted with full data");
 //   } catch (err) {
 //     console.error("⚠️ Socket emit failed:", err.message);
 //   }
@@ -356,7 +353,6 @@ export const getAllUnwantedLeadsController = asyncHandler(async (req, res) => {
 const updateLeadByIdController = asyncHandler(async (req, res) => {
   const { leadId } = req.params;
   const data = req.body;
-  console.log("🚀 [updateLeadByIdController] data received:", data);
   if (!leadId) {
     throw new ApiError(400, "Lead ID is required");
   }
@@ -455,14 +451,7 @@ const updateLeadByIdController = asyncHandler(async (req, res) => {
       if (!adviserId) {
         console.warn("⚠️ adviser_id not found on lead, followups skip ho gaye");
       } else {
-        console.log(
-          "Creating follow-ups for leadId:",
-          leadId,
-          "adviserId:",
-          adviserId,
-          "Data:",
-          data.follow_ups,
-        );
+       
 
         const validFollowups = data.follow_ups
           .filter((f) => f.followup_date)
@@ -495,7 +484,6 @@ const updateLeadByIdController = asyncHandler(async (req, res) => {
       userIdKey: "presales_id",
     });
 
-    console.log("📡 leadUpdated emitted with full data");
   } catch (err) {
     console.error("⚠️ Socket emit failed:", err.message);
   }

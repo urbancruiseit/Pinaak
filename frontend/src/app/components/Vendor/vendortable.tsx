@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState, AppDispatch } from "../../redux/store";
-import { Eye, Pencil, X } from "lucide-react";
+import { Eye, Pencil, X, Search, RefreshCw } from "lucide-react";
 
 import {
   getVendorsThunk,
@@ -15,6 +15,7 @@ import {
 import VendorForm from "./VendorFormData";
 import Pagination from "../ui/pagination";
 import VendorModalView from "./vendorModelView";
+import LeadPageHeader from "../../components/ui/PageHeader/TablePageHeader";
 
 // =====================================================
 // REUSABLE TABLE COMPONENTS
@@ -267,104 +268,63 @@ const VendorTable: React.FC = () => {
         )}
 
         {/* =====================================================
-            HEADER
+            HEADER (reusable, with search + refresh menu)
         ===================================================== */}
-        <div className="mb-2 rounded-md bg-orange-100 p-3 shadow-sm">
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            {/* TITLE */}
-            <div className="flex shrink-0 items-center">
-              <div className="rounded-md border-l-8 border-orange-500 bg-white px-3 shadow-md">
-                <h2 className="py-3 text-2xl font-bold text-orange-600 md:text-3xl">
-                  Vendor List
-                </h2>
-              </div>
+        <div className="mb-4 shrink-0">
+          <LeadPageHeader
+            title="Vendor List"
+            description={
+              searchTerm && vendors?.length > 0
+                ? `Total Vendors: ${total} (filtered from ${vendors.length} total)`
+                : `Total Vendors: ${total}`
+            }
+          >
+            {/* =================================================
+                SEARCH BOX
+            ================================================= */}
+            <div className="relative w-56 shrink-0">
+              <Search
+                size={16}
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+              />
+              <input
+                type="text"
+                placeholder="Search vendors..."
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="h-10 w-full rounded-lg border border-slate-200 bg-slate-50 pl-9 pr-8 text-sm text-slate-600 outline-none transition-all focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-50"
+              />
 
-              <div className="ml-4">
-                <p className="text-sm text-gray-500">
-                  Total Vendors:{" "}
-                  <span className="font-semibold text-gray-700">{total}</span>
-                  {searchTerm && vendors?.length > 0 && (
-                    <span className="ml-2 text-xs text-gray-400">
-                      (filtered from {vendors?.length || 0} total)
-                    </span>
-                  )}
-                </p>
-              </div>
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchTerm("");
+                    setCurrentPage(1);
+                  }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  <X size={14} />
+                </button>
+              )}
             </div>
 
-            {/* REFRESH */}
+            {/* =================================================
+                REFRESH BUTTON
+            ================================================= */}
             <button
               type="button"
               onClick={() => dispatch(getVendorsThunk())}
               disabled={loading}
-              className="flex items-center gap-2 self-end rounded-lg bg-orange-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="flex h-10 shrink-0 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-600 transition-all hover:border-orange-300 hover:bg-orange-50 hover:text-orange-600 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {loading ? (
-                <>
-                  <div className="h-3 w-3 animate-spin rounded-full border-b-2 border-white" />
-                  Loading...
-                </>
-              ) : (
-                <>
-                  <svg
-                    className="h-4 w-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                    />
-                  </svg>
-                  Refresh
-                </>
-              )}
+              <RefreshCw size={15} className={loading ? "animate-spin" : ""} />
+              Refresh
             </button>
-          </div>
-
-          {/* SEARCH */}
-          <div className="relative mt-4">
-            <input
-              type="text"
-              placeholder="Search by name, email, phone, company, owner or city..."
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setCurrentPage(1);
-              }}
-              className="w-full rounded-lg border border-gray-300 px-4 py-2 pl-10 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
-            />
-
-            <svg
-              className="absolute left-3 top-2.5 h-4 w-4 text-gray-400"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
-
-            {searchTerm && (
-              <button
-                type="button"
-                onClick={() => {
-                  setSearchTerm("");
-                  setCurrentPage(1);
-                }}
-                className="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
-              >
-                <X size={16} />
-              </button>
-            )}
-          </div>
+          </LeadPageHeader>
         </div>
 
         {/* =====================================================
@@ -519,7 +479,7 @@ const VendorTable: React.FC = () => {
             PAGINATION
         ===================================================== */}
         {total > 0 && (
-          <div className="mt-2 shrink-0 rounded-xl border border-slate-200 bg-white px-2 py-2 shadow-sm">
+          <div className="mt-2 shrink-0 rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
             <Pagination
               currentPage={currentPage}
               totalPages={totalPages}

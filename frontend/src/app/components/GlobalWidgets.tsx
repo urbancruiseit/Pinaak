@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 import AuthInitializer from "./AuthInitializer";
 import GlobalLeadPopup from "./GlobalLeadPopup";
-import GlobalReminderPopup from "./ReminderPopup";
+// import GlobalReminderPopup from "./ReminderPopup";
 
 // Public, embeddable form pages don't need auth/lead/reminder widgets
 const PUBLIC_ROUTES = ["/gac-form"];
@@ -17,7 +17,7 @@ export default function GlobalWidgets() {
     <>
       <AuthInitializer />
       <GlobalLeadPopup />
-      <GlobalReminderPopup />
+      {/* <GlobalReminderPopup /> */}
     </>
   );
 }

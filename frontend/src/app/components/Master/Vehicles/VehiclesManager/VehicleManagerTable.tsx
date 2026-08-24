@@ -30,6 +30,7 @@ import VehicleForm from "./VehiclesManagerForm";
 import VehicleManagerCalenderPopup, {
   type VehicleManagerRow,
 } from "./VehicleManagerCalenderPopup";
+import LeadPageHeader from "../../../../components/ui/PageHeader/TablePageHeader";
 import Table from "../../../../components/ui/Table/Table";
 import TableHeader from "../../../../components/ui/Table/TableHeader";
 import TableRow from "../../../../components/ui/Table/TableRow";
@@ -71,13 +72,11 @@ const VehiclesManager: React.FC = () => {
   const { seatOptions, seatOptionsLoading } = useSelector(
     (state: RootState) => state.vehicle,
   );
+
   const [search, setSearch] = useState("");
   const [selectedYears, setSelectedYears] = useState<string[]>([]);
-  // const [yearMenuOpen, setYearMenuOpen] = useState(false);
   const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
-  // const [codeMenuOpen, setCodeMenuOpen] = useState(false);
   const [selectedCities, setSelectedCities] = useState<string[]>([]);
-  // const [cityMenuOpen, setCityMenuOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [showForm, setShowForm] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -88,7 +87,9 @@ const VehiclesManager: React.FC = () => {
   >(null);
   const [availabilityVehicle, setAvailabilityVehicle] =
     useState<VehicleManagerRow | null>(null);
+
   const statusMenuRef = useRef<HTMLDivElement>(null);
+
   const categoryOptions = CATEGORY_OPTIONS.map((category) => ({
     code: category,
     label: category,
@@ -103,6 +104,7 @@ const VehiclesManager: React.FC = () => {
     code: variant.code,
     label: variant.code,
   }));
+
   useEffect(() => {
     dispatch(getVehicleMasterCodes());
     dispatch(getAllCities());
@@ -198,6 +200,7 @@ const VehiclesManager: React.FC = () => {
 
     setCurrentPage(1);
   };
+
   const toggleCity = (cityId: number) => {
     const value = String(cityId);
 
@@ -217,12 +220,7 @@ const VehiclesManager: React.FC = () => {
     setStatusMenuOpenId(null);
 
     try {
-      await dispatch(
-        updateVehicleStatus({
-          vehicleId: id,
-          status,
-        }),
-      ).unwrap();
+      await dispatch(updateVehicleStatus({ vehicleId: id, status })).unwrap();
     } catch (error) {
       console.error("Failed to update vehicle status:", error);
     }
@@ -284,23 +282,15 @@ const VehiclesManager: React.FC = () => {
 
   const handleBackToTable = () => {
     setShowForm(false);
-
     setCurrentPage(1);
-
     setSearch("");
-
     setSelectedYears([]);
     setSelectedCodes([]);
     setSelectedCities([]);
     setSelectedCategories([]);
     setSelectedSeats([]);
     setSelectedVariants([]);
-    dispatch(
-      getVehicleManagers({
-        page: 1,
-        limit: PAGE_SIZE,
-      }),
-    );
+    dispatch(getVehicleManagers({ page: 1, limit: PAGE_SIZE }));
   };
 
   const handlePageChange = (newPage: number) => {
@@ -310,6 +300,7 @@ const VehiclesManager: React.FC = () => {
 
     setCurrentPage(newPage);
   };
+
   if (showForm) {
     return (
       <div className="w-full">
@@ -317,20 +308,7 @@ const VehiclesManager: React.FC = () => {
           <button
             type="button"
             onClick={handleBackToTable}
-            className="
-              flex
-              items-center
-              gap-2
-              rounded-lg
-              bg-gray-600
-              px-5
-              py-3
-              font-bold
-              text-white
-              shadow-md
-              transition
-              hover:bg-gray-700
-            "
+            className="flex items-center gap-2 rounded-lg bg-gray-600 px-5 py-3 font-bold text-white shadow-md transition hover:bg-gray-700"
           >
             <ArrowLeft size={20} />
             Back to Vehicles Manager
@@ -341,53 +319,18 @@ const VehiclesManager: React.FC = () => {
       </div>
     );
   }
+
   return (
     <div className="w-full">
-      <div className="mb-2 rounded-md bg-orange-100 p-3 shadow-sm">
-        <div
-          className="
-            flex
-            flex-col
-            gap-3
-            md:flex-row
-            md:items-center
-          "
+    
+    
+
+      <div className="mb-4 shrink-0">
+        <LeadPageHeader
+          title="Vehicles Manager"
+          description={`${total ?? 0} vehicles under management`}
         >
-          <div className="flex shrink-0 items-center">
-            <div
-              className="
-                rounded-md
-                border-l-8
-                border-orange-500
-                bg-white
-                px-3
-                shadow-md
-              "
-            >
-              <h2
-                className="
-                  py-3
-                  text-2xl
-                  font-bold
-                  text-orange-600
-                  md:text-3xl
-                "
-              >
-                Vehicles Manager
-              </h2>
-            </div>
-          </div>
-          <div
-            className="
-              flex
-              flex-1
-              flex-wrap
-              items-center
-              gap-2
-              md:ml-auto
-              md:justify-end
-            "
-          >
+          <div className="shrink-0">
             <VehicleFilters
               categoryOptions={categoryOptions}
               seatDropdownOptions={seatDropdownOptions}
@@ -401,9 +344,9 @@ const VehiclesManager: React.FC = () => {
               setSelectedVariants={setSelectedVariants}
               setCurrentPage={setCurrentPage}
             />
+          </div>
 
-            {/* EXTRA FILTERS */}
-
+          <div className="shrink-0">
             <VehicleManagerExtraFilters
               uniqueCodeOptions={uniqueCodeOptions}
               cities={cities || []}
@@ -415,61 +358,25 @@ const VehiclesManager: React.FC = () => {
               setSelectedYears={setSelectedYears}
               setCurrentPage={setCurrentPage}
             />
-
-            {/* ADD VEHICLE */}
-
-            <button
-              type="button"
-              onClick={handleAddVehicleManager}
-              className="
-                flex
-                shrink-0
-                items-center
-                justify-center
-                gap-2
-                whitespace-nowrap
-                rounded-xl
-                bg-gradient-to-r
-                from-orange-500
-                to-orange-600
-                px-5
-                py-2.5
-                text-sm
-                font-bold
-                text-white
-                shadow-md
-                shadow-orange-200
-                transition-all
-                duration-200
-                hover:-translate-y-0.5
-                hover:shadow-lg
-                hover:shadow-orange-300
-                active:scale-[0.98]
-              "
-            >
-              <Plus size={18} />
-              Add Vehicle Manager
-            </button>
           </div>
-        </div>
+
+          <button
+            type="button"
+            onClick={handleAddVehicleManager}
+            className="flex h-10 shrink-0 items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-gradient-to-r from-orange-500 to-orange-600 px-4 text-sm font-bold text-white shadow-md shadow-orange-200 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-orange-300 active:scale-[0.98]"
+          >
+            <Plus size={16} />
+            Add Vehicle Manager
+          </button>
+        </LeadPageHeader>
       </div>
 
       {error && (
-        <div
-          className="
-            mb-5
-            rounded-lg
-            border
-            border-red-200
-            bg-red-50
-            p-4
-            font-semibold
-            text-red-700
-          "
-        >
+        <div className="mb-5 rounded-lg border border-red-200 bg-red-50 p-4 font-semibold text-red-700">
           {error}
         </div>
       )}
+
       <Table minWidth="min-w-[1500px]" maxHeight="max-h-[920px]">
         <TableHeader>
           <TableRow alternate={false}>
@@ -491,27 +398,16 @@ const VehiclesManager: React.FC = () => {
             <TableCell header>Check Availability</TableCell>
           </TableRow>
         </TableHeader>
+
         <tbody>
           {loading && (
             <tr>
               <td
                 colSpan={TABLE_COLUMN_COUNT}
-                className="
-                  px-3
-                  py-14
-                  text-center
-                "
+                className="px-3 py-14 text-center"
               >
-                <div
-                  className="
-                    flex
-                    items-center
-                    justify-center
-                    gap-3
-                  "
-                >
+                <div className="flex items-center justify-center gap-3">
                   <Loader2 size={24} className="animate-spin" />
-
                   <span className="font-semibold">Loading vehicles...</span>
                 </div>
               </td>
@@ -522,12 +418,7 @@ const VehiclesManager: React.FC = () => {
             <tr>
               <td
                 colSpan={TABLE_COLUMN_COUNT}
-                className="
-                    px-3
-                    py-14
-                    text-center
-                    text-gray-500
-                  "
+                className="px-3 py-14 text-center text-gray-500"
               >
                 No vehicle records found.
               </td>
@@ -538,9 +429,7 @@ const VehiclesManager: React.FC = () => {
             (vehicles as VehicleManagerRow[]).map((vehicle, index) => {
               const currentStatus: VehicleStatus =
                 (vehicle.status as VehicleStatus) || "Active";
-
               const isMenuOpen = statusMenuOpenId === vehicle.id;
-
               const isUpdating = statusUpdatingId === vehicle.id;
 
               return (
@@ -558,6 +447,7 @@ const VehiclesManager: React.FC = () => {
                       config={vehicle.config}
                     />
                   </TableCell>
+
                   <TableCell>{vehicle.seat || "-"}</TableCell>
                   <TableCell>{vehicle.category || "-"}</TableCell>
                   <TableCell>{vehicle.variant || "-"}</TableCell>
@@ -573,20 +463,13 @@ const VehiclesManager: React.FC = () => {
                   <TableCell className="font-semibold">
                     {formatAging(vehicle.aging)}
                   </TableCell>
-                  <TableCell
-                    className="
-                        max-w-[350px]
-                      "
-                  >
-                    <div
-                      className="
-                          whitespace-normal
-                          leading-5
-                        "
-                    >
+
+                  <TableCell className="max-w-[350px]">
+                    <div className="whitespace-normal leading-5">
                       {vehicle.amenities || "-"}
                     </div>
                   </TableCell>
+
                   <TableCell>
                     <div className="flex items-center">
                       <div
@@ -601,37 +484,16 @@ const VehiclesManager: React.FC = () => {
                               previous === vehicle.id ? null : vehicle.id,
                             )
                           }
-                          className={`
-                              flex
-                              items-center
-                              gap-1.5
-                              rounded-full
-                              border
-                              px-3
-                              py-1.5
-                              text-xs
-                              font-bold
-                              transition-all
-                              duration-200
-                              hover:shadow-sm
-                              disabled:cursor-not-allowed
-                              disabled:opacity-60
-                              ${STATUS_STYLES[currentStatus]}
-                            `}
+                          className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition-all duration-200 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-60 ${STATUS_STYLES[currentStatus]}`}
                         >
                           {isUpdating && (
                             <Loader2 size={12} className="animate-spin" />
                           )}
-
                           {currentStatus}
-
                           {!isUpdating && (
                             <ChevronDown
                               size={12}
-                              className={`
-                                  transition-transform
-                                  ${isMenuOpen ? "rotate-180" : ""}
-                                `}
+                              className={`transition-transform ${isMenuOpen ? "rotate-180" : ""}`}
                             />
                           )}
                         </button>
@@ -639,21 +501,7 @@ const VehiclesManager: React.FC = () => {
                         {/* STATUS MENU */}
 
                         {isMenuOpen && (
-                          <div
-                            className="
-                                absolute
-                                left-0
-                                z-50
-                                mt-2
-                                w-36
-                                rounded-lg
-                                border
-                                border-gray-200
-                                bg-white
-                                p-1.5
-                                shadow-xl
-                              "
-                          >
+                          <div className="absolute left-0 z-50 mt-2 w-36 rounded-lg border border-gray-200 bg-white p-1.5 shadow-xl">
                             {STATUS_OPTIONS.map((option) => (
                               <button
                                 key={option}
@@ -662,23 +510,7 @@ const VehiclesManager: React.FC = () => {
                                 onClick={() =>
                                   handleStatusChange(vehicle.id, option)
                                 }
-                                className={`
-                                      flex
-                                      w-full
-                                      items-center
-                                      justify-between
-                                      rounded-md
-                                      px-2.5
-                                      py-2
-                                      text-left
-                                      text-xs
-                                      font-semibold
-                                      transition
-                                      hover:bg-gray-100
-                                      disabled:cursor-default
-                                      disabled:bg-gray-50
-                                      ${option === currentStatus ? "text-orange-600" : "text-gray-700"}
-                                    `}
+                                className={`flex w-full items-center justify-between rounded-md px-2.5 py-2 text-left text-xs font-semibold transition hover:bg-gray-100 disabled:cursor-default disabled:bg-gray-50 ${option === currentStatus ? "text-orange-600" : "text-gray-700"}`}
                               >
                                 {option}
                               </button>
@@ -688,28 +520,12 @@ const VehiclesManager: React.FC = () => {
                       </div>
                     </div>
                   </TableCell>
+
                   <TableCell>
                     <button
                       type="button"
                       onClick={() => setAvailabilityVehicle(vehicle)}
-                      className="
-                          flex
-                          items-center
-                          gap-1.5
-                          rounded-full
-                          border
-                          border-blue-300
-                          bg-blue-50
-                          px-3
-                          py-1.5
-                          text-xs
-                          font-bold
-                          text-blue-700
-                          transition-all
-                          duration-200
-                          hover:bg-orange-100
-                          hover:shadow-sm
-                        "
+                      className="flex items-center gap-1.5 rounded-full border border-blue-300 bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700 transition-all duration-200 hover:bg-orange-100 hover:shadow-sm"
                     >
                       <CalendarCheck size={13} />
                       Check Availability
@@ -722,7 +538,7 @@ const VehiclesManager: React.FC = () => {
       </Table>
 
       {!loading && total > 0 && (
-        <div className="mt-2 shrink-0 rounded-xl border border-slate-200 bg-white px-2 py-2 shadow-sm">
+        <div className="mt-2 shrink-0 rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}

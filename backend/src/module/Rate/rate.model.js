@@ -31,8 +31,6 @@ export const createRateQuotationModel = async (payload) => {
     advisorId ? Number(advisorId) : null, // Ensure it's properly formatted
   ];
 
-  console.log("Executing query:", query);
-  console.log("With values:", values);
 
   const [result] = await pool.execute(query, values);
 

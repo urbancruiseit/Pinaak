@@ -93,7 +93,7 @@ export const getAllVehicleManagersModel = async ({
     const offset = (page - 1) * limit;
 
     let query = `
-      SELECT vm.*, vmst.seat, vmst.variant, vmst.category
+      SELECT vm.*, vmst.seat, vmst.variant, vmst.category, vmst.config
       FROM vehicle_manager vm
       LEFT JOIN vehicle_master vmst ON vm.code = vmst.code
       WHERE 1=1

@@ -661,13 +661,7 @@ export const getSwapLeadsByAdvisorId = async (
     }
   }
 
-  console.log("========== DEBUG (getSwapLeadsByAdvisorId) ==========");
-  console.log("advisorFilterType =>", advisorFilterType);
-  console.log("WHERE =>", whereClause);
-  console.log("Values =>", values);
-  console.log("safeCityIds =>", safeCityIds);
-  console.log("safeAdvisorIds =>", safeAdvisorIds);
-  console.log("======================================================");
+ 
 
   const [rows] = await pool.execute(
     `

@@ -1,21 +1,28 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
+
 import VehicleManagerExtraFilters from "./VehicleManagerExtraFilters";
 import VehicleFilters from "../VehicleFilters";
+
 import {
   Loader2,
   Plus,
   ArrowLeft,
   ChevronDown,
   CalendarCheck,
+  Eye,
 } from "lucide-react";
+
 import { useDispatch, useSelector } from "react-redux";
+
 import {
   CATEGORY_OPTIONS,
   VARIANT_OPTIONS,
 } from "../../Vehicles/VehiclesMaster/vehicleMasterDropdown";
+
 import type { AppDispatch, RootState } from "../../../../redux/store";
+
 import VehicleCodeHover from "../VehicleCodeHover";
 
 import {
@@ -23,22 +30,43 @@ import {
   getVehicleMasterCodes,
   getAllCities,
   updateVehicleStatus,
+  getVehicleManagerById,
+  clearVehicleManagerDetails,
 } from "../../../../features/vehicleManager/vehicleManagerSlice";
+
 import { fetchSeatOptions } from "../../../../features/vehicle/vehicleSlice";
+
 import Pagination from "../../../ui/pagination";
+
 import VehicleForm from "./VehiclesManagerForm";
+
 import VehicleManagerCalenderPopup, {
   type VehicleManagerRow,
 } from "./VehicleManagerCalenderPopup";
+
+import VehicleManagerModel from "./VehicleManagerModel";
+
 import LeadPageHeader from "../../../../components/ui/PageHeader/TablePageHeader";
 import Table from "../../../../components/ui/Table/Table";
 import TableHeader from "../../../../components/ui/Table/TableHeader";
 import TableRow from "../../../../components/ui/Table/TableRow";
 import TableCell from "../../../../components/ui/Table/TableCell";
 
+// =====================================================
+// TYPES
+// =====================================================
+
 type VehicleStatus = "Active" | "Suspended" | "Blocked";
 
-const STATUS_OPTIONS: VehicleStatus[] = ["Active", "Suspended", "Blocked"];
+// =====================================================
+// STATUS
+// =====================================================
+
+const STATUS_OPTIONS: VehicleStatus[] = [
+  "Active",
+  "Suspended",
+  "Blocked",
+];
 
 const STATUS_STYLES: Record<VehicleStatus, string> = {
   Active: "bg-green-100 text-green-700 border-green-300",
@@ -46,51 +74,105 @@ const STATUS_STYLES: Record<VehicleStatus, string> = {
   Blocked: "bg-red-100 text-red-700 border-red-300",
 };
 
-const YEAR_OPTIONS = Array.from(
-  { length: 2026 - 2018 + 1 },
-  (_, i) => 2018 + i,
-);
+// =====================================================
+// CONSTANTS
+// =====================================================
 
 const PAGE_SIZE = 50;
+const TABLE_COLUMN_COUNT = 15;
 
-const TABLE_COLUMN_COUNT = 14;
+// =====================================================
+// COMPONENT
+// =====================================================
 
 const VehiclesManager: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
 
-  const {
-    vehicles,
-    loading,
-    error,
-    total,
-    totalPages,
-    vehicleMasterCodes,
-    cities,
-    statusUpdatingId,
-  } = useSelector((state: RootState) => state.vehicleManager);
+  // ===================================================
+  // REDUX
+  // ===================================================
 
-  const { seatOptions, seatOptionsLoading } = useSelector(
+  const vehicleManagerState = useSelector(
+    (state: RootState) => state.vehicleManager,
+  );
+
+  const {
+    vehicles = [],
+    loading = false,
+    error = null,
+    total = 0,
+    totalPages = 1,
+    vehicleMasterCodes = [],
+    cities = [],
+    statusUpdatingId = null,
+
+    vehicleManagerDetails: selectedVehicle = null,
+    vehicleManagerDetailsLoading: selectedVehicleLoading = false,
+    vehicleManagerDetailsError: selectedVehicleError = null,
+  } = vehicleManagerState;
+
+  const { seatOptions = [], seatOptionsLoading = false } = useSelector(
     (state: RootState) => state.vehicle,
   );
 
+  // ===================================================
+  // STATES
+  // ===================================================
+
   const [search, setSearch] = useState("");
+
   const [selectedYears, setSelectedYears] = useState<string[]>([]);
+
   const [selectedCodes, setSelectedCodes] = useState<string[]>([]);
+
   const [selectedCities, setSelectedCities] = useState<string[]>([]);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [showForm, setShowForm] = useState(false);
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(
+    [],
+  );
+
   const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
-  const [selectedVariants, setSelectedVariants] = useState<string[]>([]);
+
+  const [selectedVariants, setSelectedVariants] = useState<string[]>(
+    [],
+  );
+
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const [showForm, setShowForm] = useState(false);
+
+  // ===================================================
+  // FIXED STATUS MENU STATE
+  // ===================================================
+
   const [statusMenuOpenId, setStatusMenuOpenId] = useState<
     number | string | null
   >(null);
+
+  // ===================================================
+  // AVAILABILITY
+  // ===================================================
+
   const [availabilityVehicle, setAvailabilityVehicle] =
     useState<VehicleManagerRow | null>(null);
 
-  const statusMenuRef = useRef<HTMLDivElement>(null);
+  // ===================================================
+  // VIEW MODAL
+  // ===================================================
 
-  const categoryOptions = CATEGORY_OPTIONS.map((category) => ({
+  const [showViewModal, setShowViewModal] = useState(false);
+
+  // ===================================================
+  // REFS
+  // ===================================================
+
+  const statusMenuRef = useRef<HTMLDivElement | null>(null);
+
+  // ===================================================
+  // OPTIONS
+  // ===================================================
+
+  const categoryOptions = (CATEGORY_OPTIONS || []).map((category) => ({
     code: category,
     label: category,
   }));
@@ -100,10 +182,14 @@ const VehiclesManager: React.FC = () => {
     label: `${seat} Seater`,
   }));
 
-  const variantOptions = VARIANT_OPTIONS.map((variant) => ({
+  const variantOptions = (VARIANT_OPTIONS || []).map((variant) => ({
     code: variant.code,
     label: variant.code,
   }));
+
+  // ===================================================
+  // INITIAL DATA
+  // ===================================================
 
   useEffect(() => {
     dispatch(getVehicleMasterCodes());
@@ -111,45 +197,81 @@ const VehiclesManager: React.FC = () => {
     dispatch(fetchSeatOptions());
   }, [dispatch]);
 
+  // ===================================================
+  // UNIQUE CODES
+  // ===================================================
+
   const uniqueCodeOptions = Array.from(
     new Set(
       (vehicleMasterCodes || [])
-        .map((c) => c.code)
-        .filter((c): c is string => !!c && c.trim().length > 0),
+        .map((item) => item?.code)
+        .filter(
+          (code): code is string =>
+            typeof code === "string" && code.trim().length > 0,
+        ),
     ),
   ).sort((a, b) => a.localeCompare(b));
+
+  // ===================================================
+  // FETCH VEHICLES
+  // ===================================================
 
   const fetchVehicles = () => {
     dispatch(
       getVehicleManagers({
         search: search.trim() || undefined,
-        year: selectedYears.length > 0 ? selectedYears.join(",") : undefined,
-        code: selectedCodes.length > 0 ? selectedCodes.join(",") : undefined,
-        city: selectedCities.length > 0 ? selectedCities.join(",") : undefined,
+
+        year:
+          selectedYears.length > 0
+            ? selectedYears.join(",")
+            : undefined,
+
+        code:
+          selectedCodes.length > 0
+            ? selectedCodes.join(",")
+            : undefined,
+
+        city:
+          selectedCities.length > 0
+            ? selectedCities.join(",")
+            : undefined,
+
         category:
           selectedCategories.length > 0
             ? selectedCategories.join(",")
             : undefined,
-        seat: selectedSeats.length > 0 ? selectedSeats.join(",") : undefined,
+
+        seat:
+          selectedSeats.length > 0
+            ? selectedSeats.join(",")
+            : undefined,
+
         variant:
-          selectedVariants.length > 0 ? selectedVariants.join(",") : undefined,
+          selectedVariants.length > 0
+            ? selectedVariants.join(",")
+            : undefined,
+
         page: currentPage,
         limit: PAGE_SIZE,
       }),
     );
   };
 
+  // ===================================================
+  // FETCH ON FILTER CHANGE
+  // ===================================================
+
   useEffect(() => {
     if (showForm) {
       return;
     }
 
-    const timer = setTimeout(() => {
+    const timer = window.setTimeout(() => {
       fetchVehicles();
     }, 300);
 
     return () => {
-      clearTimeout(timer);
+      window.clearTimeout(timer);
     };
   }, [
     search,
@@ -163,11 +285,18 @@ const VehiclesManager: React.FC = () => {
     showForm,
   ]);
 
+  // ===================================================
+  // CLOSE STATUS MENU ON OUTSIDE CLICK
+  // ===================================================
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Node;
 
-      if (statusMenuRef.current && !statusMenuRef.current.contains(target)) {
+      if (
+        statusMenuRef.current &&
+        !statusMenuRef.current.contains(target)
+      ) {
         setStatusMenuOpenId(null);
       }
     };
@@ -175,9 +304,16 @@ const VehiclesManager: React.FC = () => {
     document.addEventListener("mousedown", handleClickOutside);
 
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener(
+        "mousedown",
+        handleClickOutside,
+      );
     };
   }, []);
+
+  // ===================================================
+  // FILTER TOGGLES
+  // ===================================================
 
   const toggleYear = (year: number) => {
     const value = String(year);
@@ -213,6 +349,10 @@ const VehiclesManager: React.FC = () => {
     setCurrentPage(1);
   };
 
+  // ===================================================
+  // STATUS CHANGE
+  // ===================================================
+
   const handleStatusChange = async (
     id: number | string,
     status: VehicleStatus,
@@ -220,20 +360,35 @@ const VehiclesManager: React.FC = () => {
     setStatusMenuOpenId(null);
 
     try {
-      await dispatch(updateVehicleStatus({ vehicleId: id, status })).unwrap();
-    } catch (error) {
-      console.error("Failed to update vehicle status:", error);
+      await dispatch(
+        updateVehicleStatus({
+          vehicleId: id,
+          status,
+        }),
+      ).unwrap();
+
+      // Refresh current page after successful update
+      fetchVehicles();
+    } catch (updateError) {
+      console.error(
+        "Failed to update vehicle status:",
+        updateError,
+      );
     }
   };
 
-  const formatDate = (date?: string) => {
+  // ===================================================
+  // DATE FORMAT
+  // ===================================================
+
+  const formatDate = (date?: string | null) => {
     if (!date) {
       return "-";
     }
 
     const parsedDate = new Date(date);
 
-    if (isNaN(parsedDate.getTime())) {
+    if (Number.isNaN(parsedDate.getTime())) {
       return date;
     }
 
@@ -244,44 +399,68 @@ const VehiclesManager: React.FC = () => {
     });
   };
 
-  const formatAging = (aging?: string | number) => {
-    if (aging === undefined || aging === null || aging === "") {
+  // ===================================================
+  // AGING FORMAT
+  // ===================================================
+
+  const formatAging = (aging?: string | number | null) => {
+    if (
+      aging === undefined ||
+      aging === null ||
+      aging === ""
+    ) {
       return "-";
     }
 
     const value = Number(aging);
 
-    if (isNaN(value)) {
-      return aging.toString();
+    if (Number.isNaN(value)) {
+      return String(aging);
     }
 
     const years = Math.floor(value);
 
-    const months = Math.round((value - years) * 10);
+    let months = Math.round((value - years) * 10);
 
-    if (months === 10) {
+    if (months >= 10) {
       return (
         <>
-          {years} <span className="text-[9px] font-bold">Y</span> 0{" "}
-          <span className="text-[9px] font-bold">M</span>
+          {years + 1}{" "}
+          <span className="text-[9px] font-bold">Y</span>{" "}
+          0 <span className="text-[9px] font-bold">M</span>
         </>
       );
     }
 
+    if (months < 0) {
+      months = 0;
+    }
+
     return (
       <>
-        {years} <span className="text-[9px] font-bold">Y</span> {months}{" "}
+        {years}{" "}
+        <span className="text-[9px] font-bold">Y</span>{" "}
+        {months}{" "}
         <span className="text-[9px] font-bold">M</span>
       </>
     );
   };
 
+  // ===================================================
+  // ADD VEHICLE
+  // ===================================================
+
   const handleAddVehicleManager = () => {
     setShowForm(true);
   };
 
+  // ===================================================
+  // BACK TO TABLE
+  // ===================================================
+
   const handleBackToTable = () => {
     setShowForm(false);
+
     setCurrentPage(1);
     setSearch("");
     setSelectedYears([]);
@@ -290,16 +469,74 @@ const VehiclesManager: React.FC = () => {
     setSelectedCategories([]);
     setSelectedSeats([]);
     setSelectedVariants([]);
-    dispatch(getVehicleManagers({ page: 1, limit: PAGE_SIZE }));
+
+    dispatch(
+      getVehicleManagers({
+        page: 1,
+        limit: PAGE_SIZE,
+      }),
+    );
   };
 
+  // ===================================================
+  // PAGINATION
+  // ===================================================
+
   const handlePageChange = (newPage: number) => {
-    if (newPage < 1 || newPage > totalPages) {
+    const safeTotalPages = Math.max(
+      Number(totalPages) || 1,
+      1,
+    );
+
+    if (
+      newPage < 1 ||
+      newPage > safeTotalPages
+    ) {
       return;
     }
 
     setCurrentPage(newPage);
   };
+
+  // ===================================================
+  // VIEW VEHICLE
+  // ===================================================
+
+  const handleViewVehicle = (
+    vehicleId: string | number | undefined | null,
+  ) => {
+    if (
+      vehicleId === undefined ||
+      vehicleId === null ||
+      vehicleId === ""
+    ) {
+      console.error("Vehicle Manager ID missing");
+      return;
+    }
+
+    // Clear previous detail
+    dispatch(clearVehicleManagerDetails());
+
+    // Open modal
+    setShowViewModal(true);
+
+    // Fetch selected vehicle
+    dispatch(getVehicleManagerById(vehicleId));
+  };
+
+  // ===================================================
+  // CLOSE VIEW MODAL
+  // ===================================================
+
+  const handleCloseView = () => {
+    setShowViewModal(false);
+
+    dispatch(clearVehicleManagerDetails());
+  };
+
+  // ===================================================
+  // FORM PAGE
+  // ===================================================
 
   if (showForm) {
     return (
@@ -320,16 +557,38 @@ const VehiclesManager: React.FC = () => {
     );
   }
 
+  // ===================================================
+  // SAFE VEHICLES
+  // ===================================================
+
+  const safeVehicles = Array.isArray(vehicles)
+    ? vehicles
+    : [];
+
+  const safeTotal = Number(total) || 0;
+
+  const safeTotalPages =
+    Number(totalPages) > 0
+      ? Number(totalPages)
+      : 1;
+
+  // ===================================================
+  // RENDER
+  // ===================================================
+
   return (
     <div className="w-full">
-    
-    
+      {/* =================================================
+          HEADER
+      ================================================= */}
 
       <div className="mb-4 shrink-0">
         <LeadPageHeader
           title="Vehicles Manager"
-          description={`${total ?? 0} vehicles under management`}
+          description={`${safeTotal} vehicles under management`}
         >
+          {/* VEHICLE FILTERS */}
+
           <div className="shrink-0">
             <VehicleFilters
               categoryOptions={categoryOptions}
@@ -339,12 +598,18 @@ const VehiclesManager: React.FC = () => {
               selectedSeats={selectedSeats}
               selectedVariants={selectedVariants}
               seatOptionsLoading={seatOptionsLoading}
-              setSelectedCategories={setSelectedCategories}
+              setSelectedCategories={
+                setSelectedCategories
+              }
               setSelectedSeats={setSelectedSeats}
-              setSelectedVariants={setSelectedVariants}
+              setSelectedVariants={
+                setSelectedVariants
+              }
               setCurrentPage={setCurrentPage}
             />
           </div>
+
+          {/* EXTRA FILTERS */}
 
           <div className="shrink-0">
             <VehicleManagerExtraFilters
@@ -360,6 +625,8 @@ const VehiclesManager: React.FC = () => {
             />
           </div>
 
+          {/* ADD */}
+
           <button
             type="button"
             onClick={handleAddVehicleManager}
@@ -371,35 +638,93 @@ const VehiclesManager: React.FC = () => {
         </LeadPageHeader>
       </div>
 
+      {/* =================================================
+          ERROR
+      ================================================= */}
+
       {error && (
         <div className="mb-5 rounded-lg border border-red-200 bg-red-50 p-4 font-semibold text-red-700">
           {error}
         </div>
       )}
 
-      <Table minWidth="min-w-[1500px]" maxHeight="max-h-[920px]">
+      {/* =================================================
+          TABLE
+      ================================================= */}
+
+      <Table
+        minWidth="min-w-[1650px]"
+        maxHeight="max-h-[920px]"
+      >
         <TableHeader>
           <TableRow alternate={false}>
             <TableCell header sticky>
-              S.no.{" "}
+              S.no.
             </TableCell>
-            <TableCell header>Code</TableCell>
-            <TableCell header>Seater</TableCell>
-            <TableCell header>Category</TableCell>
-            <TableCell header>Variant</TableCell>
-            <TableCell header>City</TableCell>
-            <TableCell header>Vendor Name</TableCell>
-            <TableCell header>Garage</TableCell>
-            <TableCell header>Vehicle Number</TableCell>
-            <TableCell header>Registration Date</TableCell>
-            <TableCell header>Aging</TableCell>
-            <TableCell header>Amenities</TableCell>
-            <TableCell header>Status</TableCell>
-            <TableCell header>Check Availability</TableCell>
+
+            <TableCell header>
+              Code
+            </TableCell>
+
+            <TableCell header>
+              Seater
+            </TableCell>
+
+            <TableCell header>
+              Category
+            </TableCell>
+
+            <TableCell header>
+              Variant
+            </TableCell>
+
+            <TableCell header>
+              City
+            </TableCell>
+
+            <TableCell header>
+              Vendor Name
+            </TableCell>
+
+            <TableCell header>
+              Garage
+            </TableCell>
+
+            <TableCell header>
+              Vehicle Number
+            </TableCell>
+
+            <TableCell header>
+              Registration Date
+            </TableCell>
+
+            <TableCell header>
+              Aging
+            </TableCell>
+
+            <TableCell header>
+              Amenities
+            </TableCell>
+
+            <TableCell header>
+              Status
+            </TableCell>
+
+            <TableCell header>
+              Check Availability
+            </TableCell>
+
+            <TableCell header>
+              Action
+            </TableCell>
           </TableRow>
         </TableHeader>
 
         <tbody>
+          {/* =================================================
+              LOADING
+          ================================================= */}
+
           {loading && (
             <tr>
               <td
@@ -407,93 +732,198 @@ const VehiclesManager: React.FC = () => {
                 className="px-3 py-14 text-center"
               >
                 <div className="flex items-center justify-center gap-3">
-                  <Loader2 size={24} className="animate-spin" />
-                  <span className="font-semibold">Loading vehicles...</span>
+                  <Loader2
+                    size={24}
+                    className="animate-spin"
+                  />
+
+                  <span className="font-semibold">
+                    Loading vehicles...
+                  </span>
                 </div>
               </td>
             </tr>
           )}
 
-          {!loading && vehicles.length === 0 && (
-            <tr>
-              <td
-                colSpan={TABLE_COLUMN_COUNT}
-                className="px-3 py-14 text-center text-gray-500"
-              >
-                No vehicle records found.
-              </td>
-            </tr>
-          )}
+          {/* =================================================
+              EMPTY
+          ================================================= */}
 
           {!loading &&
-            (vehicles as VehicleManagerRow[]).map((vehicle, index) => {
+            safeVehicles.length === 0 && (
+              <tr>
+                <td
+                  colSpan={TABLE_COLUMN_COUNT}
+                  className="px-3 py-14 text-center text-gray-500"
+                >
+                  No vehicle records found.
+                </td>
+              </tr>
+            )}
+
+          {/* =================================================
+              DATA
+          ================================================= */}
+
+          {!loading &&
+            safeVehicles.map((vehicle, index) => {
+              const row =
+                vehicle as VehicleManagerRow;
+
               const currentStatus: VehicleStatus =
-                (vehicle.status as VehicleStatus) || "Active";
-              const isMenuOpen = statusMenuOpenId === vehicle.id;
-              const isUpdating = statusUpdatingId === vehicle.id;
+                row.status === "Suspended" ||
+                row.status === "Blocked"
+                  ? row.status
+                  : "Active";
+
+              const vehicleId =
+                row.id as number | string | undefined;
+
+              const isMenuOpen =
+                statusMenuOpenId === vehicleId;
+
+              const isUpdating =
+                statusUpdatingId === vehicleId;
 
               return (
-                <TableRow key={vehicle.id} index={index}>
-                  <TableCell sticky rowIndex={index}>
-                    {(currentPage - 1) * PAGE_SIZE + index + 1}
+                <TableRow
+                  key={
+                    vehicleId ??
+                    `vehicle-${index}`
+                  }
+                  index={index}
+                >
+                  {/* S.NO */}
+
+                  <TableCell
+                    sticky
+                    rowIndex={index}
+                  >
+                    {(currentPage - 1) *
+                      PAGE_SIZE +
+                      index +
+                      1}
                   </TableCell>
 
                   {/* CODE */}
+
                   <TableCell>
                     <VehicleCodeHover
-                      code={vehicle.code}
-                      seat={vehicle.seat}
-                      category={vehicle.category}
-                      config={vehicle.config}
+                      code={row.code}
+                      seat={row.seat}
+                      category={row.category}
+                      config={row.config}
                     />
                   </TableCell>
 
-                  <TableCell>{vehicle.seat || "-"}</TableCell>
-                  <TableCell>{vehicle.category || "-"}</TableCell>
-                  <TableCell>{vehicle.variant || "-"}</TableCell>
+                  {/* SEAT */}
+
                   <TableCell>
-                    {vehicle.city_name || vehicle.city || "-"}
+                    {row.seat || "-"}
                   </TableCell>
-                  <TableCell>{vehicle.vendor || "-"}</TableCell>
-                  <TableCell>{vehicle.garage || "-"}</TableCell>
+
+                  {/* CATEGORY */}
+
+                  <TableCell>
+                    {row.category || "-"}
+                  </TableCell>
+
+                  {/* VARIANT */}
+
+                  <TableCell>
+                    {row.variant || "-"}
+                  </TableCell>
+
+                  {/* CITY */}
+
+                  <TableCell>
+                    {row.city_name ||
+                      row.city ||
+                      "-"}
+                  </TableCell>
+
+                  {/* VENDOR */}
+
+                  <TableCell>
+                    {row.vendor || "-"}
+                  </TableCell>
+
+                  {/* GARAGE */}
+
+                  <TableCell>
+                    {row.garage || "-"}
+                  </TableCell>
+
+                  {/* VEHICLE NUMBER */}
+
                   <TableCell className="text-gray-800">
-                    {vehicle.veh_no || "-"}
+                    {row.veh_no || "-"}
                   </TableCell>
-                  <TableCell>{formatDate(vehicle.reg_date)}</TableCell>
+
+                  {/* REGISTRATION DATE */}
+
+                  <TableCell>
+                    {formatDate(row.reg_date)}
+                  </TableCell>
+
+                  {/* AGING */}
+
                   <TableCell className="font-semibold">
-                    {formatAging(vehicle.aging)}
+                    {formatAging(row.aging)}
                   </TableCell>
+
+                  {/* AMENITIES */}
 
                   <TableCell className="max-w-[350px]">
                     <div className="whitespace-normal leading-5">
-                      {vehicle.amenities || "-"}
+                      {row.amenities || "-"}
                     </div>
                   </TableCell>
+
+                  {/* STATUS */}
 
                   <TableCell>
                     <div className="flex items-center">
                       <div
                         className="relative inline-block"
-                        ref={isMenuOpen ? statusMenuRef : null}
+                        ref={
+                          isMenuOpen
+                            ? statusMenuRef
+                            : null
+                        }
                       >
                         <button
                           type="button"
                           disabled={isUpdating}
                           onClick={() =>
-                            setStatusMenuOpenId((previous) =>
-                              previous === vehicle.id ? null : vehicle.id,
+                            setStatusMenuOpenId(
+                              (previous) =>
+                                previous ===
+                                vehicleId
+                                  ? null
+                                  : vehicleId ??
+                                    null,
                             )
                           }
                           className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition-all duration-200 hover:shadow-sm disabled:cursor-not-allowed disabled:opacity-60 ${STATUS_STYLES[currentStatus]}`}
                         >
                           {isUpdating && (
-                            <Loader2 size={12} className="animate-spin" />
+                            <Loader2
+                              size={12}
+                              className="animate-spin"
+                            />
                           )}
+
                           {currentStatus}
+
                           {!isUpdating && (
                             <ChevronDown
                               size={12}
-                              className={`transition-transform ${isMenuOpen ? "rotate-180" : ""}`}
+                              className={`transition-transform ${
+                                isMenuOpen
+                                  ? "rotate-180"
+                                  : ""
+                              }`}
                             />
                           )}
                         </button>
@@ -502,33 +932,82 @@ const VehiclesManager: React.FC = () => {
 
                         {isMenuOpen && (
                           <div className="absolute left-0 z-50 mt-2 w-36 rounded-lg border border-gray-200 bg-white p-1.5 shadow-xl">
-                            {STATUS_OPTIONS.map((option) => (
-                              <button
-                                key={option}
-                                type="button"
-                                disabled={option === currentStatus}
-                                onClick={() =>
-                                  handleStatusChange(vehicle.id, option)
-                                }
-                                className={`flex w-full items-center justify-between rounded-md px-2.5 py-2 text-left text-xs font-semibold transition hover:bg-gray-100 disabled:cursor-default disabled:bg-gray-50 ${option === currentStatus ? "text-orange-600" : "text-gray-700"}`}
-                              >
-                                {option}
-                              </button>
-                            ))}
+                            {STATUS_OPTIONS.map(
+                              (option) => (
+                                <button
+                                  key={option}
+                                  type="button"
+                                  disabled={
+                                    option ===
+                                    currentStatus
+                                  }
+                                  onClick={() => {
+                                    if (
+                                      vehicleId !==
+                                        undefined &&
+                                      vehicleId !==
+                                        null
+                                    ) {
+                                      handleStatusChange(
+                                        vehicleId,
+                                        option,
+                                      );
+                                    }
+                                  }}
+                                  className={`flex w-full items-center justify-between rounded-md px-2.5 py-2 text-left text-xs font-semibold transition hover:bg-gray-100 disabled:cursor-default disabled:bg-gray-50 ${
+                                    option ===
+                                    currentStatus
+                                      ? "text-orange-600"
+                                      : "text-gray-700"
+                                  }`}
+                                >
+                                  {option}
+                                </button>
+                              ),
+                            )}
                           </div>
                         )}
                       </div>
                     </div>
                   </TableCell>
 
+                  {/* CHECK AVAILABILITY */}
+
                   <TableCell>
                     <button
                       type="button"
-                      onClick={() => setAvailabilityVehicle(vehicle)}
+                      onClick={() =>
+                        setAvailabilityVehicle(
+                          row,
+                        )
+                      }
                       className="flex items-center gap-1.5 rounded-full border border-blue-300 bg-blue-50 px-3 py-1.5 text-xs font-bold text-blue-700 transition-all duration-200 hover:bg-orange-100 hover:shadow-sm"
                     >
                       <CalendarCheck size={13} />
                       Check Availability
+                    </button>
+                  </TableCell>
+
+                  {/* VIEW */}
+
+                  <TableCell>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleViewVehicle(
+                          vehicleId,
+                        )
+                      }
+                      disabled={
+                        vehicleId ===
+                          undefined ||
+                        vehicleId === null
+                      }
+                      title="View Vehicle"
+                      className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-orange-500 px-3 text-xs font-bold text-white shadow-sm transition-all duration-200 hover:bg-orange-600 hover:shadow-md active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <Eye size={15} />
+                      View
                     </button>
                   </TableCell>
                 </TableRow>
@@ -537,22 +1016,45 @@ const VehiclesManager: React.FC = () => {
         </tbody>
       </Table>
 
-      {!loading && total > 0 && (
+      {/* =================================================
+          PAGINATION
+      ================================================= */}
+
+      {!loading && safeTotal > 0 && (
         <div className="mt-2 shrink-0 rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
           <Pagination
             currentPage={currentPage}
-            totalPages={totalPages}
-            totalItems={total}
+            totalPages={safeTotalPages}
+            totalItems={safeTotal}
             rowsPerPage={PAGE_SIZE}
             onPageChange={handlePageChange}
           />
         </div>
       )}
 
+      {/* =================================================
+          AVAILABILITY MODAL
+      ================================================= */}
+
       {availabilityVehicle && (
         <VehicleManagerCalenderPopup
           vehicle={availabilityVehicle}
-          onClose={() => setAvailabilityVehicle(null)}
+          onClose={() =>
+            setAvailabilityVehicle(null)
+          }
+        />
+      )}
+
+      {/* =================================================
+          VIEW VEHICLE MODAL
+      ================================================= */}
+
+      {showViewModal && (
+        <VehicleManagerModel
+          vehicle={selectedVehicle}
+          loading={selectedVehicleLoading}
+          error={selectedVehicleError}
+          onClose={handleCloseView}
         />
       )}
     </div>

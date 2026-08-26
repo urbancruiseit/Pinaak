@@ -75,13 +75,14 @@ export const getFollowupsByLeadId = createAsyncThunk<
   Followup[],
   number,
   { rejectValue: string }
->("lead/getFollowupsByLeadId", async (leadId, { rejectWithValue }) => {
+>("leadFollowups/getFollowupsByLeadId", async (leadId, { rejectWithValue }) => {
   try {
     const response = await getFollowupsByLeadIdApi(leadId);
 
     return Array.isArray(response) ? response : [];
   } catch (error: any) {
-    const status = error?.response?.status || error?.status;
+    const status = error?.response?.status;
+
     if (status === 404) {
       return [];
     }

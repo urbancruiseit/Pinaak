@@ -320,6 +320,41 @@ const DASHBOARD_ITEMS: Record<string, MenuItem[]> = {
       value: "citymanager-dashboard",
     },
   ],
+
+  // ────────────────────────────────────────────────────────
+  // Travel Advisor & Telesales — kept here for reference /
+  // in case showDashboardMenu is ever re-enabled for them,
+  // but currently NOT shown to these roles (see
+  // showDashboardMenu below — they now get their menu via
+  // showLeadsMenu / isOnTelesalesLanding instead).
+  // ────────────────────────────────────────────────────────
+  "travel advisor": [
+    {
+      label: "Telesales Team Dashboard",
+      value: "telesales-dashboard",
+    },
+  ],
+
+  "tele-sales": [
+    {
+      label: "Telesales Team Dashboard",
+      value: "telesales-dashboard",
+    },
+  ],
+
+  telesales: [
+    {
+      label: "Telesales Team Dashboard",
+      value: "telesales-dashboard",
+    },
+  ],
+
+  "tele sales": [
+    {
+      label: "Telesales Team Dashboard",
+      value: "telesales-dashboard",
+    },
+  ],
 };
 
 const getMenuIcon = (menuKey: string) => {
@@ -389,10 +424,6 @@ export function Navbar() {
     canSeeMaster &&
     visibleMasterSections.length > 0;
 
-  const showLeadsMenu =
-    nav.activeSection === "leads" || nav.activeSection === "dsr-form";
-  const showDashboardMenu = nav.activeSection === "dashboard";
-  const showWebsiteMenu = nav.activeSection === "website";
   const isSales = normalizedRole === "sales";
   const isTravelAdvisor = normalizedRole === "travel advisor";
   const isTeamLeader = normalizedRole === "team leader";
@@ -411,6 +442,44 @@ export function Navbar() {
   const isSeoTlDigitalMarketing = isSeoTl && isDigitalMarketingDept;
   const isPresalesExecutive = normalizedRole === "pre-sales executive";
 
+  // ────────────────────────────────────────────────────────
+  // Telesales role flag.
+  // normalizeRole() converts "-" / "_" to spaces before
+  // returning, so after normalization this role can only ever
+  // come out as "telesales" or "tele sales".
+  // ────────────────────────────────────────────────────────
+  const isTelesales =
+    normalizedRole === "telesales" || normalizedRole === "tele sales";
+
+  // ────────────────────────────────────────────────────────
+  // Sidebar's handleLeadsClick() sends Travel Advisor /
+  // Telesales straight to activeSection: "dashboard" +
+  // activeDashboardView: "telesales-dashboard" (NOT to
+  // activeSection: "leads"). This flag detects that landing
+  // state so we can give these roles their role-based
+  // Leads-menu buttons instead of the generic dashboard menu.
+  // ────────────────────────────────────────────────────────
+  const isOnTelesalesLanding =
+    nav.activeSection === "dashboard" &&
+    nav.activeDashboardView === "telesales-dashboard" &&
+    (isTravelAdvisor || isTelesales);
+
+  const showLeadsMenu =
+    nav.activeSection === "leads" ||
+    nav.activeSection === "dsr-form" ||
+    isOnTelesalesLanding;
+
+  // ────────────────────────────────────────────────────────
+  // Advisor/Telesales already get Sales/Swap/DSR Lead Manager
+  // buttons via showLeadsMenu (isOnTelesalesLanding above) —
+  // the generic "Dashboards" dropdown (just "Telesales Team
+  // Dashboard") is redundant for them, so hide it here.
+  // ────────────────────────────────────────────────────────
+  const showDashboardMenu =
+    nav.activeSection === "dashboard" && !isTravelAdvisor && !isTelesales;
+
+  const showWebsiteMenu = nav.activeSection === "website";
+
   const leadsAllowedRoles = [
     "superadmin",
     "manager",
@@ -419,6 +488,9 @@ export function Navbar() {
     "team leader-sales",
     "pre-sales executive",
     "seo executive",
+    "travel advisor",
+    "telesales",
+    "tele sales",
   ];
 
   const canSeeLeadsMenu = leadsAllowedRoles.includes(normalizedRole);
@@ -583,6 +655,16 @@ export function Navbar() {
         isCityManager ||
         isTeamLeaderSales,
     },
+
+    {
+      label: "Lead Performance - PS (AP-PS)",
+      key: "TimeTrackingReports",
+      show:
+        isSuperAdmin ||
+        isPresalesExecutive ||
+        isCityManager ||
+        isTeamLeaderSales,
+    },
   ].filter((item) => item.show);
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -709,6 +791,7 @@ export function Navbar() {
                 {canSeeLeadsMenu &&
                   !isSales &&
                   !isTravelAdvisor &&
+                  !isTelesales &&
                   !isSeoTlDigitalMarketing &&
                   !isSeoExecutiveDigitalMarketing && (
                     <div className="relative w-full md:w-auto">
@@ -729,6 +812,7 @@ export function Navbar() {
                 {canSeeLeadsMenu &&
                   !isSales &&
                   !isTravelAdvisor &&
+                  !isTelesales &&
                   !isSeoExecutiveDigitalMarketing &&
                   (shouldShowLeadManagerDropdown ? (
                     <div className="relative w-full md:w-auto">
@@ -819,9 +903,9 @@ export function Navbar() {
                   </div>
                 )}
 
-                {/* Travel Advisor */}
+                {/* Travel Advisor / Telesales */}
 
-                {isTravelAdvisor && (
+                {(isTravelAdvisor || isTelesales) && (
                   <div className="relative flex flex-col md:flex-row gap-3 w-full md:w-auto">
                     <button
                       type="button"

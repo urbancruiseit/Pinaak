@@ -14,13 +14,112 @@ export const getVehicleManagerByVehNo = async (veh_no) => {
 };
 
 // Get vehicle manager entry by id
+// =====================================================
+// GET VEHICLE MANAGER BY ID
+// Same fields/data as Vehicles Manager table
+// =====================================================
+
 export const getVehicleManagerById = async (id) => {
   try {
     const [rows] = await pool.execute(
-      `SELECT * FROM vehicle_manager WHERE id = ? LIMIT 1`,
+      `
+      SELECT
+        vm.id,
+        vm.code,
+        vm.vendor,
+        vm.model,
+        vm.veh_no,
+        vm.garage,
+        vm.city,
+        vm.reg_date,
+        vm.aging,
+        vm.amenities,
+        vm.status,
+
+        vmst.seat,
+        vmst.variant,
+        vmst.category,
+        vmst.config
+
+      FROM vehicle_manager vm
+
+      LEFT JOIN vehicle_master vmst
+        ON vm.code = vmst.code
+
+      WHERE vm.id = ?
+
+      LIMIT 1
+      `,
       [id],
     );
-    return rows[0] ?? null;
+
+    if (!rows[0]) {
+      return null;
+    }
+
+    const vehicle = rows[0];
+
+    // =================================================
+    // GET CITY NAME FROM HRMS DB
+    // =================================================
+
+    let cityName = null;
+
+    if (
+      vehicle.city !== null &&
+      vehicle.city !== undefined &&
+      vehicle.city !== ""
+    ) {
+      const [cityRows] = await hrmsPool.execute(
+        `
+        SELECT id, city_name
+        FROM city
+        WHERE id = ?
+        LIMIT 1
+        `,
+        [vehicle.city],
+      );
+
+      cityName = cityRows[0]?.city_name ?? null;
+    }
+
+    // =================================================
+    // RETURN SAME DATA NEEDED BY TABLE
+    // =================================================
+
+    return {
+      id: vehicle.id,
+
+      code: vehicle.code,
+
+      seat: vehicle.seat ?? null,
+
+      category: vehicle.category ?? null,
+
+      variant: vehicle.variant ?? null,
+
+      city: vehicle.city ?? null,
+
+      city_name: cityName,
+
+      vendor: vehicle.vendor ?? null,
+
+      garage: vehicle.garage ?? null,
+
+      veh_no: vehicle.veh_no ?? null,
+
+      reg_date: vehicle.reg_date ?? null,
+
+      aging: vehicle.aging ?? null,
+
+      amenities: vehicle.amenities ?? null,
+
+      status: vehicle.status ?? "Active",
+
+      // Optional fields agar database mein hain
+      config: vehicle.config ?? null,
+      model: vehicle.model ?? null,
+    };
   } catch (error) {
     console.error("getVehicleManagerById error:", error);
     throw error;

@@ -13,6 +13,7 @@ import {
   getVehicleMasterAmenitiesApi,
   getAllCitiesApi,
   updateVehicleStatusApi,
+  getVehicleManagerByIdApi,
   VehicleMasterCode,
   VehicleManagerVendor,
   VehicleMasterAmenity,
@@ -55,6 +56,14 @@ interface VehicleManagerState {
   citiesLoading: boolean;
 
   statusUpdatingId: number | string | null;
+
+  // ===================================================
+  // VEHICLE MANAGER VIEW DETAILS
+  // ===================================================
+
+  vehicleManagerDetails: Vehicle | null;
+  vehicleManagerDetailsLoading: boolean;
+  vehicleManagerDetailsError: string | null;
 }
 
 // =====================================================
@@ -87,6 +96,14 @@ const initialState: VehicleManagerState = {
   citiesLoading: false,
 
   statusUpdatingId: null,
+
+  // ===================================================
+  // VEHICLE MANAGER VIEW DETAILS
+  // ===================================================
+
+  vehicleManagerDetails: null,
+  vehicleManagerDetailsLoading: false,
+  vehicleManagerDetailsError: null,
 };
 
 // =====================================================
@@ -128,6 +145,28 @@ export const getVehicleManagers = createAsyncThunk<
     } catch (error: any) {
       return rejectWithValue(
         error?.message || "Failed to fetch vehicle managers",
+      );
+    }
+  },
+);
+
+// =====================================================
+// GET VEHICLE MANAGER BY ID
+// =====================================================
+
+export const getVehicleManagerById = createAsyncThunk<
+  Vehicle,
+  number | string,
+  { rejectValue: string }
+>(
+  "vehicleManager/getVehicleManagerById",
+
+  async (id, { rejectWithValue }) => {
+    try {
+      return await getVehicleManagerByIdApi(id);
+    } catch (error: any) {
+      return rejectWithValue(
+        error?.message || "Failed to fetch vehicle manager details",
       );
     }
   },
@@ -253,7 +292,17 @@ const vehicleManagerSlice = createSlice({
 
   initialState,
 
-  reducers: {},
+  reducers: {
+    // =================================================
+    // CLEAR VIEW DETAILS
+    // =================================================
+
+    clearVehicleManagerDetails: (state) => {
+      state.vehicleManagerDetails = null;
+      state.vehicleManagerDetailsLoading = false;
+      state.vehicleManagerDetailsError = null;
+    },
+  },
 
   extraReducers: (builder) => {
     // =================================================
@@ -308,6 +357,33 @@ const vehicleManagerSlice = createSlice({
       .addCase(getVehicleManagers.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload || "Failed to fetch vehicle managers";
+      });
+
+    // =================================================
+    // GET VEHICLE MANAGER BY ID
+    // =================================================
+
+    builder
+      .addCase(getVehicleManagerById.pending, (state) => {
+        state.vehicleManagerDetailsLoading = true;
+        state.vehicleManagerDetailsError = null;
+        state.vehicleManagerDetails = null;
+      })
+
+      .addCase(getVehicleManagerById.fulfilled, (state, action) => {
+        state.vehicleManagerDetailsLoading = false;
+        state.vehicleManagerDetailsError = null;
+
+        state.vehicleManagerDetails = action.payload;
+      })
+
+      .addCase(getVehicleManagerById.rejected, (state, action) => {
+        state.vehicleManagerDetailsLoading = false;
+
+        state.vehicleManagerDetails = null;
+
+        state.vehicleManagerDetailsError =
+          action.payload || "Failed to fetch vehicle manager details";
       });
 
     // =================================================
@@ -429,5 +505,15 @@ const vehicleManagerSlice = createSlice({
       });
   },
 });
+
+// =====================================================
+// EXPORT ACTIONS
+// =====================================================
+
+export const { clearVehicleManagerDetails } = vehicleManagerSlice.actions;
+
+// =====================================================
+// EXPORT REDUCER
+// =====================================================
 
 export default vehicleManagerSlice.reducer;

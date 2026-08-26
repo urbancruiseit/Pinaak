@@ -6,6 +6,7 @@ import {
   getAllVehiclesModel,
   getSeatOptionsModel,
   getVehicleByCode,
+  getVehicleById,
   getVehicles,
 } from "./vehiclemaster.model.js";
 import { generateVehicleCode } from "./vehiclemaster.service.js";
@@ -74,4 +75,21 @@ export const getSeatOptions = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, seats, "Seat options fetched successfully"));
 });
 
-export { getVehicleCodeList };
+const getVehiclesById = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  if (!id) {
+    throw new ApiError(404, "Vehicle ID is required");
+  }
+
+  const vehicle = await getVehicleById(id);
+
+  if (!vehicle) {
+    throw new ApiError(404, "Vehicle not found");
+  }
+
+  return res
+    .status(200)
+    .json(new ApiResponse(200, vehicle, "Vehicle fetched successfully"));
+});
+export { getVehicleCodeList, getVehiclesById };

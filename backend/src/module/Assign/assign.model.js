@@ -494,16 +494,7 @@ export const swapTravelAdvisorForLead = async (
   };
 };
 
-/**
- * Fetch swap-leads. Mirrors getLeadsByAdvisorId's behaviour and post-processing.
- *
- * advisorId supports THREE modes:
- *  - number       -> Travel Advisor: only leads swapped ONTO them (sl.new_advisor_id = ?)
- *  - array of ids -> City Manager: any advisor within their zone (sl.new_advisor_id IN (...))
- *  - null/undefined/empty array -> no advisor restriction, relies purely on cityIds
- *    (this is what makes City Manager see ALL swap leads in their assigned city/zone,
- *    same as getLeadsByAdvisorId does for regular assigned leads)
- */
+
 export const getSwapLeadsByAdvisorId = async (
   advisorId,
   page = 1,

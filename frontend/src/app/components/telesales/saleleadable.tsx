@@ -11,6 +11,7 @@ import RateQuotationModel from "../../components/pages/ratequation/list/rateQuot
 import Pagination from "../ui/pagination";
 import LeadDetailsModel from "../DetailModel/LeadModel/leadTabledetailsmodel";
 import SwapSalesModal from "../DetailModel/LeadModel/SwapModel";
+import FollowUpTable from "../pages/leads/list/FollowUp/FollowUpTable";
 
 import {
   TABLE_BANNER_COLUMNS,
@@ -26,7 +27,13 @@ import {
   updateRealtimeAssignedLead,
 } from "@/app/features/access/accessSlice";
 
-import { Eye, Edit, UserRoundPlus, RefreshCw } from "lucide-react";
+import {
+  Eye,
+  Edit,
+  UserRoundPlus,
+  RefreshCw,
+  MessageCirclePlus,
+} from "lucide-react";
 import {
   useLeadColumns,
   type LeadColumn,
@@ -113,6 +120,8 @@ export default function LeadsTable() {
 
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
 
+  const [followUpLead, setFollowUpLead] = useState<LeadRecord | null>(null);
+  const [isFollowUpModalOpen, setIsFollowUpModalOpen] = useState(false);
   // ─── Live/Expiry filter state ──────────────────────────────────────────────
   const [liveorexpiryFilter, setLiveorexpiryFilter] = useState<string>("All");
 
@@ -362,22 +371,6 @@ export default function LeadsTable() {
           💰{" "}
         </button>
 
-        {/* DSR Button */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            window.dispatchEvent(
-              new CustomEvent("dsr-form", {
-                detail: { lead, action: "navigate" },
-              }),
-            );
-          }}
-          className="px-2 py-1 text-xs font-semibold text-white bg-orange-600 rounded hover:bg-orange-700 flex items-center justify-center"
-          title="Add DSR"
-        >
-          <UserRoundPlus size={20} />
-        </button>
-
         {/* View Button */}
         <button
           onClick={(e) => {
@@ -390,7 +383,6 @@ export default function LeadsTable() {
         >
           <Eye size={14} />
         </button>
-
         {/* Edit Button */}
         <button
           onClick={(e) => {
@@ -403,7 +395,17 @@ export default function LeadsTable() {
         >
           <Edit size={14} />
         </button>
-
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            setFollowUpLead(lead);
+            setIsFollowUpModalOpen(true);
+          }}
+          className="px-2 py-1 text-xs font-semibold text-white bg-orange-600 rounded hover:bg-orange-700 flex items-center justify-center"
+          title="Add FollowUp"
+        >
+          <MessageCirclePlus size={20} />
+        </button>
         {currentUser?.role_name === "City Manager" && (
           <button
             onClick={(e) => {
@@ -763,10 +765,10 @@ export default function LeadsTable() {
                 onRegionChange={handleRegionChange}
                 onZoneChange={handleZoneChange}
                 onCityChange={handleCityChange}
-                  onYearChange={(year) => {
-    setYearFilter(year as typeof yearFilter);
-    setCurrentPage(1);
-  }}
+                onYearChange={(year) => {
+                  setYearFilter(year as typeof yearFilter);
+                  setCurrentPage(1);
+                }}
               />
             </div>
           </div>
@@ -1232,6 +1234,17 @@ export default function LeadsTable() {
           onClose={() => {
             setIsDetailModalOpen(false);
             setTimeout(() => setDetailLead(null), 300);
+          }}
+        />
+      )}
+
+      {/* Follow Up Modal */}
+      {isFollowUpModalOpen && followUpLead && (
+        <FollowUpTable
+          lead={followUpLead}
+          onClose={() => {
+            setIsFollowUpModalOpen(false);
+            setFollowUpLead(null);
           }}
         />
       )}

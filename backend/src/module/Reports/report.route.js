@@ -4,6 +4,7 @@ import {
   getLeadCountByAdviserForMonthController,
   getMonthlyDateWiseStatusReportController,
   getMonthlyStatusWiseReportController,
+  getWebsiteToLeadAgingReportController,
   longWeekendReport,
   monthlyEnquiryReport,
   monthlyreporttwo,
@@ -37,9 +38,10 @@ router.get("/time-enquiry", timeEnquiryReport);
 router.get("/longweekend", longWeekendReport);
 router.get("/monthlyreporttwo", monthlyreporttwo);
 
+router.get("/aging-report", verifyJWT, getAgingReportController);
+
 router.get(
-  "/aging-report",
-  verifyJWT,
-  getAgingReportController
+  "/website-to-lead-aging-report",
+  getWebsiteToLeadAgingReportController,
 );
 export default router;

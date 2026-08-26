@@ -2,12 +2,14 @@
 
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Plus, X } from "lucide-react";
+import { Plus, X, Eye } from "lucide-react";
 import Pagination from "../../../ui/pagination";
 import type { AppDispatch, RootState } from "../../../../redux/store";
 import {
   vehicleslice,
   fetchSeatOptions,
+  getVehicleById,
+  clearVehicle,
 } from "../../../../features/vehicle/vehicleSlice";
 import VehicleForm from "./VehiclesMasterForm";
 import { CATEGORY_OPTIONS, VARIANT_OPTIONS } from "./vehicleMasterDropdown";
@@ -18,6 +20,7 @@ import TableRow from "../../../../components/ui/Table/TableRow";
 import TableCell from "../../../../components/ui/Table/TableCell";
 import VehicleCodeHover from "../VehicleCodeHover";
 import LeadPageHeader from "../../../../components/ui/PageHeader/TablePageHeader";
+import VehicleViewModal from "./VehicleMasterModel";
 
 const VehicleTable: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -26,27 +29,29 @@ const VehicleTable: React.FC = () => {
     vehicleCodes,
     loading,
     error,
-    page,
     limit,
     totalPages,
     total,
     seatOptions,
     seatOptionsLoading,
+    vehicle,
+    vehicleLoading,
+    vehicleError,
   } = useSelector((state: RootState) => state.vehicle);
 
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [showForm, setShowForm] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
 
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-
   const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
-
   const [selectedVariants, setSelectedVariants] = useState<string[]>([]);
 
   // =====================================================
   // FETCH SEAT OPTIONS
   // =====================================================
+
   useEffect(() => {
     dispatch(fetchSeatOptions());
   }, [dispatch]);
@@ -54,6 +59,7 @@ const VehicleTable: React.FC = () => {
   // =====================================================
   // CATEGORY OPTIONS
   // =====================================================
+
   const categoryOptions = CATEGORY_OPTIONS.map((category) => ({
     code: category,
     label: category,
@@ -62,6 +68,7 @@ const VehicleTable: React.FC = () => {
   // =====================================================
   // SEAT OPTIONS
   // =====================================================
+
   const seatDropdownOptions = (seatOptions || []).map((seat) => ({
     code: seat,
     label: `${seat} Seater`,
@@ -70,6 +77,7 @@ const VehicleTable: React.FC = () => {
   // =====================================================
   // VARIANT OPTIONS
   // =====================================================
+
   const variantOptions = VARIANT_OPTIONS.map((variant) => ({
     code: variant.code,
     label: variant.code,
@@ -78,6 +86,7 @@ const VehicleTable: React.FC = () => {
   // =====================================================
   // BUILD API PARAMS
   // =====================================================
+
   const buildParams = (pageNum: number) => ({
     search: search.trim(),
     page: pageNum,
@@ -95,6 +104,7 @@ const VehicleTable: React.FC = () => {
   // =====================================================
   // FETCH VEHICLES
   // =====================================================
+
   useEffect(() => {
     dispatch(vehicleslice(buildParams(currentPage)));
   }, [
@@ -106,19 +116,21 @@ const VehicleTable: React.FC = () => {
   ]);
 
   // =====================================================
-  // BODY SCROLL LOCK
+  // BODY SCROLL LOCK (Add Vehicle modal + View modal)
   // =====================================================
+
   useEffect(() => {
-    document.body.style.overflow = showForm ? "hidden" : "";
+    document.body.style.overflow = showForm || showViewModal ? "hidden" : "";
 
     return () => {
       document.body.style.overflow = "";
     };
-  }, [showForm]);
+  }, [showForm, showViewModal]);
 
   // =====================================================
   // SEARCH SUBMIT
   // =====================================================
+
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -134,6 +146,7 @@ const VehicleTable: React.FC = () => {
   // =====================================================
   // ADD VEHICLE SUCCESS
   // =====================================================
+
   const handleVehicleSuccess = () => {
     setShowForm(false);
 
@@ -159,8 +172,27 @@ const VehicleTable: React.FC = () => {
   };
 
   // =====================================================
-  // PAGE CHANGE (for Pagination component)
+  // VIEW VEHICLE
   // =====================================================
+
+  const handleViewVehicle = (vehicleId: string | number | undefined) => {
+    if (!vehicleId) {
+      return;
+    }
+
+    setShowViewModal(true);
+    dispatch(getVehicleById(String(vehicleId)));
+  };
+
+  const handleCloseViewModal = () => {
+    setShowViewModal(false);
+    dispatch(clearVehicle());
+  };
+
+  // =====================================================
+  // PAGE CHANGE
+  // =====================================================
+
   const handlePageChange = (pageNum: number) => {
     setCurrentPage(pageNum);
   };
@@ -168,8 +200,13 @@ const VehicleTable: React.FC = () => {
   // =====================================================
   // RENDER
   // =====================================================
+
   return (
     <div className="w-full">
+      {/* =====================================================
+          HEADER
+      ===================================================== */}
+
       <div className="mb-4 shrink-0">
         <LeadPageHeader
           title="Vehicles Master"
@@ -202,34 +239,58 @@ const VehicleTable: React.FC = () => {
         </LeadPageHeader>
       </div>
 
+      {/* =====================================================
+          ERROR
+      ===================================================== */}
+
       {error && (
         <div className="mb-5 rounded-lg border border-red-200 bg-red-50 p-4 font-semibold text-red-700">
           {error}
         </div>
       )}
 
-      <Table minWidth="min-w-[1400px]" maxHeight="max-h-[920px]">
+      {/* =====================================================
+          TABLE
+      ===================================================== */}
+
+      <Table minWidth="min-w-[1500px]" maxHeight="max-h-[920px]">
         <TableHeader>
           <TableRow alternate={false}>
             <TableCell header sticky>
               #
             </TableCell>
+
             <TableCell header>Code</TableCell>
+
             <TableCell header>Seat</TableCell>
+
             <TableCell header>Config</TableCell>
+
             <TableCell header>Category</TableCell>
+
             <TableCell header>Make</TableCell>
+
             <TableCell header>Model</TableCell>
+
             <TableCell header>Variant</TableCell>
+
             <TableCell header>Description</TableCell>
+
             <TableCell header>Highlight</TableCell>
+
+            {/* ACTION */}
+            <TableCell header>Action</TableCell>
           </TableRow>
         </TableHeader>
+
         <tbody>
-          {/* LOADING */}
+          {/* =====================================================
+              LOADING
+          ===================================================== */}
+
           {loading && (
             <tr>
-              <td colSpan={10} className="px-5 py-16 text-center">
+              <td colSpan={11} className="px-5 py-16 text-center">
                 <div className="flex flex-col items-center justify-center gap-2 text-gray-400">
                   <div className="h-7 w-7 animate-spin rounded-full border-2 border-gray-200 border-t-orange-500" />
 
@@ -241,10 +302,13 @@ const VehicleTable: React.FC = () => {
             </tr>
           )}
 
-          {/* EMPTY */}
+          {/* =====================================================
+              EMPTY
+          ===================================================== */}
+
           {!loading && vehicleCodes.length === 0 && (
             <tr>
-              <td colSpan={10} className="px-5 py-16 text-center text-gray-500">
+              <td colSpan={11} className="px-5 py-16 text-center text-gray-500">
                 <div className="flex flex-col items-center gap-2">
                   <span className="text-sm font-medium">No vehicles found</span>
                 </div>
@@ -252,61 +316,85 @@ const VehicleTable: React.FC = () => {
             </tr>
           )}
 
-          {/* DATA */}
+          {/* =====================================================
+              DATA
+          ===================================================== */}
+
           {!loading &&
-            vehicleCodes.map((vehicle, index) => (
-              <TableRow key={vehicle.id ?? index} index={index}>
+            vehicleCodes.map((v, index) => (
+              <TableRow key={v.id ?? index} index={index}>
                 {/* S.NO */}
+
                 <TableCell sticky rowIndex={index}>
                   {(currentPage - 1) * limit + index + 1}
                 </TableCell>
 
                 {/* CODE */}
+
                 <TableCell>
                   <VehicleCodeHover
-                    code={vehicle.code}
-                    seat={vehicle.seat}
-                    category={vehicle.category}
-                    config={vehicle.config}
+                    code={v.code}
+                    seat={v.seat}
+                    category={v.category}
+                    config={v.config}
                   />
                 </TableCell>
 
                 {/* SEAT */}
-                <TableCell>{vehicle.seat || "-"}</TableCell>
+
+                <TableCell>{v.seat || "-"}</TableCell>
 
                 {/* CONFIG */}
-                <TableCell>{vehicle.config || "-"}</TableCell>
+
+                <TableCell>{v.config || "-"}</TableCell>
 
                 {/* CATEGORY */}
-                <TableCell>{vehicle.category || "-"}</TableCell>
+
+                <TableCell>{v.category || "-"}</TableCell>
 
                 {/* MAKE */}
-                <TableCell>{vehicle.make || "-"}</TableCell>
+
+                <TableCell>{v.make || "-"}</TableCell>
 
                 {/* MODEL */}
-                <TableCell>{vehicle.model || "-"}</TableCell>
+
+                <TableCell>{v.model || "-"}</TableCell>
 
                 {/* VARIANT */}
-                <TableCell>{vehicle.variant || "-"}</TableCell>
+
+                <TableCell>{v.variant || "-"}</TableCell>
 
                 {/* DESCRIPTION */}
-                <TableCell
-                  className="max-w-[350px]"
-                  title={vehicle.description || ""}
-                >
+
+                <TableCell className="max-w-[350px]" title={v.description || ""}>
                   <div className="whitespace-normal leading-5">
-                    {vehicle.description || "-"}
+                    {v.description || "-"}
                   </div>
                 </TableCell>
 
                 {/* HIGHLIGHT / AMENITIES */}
-                <TableCell
-                  className="max-w-[350px]"
-                  title={vehicle.amenities || ""}
-                >
+
+                <TableCell className="max-w-[350px]" title={v.amenities || ""}>
                   <div className="whitespace-normal leading-5">
-                    {vehicle.amenities || "-"}
+                    {v.amenities || "-"}
                   </div>
+                </TableCell>
+
+                {/* =================================================
+                    ACTION
+                ================================================= */}
+
+                <TableCell>
+                  <button
+                    type="button"
+                    onClick={() => handleViewVehicle(v.id)}
+                    disabled={!v.id}
+                    title="View Vehicle"
+                    className="inline-flex h-9 items-center justify-center gap-2 rounded-lg bg-orange-500 px-3 text-xs font-bold text-white shadow-sm transition-all duration-200 hover:bg-orange-600 hover:shadow-md active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <Eye size={15} />
+                    View
+                  </button>
                 </TableCell>
               </TableRow>
             ))}
@@ -316,6 +404,7 @@ const VehicleTable: React.FC = () => {
       {/* =====================================================
           PAGINATION
       ===================================================== */}
+
       {total > 0 && (
         <div className="mt-2 shrink-0 rounded-xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
           <Pagination
@@ -331,6 +420,7 @@ const VehicleTable: React.FC = () => {
       {/* =====================================================
           ADD VEHICLE MODAL
       ===================================================== */}
+
       {showForm && (
         <div
           className="fixed inset-0 z-[999] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
@@ -341,6 +431,7 @@ const VehicleTable: React.FC = () => {
             onClick={(e) => e.stopPropagation()}
           >
             {/* CLOSE */}
+
             <button
               type="button"
               onClick={() => setShowForm(false)}
@@ -350,11 +441,25 @@ const VehicleTable: React.FC = () => {
             </button>
 
             {/* FORM */}
+
             <div className="p-6">
               <VehicleForm onSuccess={handleVehicleSuccess} />
             </div>
           </div>
         </div>
+      )}
+
+      {/* =====================================================
+          VIEW VEHICLE MODAL
+      ===================================================== */}
+
+      {showViewModal && (
+        <VehicleViewModal
+          vehicle={vehicle}
+          loading={vehicleLoading}
+          error={vehicleError}
+          onClose={handleCloseViewModal}
+        />
       )}
     </div>
   );

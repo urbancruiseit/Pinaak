@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useMemo } from 'react';
-import { Target, Filter } from 'lucide-react';
+import { useState, useEffect, useMemo } from "react";
+import { Target, Filter } from "lucide-react";
 
 export default function Dashboard() {
   const [leads, setLeads] = useState([
@@ -66,14 +66,22 @@ export default function Dashboard() {
 
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [showReminderPopup, setShowReminderPopup] = useState(false);
-  const [selectedLeadForReminder, setSelectedLeadForReminder] = useState<any>(null);
-  const [filters, setFilters] = useState({ tripStartDate: '', tripEndDate: '', status: '', source: '' });
+  const [selectedLeadForReminder, setSelectedLeadForReminder] =
+    useState<any>(null);
+  const [filters, setFilters] = useState({
+    tripStartDate: "",
+    tripEndDate: "",
+    status: "",
+    source: "",
+  });
 
   // Filter leads
   const filteredLeads = useMemo(() => {
-    return leads.filter(lead => {
-      if (filters.tripStartDate && lead.tripStartDate !== filters.tripStartDate) return false;
-      if (filters.tripEndDate && lead.tripEndDate !== filters.tripEndDate) return false;
+    return leads.filter((lead) => {
+      if (filters.tripStartDate && lead.tripStartDate !== filters.tripStartDate)
+        return false;
+      if (filters.tripEndDate && lead.tripEndDate !== filters.tripEndDate)
+        return false;
       if (filters.status && lead.status !== filters.status) return false;
       if (filters.source && lead.source !== filters.source) return false;
       return true;
@@ -83,25 +91,52 @@ export default function Dashboard() {
   // Calculate stats
   const stats = useMemo(() => {
     const totalLeads = leads.length;
-    const activeLeads = leads.filter(l => l.status !== 'Lost').length;
-    const lostLeads = leads.filter(l => l.status === 'Lost').length;
-    const swapLeads = leads.filter(l => l.extraKm !== '').length; // Assuming swap if extraKm is set
-    const kyc = leads.filter(l => l.stage >= 80).length; // Assuming KYC at stage 80+
-    const closeTrip = leads.filter(l => l.stage === 100).length;
-    const conversionRate = totalLeads > 0 ? Math.round((closeTrip / totalLeads) * 100) : 0;
-    return { totalLeads, activeLeads, lostLeads, swapLeads, kyc, closeTrip, conversionRate };
+    const activeLeads = leads.filter((l) => l.status !== "Lost").length;
+    const lostLeads = leads.filter((l) => l.status === "Lost").length;
+    const swapLeads = leads.filter((l) => l.extraKm !== "").length; // Assuming swap if extraKm is set
+    const kyc = leads.filter((l) => l.stage >= 80).length; // Assuming KYC at stage 80+
+    const closeTrip = leads.filter((l) => l.stage === 100).length;
+    const conversionRate =
+      totalLeads > 0 ? Math.round((closeTrip / totalLeads) * 100) : 0;
+    return {
+      totalLeads,
+      activeLeads,
+      lostLeads,
+      swapLeads,
+      kyc,
+      closeTrip,
+      conversionRate,
+    };
   }, [leads]);
 
   // My Day Panel calculations
   const myDay = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-    const todaysFollowups = leads.filter(l => l.followup && l.followup.includes(today));
-    const todaysTripStarts = leads.filter(l => l.tripStartDate && l.tripStartDate.startsWith(today));
-    const upcomingReminders = leads.filter(l => l.reminderDate).sort((a, b) => new Date(a.reminderDate).getTime() - new Date(b.reminderDate).getTime());
+    const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+    const todaysFollowups = leads.filter(
+      (l) => l.followup && l.followup.includes(today),
+    );
+    const todaysTripStarts = leads.filter(
+      (l) => l.tripStartDate && l.tripStartDate.startsWith(today),
+    );
+    const upcomingReminders = leads
+      .filter((l) => l.reminderDate)
+      .sort(
+        (a, b) =>
+          new Date(a.reminderDate).getTime() -
+          new Date(b.reminderDate).getTime(),
+      );
     const nextReminder = upcomingReminders[0];
     const expectedRevenue = 500000;
-    const collectedRevenue = leads.filter(l => l.stage === 100).reduce((sum, l) => sum + (parseFloat(l.price) || 0), 0);
-    return { todaysFollowups, todaysTripStarts, nextReminder, expectedRevenue, collectedRevenue };
+    const collectedRevenue = leads
+      .filter((l) => l.stage === 100)
+      .reduce((sum, l) => sum + (parseFloat(l.price) || 0), 0);
+    return {
+      todaysFollowups,
+      todaysTripStarts,
+      nextReminder,
+      expectedRevenue,
+      collectedRevenue,
+    };
   }, [leads]);
 
   useEffect(() => {
@@ -111,7 +146,8 @@ export default function Dashboard() {
         if (lead.reminderDate) {
           const reminderTime = new Date(lead.reminderDate);
           const diff = reminderTime.getTime() - now.getTime();
-          if (diff <= 60000 && diff > -60000) { // within 1 minute before or after
+          if (diff <= 60000 && diff > -60000) {
+            // within 1 minute before or after
             setSelectedLeadForReminder(lead);
             setShowReminderPopup(true);
           }
@@ -123,23 +159,35 @@ export default function Dashboard() {
 
   // Lead Health Score
   const getLeadHealth = (lead: any) => {
-    if (lead.stage >= 80) return { score: 'Strong', color: 'bg-green-500', text: 'text-white' };
-    if (lead.status === 'Hot' && lead.price) return { score: 'High Chance 🔥', color: 'bg-orange-500', text: 'text-white' };
-    if (lead.reminderDate && new Date(lead.reminderDate) < new Date()) return { score: 'Risk', color: 'bg-red-500', text: 'text-white' };
-    if (!lead.followup) return { score: 'Attention', color: 'bg-yellow-500', text: 'text-black' };
-    return { score: 'Normal', color: 'bg-gray-500', text: 'text-white' };
+    if (lead.stage >= 80)
+      return { score: "Strong", color: "bg-green-500", text: "text-white" };
+    if (lead.status === "Hot" && lead.price)
+      return {
+        score: "High Chance 🔥",
+        color: "bg-orange-500",
+        text: "text-white",
+      };
+    if (lead.reminderDate && new Date(lead.reminderDate) < new Date())
+      return { score: "Risk", color: "bg-red-500", text: "text-white" };
+    if (!lead.followup)
+      return { score: "Attention", color: "bg-yellow-500", text: "text-black" };
+    return { score: "Normal", color: "bg-gray-500", text: "text-white" };
   };
 
   // Smart Follow-up Suggestions
   const getFollowupSuggestions = (lead: any) => {
     const suggestions = [];
-    if (lead.status === 'RFQ' && !lead.price) suggestions.push('Send quotation');
-    if (lead.status === 'Hot' && !lead.followup) suggestions.push('Call customer today');
+    if (lead.status === "RFQ" && !lead.price)
+      suggestions.push("Send quotation");
+    if (lead.status === "Hot" && !lead.followup)
+      suggestions.push("Call customer today");
     if (lead.tripStartDate) {
       const tripDate = new Date(lead.tripStartDate);
       const now = new Date();
-      const diffDays = (tripDate.getTime() - now.getTime()) / (1000 * 3600 * 24);
-      if (diffDays <= 2 && diffDays > 0) suggestions.push('Confirm vehicle & payment');
+      const diffDays =
+        (tripDate.getTime() - now.getTime()) / (1000 * 3600 * 24);
+      if (diffDays <= 2 && diffDays > 0)
+        suggestions.push("Confirm vehicle & payment");
     }
     return suggestions;
   };
@@ -147,33 +195,35 @@ export default function Dashboard() {
   // Trip Readiness Checklist
   const getReadinessChecklist = (lead: any) => {
     const checks = [
-      { label: 'Price Final', done: !!lead.price },
-      { label: 'People Count', done: !!lead.people },
-      { label: 'Trip Dates', done: !!(lead.tripStartDate && lead.tripEndDate) },
-      { label: 'Reminder Set', done: !!(lead.reminderDate && lead.reminderType) },
-      { label: 'KYC Done', done: lead.status === 'Kyc' || lead.stage >= 80 }
+      { label: "Price Final", done: !!lead.price },
+      { label: "People Count", done: !!lead.people },
+      { label: "Trip Dates", done: !!(lead.tripStartDate && lead.tripEndDate) },
+      {
+        label: "Reminder Set",
+        done: !!(lead.reminderDate && lead.reminderType),
+      },
+      { label: "KYC Done", done: lead.status === "Kyc" || lead.stage >= 80 },
     ];
-    const completed = checks.filter(c => c.done).length;
+    const completed = checks.filter((c) => c.done).length;
     return { checks, completed, total: checks.length };
   };
 
   const [formData, setFormData] = useState({
-    status: '',
-    extraKm: '',
-    stage: '',
-    tripStartDate: '',
-    tripEndDate: '',
-    price: '',
-    people: '',
-    remarks: '',
-    followup: '',
-    reminderType: '',
-    reminderDate: ''
+    status: "",
+    extraKm: "",
+    stage: "",
+    tripStartDate: "",
+    tripEndDate: "",
+    price: "",
+    people: "",
+    remarks: "",
+    followup: "",
+    reminderType: "",
+    reminderDate: "",
   });
 
   return (
     <div className="min-h-screen bg-gray-100 p-6 relative">
-
       {/* My Day Panel */}
       <div className="bg-blue-600 text-white p-6 rounded-lg shadow-lg mb-6">
         <h2 className="text-2xl font-bold mb-4">Today! What's my plan</h2>
@@ -181,30 +231,43 @@ export default function Dashboard() {
           <div className="bg-white bg-opacity-20 p-4 rounded text-black">
             <h3 className="font-semibold">Today's Follow-ups</h3>
             <p className="text-2xl font-bold">{myDay.todaysFollowups.length}</p>
-            {myDay.todaysFollowups.length > 0 && <p className="text-sm">Urgent items</p>}
+            {myDay.todaysFollowups.length > 0 && (
+              <p className="text-sm">Urgent items</p>
+            )}
           </div>
           <div className="bg-white bg-opacity-20 p-4 rounded text-black">
             <h3 className="font-semibold">Today's Trip Starts</h3>
-            <p className="text-2xl font-bold">{myDay.todaysTripStarts.length}</p>
+            <p className="text-2xl font-bold">
+              {myDay.todaysTripStarts.length}
+            </p>
           </div>
           <div className="bg-white bg-opacity-20 p-4 rounded text-black">
             <h3 className="font-semibold">Next Reminder</h3>
-            <p className="text-lg">{myDay.nextReminder ? new Date(myDay.nextReminder.reminderDate).toLocaleString() : 'No upcoming reminders'}</p>
+            <p className="text-lg">
+              {myDay.nextReminder
+                ? new Date(myDay.nextReminder.reminderDate).toLocaleString()
+                : "No upcoming reminders"}
+            </p>
           </div>
-             <div className="bg-white bg-opacity-20 p-4 rounded text-black">
+          <div className="bg-white bg-opacity-20 p-4 rounded text-black">
             <h3 className="font-semibold">Today Exprense Revenue</h3>
-            <p className="text-2xl font-bold">{myDay.todaysTripStarts.length}</p>
-
+            <p className="text-2xl font-bold">
+              {myDay.todaysTripStarts.length}
+            </p>
           </div>
           <div className="bg-white bg-opacity-20 p-4 rounded text-black">
             <h3 className="font-semibold">Revenue</h3>
-            <p className="text-lg">Target: ₹{myDay.expectedRevenue.toLocaleString()}</p>
-            <p className="text-lg">Collected: ₹{myDay.collectedRevenue.toLocaleString()}</p>
+            <p className="text-lg">
+              Target: ₹{myDay.expectedRevenue.toLocaleString()}
+            </p>
+            <p className="text-lg">
+              Collected: ₹{myDay.collectedRevenue.toLocaleString()}
+            </p>
           </div>
         </div>
       </div>
 
-{/* Filters */}
+      {/* Filters */}
       <div className="bg-white p-4 rounded-lg shadow mb-6">
         <div className="flex items-center mb-4">
           <Filter className="mr-2" />
@@ -216,19 +279,23 @@ export default function Dashboard() {
             placeholder="From Date"
             className="p-2 border rounded"
             value={filters.tripStartDate}
-            onChange={(e) => setFilters({...filters, tripStartDate: e.target.value})}
+            onChange={(e) =>
+              setFilters({ ...filters, tripStartDate: e.target.value })
+            }
           />
           <input
             type="date"
             placeholder="To Date"
             className="p-2 border rounded"
             value={filters.tripEndDate}
-            onChange={(e) => setFilters({...filters, tripEndDate: e.target.value})}
+            onChange={(e) =>
+              setFilters({ ...filters, tripEndDate: e.target.value })
+            }
           />
           <select
             className="p-2 border rounded"
             value={filters.status}
-            onChange={(e) => setFilters({...filters, status: e.target.value})}
+            onChange={(e) => setFilters({ ...filters, status: e.target.value })}
           >
             <option value="">All Status</option>
             <option value="New">New</option>
@@ -242,7 +309,7 @@ export default function Dashboard() {
           <select
             className="p-2 border rounded"
             value={filters.source}
-            onChange={(e) => setFilters({...filters, source: e.target.value})}
+            onChange={(e) => setFilters({ ...filters, source: e.target.value })}
           >
             <option value="">All Sources</option>
             <option value="Call">Call</option>
@@ -279,22 +346,22 @@ export default function Dashboard() {
           <p className="text-gray-600 font-extrabold">KYC</p>
           <h2 className="text-2xl font-bold">{stats.kyc}</h2>
         </div>
-             <div className="bg-white p-4 rounded shadow">
+        <div className="bg-white p-4 rounded shadow">
           <p className="text-gray-600 font-extrabold">Close Trip</p>
           <h2 className="text-2xl font-bold">{stats.closeTrip}</h2>
         </div>
-       <div className="bg-white p-6 rounded-lg shadow">
+        <div className="bg-white p-6 rounded-lg shadow">
           <div className="flex items-center">
             <Target className="text-green-500 mr-3" size={24} />
             <div>
               <p className="text-gray-600 font-extrabold">Conversion Rate</p>
-              <p className="text-2xl font-bold text-green-600">{stats.conversionRate}%</p>
+              <p className="text-2xl font-bold text-green-600">
+                {stats.conversionRate}%
+              </p>
             </div>
           </div>
         </div>
       </div>
-     
-
 
       {/* Leads Section */}
       {/* <div className={`mb-8 mt-6 ${editingIndex !== null ? 'pointer-events-none ' : ''}`}>
@@ -428,13 +495,28 @@ export default function Dashboard() {
       {showReminderPopup && selectedLeadForReminder && (
         <div className="fixed inset-0 flex items-center justify-center z-[60] ">
           <div className="bg-red-50 p-6 rounded-lg shadow-xl w-full max-w-md border-2 border-red-500">
-            <h3 className="font-bold mb-4 text-center text-lg">Reminder Details</h3>
+            <h3 className="font-bold mb-4 text-center text-lg">
+              Reminder Details
+            </h3>
             <div className="space-y-3">
-              <p className="text-gray-700"><span className="font-semibold text-gray-900">Reason:</span> {selectedLeadForReminder.reminderType || 'N/A'}</p>
-              <p className="text-gray-700"><span className="font-semibold text-gray-900">Date & Time:</span> {selectedLeadForReminder.reminderDate || 'N/A'}</p>
+              <p className="text-gray-700">
+                <span className="font-semibold text-gray-900">Reason:</span>{" "}
+                {selectedLeadForReminder.reminderType || "N/A"}
+              </p>
+              <p className="text-gray-700">
+                <span className="font-semibold text-gray-900">
+                  Date & Time:
+                </span>{" "}
+                {selectedLeadForReminder.reminderDate || "N/A"}
+              </p>
             </div>
             <div className="flex justify-end mt-6">
-              <button onClick={() => setShowReminderPopup(false)} className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold">Close</button>
+              <button
+                onClick={() => setShowReminderPopup(false)}
+                className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg font-semibold"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
@@ -443,9 +525,18 @@ export default function Dashboard() {
   );
 }
 
-
 // Reusable Input Component
-const InputField = ({ label, type, value, onChange }: { label: string; type: string; value: string; onChange: (val: string) => void }) => (
+const InputField = ({
+  label,
+  type,
+  value,
+  onChange,
+}: {
+  label: string;
+  type: string;
+  value: string;
+  onChange: (val: string) => void;
+}) => (
   <div>
     <label className="block text-sm font-medium text-gray-700">{label}</label>
     <input
@@ -458,7 +549,15 @@ const InputField = ({ label, type, value, onChange }: { label: string; type: str
 );
 
 // Reusable Textarea Component
-const TextareaField = ({ label, value, onChange }: { label: string; value: string; onChange: (val: string) => void }) => (
+const TextareaField = ({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (val: string) => void;
+}) => (
   <div>
     <label className="block text-sm font-medium text-gray-700">{label}</label>
     <textarea
@@ -471,7 +570,17 @@ const TextareaField = ({ label, value, onChange }: { label: string; value: strin
 );
 
 // Reusable Select Component
-const SelectField = ({ label, value, onChange, options }: { label: string; value: string; onChange: (val: string) => void; options: string[] }) => (
+const SelectField = ({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (val: string) => void;
+  options: string[];
+}) => (
   <div>
     <label className="block text-sm font-medium text-gray-700">{label}</label>
     <select
@@ -480,7 +589,9 @@ const SelectField = ({ label, value, onChange, options }: { label: string; value
       className="w-full p-2 border rounded mt-1"
     >
       {options.map((option) => (
-        <option key={option} value={option}>{option}</option>
+        <option key={option} value={option}>
+          {option}
+        </option>
       ))}
     </select>
   </div>

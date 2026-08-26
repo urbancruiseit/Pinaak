@@ -15,9 +15,10 @@ import {
   MonthlyReportTwoParams,
   MonthlyReportTwoDayRecord,
   PickupMonthSummary,
-  getAgingReportApi, // ✅ नया import
-  AgingReportParams, // ✅ नया import
-  AgingReportItem, // ✅ नया import
+  getAgingReportApi,
+  AgingReportParams,
+  AgingReportItem,
+  getWebsiteToLeadAgingReportApi,
 } from "./monthlyReportApi";
 
 interface MonthlyEnquiryState {
@@ -73,8 +74,12 @@ interface MonthlyEnquiryState {
     loading: boolean;
     error: string | null;
   };
-  // ✅ नया: agingReport state (interface + initialState दोनों में missing था)
   agingReport: {
+    data: AgingReportItem[];
+    loading: boolean;
+    error: string | null;
+  };
+  websiteToLeadAgingReport: {
     data: AgingReportItem[];
     loading: boolean;
     error: string | null;
@@ -136,6 +141,12 @@ const initialState: MonthlyEnquiryState = {
   },
   // ✅ नया
   agingReport: {
+    data: [],
+    loading: false,
+    error: null,
+  },
+
+  websiteToLeadAgingReport: {
     data: [],
     loading: false,
     error: null,
@@ -250,10 +261,7 @@ export const fetchLongWeekendReport = createAsyncThunk(
 
 export const fetchMonthlyReportTwo = createAsyncThunk(
   "report/fetchMonthlyReportTwo",
-  async (
-    params: MonthlyReportTwoParams,
-    { rejectWithValue },
-  ) => {
+  async (params: MonthlyReportTwoParams, { rejectWithValue }) => {
     try {
       return await getMonthlyReportTwoApi(params);
     } catch (error: any) {
@@ -262,12 +270,23 @@ export const fetchMonthlyReportTwo = createAsyncThunk(
   },
 );
 
-// ✅ नया thunk — AgingReportParams import करके proper typing दी
 export const fetchAgingReport = createAsyncThunk(
   "report/fetchAgingReport",
   async (params: AgingReportParams = {}, { rejectWithValue }) => {
     try {
       return await getAgingReportApi(params);
+    } catch (error: any) {
+      return rejectWithValue(error.message);
+    }
+  },
+);
+
+export const fetchWebsiteToLeadAgingReport = createAsyncThunk(
+  "report/fetchWebsiteToLeadAgingReport",
+
+  async (params: AgingReportParams = {}, { rejectWithValue }) => {
+    try {
+      return await getWebsiteToLeadAgingReportApi(params);
     } catch (error: any) {
       return rejectWithValue(error.message);
     }
@@ -414,16 +433,13 @@ const monthlyReportSlice = createSlice({
         state.longWeekend.error = action.payload as string;
       })
 
-      // Aging Report (✅ अब state.agingReport interface + initialState में defined है, इसलिए error नहीं आएगा)
       .addCase(fetchAgingReport.pending, (state) => {
         state.agingReport.loading = true;
         state.agingReport.error = null;
       })
       .addCase(fetchAgingReport.fulfilled, (state, action) => {
         state.agingReport.loading = false;
-        // ✅ defensive guard — agar kabhi payload.data array na ho to bhi
-        // state.agingReport.data undefined nahi banega (jo pehle crash ki
-        // wajah tha: "Cannot read properties of undefined (reading 'length')")
+
         state.agingReport.data = Array.isArray(action.payload?.data)
           ? action.payload.data
           : [];
@@ -431,6 +447,29 @@ const monthlyReportSlice = createSlice({
       .addCase(fetchAgingReport.rejected, (state, action) => {
         state.agingReport.loading = false;
         state.agingReport.error = action.payload as string;
+      })
+
+      .addCase(fetchWebsiteToLeadAgingReport.pending, (state) => {
+        state.websiteToLeadAgingReport.loading = true;
+        state.websiteToLeadAgingReport.error = null;
+      })
+
+      .addCase(fetchWebsiteToLeadAgingReport.fulfilled, (state, action) => {
+        state.websiteToLeadAgingReport.loading = false;
+
+        state.websiteToLeadAgingReport.data = Array.isArray(
+          action.payload?.data,
+        )
+          ? action.payload.data
+          : [];
+      })
+
+      .addCase(fetchWebsiteToLeadAgingReport.rejected, (state, action) => {
+        state.websiteToLeadAgingReport.loading = false;
+
+        state.websiteToLeadAgingReport.error =
+          (action.payload as string) ||
+          "Failed to fetch website to lead aging report";
       })
 
       // Monthly Report Two

@@ -202,3 +202,4 @@ export const getSeatOptionsModel = async () => {
     throw error;
   }
 };
+

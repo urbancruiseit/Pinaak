@@ -85,6 +85,7 @@ interface NavigationState {
   showTimeEnquiryReports: boolean;
   showDateEmployeeReports: boolean;
   showagingReports: boolean;
+  showTimeTrackingReports: boolean;
   showMonthlyLeadsTwo: boolean;
   showLongWeekendLeads: boolean;
 }
@@ -114,6 +115,7 @@ const initialState: NavigationState = {
   showagingReports: false,
   showMonthlyLeadsTwo: false,
   showLongWeekendLeads: false,
+  showTimeTrackingReports: false,
 };
 
 const resetReports = (state: NavigationState) => {
@@ -124,6 +126,7 @@ const resetReports = (state: NavigationState) => {
   state.showTimeEnquiryReports = false;
   state.showDateEmployeeReports = false;
   state.showagingReports = false;
+  state.showTimeTrackingReports = false;
   state.showMonthlyLeadsTwo = false;
   state.showLongWeekendLeads = false;
 };
@@ -221,6 +224,8 @@ const navigationSlice = createSlice({
         | "dateEmployeeReports"
         | "monthlyLeadsTwo"
         | "longWeekendLeads"
+        | "agingReports"
+        | "showTimeTrackingReports"
       >,
     ) {
       resetReports(state);
@@ -247,6 +252,9 @@ const navigationSlice = createSlice({
           break;
         case "agingReports":
           state.showagingReports = true;
+          break;
+        case "TimeTrackingReports":
+          state.showTimeTrackingReports = true;
           break;
         case "monthlyLeadsTwo":
           state.showMonthlyLeadsTwo = true;
@@ -312,6 +320,24 @@ const navigationSlice = createSlice({
       const isPresalesSub = sub === "pre-sales";
       const isTelesalesSub = sub === "tele-sales";
 
+      // ────────────────────────────────────────────────────
+      // "Leadership" roles: Manager, Travel Advisor, Team
+      // Leader (incl. Team Leader-Sales), City Manager.
+      //
+      // `subDepartment` ("pre-sales" / "tele-sales") is only
+      // a meaningful signal for individual-contributor
+      // presales/telesales agents. On Manager / Travel
+      // Advisor accounts this field can be stale or
+      // incorrectly populated, which used to incorrectly
+      // route them into a telesales/presales dashboard
+      // instead of the Leads overview. Team Leader / City
+      // Manager still use subDepartment below to know which
+      // team they lead, so they're intentionally excluded
+      // from this generic guard.
+      // ────────────────────────────────────────────────────
+      const isGenericManagementRole =
+        r.includes("manager") || r.includes("advisor") || r.includes("travel");
+
       if (isSalesDept && isPresalesSub) {
         state.activeSection = "dashboard";
         state.activeDashboardView = r.includes("team leader")
@@ -330,15 +356,18 @@ const navigationSlice = createSlice({
         state.activeDashboardView = "citymanager-dashboard";
         return;
       }
-      if (isTelesalesSub) {
-        state.activeSection = "dashboard";
-        state.activeDashboardView = "telesales-dashboard";
-        return;
-      }
-      if (isPresalesSub) {
-        state.activeSection = "dashboard";
-        state.activeDashboardView = "presales-dashboard";
-        return;
+
+      if (!isGenericManagementRole) {
+        if (isTelesalesSub) {
+          state.activeSection = "dashboard";
+          state.activeDashboardView = "telesales-dashboard";
+          return;
+        }
+        if (isPresalesSub) {
+          state.activeSection = "dashboard";
+          state.activeDashboardView = "presales-dashboard";
+          return;
+        }
       }
 
       state.activeSection = "leads";

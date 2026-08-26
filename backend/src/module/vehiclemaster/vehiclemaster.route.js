@@ -4,6 +4,7 @@ import {
   getAllVehicles,
   getSeatOptions,
   getVehicleCodeList,
+  getVehiclesById,
 } from "./vehiclemaster.controller.js";
 
 const router = Router();
@@ -13,4 +14,5 @@ router.route("/").post(createVehicle);
 router.get("/seat-options", getSeatOptions);
 
 router.route("/getall").get(getAllVehicles);
+router.route("/:id").get(getVehiclesById);
 export default router;

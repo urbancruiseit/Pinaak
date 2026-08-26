@@ -9,6 +9,7 @@ import {
   setActiveLeadView,
   setActiveWebsiteView,
   setActiveMaster,
+  setActiveDashboardView,
 } from "../../features/Navigation/navigationSlice";
 
 import {
@@ -260,6 +261,9 @@ const Sidebar: React.FC = () => {
     effectiveRole.includes("team leader-sales") ||
     effectiveRole.includes("team leader sales");
 
+  const isTeamLeader =
+    effectiveRole === "team leader" || effectiveRole.includes("team leader");
+
   const isCityManagerRole =
     effectiveRole === "city manager" || effectiveRole.includes("city manager");
 
@@ -342,9 +346,33 @@ const Sidebar: React.FC = () => {
       return;
     }
 
-    if (isTelesales) {
+    // ────────────────────────────────────────────────────────
+    // Travel Advisor / Telesales: open the Telesales dashboard
+    // (components/telesales/telesalesdahboard.tsx →
+    // SalesTeamDashboardModule, rendered by page.tsx when
+    // activeSection === "dashboard" && activeDashboardView ===
+    // "telesales-dashboard").
+    //
+    // IMPORTANT: this check MUST run before any generic
+    // subDepartment-based checks. `isTelesales` is partly
+    // derived from the user's `subDepartment` field, which can
+    // be incorrectly set to "tele-sales" on other accounts too
+    // — but since Advisor is also routed here on purpose now,
+    // that's no longer a problem for Advisor specifically.
+    //   role_name: "Travel Advisor"  (role_id: 34)
+    // ────────────────────────────────────────────────────────
+    if (isAdvisor || isTelesales) {
+      dispatch(setActiveSection("dashboard"));
+      dispatch(setActiveDashboardView("telesales-dashboard"));
+      return;
+    }
+
+    // ────────────────────────────────────────────────────────
+    // Manager / Team Leader (non-sales): Leads overview.
+    // ────────────────────────────────────────────────────────
+    if (isManager || isTeamLeader) {
       dispatch(setActiveSection("leads"));
-      dispatch(setActiveLeadView("sale-lead-table"));
+      dispatch(setActiveLeadView("dashboard" as any));
       return;
     }
 
@@ -560,8 +588,6 @@ const Sidebar: React.FC = () => {
       allowedRoles: ["manager", "super-admin"] as RoleTag[],
     },
   ].filter((item) => hasAccess(item.allowedRoles));
-
-
 
   return (
     <div

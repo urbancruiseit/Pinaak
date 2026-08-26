@@ -126,9 +126,6 @@ export interface MonthlyReportTwoRecord {
   dates: Record<number, number>; // { 1: 0, 2: 3, ... 31: 0 }
 }
 
-// ✅ New: represents a single "row" (day-level) entry returned inside
-// data.rows by /reports/monthlyreporttwo. Kept flexible since backend
-// can add extra per-city / per-status keys to each row.
 export interface MonthlyReportTwoDayRecord {
   date: string;
   day?: number;
@@ -486,11 +483,6 @@ export const getAgingReportApi = async (
   params: AgingReportParams = {},
 ): Promise<AgingReportResponse> => {
   try {
-    // ✅ Backend controller (getAgingReportController) wraps the response
-    // via ApiResponse(200, data, message) where `data` is the raw array
-    // of aging rows directly — it is NOT nested as { success, data }.
-    // So axios response.data looks like:
-    //   { statusCode, success, message, data: AgingReportItem[] }
     const response = await axiosInstance.get<{
       statusCode: number;
       success: boolean;
@@ -514,11 +506,44 @@ export const getAgingReportApi = async (
 
     return {
       success: res.success ?? true,
-      // ✅ Array.isArray guard so `.length`/`.map` never crashes on the
-      // frontend even if backend returns null/undefined unexpectedly.
+
       data: Array.isArray(res.data) ? res.data : [],
     };
   } catch (error) {
     throw handleAxiosError(error, "getAgingReportApi");
+  }
+};
+
+export const getWebsiteToLeadAgingReportApi = async (
+  params: AgingReportParams = {},
+): Promise<AgingReportResponse> => {
+  try {
+    const response = await axiosInstance.get<{
+      statusCode: number;
+      success: boolean;
+      message: string;
+      data: AgingReportItem[];
+    }>("/reports/website-to-lead-aging-report", {
+      params: {
+        ...(params.year && { year: params.year }),
+        ...(params.regionId && { regionId: params.regionId }),
+        ...(params.zoneId && { zoneId: params.zoneId }),
+        ...(params.cityId && { cityId: params.cityId }),
+        ...(params.cityIds &&
+          params.cityIds.length > 0 && {
+            cityIds: params.cityIds.join(","),
+          }),
+      },
+      timeout: 15000,
+    });
+
+    const res = response.data;
+
+    return {
+      success: res.success ?? true,
+      data: Array.isArray(res.data) ? res.data : [],
+    };
+  } catch (error) {
+    throw handleAxiosError(error, "getWebsiteToLeadAgingReportApi");
   }
 };

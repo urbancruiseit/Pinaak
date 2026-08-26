@@ -33,8 +33,6 @@ export const getFollowupsByLeadIdApi = async (
       error?.response?.data || error?.message || error,
     );
 
-    throw new Error(
-      error?.response?.data?.message || "Failed to fetch followups",
-    );
+    throw error;
   }
 };

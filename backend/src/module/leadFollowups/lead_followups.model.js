@@ -237,20 +237,15 @@ export const getAllLeads = async () => {
  */
 export const getFollowupsByLeadId = async (leads_id) => {
   const [rows] = await pool.query(
-    `
-    SELECT
-      id,
-      leads_id,
-      adviser_id,
-      followup_date,
-      remark
-
-    FROM lead_followups
-
-    WHERE leads_id = ?
-
-    ORDER BY id ASC
-    `,
+    `SELECT 
+        lf.followup_date, 
+        lf.remark,
+        l.status,
+        l.lost_reason,
+        l.lostReasonDetails
+     FROM lead_followups lf
+     JOIN leads l ON l.id = lf.leads_id
+     WHERE lf.leads_id = ?`,
     [leads_id],
   );
 

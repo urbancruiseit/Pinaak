@@ -264,6 +264,10 @@ const AgingReportsModule = lazy(
   () => import("../components/pages/leads/Reports/AgingReport"),
 );
 
+const TimeTrackingReports = lazy(
+  () => import("../components/pages/leads/Reports/vehiclesTracking"),
+);
+
 const GACForm = lazy(() => import("../components/pages/Website/list/gacTable"));
 
 const GAQTable = lazy(
@@ -311,10 +315,7 @@ const masterTabs = [
         import("../components/Master/Vehicles/VehiclesMaster/vehiclesmasterTable"),
     ),
   },
-  {
-    key: "vehicle-category",
-    component: lazy(() => import("../components/Master/vehiclecategory")),
-  },
+
   {
     key: "vehicle-manager",
     component: lazy(
@@ -570,6 +571,31 @@ export default function DashboardPage() {
 
   const isTeamLeaderSales = normalizedRole === "team leader-sales";
 
+  // ── NEW: explicit flags used only to document/lock the
+  // "Leads" landing-view rule below. Not required for the
+  // logic itself (showCityManagerDashboard already excludes
+  // them), but kept so the intent is explicit in code and
+  // survives future edits.
+  //
+  //   role_name: "Travel Advisor"  (role_id: 34)
+  const isTravelAdvisor = normalizedRole === "travel advisor";
+  const isManagerRole = normalizedRole === "manager";
+  const isTeamLeaderRole = normalizedRole === "team leader";
+
+  /*
+   * LOCKED RULE — "Leads" section landing view:
+   *
+   *   - City Manager        → CityManagerDashboardModule
+   *   - Team Leader-Sales    → CityManagerDashboardModule
+   *   - Travel Advisor       → LeadsOverviewModule  (same as Manager / Team Leader)
+   *   - Manager               → LeadsOverviewModule
+   *   - Team Leader            → LeadsOverviewModule
+   *   - anything else (default) → LeadsOverviewModule
+   *
+   * Only City Manager / Team Leader-Sales get the CityManagerDashboard;
+   * every other role (including Travel Advisor, Manager, Team Leader)
+   * explicitly falls through to LeadsOverviewModule.
+   */
   const showCityManagerDashboard = isCityManager || isTeamLeaderSales;
 
   /* --------------------------------------------------------------------------
@@ -819,6 +845,14 @@ export default function DashboardPage() {
         );
       }
 
+      if (nav.showTimeTrackingReports) {
+        return (
+          <div className="space-y-6">
+            <TimeTrackingReports />
+          </div>
+        );
+      }
+
       if (nav.activeLeadView === "lead-form") {
         return (
           <div className="space-y-6">
@@ -889,6 +923,8 @@ export default function DashboardPage() {
         );
       }
 
+      // ── "Leads" default landing view (activeLeadView === "dashboard"
+      // or unset). See LOCKED RULE comment above showCityManagerDashboard.
       return (
         <div className="space-y-6">
           {showCityManagerDashboard ? (

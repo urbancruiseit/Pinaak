@@ -265,3 +265,27 @@ export const updateVehicleStatusApi = async (
     );
   }
 };
+
+// =====================================================
+// GET VEHICLE MANAGER BY ID
+// =====================================================
+
+export const getVehicleManagerByIdApi = async (
+  id: number | string,
+): Promise<Vehicle> => {
+  try {
+    const response = await axiosInstance.get(`/vehiclemanager/${id}`);
+
+    return response.data?.data;
+  } catch (error: any) {
+    console.error(
+      "❌ Error fetching vehicle manager by id:",
+      error?.response?.data || error?.message,
+    );
+
+    throw new Error(
+      error?.response?.data?.message ||
+        "Failed to fetch vehicle manager details",
+    );
+  }
+};

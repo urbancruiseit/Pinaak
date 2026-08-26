@@ -776,23 +776,6 @@ export const getAgingReport = async (year, cityIds = []) => {
       values.push(...cityIds);
     }
 
-    // ✅ FIX (timezone): l.created_at / lead_status_history.changed_at
-    // MySQL me actually UTC time store ho raha hai (IST nahi — confirmed:
-    // displayed time 09:20 AM tha jabki actual IST time 02:49 PM tha,
-    // yani ~5:30 ka farak, jo exactly UTC→IST offset hai).
-    //
-    // Isliye sirf format karna kaafi nahi tha — humein SQL me hi UTC
-    // value ko IST (+05:30) me convert karna padega, uske baad hi format
-    // karna hai. DATE_ADD(..., INTERVAL 330 MINUTE) use kar rahe hain
-    // (330 minutes = 5 hours 30 minutes) kyunki CONVERT_TZ ke liye MySQL
-    // ke timezone tables (mysql.time_zone_name) load hone chahiye, jo
-    // har server par by-default load nahi hote — DATE_ADD hamesha kaam
-    // karega, kisi extra MySQL config ki zaroorat nahi.
-    //
-    // Raw datetime columns TIMESTAMPDIFF ke liye UTC me hi use ho rahe
-    // hain (dono taraf UTC hone se difference/aging calculation par koi
-    // farak nahi padta) — sirf display wale new_time/rfq_time strings
-    // ko IST me convert karke format kiya ja raha hai.
     const query = `
       SELECT
           l.id AS lead_id,
@@ -867,6 +850,455 @@ export const getAgingReport = async (year, cityIds = []) => {
     });
   } catch (error) {
     console.error("❌ Aging Report Error:", error.message);
+    throw error;
+  }
+};
+
+export const getWebsiteToLeadAgingReport = async (year) => {
+  try {
+    const startDate = `${year}-01-01 00:00:00`;
+    const endDate = `${Number(year) + 1}-01-01 00:00:00`;
+
+    console.log("========================================");
+    console.log("🌐 WEBSITE TO LEAD AGING REPORT");
+    console.log("📅 Year:", year);
+    console.log("📅 Start Date:", startDate);
+    console.log("📅 End Date:", endDate);
+    console.log("🏙️ City Filter: DISABLED");
+    console.log("📊 Showing TOTAL DATABASE DATA");
+    console.log("========================================");
+
+    /*
+     * ============================================================
+     * STEP 1
+     * Total Website Records
+     * ============================================================
+     */
+
+    const [websiteCount] = await pool.execute(
+      `
+        SELECT COUNT(*) AS total
+        FROM website_gac
+        WHERE created_at >= ?
+          AND created_at < ?
+      `,
+      [startDate, endDate],
+    );
+
+    console.log("🌐 Website records:", websiteCount);
+
+    /*
+     * ============================================================
+     * STEP 2
+     * Website -> Customer phone matching
+     *
+     * City filter intentionally NOT used.
+     * ============================================================
+     */
+
+    const [phoneMatchCount] = await pool.execute(
+      `
+        SELECT COUNT(DISTINCT w.id) AS total
+        FROM website_gac w
+
+        INNER JOIN customers c
+          ON
+            REPLACE(
+              REPLACE(
+                REPLACE(
+                  REPLACE(
+                    REPLACE(
+                      COALESCE(c.customerPhone, ''),
+                      ' ',
+                      ''
+                    ),
+                    '-',
+                    ''
+                  ),
+                  '+',
+                  ''
+                ),
+                '(',
+                ''
+              ),
+              ')',
+              ''
+            )
+            =
+            REPLACE(
+              REPLACE(
+                REPLACE(
+                  REPLACE(
+                    REPLACE(
+                      COALESCE(w.phone, ''),
+                      ' ',
+                      ''
+                    ),
+                    '-',
+                    ''
+                  ),
+                  '+',
+                  ''
+                ),
+                '(',
+                ''
+              ),
+              ')',
+              ''
+            )
+
+        WHERE w.created_at >= ?
+          AND w.created_at < ?
+      `,
+      [startDate, endDate],
+    );
+
+    console.log("📞 Website → Customer phone matches:", phoneMatchCount);
+
+    /*
+     * ============================================================
+     * STEP 3
+     * Website -> Customer -> Lead
+     *
+     * NO CITY FILTER
+     * ============================================================
+     */
+
+    const [customerLeadCount] = await pool.execute(
+      `
+        SELECT COUNT(DISTINCT w.id) AS total
+
+        FROM website_gac w
+
+        INNER JOIN customers c
+          ON
+            REPLACE(
+              REPLACE(
+                REPLACE(
+                  REPLACE(
+                    REPLACE(
+                      COALESCE(c.customerPhone, ''),
+                      ' ',
+                      ''
+                    ),
+                    '-',
+                    ''
+                  ),
+                  '+',
+                  ''
+                ),
+                '(',
+                ''
+              ),
+              ')',
+              ''
+            )
+            =
+            REPLACE(
+              REPLACE(
+                REPLACE(
+                  REPLACE(
+                    REPLACE(
+                      COALESCE(w.phone, ''),
+                      ' ',
+                      ''
+                    ),
+                    '-',
+                    ''
+                  ),
+                  '+',
+                  ''
+                ),
+                '(',
+                ''
+              ),
+              ')',
+              ''
+            )
+
+        INNER JOIN leads l
+          ON l.customer_id = c.id
+
+        WHERE w.created_at >= ?
+          AND w.created_at < ?
+      `,
+      [startDate, endDate],
+    );
+
+    console.log("👤 Website → Customer → Lead matches:", customerLeadCount);
+
+    /*
+     * ============================================================
+     * STEP 4
+     * Lead must be created AFTER website enquiry
+     *
+     * NO CITY FILTER
+     * ============================================================
+     */
+
+    const [afterWebsiteCount] = await pool.execute(
+      `
+        SELECT COUNT(DISTINCT w.id) AS total
+
+        FROM website_gac w
+
+        INNER JOIN customers c
+          ON
+            REPLACE(
+              REPLACE(
+                REPLACE(
+                  REPLACE(
+                    REPLACE(
+                      COALESCE(c.customerPhone, ''),
+                      ' ',
+                      ''
+                    ),
+                    '-',
+                    ''
+                  ),
+                  '+',
+                  ''
+                ),
+                '(',
+                ''
+              ),
+              ')',
+              ''
+            )
+            =
+            REPLACE(
+              REPLACE(
+                REPLACE(
+                  REPLACE(
+                    REPLACE(
+                      COALESCE(w.phone, ''),
+                      ' ',
+                      ''
+                    ),
+                    '-',
+                    ''
+                  ),
+                  '+',
+                  ''
+                ),
+                '(',
+                ''
+              ),
+              ')',
+              ''
+            )
+
+        INNER JOIN leads l
+          ON l.customer_id = c.id
+
+        WHERE w.created_at >= ?
+          AND w.created_at < ?
+
+          AND l.created_at >= w.created_at
+      `,
+      [startDate, endDate],
+    );
+
+    console.log("⏱️ Lead created AFTER website enquiry:", afterWebsiteCount);
+
+    console.log("========================================");
+    console.log("🚀 Executing MAIN Website To Lead query...");
+    console.log("========================================");
+
+    /*
+     * ============================================================
+     * MAIN QUERY
+     *
+     * IMPORTANT:
+     * No cityIds
+     * No cityCondition
+     *
+     * It will return ALL matching database records.
+     * ============================================================
+     */
+
+    const query = `
+      WITH matched_leads AS (
+
+        SELECT
+
+          w.id AS website_gac_id,
+
+          l.id AS lead_id,
+
+          l.customer_id,
+
+          l.created_at AS lead_created_at,
+
+          ROW_NUMBER() OVER (
+            PARTITION BY w.id
+            ORDER BY l.created_at ASC
+          ) AS rn
+
+        FROM website_gac w
+
+        INNER JOIN customers c
+          ON
+            REPLACE(
+              REPLACE(
+                REPLACE(
+                  REPLACE(
+                    REPLACE(
+                      COALESCE(c.customerPhone, ''),
+                      ' ',
+                      ''
+                    ),
+                    '-',
+                    ''
+                  ),
+                  '+',
+                  ''
+                ),
+                '(',
+                ''
+              ),
+              ')',
+              ''
+            )
+            =
+            REPLACE(
+              REPLACE(
+                REPLACE(
+                  REPLACE(
+                    REPLACE(
+                      COALESCE(w.phone, ''),
+                      ' ',
+                      ''
+                    ),
+                    '-',
+                    ''
+                  ),
+                  '+',
+                  ''
+                ),
+                '(',
+                ''
+              ),
+              ')',
+              ''
+            )
+
+        INNER JOIN leads l
+          ON l.customer_id = c.id
+
+        WHERE
+
+          w.created_at >= ?
+          AND w.created_at < ?
+
+          AND l.created_at >= w.created_at
+      )
+
+      SELECT
+
+        w.id AS website_gac_id,
+
+        ml.lead_id AS lead_id,
+
+        w.name AS website_name,
+
+        CONCAT(
+          IFNULL(c.firstName, ''),
+          ' ',
+          IFNULL(c.lastName, '')
+        ) AS lead_name,
+
+        w.phone AS website_phone,
+
+        c.customerPhone AS lead_phone,
+
+        w.city AS website_city,
+
+        DATE_FORMAT(
+          DATE_ADD(
+            w.created_at,
+            INTERVAL 330 MINUTE
+          ),
+          '%d %b %Y, %h:%i %p'
+        ) AS website_time,
+
+        DATE_FORMAT(
+          DATE_ADD(
+            ml.lead_created_at,
+            INTERVAL 330 MINUTE
+          ),
+          '%d %b %Y, %h:%i %p'
+        ) AS lead_time,
+
+        TIMESTAMPDIFF(
+          MINUTE,
+          w.created_at,
+          ml.lead_created_at
+        ) AS total_minutes
+
+      FROM website_gac w
+
+      INNER JOIN matched_leads ml
+        ON ml.website_gac_id = w.id
+        AND ml.rn = 1
+
+      INNER JOIN customers c
+        ON c.id = ml.customer_id
+
+      WHERE
+        w.created_at >= ?
+        AND w.created_at < ?
+
+      ORDER BY w.created_at DESC
+    `;
+
+    const finalValues = [startDate, endDate, startDate, endDate];
+
+    console.log("📊 Query Values:", finalValues);
+
+    const [rows] = await pool.execute(query, finalValues);
+
+    console.log("📊 Website To Lead Aging Rows:", rows.length);
+
+    /*
+     * ============================================================
+     * FORMAT AGING
+     * ============================================================
+     */
+
+    const result = rows.map((row) => {
+      let aging = "-";
+
+      if (row.total_minutes !== null && row.total_minutes !== undefined) {
+        const totalMinutes = Number(row.total_minutes);
+
+        const days = Math.floor(totalMinutes / 1440);
+
+        const hours = Math.floor((totalMinutes % 1440) / 60);
+
+        const minutes = totalMinutes % 60;
+
+        aging = `${days} Days ${hours} Hours ${minutes} Minutes`;
+      }
+
+      return {
+        ...row,
+        aging,
+      };
+    });
+
+    console.log("📊 Final Report Data Count:", result.length);
+
+    console.log("📊 Final Report Data:", result);
+
+    console.log("========================================");
+    console.log("✅ WEBSITE TO LEAD AGING REPORT DONE");
+    console.log("========================================");
+
+    return result;
+  } catch (error) {
+    console.error("❌ Website GAC To Lead Aging Report Error:", error);
+
     throw error;
   }
 };

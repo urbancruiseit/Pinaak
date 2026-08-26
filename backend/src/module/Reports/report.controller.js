@@ -8,6 +8,7 @@ import {
   getMonthlyStatusWiseReport,
   getPreSalesLeadAssignmentReport,
   getTimeEnquiryReport,
+  getWebsiteToLeadAgingReport,
 } from "./report.model.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
@@ -188,3 +189,56 @@ export const getAgingReportController = asyncHandler(async (req, res) => {
       new ApiResponse(200, data || [], "Aging report fetched successfully"),
     );
 });
+
+export const getWebsiteToLeadAgingReportController = asyncHandler(
+  async (req, res) => {
+    console.log("\n========================================");
+    console.log("🌐 WEBSITE TO LEAD AGING REPORT API");
+    console.log("========================================");
+
+    console.log("📥 req.query:", req.query);
+
+    const year = req.query.year
+      ? parseInt(req.query.year)
+      : new Date().getFullYear();
+
+    console.log("📅 Year:", year);
+
+    if (isNaN(year) || year < 2000 || year > 2100) {
+      console.log("❌ Invalid year:", year);
+
+      throw new ApiError(400, "Invalid year parameter");
+    }
+
+    const { cityIds: scopedCityIds } = await findZoneCityRegion(req);
+
+    console.log("🏙️ scopedCityIds:", scopedCityIds);
+
+    const cityIds =
+      scopedCityIds?.length > 0 ? scopedCityIds : req.user?.city_ids || [];
+
+    console.log("🏙️ Final cityIds:", cityIds);
+
+    console.log("📡 Calling getWebsiteToLeadAgingReport...");
+
+    const data = await getWebsiteToLeadAgingReport(year, cityIds);
+
+    console.log("📊 Report data count:", data?.length || 0);
+
+    console.log("📊 Report data:", data);
+
+    console.log("========================================");
+    console.log("✅ WEBSITE TO LEAD AGING REPORT DONE");
+    console.log("========================================\n");
+
+    return res
+      .status(200)
+      .json(
+        new ApiResponse(
+          200,
+          data || [],
+          "Website to Lead aging report fetched successfully",
+        ),
+      );
+  },
+);

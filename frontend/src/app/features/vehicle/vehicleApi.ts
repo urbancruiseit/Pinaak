@@ -56,3 +56,23 @@ export const getSeatOptionsApi = async (): Promise<string[]> => {
     throw new Error(error.response?.data?.message || "Failed to fetch seat options");
   }
 };
+
+
+export const getVehicleByIdApi = async (
+  id: string
+): Promise<Vehicle> => {
+  try {
+    const response = await axiosInstance.get<{
+      statusCode: number;
+      data: Vehicle;
+      message: string;
+      success: boolean;
+    }>(`/vehicle/${id}`);
+
+    return response.data.data;
+  } catch (error: any) {
+    throw new Error(
+      error?.response?.data?.message || "Failed to fetch vehicle"
+    );
+  }
+};

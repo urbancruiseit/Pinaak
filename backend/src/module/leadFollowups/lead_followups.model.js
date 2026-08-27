@@ -235,12 +235,12 @@ export const getAllLeads = async () => {
 export const getFollowupsByLeadId = async (leads_id) => {
   const [rows] = await pool.query(
     `
-    SELECT
-        lf.followup_date,
+    SELECT 
+        lf.followup_date, 
         lf.remark,
 
-        l.status AS current_status,
-        l.lost_reason,
+        l.status AS current_status, 
+        l.lost_reason, 
         l.lostReasonDetails,
 
         COALESCE(
@@ -251,7 +251,11 @@ export const getFollowupsByLeadId = async (leads_id) => {
                         'old_status', lsh.old_status,
                         'new_status', lsh.new_status,
                         'changed_by', lsh.changed_by,
-                        'changed_at', lsh.changed_at
+                        'changed_at',
+DATE_FORMAT(
+    DATE_ADD(lsh.changed_at, INTERVAL 330 MINUTE),
+    '%Y-%m-%d %H:%i:%s'
+)
                     )
                 )
                 FROM lead_status_history lsh
@@ -272,7 +276,6 @@ export const getFollowupsByLeadId = async (leads_id) => {
     [leads_id],
   );
 
-  // Convert status_history string → actual JSON array
   const formattedRows = rows.map((row) => ({
     ...row,
     status_history:

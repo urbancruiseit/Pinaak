@@ -1,3 +1,14 @@
+import type { StaticImageData } from "next/image";
+
+import bodyTypeImage from "../../../../assets/bodytype.png";
+import seatsImage from "../../../../assets/seats.png";
+import audioImage from "../../../../assets/audio.jpg";
+import luggageImage from "../../../../assets/luggage.png";
+import windowTypeImage from "../../../../assets/window.png";
+import curtainTypeImage from "../../../../assets/curtain.png";
+import acImage from "../../../../assets/acvent.png";
+import videoImage from "../../../../assets/pinnak.png";
+
 export interface VariantOption {
   label: string;
   code: string;
@@ -10,6 +21,7 @@ export interface AmenityOption {
 
 export interface AmenityCategory {
   label: string;
+  image: StaticImageData;
   options: AmenityOption[];
 }
 
@@ -22,32 +34,26 @@ export const VARIANT_OPTIONS: VariantOption[] = [
   { code: "UC Class", label: "UC Class" },
 ];
 
-// "Economy -ECO" jaisa combined string banata hai
 export const getVariantDisplay = (label: string, code: string): string =>
   `${code} - ${label}`;
 
-// Dropdown me dikhane ke liye combined display list
 export const VARIANT_DISPLAY_OPTIONS: string[] = VARIANT_OPTIONS.map((v) =>
   getVariantDisplay(v.label, v.code),
 );
 
-// "Economy -ECO" select hone par sirf CODE nikaalne ke liye (backend ke liye)
 export const getVariantCodeByDisplay = (display: string): string => {
   const found = VARIANT_OPTIONS.find(
     (v) => getVariantDisplay(v.label, v.code) === display,
   );
+
   return found ? found.code : "";
 };
 
-// Backend se CODE aaye (edit form ke case me) to wapas "Economy -ECO" banane ke liye
 export const getVariantDisplayByCode = (code: string): string => {
   const found = VARIANT_OPTIONS.find((v) => v.code === code);
   return found ? getVariantDisplay(found.label, found.code) : "";
 };
 
-// =====================================================
-// MAKE
-// =====================================================
 export const MAKE_OPTIONS: string[] = [
   "Ashok Leyland",
   "Bharat Benz",
@@ -71,9 +77,6 @@ export const MODEL_OPTIONS: string[] = [
   "Vellfire",
 ];
 
-// =====================================================
-// CATEGORY
-// =====================================================
 export const CATEGORY_OPTIONS: string[] = [
   "Car",
   "SUV",
@@ -93,6 +96,7 @@ export const CATEGORY_OPTIONS: string[] = [
 export const AMENITIES_OPTIONS: AmenityCategory[] = [
   {
     label: "Body Type",
+    image: bodyTypeImage,
     options: [
       { code: "MOD", label: "Modified" },
       { code: "RAW", label: "Rohit Auto Wheel" },
@@ -104,6 +108,7 @@ export const AMENITIES_OPTIONS: AmenityCategory[] = [
 
   {
     label: "Seats",
+    image: seatsImage,
     options: [
       { code: "NRS", label: "Non-Recline Seat" },
       { code: "RS", label: "Recline Seats" },
@@ -114,68 +119,140 @@ export const AMENITIES_OPTIONS: AmenityCategory[] = [
       { code: "ESM", label: "Electronic Seat Massager" },
       { code: "ESV", label: "Electronic Seat Ventilation" },
       { code: "SS", label: "Semi Sleeper" },
-      { code: "HR AR LR", label: "Head Rest, Arm Rest, Leg Rest" },
-      { code: "MCP 4/8/12", label: "Mobile Charging Points" },
+      {
+        code: "HR AR LR",
+        label: "Head Rest, Arm Rest, Leg Rest",
+      },
+      {
+        code: "MCP 4/8/12",
+        label: "Mobile Charging Points",
+      },
     ],
   },
 
   {
     label: "Audio",
+    image: audioImage,
     options: [
       { code: "MS", label: "Basic Music System" },
-      { code: "MSB", label: "Music System + Bluetooth" },
-      { code: "MSBA", label: "Music System + BT + Android Auto" },
-      { code: "SPK", label: "Normal Speakers" },
-      { code: "SPK JB / SPK PI", label: "Power Speakers - JBL / Pioneer" },
+      {
+        code: "MSB",
+        label: "Music System + Bluetooth",
+      },
+      {
+        code: "MSBA",
+        label: "Music System + BT + Android Auto",
+      },
+      {
+        code: "SPK",
+        label: "Normal Speakers",
+      },
+      {
+        code: "SPK JB / SPK PI",
+        label: "Power Speakers - JBL / Pioneer",
+      },
       {
         code: "SPK JB SUB / SPK PI SUB",
         label: "Power Speakers + JBL / Pioneer + Sub-Woofer",
       },
     ],
   },
-
   {
     label: "Luggage",
+    image: luggageImage,
     options: [
-      { code: "LRC", label: "Roof Carrier" },
-      { code: "LRB", label: "Rear Boot Luggage" },
-      { code: "LSB", label: "Side Bottom" },
-      { code: "LHD", label: "Head Rack, Inside Cabin Luggage" },
+      {
+        code: "LRC",
+        label: "Roof Carrier",
+      },
+      {
+        code: "LRB",
+        label: "Rear Boot Luggage",
+      },
+      {
+        code: "LSB",
+        label: "Side Bottom",
+      },
+      {
+        code: "LHD",
+        label: "Head Rack, Inside Cabin Luggage",
+      },
     ],
   },
+
   {
     label: "Window Type",
+    image: windowTypeImage,
     options: [
-      { code: "SLG", label: "Sliding Glass" },
-      { code: "PKG", label: "Pack Glass" },
-      { code: "PKGW", label: "Pack Glass + Small Openable Window" },
+      {
+        code: "SLG",
+        label: "Sliding Glass",
+      },
+      {
+        code: "PKG",
+        label: "Pack Glass",
+      },
+      {
+        code: "PKGW",
+        label: "Pack Glass + Small Openable Window",
+      },
     ],
   },
 
   {
     label: "Curtain Type",
+    image: curtainTypeImage,
     options: [
-      { code: "NC", label: "No Curtains due to Govt." },
-      { code: "CR", label: "Cloth or Rexene" },
-      { code: "RW", label: "Roller Blinds" },
+      {
+        code: "NC",
+        label: "No Curtains due to Govt.",
+      },
+      {
+        code: "CR",
+        label: "Cloth or Rexene",
+      },
+      {
+        code: "RW",
+        label: "Roller Blinds",
+      },
     ],
   },
 
   {
     label: "A/C",
+    image: acImage,
     options: [
-      { code: "F&R", label: "Front & Rear A/C Vents" },
-      { code: "IAV", label: "Individual A/C Vents" },
-      { code: "IAVL", label: "Individual A/C Vents + Reading Lights" },
+      {
+        code: "F&R",
+        label: "Front & Rear A/C Vents",
+      },
+      {
+        code: "IAV",
+        label: "Individual A/C Vents",
+      },
+      {
+        code: "IAVL",
+        label: "Individual A/C Vents + Reading Lights",
+      },
     ],
   },
 
   {
     label: "Video",
+    image: videoImage,
     options: [
-      { code: "TV", label: "TV Non-HD" },
-      { code: "TVHD", label: "HD TV" },
-      { code: "TVHDS", label: "HD Smart TV" },
+      {
+        code: "TV",
+        label: "TV Non-HD",
+      },
+      {
+        code: "TVHD",
+        label: "HD TV",
+      },
+      {
+        code: "TVHDS",
+        label: "HD Smart TV",
+      },
     ],
   },
 ];

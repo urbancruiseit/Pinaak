@@ -811,9 +811,7 @@ const CustomerPersonal: React.FC<CustomerPersonalProps> = ({
 
   return (
     <div className="w-full min-h-screen bg-gray-50">
-      {/* ========================================================
-          HEADER
-      ======================================================== */}
+   
 
       <div className="sticky top-0 z-30">
         <FormPageHeader
@@ -827,15 +825,8 @@ const CustomerPersonal: React.FC<CustomerPersonalProps> = ({
         />
       </div>
 
-      {/* ========================================================
-          MAIN CONTAINER
-      ======================================================== */}
-
       <div className="p-4 md:p-6 w-full mx-auto bg-white shadow-xl rounded-lg my-6">
-        {/* ======================================================
-            ERROR
-        ====================================================== */}
-
+     
         {(submitError || customerError) && (
           <div className="flex items-start gap-2 p-4 mb-6 text-red-700 bg-red-50 rounded-lg border border-red-200">
             <AlertCircle size={20} className="mt-0.5 shrink-0" />
@@ -843,10 +834,6 @@ const CustomerPersonal: React.FC<CustomerPersonalProps> = ({
             <span className="font-medium">{submitError || customerError}</span>
           </div>
         )}
-
-        {/* ======================================================
-            SUCCESS
-        ====================================================== */}
 
         {isSuccess && (
           <div className="fixed top-6 right-6 z-50 flex items-center gap-2 px-5 py-3 text-green-700 bg-green-50 border border-green-300 rounded-lg shadow-lg">
@@ -858,14 +845,10 @@ const CustomerPersonal: React.FC<CustomerPersonalProps> = ({
           </div>
         )}
 
-        {/* ======================================================
-            FORM
-        ====================================================== */}
+      
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* ====================================================
-              SECTION 1
-          ==================================================== */}
+      
 
           <div className="border rounded-xl p-6 bg-green-50">
             <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4 mb-6 pb-3 border-b">
@@ -876,9 +859,6 @@ const CustomerPersonal: React.FC<CustomerPersonalProps> = ({
                 Customer Information
               </h3>
 
-              {/* ==================================================
-                  CUSTOMER SEARCH
-              ================================================== */}
 
               {isCreateMode && (
                 <div className="relative w-full lg:w-96">
@@ -998,10 +978,6 @@ const CustomerPersonal: React.FC<CustomerPersonalProps> = ({
               )}
             </div>
 
-            {/* ==================================================
-                CUSTOMER FIELDS
-            ================================================== */}
-
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
               {/* FIRST NAME */}
 
@@ -1035,7 +1011,6 @@ const CustomerPersonal: React.FC<CustomerPersonalProps> = ({
                 )}
               </div>
 
-              {/* MIDDLE NAME */}
 
               <div>
                 <label className="block text-md font-extrabold text-gray-700 mb-1">
@@ -1060,7 +1035,6 @@ const CustomerPersonal: React.FC<CustomerPersonalProps> = ({
                 </div>
               </div>
 
-              {/* LAST NAME */}
 
               <div>
                 <label className="block text-md font-extrabold text-gray-700 mb-1">
@@ -1146,7 +1120,6 @@ const CustomerPersonal: React.FC<CustomerPersonalProps> = ({
                 )}
               </div>
 
-              {/* ALTERNATE PHONE */}
 
               <div>
                 <label className="block text-md font-extrabold text-gray-700 mb-1">

@@ -2,8 +2,23 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { Target, Filter } from "lucide-react";
+import { useSelector } from "react-redux";
+import type { RootState } from "@/app/redux/store";
+import { useAppDispatch, useAppSelector } from "@/hooks/useRedux";
+import { getTodayFollowups } from "@/app/features/leadsFollowups/lead_followupsSlice";
 
 export default function Dashboard() {
+  const { currentUser } = useSelector((state: RootState) => state.user);
+
+  const dispatch = useAppDispatch();
+
+  const { todayFollowups, todayFollowupsLoading } = useAppSelector(
+    (state) => state.followUp,
+  );
+
+  useEffect(() => {
+    dispatch(getTodayFollowups());
+  }, [dispatch]);
   const [leads, setLeads] = useState([
     {
       platform: "Google",
@@ -225,44 +240,98 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-gray-100 p-6 relative">
       {/* My Day Panel */}
-      <div className="bg-blue-600 text-white p-6 rounded-lg shadow-lg mb-6">
-        <h2 className="text-2xl font-bold mb-4">Today! What's my plan</h2>
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-          <div className="bg-white bg-opacity-20 p-4 rounded text-black">
-            <h3 className="font-semibold">Today's Follow-ups</h3>
-            <p className="text-2xl font-bold">{myDay.todaysFollowups.length}</p>
-            {myDay.todaysFollowups.length > 0 && (
-              <p className="text-sm">Urgent items</p>
-            )}
+      <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-6 text-gray-800 shadow-lg">
+        {/* Header */}
+        <div className="mb-6 flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+          <div>
+            <p className="text-2xl font-semibold text-gray-800">
+              Hey {currentUser?.aliasName}
+            </p>
+
+            <p className="mt-1 text-md italic text-gray-500">
+              Let’s make today something new. 🚀
+            </p>
+
+            <h2 className="mt-3 text-md font-bold tracking-tight text-gray-800">
+              Today! What's My Plan?
+            </h2>
           </div>
-          <div className="bg-white bg-opacity-20 p-4 rounded text-black">
-            <h3 className="font-semibold">Today's Trip Starts</h3>
-            <p className="text-2xl font-bold">
-              {myDay.todaysTripStarts.length}
+
+          <div className="rounded-lg bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-700">
+            Today
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          {/* Today's Follow-ups */}
+
+          {/* Today's Follow-ups */}
+          <div className="rounded-xl border border-orange-200 bg-orange-50 p-4 shadow-sm transition hover:shadow-md">
+            <h3 className="text-sm font-semibold text-orange-700">
+              Today's Follow-ups
+            </h3>
+
+            <p className="mt-2 text-3xl font-bold text-orange-800">
+              {todayFollowupsLoading ? "..." : todayFollowups.length}
+            </p>
+
+            <p className="mt-1 text-xs text-orange-600">
+              {todayFollowups.length > 0
+                ? "Urgent items"
+                : "No followups for today"}
             </p>
           </div>
-          <div className="bg-white bg-opacity-20 p-4 rounded text-black">
-            <h3 className="font-semibold">Next Reminder</h3>
-            <p className="text-lg">
+
+          {/* Today's Trip Starts */}
+          <div className="rounded-xl border border-green-200 bg-green-50 p-4 shadow-sm transition hover:shadow-md">
+            <h3 className="text-sm font-semibold text-green-700">
+              Today's Trip Starts
+            </h3>
+
+            <p className="mt-2 text-3xl font-bold text-green-800">
+              {myDay.todaysTripStarts.length}
+            </p>
+
+            <p className="mt-1 text-xs text-green-600">Trips starting today</p>
+          </div>
+
+          {/* Next Reminder */}
+          <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4 shadow-sm transition hover:shadow-md">
+            <h3 className="text-sm font-semibold text-yellow-700">
+              Next Reminder
+            </h3>
+
+            <p className="mt-2 text-lg font-bold text-yellow-800">
               {myDay.nextReminder
                 ? new Date(myDay.nextReminder.reminderDate).toLocaleString()
-                : "No upcoming reminders"}
+                : "No reminder"}
             </p>
+
+            <p className="mt-1 text-xs text-yellow-600">Upcoming reminder</p>
           </div>
-          <div className="bg-white bg-opacity-20 p-4 rounded text-black">
-            <h3 className="font-semibold">Today Exprense Revenue</h3>
-            <p className="text-2xl font-bold">
-              {myDay.todaysTripStarts.length}
+
+          {/* Today's Expense Revenue */}
+          <div className="rounded-xl border border-purple-200 bg-purple-50 p-4 shadow-sm transition hover:shadow-md">
+            <h3 className="text-sm font-semibold text-purple-700">
+              Today's Expense Revenue
+            </h3>
+
+            <p className="mt-2 text-3xl font-bold text-purple-800">
+              ₹{myDay.todaysTripStarts.length.toLocaleString()}
             </p>
+
+            <p className="mt-1 text-xs text-purple-600">Today's total</p>
           </div>
-          <div className="bg-white bg-opacity-20 p-4 rounded text-black">
-            <h3 className="font-semibold">Revenue</h3>
-            <p className="text-lg">
-              Target: ₹{myDay.expectedRevenue.toLocaleString()}
+
+          {/* Revenue */}
+          <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 shadow-sm transition hover:shadow-md">
+            <h3 className="text-sm font-semibold text-rose-700">Revenue</h3>
+
+            <p className="mt-2 text-3xl font-bold text-rose-800">
+              ₹{myDay.collectedRevenue.toLocaleString()}
             </p>
-            <p className="text-lg">
-              Collected: ₹{myDay.collectedRevenue.toLocaleString()}
-            </p>
+
+            <p className="mt-1 text-xs text-rose-600">Total revenue</p>
           </div>
         </div>
       </div>

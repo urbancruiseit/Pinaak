@@ -2,7 +2,11 @@ import { asyncHandler } from "../../utils/asyncHandler.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 
-import { getAllLeads, getFollowupsByLeadId } from "./lead_followups.model.js";
+import {
+  getAllLeads,
+  getFollowupsByLeadId,
+  getTodayFollowupsWithDetailsByAdviserId,
+} from "./lead_followups.model.js";
 
 const getAllLeadsController = asyncHandler(async (req, res) => {
   const leads = await getAllLeads();
@@ -31,7 +35,39 @@ const getFollowupsByLeadIdController = asyncHandler(async (req, res) => {
 
   return res
     .status(200)
-    .json(new ApiResponse(200, followups, "Followups fetched successfully"));
+    .json(
+      new ApiResponse(
+        200,
+        followups,
+        "Followups and status history fetched successfully",
+      ),
+    );
 });
 
-export { getAllLeadsController, getFollowupsByLeadIdController };
+const getTodayFollowupCount = asyncHandler(async (req, res) => {
+  const adviser_id = req.user.id;
+
+  if (!adviser_id) {
+    throw new ApiError(404, "Adviser ID is required");
+  }
+
+  const todayFollowups =
+    await getTodayFollowupsWithDetailsByAdviserId(adviser_id);
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        totalFollowups: todayFollowups.length,
+        followups: todayFollowups,
+      },
+      "Today's followups fetched successfully",
+    ),
+  );
+});
+
+export {
+  getAllLeadsController,
+  getFollowupsByLeadIdController,
+  getTodayFollowupCount,
+};

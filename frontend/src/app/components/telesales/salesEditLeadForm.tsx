@@ -1566,7 +1566,7 @@ const EditLeadForm: React.FC<{
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 mt-4">
+            <div className="grid grid-cols-2 gap-4 mt-4">
               <div>
                 <label className="block text-md font-extrabold text-gray-700 mb-1">
                   Remark
@@ -1584,9 +1584,74 @@ const EditLeadForm: React.FC<{
                   />
                 </div>
               </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-md font-extrabold text-gray-700">
+                    Follow Up
+                  </label>
+
+                  {/* Add Button */}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      append({
+                        followup_date: "",
+                        followup_remark: "",
+                      })
+                    }
+                    className="flex items-center gap-1 text-sm text-green-600 hover:text-green-800 font-semibold"
+                  >
+                    <Plus size={16} />
+                    Add
+                  </button>
+                </div>
+
+                <div className="flex flex-col gap-2 max-h-48 overflow-y-auto pr-1">
+                  {fields.length === 0 && (
+                    <p className="text-sm text-gray-400 italic">
+                      No follow ups added yet.
+                    </p>
+                  )}
+
+                  {fields.map((field, index) => (
+                    <div
+                      key={field.id}
+                      className="flex gap-2 items-start border border-gray-200 rounded-md p-2 bg-gray-50"
+                    >
+                      {/* Follow Up Date & Time */}
+                      <input
+                        type="datetime-local"
+                        {...register(`followUps.${index}.followup_date` as any)}
+                        className="border border-gray-300 rounded-md px-2 py-1.5 text-sm bg-white w-48 shrink-0"
+                      />
+
+                      {/* Follow Up Remark */}
+                      <textarea
+                        {...register(
+                          `followUps.${index}.followup_remark` as any,
+                        )}
+                        rows={2}
+                        placeholder="Enter follow up note..."
+                        className="flex-1 border border-gray-300 rounded-md px-2 py-1.5 text-sm bg-white resize-none"
+                      />
+
+                      {/* Delete */}
+                      <button
+                        type="button"
+                        onClick={() => remove(index)}
+                        className="text-red-400 hover:text-red-600 mt-1 shrink-0"
+                        title="Remove follow up"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-4 mt-4 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 mt-4 md:grid-cols-2">
               <div>
                 <label className="block text-md font-extrabold text-gray-700 mb-1">
                   LOST REASON
@@ -1624,70 +1689,6 @@ const EditLeadForm: React.FC<{
                     className="absolute left-3 top-3 text-green-600"
                     size={20}
                   />
-                </div>
-              </div>
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="block text-md font-extrabold text-gray-700">
-                    Follow Up
-                  </label>
-
-                  {/* Add Button */}
-                  <button
-                    type="button"
-                    onClick={() =>
-                      append({
-                        followup_date: "",
-                        followup_remark: "",
-                      })
-                    }
-                    className="flex items-center gap-1 text-sm text-green-600 hover:text-green-800 font-semibold"
-                  >
-                    <Plus size={16} />
-                    Add
-                  </button>
-                </div>
-
-                <div className="flex flex-col gap-2 max-h-48 overflow-y-auto pr-1">
-                  {fields.length === 0 && (
-                    <p className="text-sm text-gray-400 italic">
-                      No follow ups added yet.
-                    </p>
-                  )}
-
-                  {fields.map((field, index) => (
-                    <div
-                      key={field.id}
-                      className="flex gap-2 items-start border border-gray-200 rounded-md p-2 bg-gray-50"
-                    >
-                      {/* Follow Up Date */}
-                      <input
-                        type="date"
-                        {...register(`followUps.${index}.followup_date` as any)}
-                        className="border border-gray-300 rounded-md px-2 py-1.5 text-sm bg-white w-36 shrink-0"
-                      />
-
-                      {/* Follow Up Remark */}
-                      <textarea
-                        {...register(
-                          `followUps.${index}.followup_remark` as any,
-                        )}
-                        rows={2}
-                        placeholder="Enter follow up note..."
-                        className="flex-1 border border-gray-300 rounded-md px-2 py-1.5 text-sm bg-white resize-none"
-                      />
-
-                      {/* Delete */}
-                      <button
-                        type="button"
-                        onClick={() => remove(index)}
-                        className="text-red-400 hover:text-red-600 mt-1 shrink-0"
-                        title="Remove follow up"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  ))}
                 </div>
               </div>
             </div>

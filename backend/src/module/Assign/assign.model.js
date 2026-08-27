@@ -75,24 +75,39 @@ export const getLeadsByAdvisorId = async (
     const offset = (pageNumber - 1) * limitNumber;
 
     const now = new Date();
+
     const selectedMonth = month ? parseInt(month, 10) : null;
+
     const selectedYear = year ? parseInt(year, 10) : now.getFullYear();
 
+    /* =====================================================
+       BASE WHERE CLAUSE
+    ====================================================== */
+
     let whereClause = `
-WHERE 
-  (l.unwanted_status IS NULL OR l.unwanted_status != 'unwanted')
-  AND NOT EXISTS (
-    SELECT 1
-    FROM swap_leads sl
-    WHERE sl.lead_id = l.id
-  )
-`;
+      WHERE
+        (l.unwanted_status IS NULL OR l.unwanted_status != 'unwanted')
+        AND NOT EXISTS (
+          SELECT 1
+          FROM swap_leads sl
+          WHERE sl.lead_id = l.id
+        )
+    `;
+
     let values = [];
+
+    /* =====================================================
+       ADVISOR FILTER
+    ====================================================== */
 
     if (Array.isArray(advisorId)) {
       if (advisorId.length > 0) {
         const placeholders = advisorId.map(() => "?").join(",");
-        whereClause += ` AND l.advisor_id IN (${placeholders})`;
+
+        whereClause += `
+          AND l.advisor_id IN (${placeholders})
+        `;
+
         values.push(...advisorId);
       } else {
         whereClause += ` AND 1 = 0`;
@@ -104,126 +119,308 @@ WHERE
       whereClause += ` AND l.advisor_id IS NOT NULL`;
     }
 
+    /* =====================================================
+       AGE FILTER
+       SUPPORTS MULTIPLE CHECKBOX SELECTION
+       
+       Example:
+       ["0-5", "11-15", "31-60"]
+    ====================================================== */
+
     if (ageFilter) {
-      switch (ageFilter) {
-        case "0-5":
-          whereClause += ` AND DATEDIFF(CURDATE(), l.date) BETWEEN 0 AND 5`;
-          break;
-        case "6-10":
-          whereClause += ` AND DATEDIFF(CURDATE(), l.date) BETWEEN 6 AND 10`;
-          break;
-        case "11-15":
-          whereClause += ` AND DATEDIFF(CURDATE(), l.date) BETWEEN 11 AND 15`;
-          break;
-        case "16-30":
-          whereClause += ` AND DATEDIFF(CURDATE(), l.date) BETWEEN 16 AND 30`;
-          break;
-        case "31-60":
-          whereClause += ` AND DATEDIFF(CURDATE(), l.date) BETWEEN 31 AND 60`;
-          break;
-        case "60+":
-          whereClause += ` AND DATEDIFF(CURDATE(), l.date) >= 60`;
-          break;
+      let selectedAgeFilters = [];
+
+      if (Array.isArray(ageFilter)) {
+        selectedAgeFilters = ageFilter
+          .map((age) => String(age).trim())
+          .filter(Boolean);
+      } else if (typeof ageFilter === "string") {
+        /*
+          If frontend sends:
+          "0-5,11-15,31-60"
+        */
+        selectedAgeFilters = ageFilter
+          .split(",")
+          .map((age) => age.trim())
+          .filter(Boolean);
+      }
+
+      if (selectedAgeFilters.length > 0) {
+        const ageConditions = [];
+
+        selectedAgeFilters.forEach((age) => {
+          switch (age) {
+            case "0-5":
+              ageConditions.push(`DATEDIFF(CURDATE(), l.date) BETWEEN 0 AND 5`);
+              break;
+
+            case "6-10":
+              ageConditions.push(
+                `DATEDIFF(CURDATE(), l.date) BETWEEN 6 AND 10`,
+              );
+              break;
+
+            case "11-15":
+              ageConditions.push(
+                `DATEDIFF(CURDATE(), l.date) BETWEEN 11 AND 15`,
+              );
+              break;
+
+            case "16-30":
+              ageConditions.push(
+                `DATEDIFF(CURDATE(), l.date) BETWEEN 16 AND 30`,
+              );
+              break;
+
+            case "31-60":
+              ageConditions.push(
+                `DATEDIFF(CURDATE(), l.date) BETWEEN 31 AND 60`,
+              );
+              break;
+
+            case "60+":
+              ageConditions.push(`DATEDIFF(CURDATE(), l.date) >= 60`);
+              break;
+
+            default:
+              break;
+          }
+        });
+
+        /*
+          Multiple selected age ranges
+          should work with OR.
+        */
+
+        if (ageConditions.length > 0) {
+          whereClause += `
+            AND (
+              ${ageConditions.join(" OR ")}
+            )
+          `;
+        }
       }
     }
+
+    /* =====================================================
+       DAYS FILTER
+    ====================================================== */
 
     if (daysFilter) {
-      if (
-        ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"].includes(daysFilter)
-      ) {
-        whereClause += ` AND l.days = ${Number(daysFilter)}`;
-      } else if (daysFilter === "11-15") {
-        whereClause += ` AND l.days BETWEEN 11 AND 15`;
-      } else if (daysFilter === "16-30") {
-        whereClause += ` AND l.days BETWEEN 16 AND 30`;
-      } else if (daysFilter === "31-60") {
-        whereClause += ` AND l.days BETWEEN 31 AND 60`;
-      } else if (daysFilter === "60+") {
-        whereClause += ` AND l.days > 60`;
+      const selectedDaysFilter = Array.isArray(daysFilter)
+        ? daysFilter
+        : [daysFilter];
+
+      const daysConditions = [];
+
+      selectedDaysFilter.forEach((day) => {
+        const value = String(day).trim();
+
+        if (
+          ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"].includes(value)
+        ) {
+          daysConditions.push(`l.days = ${Number(value)}`);
+        } else if (value === "11-15") {
+          daysConditions.push(`l.days BETWEEN 11 AND 15`);
+        } else if (value === "16-30") {
+          daysConditions.push(`l.days BETWEEN 16 AND 30`);
+        } else if (value === "31-60") {
+          daysConditions.push(`l.days BETWEEN 31 AND 60`);
+        } else if (value === "60+") {
+          daysConditions.push(`l.days > 60`);
+        }
+      });
+
+      if (daysConditions.length > 0) {
+        whereClause += `
+          AND (
+            ${daysConditions.join(" OR ")}
+          )
+        `;
       }
     }
+
+    /* =====================================================
+       PAX FILTER
+    ====================================================== */
 
     if (paxFilter) {
-      switch (paxFilter) {
-        case "1-4":
-          whereClause += ` AND l.passengerTotal BETWEEN 1 AND 4`;
-          break;
-        case "5-7":
-          whereClause += ` AND l.passengerTotal BETWEEN 5 AND 7`;
-          break;
-        case "8-13":
-          whereClause += ` AND l.passengerTotal BETWEEN 8 AND 13`;
-          break;
-        case "14-20":
-          whereClause += ` AND l.passengerTotal BETWEEN 14 AND 20`;
-          break;
-        case "21-30":
-          whereClause += ` AND l.passengerTotal BETWEEN 21 AND 30`;
-          break;
-        case "31-40":
-          whereClause += ` AND l.passengerTotal BETWEEN 31 AND 40`;
-          break;
-        case "41-50":
-          whereClause += ` AND l.passengerTotal BETWEEN 41 AND 50`;
-          break;
-        case "51-60":
-          whereClause += ` AND l.passengerTotal BETWEEN 51 AND 60`;
-          break;
-        case "60+":
-          whereClause += ` AND l.passengerTotal > 60`;
-          break;
+      const selectedPaxFilters = Array.isArray(paxFilter)
+        ? paxFilter
+        : [paxFilter];
+
+      const paxConditions = [];
+
+      selectedPaxFilters.forEach((pax) => {
+        switch (String(pax).trim()) {
+          case "1-4":
+            paxConditions.push(`l.passengerTotal BETWEEN 1 AND 4`);
+            break;
+
+          case "5-7":
+            paxConditions.push(`l.passengerTotal BETWEEN 5 AND 7`);
+            break;
+
+          case "8-13":
+            paxConditions.push(`l.passengerTotal BETWEEN 8 AND 13`);
+            break;
+
+          case "14-20":
+            paxConditions.push(`l.passengerTotal BETWEEN 14 AND 20`);
+            break;
+
+          case "21-30":
+            paxConditions.push(`l.passengerTotal BETWEEN 21 AND 30`);
+            break;
+
+          case "31-40":
+            paxConditions.push(`l.passengerTotal BETWEEN 31 AND 40`);
+            break;
+
+          case "41-50":
+            paxConditions.push(`l.passengerTotal BETWEEN 41 AND 50`);
+            break;
+
+          case "51-60":
+            paxConditions.push(`l.passengerTotal BETWEEN 51 AND 60`);
+            break;
+
+          case "60+":
+            paxConditions.push(`l.passengerTotal > 60`);
+            break;
+
+          default:
+            break;
+        }
+      });
+
+      if (paxConditions.length > 0) {
+        whereClause += `
+          AND (
+            ${paxConditions.join(" OR ")}
+          )
+        `;
       }
     }
 
+    /* =====================================================
+       MONTH / YEAR FILTER
+    ====================================================== */
+
     if (selectedMonth) {
-      whereClause += ` AND MONTH(l.pickupDateTime) = ? AND YEAR(l.pickupDateTime) = ?`;
+      whereClause += `
+        AND MONTH(l.pickupDateTime) = ?
+        AND YEAR(l.pickupDateTime) = ?
+      `;
+
       values.push(selectedMonth, selectedYear);
     } else {
-      whereClause += ` AND YEAR(l.pickupDateTime) = ?`;
+      whereClause += `
+        AND YEAR(l.pickupDateTime) = ?
+      `;
+
       values.push(selectedYear);
     }
 
+    /* =====================================================
+       CITY FILTER
+    ====================================================== */
+
     if (cityIds && cityIds.length > 0) {
       const placeholders = cityIds.map(() => "?").join(",");
-      whereClause += ` AND l.city_id IN (${placeholders})`;
+
+      whereClause += `
+        AND l.city_id IN (${placeholders})
+      `;
+
       values.push(...cityIds);
     }
 
+    /* =====================================================
+       SEARCH FILTER
+    ====================================================== */
+
     if (search && search.trim()) {
       const like = `%${search.trim()}%`;
-      whereClause += ` AND (
-        CONCAT_WS(' ', c.firstName, c.middleName, c.lastName) LIKE ?
-        OR c.customerEmail LIKE ?
-        OR c.customerPhone LIKE ?
-        OR c.alternatePhone LIKE ?
-      )`;
+
+      whereClause += `
+        AND (
+          CONCAT_WS(
+            ' ',
+            c.firstName,
+            c.middleName,
+            c.lastName
+          ) LIKE ?
+
+          OR c.customerEmail LIKE ?
+
+          OR c.customerPhone LIKE ?
+
+          OR c.alternatePhone LIKE ?
+        )
+      `;
+
       values.push(like, like, like, like);
     }
 
+    /* =====================================================
+       STATUS FILTER
+    ====================================================== */
+
     if (status && status.trim()) {
-      whereClause += ` AND UPPER(l.status) = ?`;
+      whereClause += `
+        AND UPPER(l.status) = ?
+      `;
+
       values.push(status.trim().toUpperCase());
     }
 
+    /* =====================================================
+       LIVE / EXPIRY FILTER
+    ====================================================== */
+
     if (liveorexpiry && liveorexpiry.trim() && liveorexpiry !== "All") {
-      if (liveorexpiry.trim().toUpperCase() === "LIVE") {
-        whereClause += ` AND l.pickupDateTime > NOW()`;
-      } else if (liveorexpiry.trim().toUpperCase() === "EXPIRY") {
-        whereClause += ` AND l.pickupDateTime <= NOW()`;
+      const liveExpiryValue = liveorexpiry.trim().toUpperCase();
+
+      if (liveExpiryValue === "LIVE") {
+        whereClause += `
+          AND l.pickupDateTime > NOW()
+        `;
+      } else if (liveExpiryValue === "EXPIRY") {
+        whereClause += `
+          AND l.pickupDateTime <= NOW()
+        `;
       }
     }
 
+    /* =====================================================
+       MAIN LEADS QUERY
+    ====================================================== */
+
     const query = `
-      SELECT 
+      SELECT
         l.*,
+
         c.uuid AS customer_uuid,
-          DATEDIFF(CURDATE(), l.date) AS aged,
-          CASE
-  WHEN l.pickupDateTime <= NOW()
-  THEN 'EXPIRY'
-  ELSE 'LIVE'
-END AS liveorexpiry,
-        CONCAT_WS(' ', c.firstName, c.middleName, c.lastName) AS fullName,
+
+        DATEDIFF(
+          CURDATE(),
+          l.date
+        ) AS aged,
+
+        CASE
+          WHEN l.pickupDateTime <= NOW()
+          THEN 'EXPIRY'
+          ELSE 'LIVE'
+        END AS liveorexpiry,
+
+        CONCAT_WS(
+          ' ',
+          c.firstName,
+          c.middleName,
+          c.lastName
+        ) AS fullName,
+
         c.firstName,
         c.middleName,
         c.lastName,
@@ -241,22 +438,42 @@ END AS liveorexpiry,
         c.gender,
         c.state,
         c.pincode
+
       FROM leads l
-      LEFT JOIN customers c ON l.customer_id = c.id
+
+      LEFT JOIN customers c
+        ON l.customer_id = c.id
+
       ${whereClause}
+
       ORDER BY l.created_at DESC
-      LIMIT ? OFFSET ?
+
+      LIMIT ?
+      OFFSET ?
     `;
 
     const [leads] = await pool.query(query, [...values, limitNumber, offset]);
 
+    /* =====================================================
+       COUNT QUERY
+    ====================================================== */
+
     const countQuery = `
-      SELECT COUNT(*) as total
+      SELECT COUNT(*) AS total
+
       FROM leads l
-      LEFT JOIN customers c ON l.customer_id = c.id
+
+      LEFT JOIN customers c
+        ON l.customer_id = c.id
+
       ${whereClause}
     `;
+
     const [countResult] = await pool.query(countQuery, values);
+
+    /* =====================================================
+       STATUS COUNTS
+    ====================================================== */
 
     const statusList = ["NEW", "RFQ", "KYC", "HOT", "VEH-N", "LOST", "BOOK"];
 
@@ -264,84 +481,166 @@ END AS liveorexpiry,
       status && status.trim()
         ? whereClause.replace(` AND UPPER(l.status) = ?`, "")
         : whereClause;
+
     const statusCountValues =
       status && status.trim() ? values.slice(0, -1) : values;
 
     const statusQuery = `
-      SELECT l.status, COUNT(*) as count
+      SELECT
+        l.status,
+        COUNT(*) AS count
+
       FROM leads l
-      LEFT JOIN customers c ON l.customer_id = c.id
+
+      LEFT JOIN customers c
+        ON l.customer_id = c.id
+
       ${statusCountWhereClause}
+
       GROUP BY l.status
     `;
+
     const [statusResult] = await pool.query(statusQuery, statusCountValues);
 
     const statusCounts = {};
+
     statusList.forEach((s) => {
       statusCounts[s] = 0;
     });
+
     statusResult.forEach((s) => {
       const key = (s.status || "").toUpperCase();
-      if (statusCounts.hasOwnProperty(key)) {
+
+      if (Object.prototype.hasOwnProperty.call(statusCounts, key)) {
         statusCounts[key] = parseInt(s.count, 10);
       }
     });
 
     const totalLeads = Object.values(statusCounts).reduce((a, b) => a + b, 0);
 
-    let monthlyStatsWhereClause = `WHERE pickupDateTime IS NOT NULL
-      AND (unwanted_status IS NULL OR unwanted_status != 'unwanted')`;
+    /* =====================================================
+       MONTHLY STATS
+    ====================================================== */
+
+    let monthlyStatsWhereClause = `
+      WHERE pickupDateTime IS NOT NULL
+
+      AND (
+        unwanted_status IS NULL
+        OR unwanted_status != 'unwanted'
+      )
+    `;
+
     let monthlyStatsValues = [];
 
     if (Array.isArray(advisorId)) {
       if (advisorId.length > 0) {
         const placeholders = advisorId.map(() => "?").join(",");
-        monthlyStatsWhereClause += ` AND advisor_id IN (${placeholders})`;
+
+        monthlyStatsWhereClause += `
+          AND advisor_id IN (${placeholders})
+        `;
+
         monthlyStatsValues.push(...advisorId);
       } else {
-        monthlyStatsWhereClause += ` AND 1 = 0`;
+        monthlyStatsWhereClause += `
+          AND 1 = 0
+        `;
       }
     } else if (advisorId) {
-      monthlyStatsWhereClause += ` AND advisor_id = ?`;
+      monthlyStatsWhereClause += `
+        AND advisor_id = ?
+      `;
+
       monthlyStatsValues.push(Number(advisorId));
     } else {
-      monthlyStatsWhereClause += ` AND advisor_id IS NOT NULL`;
+      monthlyStatsWhereClause += `
+        AND advisor_id IS NOT NULL
+      `;
     }
 
-    monthlyStatsWhereClause += ` AND YEAR(pickupDateTime) = ?`;
+    monthlyStatsWhereClause += `
+      AND YEAR(pickupDateTime) = ?
+    `;
+
     monthlyStatsValues.push(selectedYear);
 
     const [monthlyStats] = await pool.query(
       `
-      SELECT 
-        DATE_FORMAT(pickupDateTime, '%Y-%m') AS month,
-        MONTHNAME(pickupDateTime) AS monthName,
-        YEAR(pickupDateTime) AS year,
-        COUNT(*) AS leadCount
-      FROM leads
-      ${monthlyStatsWhereClause}
-      GROUP BY DATE_FORMAT(pickupDateTime, '%Y-%m'), MONTHNAME(pickupDateTime), YEAR(pickupDateTime)
-      ORDER BY month ASC
+        SELECT
+          DATE_FORMAT(
+            pickupDateTime,
+            '%Y-%m'
+          ) AS month,
+
+          MONTHNAME(
+            pickupDateTime
+          ) AS monthName,
+
+          YEAR(
+            pickupDateTime
+          ) AS year,
+
+          COUNT(*) AS leadCount
+
+        FROM leads
+
+        ${monthlyStatsWhereClause}
+
+        GROUP BY
+          DATE_FORMAT(
+            pickupDateTime,
+            '%Y-%m'
+          ),
+          MONTHNAME(
+            pickupDateTime
+          ),
+          YEAR(
+            pickupDateTime
+          )
+
+        ORDER BY month ASC
       `,
       monthlyStatsValues,
     );
 
+    /* =====================================================
+       ADVISOR / PRESALES USERS
+    ====================================================== */
+
     const advisorIds = leads
       .map((l) => l.advisor_id)
       .filter((id) => id != null);
+
     const presalesIds = leads
       .map((l) => l.presales_id)
       .filter((id) => id != null);
+
     const allUserIds = [...new Set([...advisorIds, ...presalesIds])];
+
     let userMap = {};
 
     if (allUserIds.length > 0) {
       try {
         const placeholders = allUserIds.map(() => "?").join(",");
+
         const [users] = await hrmsPool.query(
-          `SELECT id, aliasName, firstName, middleName, lastName, shortName FROM users WHERE id IN (${placeholders})`,
+          `
+              SELECT
+                id,
+                aliasName,
+                firstName,
+                middleName,
+                lastName,
+                shortName
+
+              FROM users
+
+              WHERE id IN (${placeholders})
+            `,
           allUserIds,
         );
+
         users.forEach((u) => {
           userMap[u.id] = u;
         });
@@ -350,28 +649,50 @@ END AS liveorexpiry,
       }
     }
 
+    /* =====================================================
+       GET USER NAME
+    ====================================================== */
+
     const getName = (userId, type) => {
       const user = userMap[userId];
+
       if (!user) return null;
+
       const first =
         type === "advisor" ? user.aliasName || "" : user.shortName || "";
-      return `${first} `.trim() || null;
+
+      return `${first}`.trim() || null;
     };
 
-    // ── City names ─────────────────────────────────────────────────────────
+    /* =====================================================
+       CITY NAMES
+    ====================================================== */
+
     const leadCityIds = leads
       .map((l) => l.city_id)
       .filter((id) => id !== null && id !== undefined);
+
     const uniqueCityIds = [...new Set(leadCityIds)];
+
     let cityMap = {};
 
     if (uniqueCityIds.length > 0) {
       try {
         const placeholders = uniqueCityIds.map(() => "?").join(",");
+
         const [cities] = await hrmsPool.query(
-          `SELECT id, city_name FROM city WHERE id IN (${placeholders})`,
+          `
+              SELECT
+                id,
+                city_name
+
+              FROM city
+
+              WHERE id IN (${placeholders})
+            `,
           uniqueCityIds,
         );
+
         cities.forEach((c) => {
           cityMap[c.id] = c.city_name;
         });
@@ -380,33 +701,66 @@ END AS liveorexpiry,
       }
     }
 
+    /* =====================================================
+       GET CITY NAME
+    ====================================================== */
+
     const getCityName = (cityId) => {
-      if (cityId === null || cityId === undefined) return null;
+      if (cityId === null || cityId === undefined) {
+        return null;
+      }
+
       return cityMap[cityId] || null;
     };
 
+    /* =====================================================
+       ADD NAMES TO LEADS
+    ====================================================== */
+
     const leadsWithNames = leads.map((lead) => ({
       ...lead,
+
       advisorFullName: getName(lead.advisor_id, "advisor"),
+
       presalesFullName: getName(lead.presales_id, "presales"),
+
       cityName: getCityName(lead.city_id),
     }));
 
+    /* =====================================================
+       FINAL RESPONSE
+    ====================================================== */
+
+    const total = countResult[0].total;
+
+    const totalPages = Math.ceil(total / limitNumber);
+
     return {
       leads: leadsWithNames,
-      total: countResult[0].total,
+
+      total,
+
       page: pageNumber,
-      totalPages: Math.ceil(countResult[0].total / limitNumber),
-      hasNextPage: pageNumber < Math.ceil(countResult[0].total / limitNumber),
+
+      totalPages,
+
+      hasNextPage: pageNumber < totalPages,
+
       selectedMonth,
+
       selectedYear,
+
       selectedStatus: status ? status.trim().toUpperCase() : null,
+
       statusCounts,
+
       totalLeads,
+
       monthlyStats,
     };
   } catch (error) {
     console.error("getLeadsByAdvisorId error:", error);
+
     throw error;
   }
 };
@@ -493,7 +847,6 @@ export const swapTravelAdvisorForLead = async (
     newAdvisorId: travelAdvisorId,
   };
 };
-
 
 export const getSwapLeadsByAdvisorId = async (
   advisorId,
@@ -651,8 +1004,6 @@ export const getSwapLeadsByAdvisorId = async (
       whereClause += ` AND l.pickupDateTime <= NOW()`;
     }
   }
-
- 
 
   const [rows] = await pool.execute(
     `

@@ -40,11 +40,11 @@ export const OCCASION_OPTIONS = [
 ];
 
 export const LOST_REASON_OPTIONS = [
-  "Price too high",
-  "Found better offer",
-  "Cancelled trip",
-  "No response",
-  "Other",
+  "No Response from Customer",
+  "Plan Cancelled",
+  "Plan Posponed",
+  "Price to High Booked from Other",
+  "Found Better Vehicle Options",
 ];
 
 export const TRIP_TYPE_OPTIONS = ["Sightseeing", "Point to Point"];
@@ -66,6 +66,35 @@ export const CATEGORY_OPTIONS: Record<string, string[]> = {
     "DMC",
   ],
 };
+
+export const DAYS_OPTIONS = [
+  "1",
+  "2",
+  "3",
+  "4",
+  "5",
+  "6",
+  "7",
+  "8",
+  "9",
+  "10",
+  "11-15",
+  "16-30",
+  "31-60",
+  "60+",
+];
+
+const PAX_OPTIONS = [
+  "1-4",
+  "5-7",
+  "8-13",
+  "14-20",
+  "21-30",
+  "31-40",
+  "41-50",
+  "51-60",
+  "60+",
+] as const;
 
 export const DEFAULT_VALUES = {
   smallbaggage: 0,

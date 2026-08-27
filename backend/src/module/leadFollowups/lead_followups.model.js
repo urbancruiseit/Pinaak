@@ -232,21 +232,75 @@ export const getAllLeads = async () => {
   }));
 };
 
-/**
- * Get follow-ups of a particular lead
- */
 export const getFollowupsByLeadId = async (leads_id) => {
   const [rows] = await pool.query(
-    `SELECT 
-        lf.followup_date, 
+    `
+    SELECT
+        lf.followup_date,
         lf.remark,
-        l.status,
+
+        l.status AS current_status,
         l.lost_reason,
-        l.lostReasonDetails
-     FROM lead_followups lf
-     JOIN leads l ON l.id = lf.leads_id
-     WHERE lf.leads_id = ?`,
+        l.lostReasonDetails,
+
+        COALESCE(
+            (
+                SELECT JSON_ARRAYAGG(
+                    JSON_OBJECT(
+                        'id', lsh.id,
+                        'old_status', lsh.old_status,
+                        'new_status', lsh.new_status,
+                        'changed_by', lsh.changed_by,
+                        'changed_at', lsh.changed_at
+                    )
+                )
+                FROM lead_status_history lsh
+                WHERE lsh.lead_id = lf.leads_id
+            ),
+            JSON_ARRAY()
+        ) AS status_history
+
+    FROM lead_followups lf
+
+    JOIN leads l
+        ON l.id = lf.leads_id
+
+    WHERE lf.leads_id = ?
+
+    ORDER BY lf.followup_date DESC
+    `,
     [leads_id],
+  );
+
+  // Convert status_history string → actual JSON array
+  const formattedRows = rows.map((row) => ({
+    ...row,
+    status_history:
+      typeof row.status_history === "string"
+        ? JSON.parse(row.status_history)
+        : row.status_history,
+  }));
+
+  return formattedRows;
+};
+
+export const getTodayFollowupsWithDetailsByAdviserId = async (adviser_id) => {
+  const [rows] = await pool.query(
+    `SELECT 
+        lf.id AS followup_id,
+        lf.leads_id AS lead_id,
+        DATE_FORMAT(lf.followup_date, '%d-%m-%Y') AS followup_date,
+        lf.remark,
+        l.customer_id,
+        c.firstName,
+        c.lastName,
+        c.customerPhone
+     FROM lead_followups lf
+     JOIN leads l ON lf.leads_id = l.id
+     JOIN customers c ON l.customer_id = c.id
+     WHERE lf.adviser_id = ?
+       AND lf.followup_date = CURDATE()`,
+    [adviser_id],
   );
 
   return rows;

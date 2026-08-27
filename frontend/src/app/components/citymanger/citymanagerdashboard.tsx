@@ -85,6 +85,7 @@ export default function Dashboard() {
   const [liveSelectedMonth, setLiveSelectedMonth] = useState<string | null>(
     null,
   );
+  const { currentUser } = useSelector((state: RootState) => state.user);
   const [selectedAdvisorId, setSelectedAdvisorId] = useState<number | null>(
     null,
   );
@@ -158,6 +159,85 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50 p-6 relative">
+      <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-6 text-gray-800 shadow-lg">
+        {/* Header */}
+        <div className="mb-6 flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+          <div>
+            <h2 className="text-2xl font-bold tracking-tight text-gray-800">
+              Today! What's My Plan?
+            </h2>
+
+            <p className="mt-1 text-md italic text-gray-500">
+              Welcome back,{" "}
+              <span className="font-semibold text-gray-800">
+                {currentUser?.aliasName || "User"}
+              </span>{" "}
+              — Let’s make today something new. 🚀
+            </p>
+          </div>
+
+          <div className="rounded-lg bg-gray-100 px-4 py-2 text-sm font-semibold text-gray-700">
+            Today
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="rounded-xl border border-orange-200 bg-orange-50 p-4 shadow-sm transition hover:shadow-md">
+            <h3 className="text-sm font-semibold text-orange-700">
+              Today's Follow-ups
+            </h3>
+
+            <p className="mt-2 text-3xl font-bold text-orange-800">0</p>
+
+            <p className="mt-1 text-xs text-orange-600">Urgent items</p>
+          </div>
+
+          {/* Today's Trip Starts */}
+          <div className="rounded-xl border border-green-200 bg-green-50 p-4 shadow-sm transition hover:shadow-md">
+            <h3 className="text-sm font-semibold text-green-700">
+              Today's Trip Starts
+            </h3>
+
+            <p className="mt-2 text-3xl font-bold text-green-800">0</p>
+
+            <p className="mt-1 text-xs text-green-600">Trips starting today</p>
+          </div>
+
+          {/* Next Reminder */}
+          <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4 shadow-sm transition hover:shadow-md">
+            <h3 className="text-sm font-semibold text-yellow-700">
+              Next Reminder
+            </h3>
+
+            <p className="mt-2 text-lg font-bold text-yellow-800">
+              No reminder
+            </p>
+
+            <p className="mt-1 text-xs text-yellow-600">Upcoming reminder</p>
+          </div>
+
+          {/* Today's Expense Revenue */}
+          <div className="rounded-xl border border-purple-200 bg-purple-50 p-4 shadow-sm transition hover:shadow-md">
+            <h3 className="text-sm font-semibold text-purple-700">
+              Today's Expense Revenue
+            </h3>
+
+            <p className="mt-2 text-3xl font-bold text-purple-800">₹0</p>
+
+            <p className="mt-1 text-xs text-purple-600">Today's total</p>
+          </div>
+
+          {/* Revenue */}
+          <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 shadow-sm transition hover:shadow-md">
+            <h3 className="text-sm font-semibold text-rose-700">Revenue</h3>
+
+            <p className="mt-2 text-3xl font-bold text-rose-800">₹0</p>
+
+            <p className="mt-1 text-xs text-rose-600">Total revenue</p>
+          </div>
+        </div>
+      </div>
+
       {/* ─── LEAD STATUS OVERVIEW ─── */}
       <div className="bg-white rounded-2xl shadow-xl mb-6 p-6 text-blue-950 border border-slate-200">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-5">

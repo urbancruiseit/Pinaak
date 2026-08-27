@@ -3,7 +3,9 @@ import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import {
   getAllLeadsApi,
   getFollowupsByLeadIdApi,
+  getTodayFollowupsApi,
   Followup,
+  TodayFollowup,
 } from "./lead_followupsApi";
 
 /* =========================================================
@@ -46,6 +48,11 @@ interface LeadState {
   followups: Followup[];
   followupsLoading: boolean;
   followupsError: string | null;
+
+  /* Today's followups (for notifications) */
+  todayFollowups: TodayFollowup[];
+  todayFollowupsLoading: boolean;
+  todayFollowupsError: string | null;
 }
 const initialState: LeadState = {
   leads: [],
@@ -56,6 +63,10 @@ const initialState: LeadState = {
   followups: [],
   followupsLoading: false,
   followupsError: null,
+
+  todayFollowups: [],
+  todayFollowupsLoading: false,
+  todayFollowupsError: null,
 };
 export const getAllLeads = createAsyncThunk<
   Lead[],
@@ -91,6 +102,30 @@ export const getFollowupsByLeadId = createAsyncThunk<
       error?.response?.data?.message ||
         error?.message ||
         "Failed to fetch followups",
+    );
+  }
+});
+
+export const getTodayFollowups = createAsyncThunk<
+  TodayFollowup[],
+  void,
+  { rejectValue: string }
+>("leadFollowups/getTodayFollowups", async (_, { rejectWithValue }) => {
+  try {
+    const response = await getTodayFollowupsApi();
+
+    return Array.isArray(response) ? response : [];
+  } catch (error: any) {
+    const status = error?.response?.status;
+
+    if (status === 404) {
+      return [];
+    }
+
+    return rejectWithValue(
+      error?.response?.data?.message ||
+        error?.message ||
+        "Failed to fetch today's followups",
     );
   }
 });
@@ -149,6 +184,25 @@ const leadFollowupsSlice = createSlice({
 
         // IMPORTANT
         state.followups = [];
+      });
+    builder
+      .addCase(getTodayFollowups.pending, (state) => {
+        state.todayFollowupsLoading = true;
+        state.todayFollowupsError = null;
+      })
+
+      .addCase(getTodayFollowups.fulfilled, (state, action) => {
+        state.todayFollowupsLoading = false;
+        state.todayFollowups = action.payload || [];
+      })
+
+      .addCase(getTodayFollowups.rejected, (state, action) => {
+        state.todayFollowupsLoading = false;
+
+        state.todayFollowupsError =
+          action.payload || "Failed to fetch today's followups";
+
+        state.todayFollowups = [];
       });
   },
 });

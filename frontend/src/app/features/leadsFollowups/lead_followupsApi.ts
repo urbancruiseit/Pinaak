@@ -5,6 +5,10 @@ export interface Followup {
   remark: string | null;
 }
 
+interface TodayFollowupCountResponse {
+  totalFollowups: number;
+}
+
 export const getAllLeadsApi = async () => {
   try {
     const res = await axiosInstance.get("/followup");
@@ -33,6 +37,30 @@ export const getFollowupsByLeadIdApi = async (
       error?.response?.data || error?.message || error,
     );
 
+    throw error;
+  }
+};
+
+export interface TodayFollowup {
+  followup_id: number;
+  lead_id: number;
+  followup_date: string;
+  remark: string | null;
+  customer_id: number;
+  firstName: string | null;
+  lastName: string | null;
+  customerPhone: string | null;
+}
+
+export const getTodayFollowupsApi = async (): Promise<TodayFollowup[]> => {
+  try {
+    const res = await axiosInstance.get(`/followup/today`);
+    return res.data?.data?.followups || [];
+  } catch (error: any) {
+    console.error(
+      "❌ Error fetching today's followups:",
+      error?.response?.data || error?.message || error,
+    );
     throw error;
   }
 };

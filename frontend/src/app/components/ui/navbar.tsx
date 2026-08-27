@@ -32,6 +32,7 @@ import {
 } from "../../features/Navigation/navigationSlice";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
+import NotificationDropdown from "./NotificationDropdown";
 
 type MenuItem = {
   label: string;
@@ -198,11 +199,7 @@ const MASTER_MENU_SECTIONS: MenuSection[] = [
         value: "vehicle-category",
         allowedRoles: ["superadmin", "city manager", "travel advisor"],
       },
-      // {
-      //   label: "Vehicle Add Form",
-      //   value: "vehicle-add",
-      //   allowedRoles: ["superadmin", "city manager", "travel advisor"],
-      // },
+   
     ],
   },
 
@@ -321,13 +318,7 @@ const DASHBOARD_ITEMS: Record<string, MenuItem[]> = {
     },
   ],
 
-  // ────────────────────────────────────────────────────────
-  // Travel Advisor & Telesales — kept here for reference /
-  // in case showDashboardMenu is ever re-enabled for them,
-  // but currently NOT shown to these roles (see
-  // showDashboardMenu below — they now get their menu via
-  // showLeadsMenu / isOnTelesalesLanding instead).
-  // ────────────────────────────────────────────────────────
+
   "travel advisor": [
     {
       label: "Telesales Team Dashboard",
@@ -442,23 +433,10 @@ export function Navbar() {
   const isSeoTlDigitalMarketing = isSeoTl && isDigitalMarketingDept;
   const isPresalesExecutive = normalizedRole === "pre-sales executive";
 
-  // ────────────────────────────────────────────────────────
-  // Telesales role flag.
-  // normalizeRole() converts "-" / "_" to spaces before
-  // returning, so after normalization this role can only ever
-  // come out as "telesales" or "tele sales".
-  // ────────────────────────────────────────────────────────
+
   const isTelesales =
     normalizedRole === "telesales" || normalizedRole === "tele sales";
 
-  // ────────────────────────────────────────────────────────
-  // Sidebar's handleLeadsClick() sends Travel Advisor /
-  // Telesales straight to activeSection: "dashboard" +
-  // activeDashboardView: "telesales-dashboard" (NOT to
-  // activeSection: "leads"). This flag detects that landing
-  // state so we can give these roles their role-based
-  // Leads-menu buttons instead of the generic dashboard menu.
-  // ────────────────────────────────────────────────────────
   const isOnTelesalesLanding =
     nav.activeSection === "dashboard" &&
     nav.activeDashboardView === "telesales-dashboard" &&
@@ -469,12 +447,7 @@ export function Navbar() {
     nav.activeSection === "dsr-form" ||
     isOnTelesalesLanding;
 
-  // ────────────────────────────────────────────────────────
-  // Advisor/Telesales already get Sales/Swap/DSR Lead Manager
-  // buttons via showLeadsMenu (isOnTelesalesLanding above) —
-  // the generic "Dashboards" dropdown (just "Telesales Team
-  // Dashboard") is redundant for them, so hide it here.
-  // ────────────────────────────────────────────────────────
+  
   const showDashboardMenu =
     nav.activeSection === "dashboard" && !isTravelAdvisor && !isTelesales;
 
@@ -1112,12 +1085,18 @@ export function Navbar() {
             )}
           </div>
 
-          {/* ─────────────────────────────────────────────────────────────── */}
-          {/* RIGHT - USER */}
-          {/* ─────────────────────────────────────────────────────────────── */}
+       
 
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:ml-auto md:gap-2 lg:gap-3">
             {/* Rules */}
+            <NotificationDropdown
+              isOpen={openMenu === "notifications"}
+              onToggle={() =>
+                setOpenMenu((prev) =>
+                  prev === "notifications" ? null : "notifications",
+                )
+              }
+            />
 
             {(normalizedRole === "city manager" ||
               isTeamLeaderSales ||

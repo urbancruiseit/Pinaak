@@ -117,7 +117,7 @@ export default function FollowUpTable({ lead, onClose }: FollowUpTableProps) {
                 Follow Up Timeline
               </h2>
 
-              <p className="text-[13px] text-gray-900">
+              <p className="text-[11px] text-gray-400">
                 Complete follow-up interaction history
               </p>
             </div>
@@ -149,7 +149,7 @@ export default function FollowUpTable({ lead, onClose }: FollowUpTableProps) {
               </div>
 
               <div className="min-w-0">
-                <p className="text-[12px] font-semibold uppercase tracking-wide text-gray-400">
+                <p className="text-[9px] font-semibold uppercase tracking-wide text-gray-400">
                   Lead ID
                 </p>
 
@@ -166,7 +166,7 @@ export default function FollowUpTable({ lead, onClose }: FollowUpTableProps) {
               </div>
 
               <div className="min-w-0">
-                <p className="text-[12px] font-semibold uppercase tracking-wide text-gray-400">
+                <p className="text-[9px] font-semibold uppercase tracking-wide text-gray-400">
                   Customer
                 </p>
 
@@ -183,7 +183,7 @@ export default function FollowUpTable({ lead, onClose }: FollowUpTableProps) {
               </div>
 
               <div className="min-w-0">
-                <p className="text-[12px] font-semibold uppercase tracking-wide text-gray-400">
+                <p className="text-[9px] font-semibold uppercase tracking-wide text-gray-400">
                   Mobile
                 </p>
 
@@ -200,7 +200,7 @@ export default function FollowUpTable({ lead, onClose }: FollowUpTableProps) {
               </div>
 
               <div className="min-w-0">
-                <p className="text-[12px] font-semibold uppercase tracking-wide text-gray-400">
+                <p className="text-[9px] font-semibold uppercase tracking-wide text-gray-400">
                   Email
                 </p>
 
@@ -303,7 +303,7 @@ export default function FollowUpTable({ lead, onClose }: FollowUpTableProps) {
                             </div>
 
                             <div className="min-w-0">
-                              <p className="text-[10px] font-bold uppercase tracking-wide text-gray-900">
+                              <p className="text-[9px] font-bold uppercase tracking-wide text-gray-400">
                                 Follow Up Date
                               </p>
 
@@ -312,7 +312,7 @@ export default function FollowUpTable({ lead, onClose }: FollowUpTableProps) {
                               </p>
 
                               {formatTime(followupDate) && (
-                                <p className="text-[10px] font-bold text-gray-900">
+                                <p className="text-[10px] font-medium text-gray-400">
                                   {formatTime(followupDate)}
                                 </p>
                               )}
@@ -330,7 +330,7 @@ export default function FollowUpTable({ lead, onClose }: FollowUpTableProps) {
                               </div>
 
                               <div className="min-w-0 flex-1">
-                                <p className="text-[12px] font-bold uppercase tracking-wide text-gray-900">
+                                <p className="text-[9px] font-bold uppercase tracking-wide text-gray-400">
                                   Remark
                                 </p>
 
@@ -344,7 +344,7 @@ export default function FollowUpTable({ lead, onClose }: FollowUpTableProps) {
 
                         {/* FOOTER */}
                         <div className="flex items-center justify-end border-t border-gray-100 bg-gray-50/60 px-3 py-1.5">
-                          <span className="text-[12px] font-medium text-gray-800">
+                          <span className="text-[9px] font-medium text-gray-400">
                             Interaction #{index + 1}
                           </span>
                         </div>
@@ -376,7 +376,7 @@ export default function FollowUpTable({ lead, onClose }: FollowUpTableProps) {
                       </div>
 
                       <div className="min-w-0 flex-1">
-                        <p className="text-[12px] font-bold uppercase tracking-wide text-gray-900">
+                        <p className="text-[9px] font-bold uppercase tracking-wide text-gray-400">
                           Lost Reason
                         </p>
 
@@ -397,7 +397,7 @@ export default function FollowUpTable({ lead, onClose }: FollowUpTableProps) {
                       </div>
 
                       <div className="min-w-0 flex-1">
-                        <p className="text-[10px] font-bold uppercase tracking-wide text-gray-900">
+                        <p className="text-[9px] font-bold uppercase tracking-wide text-gray-400">
                           Lost Reason Details
                         </p>
 
@@ -411,6 +411,14 @@ export default function FollowUpTable({ lead, onClose }: FollowUpTableProps) {
               </div>
             </div>
           )}
+        </div>
+
+        <div className="flex shrink-0 items-center justify-between border-t bg-white px-4 py-2.5">
+          <p className="text-[11px] text-gray-400">
+            Lead #{lead?.id ?? "-"}{" "}
+            <span className="mx-1 text-gray-300">•</span>
+            Follow-up history
+          </p>
         </div>
       </div>
     </div>

@@ -289,9 +289,12 @@ export const getTodayFollowupsWithDetailsByAdviserId = async (adviser_id) => {
     `SELECT 
         lf.id AS followup_id,
         lf.leads_id AS lead_id,
-        DATE_FORMAT(lf.followup_date, '%d-%m-%Y') AS followup_date,
+        DATE_FORMAT(lf.followup_date, '%d-%m-%Y %h:%i %p') AS followup_date,
         lf.remark,
         l.customer_id,
+        l.pickupDateTime,
+        DATE_FORMAT(l.pickupDateTime, '%M') AS pickup_month_name,
+        DATE_FORMAT(l.pickupDateTime, '%d %M %Y, %h:%i %p') AS pickup_date_formatted,
         c.firstName,
         c.lastName,
         c.customerPhone
@@ -299,7 +302,7 @@ export const getTodayFollowupsWithDetailsByAdviserId = async (adviser_id) => {
      JOIN leads l ON lf.leads_id = l.id
      JOIN customers c ON l.customer_id = c.id
      WHERE lf.adviser_id = ?
-       AND lf.followup_date = CURDATE()`,
+       AND DATE(lf.followup_date) = CURDATE()`,
     [adviser_id],
   );
 

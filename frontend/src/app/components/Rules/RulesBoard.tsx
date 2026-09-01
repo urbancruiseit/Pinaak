@@ -62,36 +62,19 @@ const ROW_COLORS = [
   "text-orange-300",
 ];
 
-/**
- * `entry.monthLeads` holds short month names like "Jan", "Feb" (see MONTHS
- * in Entryform.tsx), while `monthColumns` uses labels like "JUL". Match
- * case-insensitively so the table actually finds the row's data.
- */
+const ALLOWED_ROLES = ["city manager", "team leader-sales"];
+
 function getMonthLead(entry: Entry, columnLabel: string) {
   return entry.monthLeads?.find(
     (ml) => ml.month.toUpperCase() === columnLabel.toUpperCase(),
   );
 }
 
-/**
- * Sums the `lead` values across the given month columns for a set of
- * entries. This is the "real" total (matches the per-column totals shown
- * in each table's footer), as opposed to `entry.lead` which is a single
- * static field on the entry and can be out of sync with the monthly data.
- *
- * IMPORTANT: this only adds up numbers that actually exist as an entry in
- * the leads table (`getMonthLead` returning a match). Anything without a
- * matching month-lead entry contributes 0, it is never guessed/defaulted.
- */
 function sumLeadsAcrossMonths(entries: Entry[], monthColumns: MonthColumn[]) {
   return entries.reduce((sum, e) => {
     const entryMonthTotal = monthColumns.reduce((s, col) => {
       const ml = getMonthLead(e, col.label);
-      // `lead` sometimes comes through as a string (e.g. "7") instead of a
-      // number. If we don't coerce it, `s + ml.lead` silently falls back to
-      // JS string concatenation ("0" + "7" -> "07") instead of addition,
-      // which is exactly what was producing totals like "087" or "010".
-      // Number(...) guarantees this is always a real numeric add.
+
       const numericLead = ml ? Number(ml.lead) : 0;
       return s + (Number.isFinite(numericLead) ? numericLead : 0);
     }, 0);
@@ -99,13 +82,6 @@ function sumLeadsAcrossMonths(entries: Entry[], monthColumns: MonthColumn[]) {
   }, 0);
 }
 
-/**
- * Counts how many actual leads-table entries (cells) exist across the
- * given month columns for a set of entries — i.e. how many (entry, month)
- * pairs actually have a row in `monthLeads`. This is different from
- * `entries.length`, which just counts people/rows regardless of whether
- * they have any lead data in the visible months.
- */
 function countLeadEntriesAcrossMonths(
   entries: Entry[],
   monthColumns: MonthColumn[],
@@ -124,12 +100,9 @@ export default function RulesBoard() {
   const [activeFilter, setActiveFilter] = useState<"ALL" | EntryType>("ALL");
   const [showForm, setShowForm] = useState(false);
 
-  // Delete-confirmation + success toast state
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
-  // Refresh button loading state (separate from redux loading so the icon
-  // spins for a minimum, visible amount of time even on a fast response)
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const dispatch = useAppDispatch();
@@ -139,7 +112,7 @@ export default function RulesBoard() {
 
   const canAddRule =
     currentUser?.subDepartment_name === "Tele-Sales" &&
-    currentUser?.role_name === "City Manager";
+    ALLOWED_ROLES.includes((currentUser?.role_name ?? "").toLowerCase());
 
   const monthColumns = getMonthColumns(3);
 
@@ -183,12 +156,10 @@ export default function RulesBoard() {
     setShowForm(false);
   }
 
-  // Instead of deleting directly, open the confirm dialog
   function requestDelete(id: number) {
     setConfirmDeleteId(id);
   }
 
-  // Called when user clicks "Delete" inside the confirm dialog
   function confirmDelete() {
     if (confirmDeleteId === null) return;
     dispatch(deleteRuleEntry(confirmDeleteId));
@@ -216,8 +187,6 @@ export default function RulesBoard() {
     try {
       await dispatch(fetchRuleEntries());
     } finally {
-      // Keep the spin visible for at least a short moment so the click
-      // always feels acknowledged, even on very fast responses.
       setTimeout(() => setIsRefreshing(false), 500);
     }
   }
@@ -232,9 +201,6 @@ export default function RulesBoard() {
   const editingEntry =
     (entries || []).find((e: Entry) => e.id === editingId) ?? null;
 
-  // Both header stats are now derived from `visible` (i.e. respect the
-  // ALL / T20 / T60 filter) and only ever count numbers that actually
-  // exist as an entry in the leads table — never a stale/default field.
   const totalCount = sumLeadsAcrossMonths(visible, monthColumns);
   const totalEntries = countLeadEntriesAcrossMonths(visible, monthColumns);
 

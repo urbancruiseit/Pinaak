@@ -18,6 +18,7 @@ import ruleReducer from "../features/Rules/rulesSlice";
 import navigationReducer from "../features/Navigation/navigationSlice";
 import vehicleManagerReducer from "../features/vehicleManager/vehicleManagerSlice"; // Import the vehicleManager reducer
 import followUpReducer from "../features/leadsFollowups/lead_followupsSlice";
+import locationReducer from "../features/RegionZoneCity/regiononecity.slice";
 
 export const store = configureStore({
   reducer: {
@@ -40,6 +41,7 @@ export const store = configureStore({
     navigation: navigationReducer,
     vehicleManager: vehicleManagerReducer,
     followUp: followUpReducer,
+    location: locationReducer,
   },
 });
 

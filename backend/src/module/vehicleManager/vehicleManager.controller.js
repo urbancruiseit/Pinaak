@@ -11,6 +11,7 @@ import {
   getVehicleMasterAmenitiesModel,
   getAllCitiesModel,
   updateVehicleManagerStatusModel,
+  getVehicleVariantByCodeModel,
 } from "./vehicleManager.model.js";
 import { calculateVehicleAging } from "./vehicleManager.service.js";
 
@@ -101,8 +102,7 @@ const getAllVehicleManagers = asyncHandler(async (req, res) => {
     seat,
     variant,
     category,
-    code, // 👈 destructure to kiya
-
+    code,
     page,
     limit,
   } = req.query;
@@ -140,10 +140,6 @@ const getVehicleMasterCodes = asyncHandler(async (req, res) => {
       new ApiResponse(200, result, "Vehicle master codes fetched successfully"),
     );
 });
-
-// =====================================================
-// GET UNIQUE AMENITIES (vehicle_master se, checkbox ke liye)
-// =====================================================
 
 const getVehicleMasterAmenities = asyncHandler(async (req, res) => {
   const result = await getVehicleMasterAmenitiesModel();
@@ -186,6 +182,26 @@ const updateVehicleManagerStatus = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, updatedRecord, "Status updated successfully"));
 });
 
+const getVehicleVariantByCodeController = asyncHandler(async (req, res) => {
+  const { code } = req.params;
+
+  if (!code) {
+    throw new ApiError(400, "Vehicle code is required");
+  }
+
+  const vehicle = await getVehicleVariantByCodeModel(code);
+
+  if (!vehicle) {
+    throw new ApiError(404, "Vehicle not found");
+  }
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, vehicle, "Vehicle variants fetched successfully"),
+    );
+});
+
 export {
   getVehicleManagerByIdController,
   createVehicleManager,
@@ -195,4 +211,5 @@ export {
   getVehicleManagerVendors,
   getAllCitiesController,
   updateVehicleManagerStatus,
+  getVehicleVariantByCodeController,
 };

@@ -141,6 +141,7 @@ export const getMyAssignedLeadsApi = async (
   page: number = 1,
   filters?: {
     cityIds?: number[];
+    regionId?: number | null;
     zoneId?: number | null;
     search?: string;
     month?: number | null;
@@ -176,6 +177,9 @@ export const getMyAssignedLeadsApi = async (
 
     if (filters?.advisorId != null) {
       params.append("advisorId", String(filters.advisorId));
+    }
+    if (filters?.regionId != null) {
+      params.append("regionId", String(filters.regionId));
     }
 
     if (filters?.zoneId != null) {
@@ -247,6 +251,7 @@ export const getMySwapLeadsApi = async (
   page: number = 1,
   filters?: {
     cityIds?: number[];
+    regionId?: number | null;
     zoneId?: number | null;
     search?: string;
     month?: number | null;
@@ -266,6 +271,10 @@ export const getMySwapLeadsApi = async (
 
     if (filters?.cityIds?.length) {
       params.append("cityIds", filters.cityIds.join(","));
+    }
+    if (filters?.regionId != null) {
+      console.log("regionId ", regionId);
+      params.append("regionId", String(filters.regionId));
     }
 
     if (filters?.zoneId != null) {

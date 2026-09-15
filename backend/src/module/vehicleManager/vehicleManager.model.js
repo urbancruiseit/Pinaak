@@ -13,12 +13,6 @@ export const getVehicleManagerByVehNo = async (veh_no) => {
   }
 };
 
-// Get vehicle manager entry by id
-// =====================================================
-// GET VEHICLE MANAGER BY ID
-// Same fields/data as Vehicles Manager table
-// =====================================================
-
 export const getVehicleManagerById = async (id) => {
   try {
     const [rows] = await pool.execute(
@@ -464,6 +458,44 @@ export const updateVehicleManagerStatusModel = async ({ id, status }) => {
     return rows[0];
   } catch (error) {
     console.error("updateVehicleManagerStatusModel error:", error);
+    throw error;
+  }
+};
+
+export const getVehicleVariantByCodeModel = async (code) => {
+  try {
+    console.log(" code.........", code);
+    const [rows] = await pool.execute(
+      `
+        SELECT code, variant
+        FROM vehicle_master
+        WHERE code = ?
+        LIMIT 1
+      `,
+      [code],
+    );
+
+    if (rows.length === 0) {
+      return null;
+    }
+
+    let variant = rows[0].variant;
+
+    // JSON string ko actual JSON me convert karo
+    if (typeof variant === "string") {
+      try {
+        variant = JSON.parse(variant);
+      } catch (error) {
+        variant = [];
+      }
+    }
+
+    return {
+      code: rows[0].code,
+      variant: variant || [],
+    };
+  } catch (error) {
+    console.error("getVehicleVariantByCodeModel error:", error);
     throw error;
   }
 };

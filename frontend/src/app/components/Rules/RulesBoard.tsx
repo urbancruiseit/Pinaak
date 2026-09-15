@@ -436,12 +436,7 @@ const TABLE_THEME_CLASSES: { orange: ThemeClasses; green: ThemeClasses } = {
   },
 };
 
-/**
- * Per-month-column colors so each of the 3 month columns is visually
- * distinct, while still staying within the T-20 (orange) / T-60 (green)
- * family. `header` colors the <th>, `cell` tints the <td> background for
- * that column.
- */
+
 const MONTH_COLUMN_COLORS: Record<
   TableTheme,
   { header: string; cell: string; border: string }[]
@@ -487,11 +482,7 @@ function getMonthColor(theme: TableTheme, index: number) {
   return palette[index % palette.length];
 }
 
-/**
- * Given a month column's key ("YYYY-MM"), returns the short uppercase name
- * of the month right after it (e.g. "2026-07" -> "AUG"). Used to show a
- * forecast month in brackets next to the last visible month column.
- */
+
 function getNextMonthLabel(key: string) {
   const [yearStr, monthStr] = key.split("-");
   const year = Number(yearStr);

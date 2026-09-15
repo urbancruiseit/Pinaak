@@ -5,6 +5,10 @@ import { useDispatch, useSelector } from "react-redux";
 import { MapPin, Building2, Calendar } from "lucide-react";
 import { AppDispatch, RootState } from "@/app/redux/store";
 import { fetchCitiesByZone } from "@/app/features/access/accessSlice";
+import {
+  fetchRegions,
+  fetchZones,
+} from "@/app/features/RegionZoneCity/regiononecity.slice";
 
 export interface AllRegionZoneCityFilterProps {
   selectedRegion: string;
@@ -18,17 +22,10 @@ export interface AllRegionZoneCityFilterProps {
   onYearChange?: (year: string) => void;
 
   regionOptions?: string[];
-  zoneOptions?: Array<{
-    id: string;
-    name: string;
-  }>;
-  cityOptions?: Array<{
-    id: string;
-    name: string;
-  }>;
+  zoneOptions?: Array<{ id: string; name: string }>;
+  cityOptions?: Array<{ id: string; name: string }>;
 
   showYearMenu?: boolean;
-
   layout?: "grid" | "row";
 }
 
@@ -53,10 +50,34 @@ export function AllRegionZoneCityFilter({
   const { currentUser } = useSelector((state: RootState) => state.user);
   const dispatch = useDispatch<AppDispatch>();
   const { citiesByZone } = useSelector(
-    (state: RootState) => state.travelAdvisor, // ya jo bhi slice naam ho
+    (state: RootState) => state.travelAdvisor,
   );
-  console.log("citiesByZone ", citiesByZone);
-  // ✅ Zone select hone par cities fetch karo
+  const { regions, zones } = useSelector((state: RootState) => state.location);
+
+  // ✅ Super Admin check
+  const isSuperAdmin = (currentUser as any)?.access_role === "SUPER_ADMIN";
+
+  // ✅ Super admin ke liye saari regions ek baar load karo
+  useEffect(() => {
+    if (isSuperAdmin) {
+      dispatch(fetchRegions());
+    }
+  }, [isSuperAdmin, dispatch]);
+
+  // ✅ selectedRegion (name string) se region ka id nikaalo
+  const selectedRegionObj = useMemo(
+    () => regions.find((r) => r.region_name === selectedRegion),
+    [regions, selectedRegion],
+  );
+
+  // ✅ Region select hote hi us region ki zones fetch karo (super admin ke liye)
+  useEffect(() => {
+    if (isSuperAdmin && selectedRegionObj) {
+      dispatch(fetchZones(selectedRegionObj.id));
+    }
+  }, [isSuperAdmin, selectedRegionObj, dispatch]);
+
+  // ✅ Zone select hote hi us zone ki cities fetch karo (sab role ke liye — pehle se hai)
   useEffect(() => {
     if (selectedZone) {
       dispatch(fetchCitiesByZone(Number(selectedZone)));
@@ -69,11 +90,23 @@ export function AllRegionZoneCityFilter({
   const userCityNames = (currentUser as any)?.city_names ?? [];
   const userCityIds = (currentUser as any)?.city_ids ?? [];
 
-  const finalRegionOptions = regionOptions ?? userRegionNames;
+  // ✅ Region: Super Admin → saari regions, warna user-assigned
+  const finalRegionOptions = useMemo(() => {
+    if (regionOptions) return regionOptions;
+    if (isSuperAdmin) return regions.map((r) => r.region_name);
+    return userRegionNames;
+  }, [regionOptions, isSuperAdmin, regions, userRegionNames]);
 
-  // ✅ Zone ids + names ko zip karo — value me id jaaye, display me name
+  // ✅ Zone: Super Admin → selected region ki zones, warna user-assigned
   const finalZoneOptions = useMemo(() => {
     if (zoneOptions) return zoneOptions;
+
+    if (isSuperAdmin) {
+      return zones.map((zone) => ({
+        id: String(zone.id),
+        name: zone.zone_name,
+      }));
+    }
 
     if (userZoneNames.length > 0) {
       return userZoneNames.map((name: string, idx: number) => ({
@@ -83,9 +116,9 @@ export function AllRegionZoneCityFilter({
     }
 
     return [];
-  }, [zoneOptions, userZoneNames, userZoneIds]);
+  }, [zoneOptions, isSuperAdmin, zones, userZoneNames, userZoneIds]);
 
- 
+  // ✅ City: hamesha selected zone ki cities (sab role ke liye) — koi change nahi
   const finalCityOptions = useMemo(() => {
     if (cityOptions) return cityOptions;
 
@@ -96,7 +129,7 @@ export function AllRegionZoneCityFilter({
     ) {
       return citiesByZone.cities.map((city: any) => ({
         id: String(city.id),
-        name: city.city_name, // ✅ fix: city_name, not name
+        name: city.city_name,
       }));
     }
 
@@ -128,7 +161,6 @@ export function AllRegionZoneCityFilter({
         }
       >
         {/* Region */}
-
         <div className="relative w-full">
           <select
             value={selectedRegion}
@@ -143,7 +175,6 @@ export function AllRegionZoneCityFilter({
               </option>
             ))}
           </select>
-
           <MapPin
             size={14}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
@@ -151,13 +182,12 @@ export function AllRegionZoneCityFilter({
         </div>
 
         {/* Zone */}
-
         <div className="relative w-full">
           <select
             value={selectedZone}
             onChange={(e) => {
               onZoneChange(e.target.value);
-              onCityChange(""); // ✅ zone change hone par purani city reset
+              onCityChange("");
             }}
             className={selectClass}
             disabled={finalZoneOptions.length === 0}
@@ -169,15 +199,12 @@ export function AllRegionZoneCityFilter({
               </option>
             ))}
           </select>
-
           <MapPin
             size={14}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
           />
         </div>
 
-        {/* City */}
-        {/* City */}
         {/* City */}
         <div className="relative w-full">
           <select
@@ -187,7 +214,6 @@ export function AllRegionZoneCityFilter({
             disabled={finalCityOptions.length === 0}
           >
             <option value="">City</option>
-
             {finalCityOptions.map((city) => (
               <option key={city.id} value={city.id}>
                 {city.name}
@@ -209,14 +235,12 @@ export function AllRegionZoneCityFilter({
               className={selectClass}
             >
               <option value="">Year</option>
-
               {yearOptions.map((year) => (
                 <option key={year} value={year}>
                   {year}
                 </option>
               ))}
             </select>
-
             <Calendar
               size={14}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"

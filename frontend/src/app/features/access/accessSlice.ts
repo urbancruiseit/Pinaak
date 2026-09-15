@@ -98,6 +98,7 @@ interface FetchMyAssignedLeadsArgs {
   year?: number | null;
   status?: string | null;
   advisorId?: number | null;
+  regionId?: number | null;
   zoneId?: number | null;
   ageFilter?: string | null; // ✅ ADD
   daysFilter?: string | null;

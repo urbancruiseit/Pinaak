@@ -64,7 +64,6 @@ const assignTravelAdvisor = asyncHandler(async (req, res) => {
         "adviserLeadAssigned",
         fullLead,
       );
-  
     }
   } catch (err) {
     console.error("⚠️ Socket emit failed:", err.message);
@@ -94,7 +93,7 @@ const getMyAssignedLeads = asyncHandler(async (req, res) => {
     cityIds: scopedCityIds,
     accessDenied,
   } = await findZoneCityRegion(req);
-
+  
   if (accessDenied) {
     return res.status(403).json(new ApiResponse(403, null, "Access denied"));
   }
@@ -275,7 +274,6 @@ export const getMySwapLeads = asyncHandler(async (req, res) => {
       }
       advisorId = paramAdvisorId;
     }
-    
   }
 
   const data = await getSwapLeadsByAdvisorId(

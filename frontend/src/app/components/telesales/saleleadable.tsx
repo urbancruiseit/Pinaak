@@ -132,11 +132,13 @@ export default function LeadsTable() {
 
   // ─── States (type fix + naya cityId state) ─────────────────────────────────
   const [selectedRegion, setSelectedRegion] = useState("");
+  const [selectedRegionId, setSelectedRegionId] = useState<number | null>(null);
   const [selectedCity, setSelectedCity] = useState(""); // dropdown value (string id)
   const [selectedCityId, setSelectedCityId] = useState<number | null>(null);
 
   const [selectedZone, setSelectedZone] = useState("");
   const [selectedZoneId, setSelectedZoneId] = useState<number | null>(null);
+
   const dispatch = useDispatch<AppDispatch>();
 
   const { assignedLeads } = useSelector(
@@ -197,6 +199,7 @@ export default function LeadsTable() {
       year: yearFilter !== "All" ? parseInt(yearFilter) : null,
       advisorId: selectedAdvisorId ?? undefined,
       status: statusFilter !== "All" ? statusFilter : undefined,
+      regionId: selectedRegionId ?? null,
       zoneId: selectedZoneId ?? null, // ✅ dropdown se selected zone
       ageFilter: ageFilter || undefined,
       daysFilter: daysFilter || undefined,
@@ -207,6 +210,7 @@ export default function LeadsTable() {
       debouncedSearch,
       cityFilter,
       selectedCityId, // ✅ add
+      selectedRegionId, // ✅
       selectedZoneId,
       selectedMonth,
       yearFilter,
@@ -226,6 +230,7 @@ export default function LeadsTable() {
     debouncedSearch,
     cityFilter,
     selectedCityId, // ✅ add
+    selectedRegionId,
     selectedZoneId,
     selectedMonth,
     yearFilter,
@@ -242,8 +247,18 @@ export default function LeadsTable() {
     dispatch(fetchMyAssignedLeads(buildFetchArgs(currentPage)));
   }, [dispatch, currentPage, buildFetchArgs]);
   // ─── Handlers ────────────────────────────────────────────────────────────
-  const handleRegionChange = (region: string) => {
-    setSelectedRegion(region);
+  const handleRegionChange = (regionId: string) => {
+    setSelectedRegion(regionId);
+    setSelectedRegionId(regionId ? Number(regionId) : null);
+
+    setSelectedZone("");
+    setSelectedZoneId(null);
+
+    setSelectedCity("");
+    setSelectedCityId(null);
+
+    setSelectedAdvisorId(null);
+    setCurrentPage(1);
   };
 
   const handleZoneChange = (zone: string) => {

@@ -10,13 +10,37 @@ import {
   getMySwapLeadsApi,
   ZoneAdvisor,
   getCityByZoneIdApi,
+  HighPaxLead,
+  getHighPaxLeadsApi,
+  getLongDurationLeadsApi,
 } from "./accessApi";
 
 import type { LeadRecord } from "@/types/types";
 
-//
-// 🔹 Types
-//
+interface HighPaxLeadsState {
+  leads: HighPaxLead[];
+  loading: boolean;
+  error: string | null;
+  page: number;
+  total: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  paxThreshold: number;
+  zonesAdvisors: ZoneAdvisor[];
+}
+
+interface LongDurationLeadsState {
+  leads: LongDurationLead[];
+  loading: boolean;
+  error: string | null;
+  page: number;
+  total: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  daysThreshold: number;
+  zonesAdvisors: ZoneAdvisor[];
+}
+
 interface TravelAdvisor {
   id: number;
   fullName: string;
@@ -73,6 +97,8 @@ interface TravelAdvisorState {
   assignedLeads: AssignedLeadsState;
   swapLeads: AssignedLeadsState;
   leadStatus: LeadStatusState;
+  highPaxLeads: HighPaxLeadsState;
+  longDurationLeads: LongDurationLeadsState;
   citiesByZone: {
     cities: CityOption[];
     loading: boolean;
@@ -141,7 +167,28 @@ const initialState: TravelAdvisorState = {
     monthlyStats: [],
     zonesAdvisors: [],
   },
-
+  highPaxLeads: {
+    leads: [],
+    loading: false,
+    error: null,
+    page: 1,
+    total: 0,
+    totalPages: 1,
+    hasNextPage: false,
+    paxThreshold: 6,
+    zonesAdvisors: [],
+  },
+  longDurationLeads: {
+    leads: [],
+    loading: false,
+    error: null,
+    page: 1,
+    total: 0,
+    totalPages: 1,
+    hasNextPage: false,
+    daysThreshold: 90,
+    zonesAdvisors: [],
+  },
   swapLeads: {
     leads: [],
     loading: false,
@@ -189,9 +236,6 @@ const initialState: TravelAdvisorState = {
   },
 };
 
-//
-// 🔹 Fetch Travel Advisors
-//
 export const fetchTravelAdvisors = createAsyncThunk<
   TravelAdvisor[],
   number,
@@ -327,9 +371,6 @@ export const fetchMySwapLeads = createAsyncThunk<
   },
 );
 
-//
-// 🔹 My Lead Status Count
-//
 export const fetchMyLeadStatusCount = createAsyncThunk<
   { totalLeads: number; statusCount: StatusCounts },
   void,
@@ -359,10 +400,64 @@ export const fetchPresalesLeadStatusCount = createAsyncThunk<
     }
   },
 );
+export const fetchHighPaxLeads = createAsyncThunk<
+  HighPaxLeadsResponse,
+  {
+    page?: number;
+    cityIds?: number[];
+    advisorId?: number | null;
+    paxThreshold?: number | null;
+  },
+  { rejectValue: string }
+>(
+  "access/fetchHighPaxLeads",
+  async (
+    { page = 1, cityIds, advisorId, paxThreshold },
+    { rejectWithValue },
+  ) => {
+    try {
+      return await getHighPaxLeadsApi(page, {
+        cityIds,
+        advisorId,
+        paxThreshold,
+      });
+    } catch (error: any) {
+      return rejectWithValue(
+        error?.message || "Failed to fetch high pax leads",
+      );
+    }
+  },
+);
 
-//
-// 🔹 Fetch Cities by Zone
-//
+export const fetchLongDurationLeads = createAsyncThunk<
+  LongDurationLeadsResponse,
+  {
+    page?: number;
+    cityIds?: number[];
+    advisorId?: number | null;
+    daysThreshold?: number | null;
+  },
+  { rejectValue: string }
+>(
+  "access/fetchLongDurationLeads",
+  async (
+    { page = 1, cityIds, advisorId, daysThreshold },
+    { rejectWithValue },
+  ) => {
+    try {
+      return await getLongDurationLeadsApi(page, {
+        cityIds,
+        advisorId,
+        daysThreshold,
+      });
+    } catch (error: any) {
+      return rejectWithValue(
+        error?.message || "Failed to fetch long duration leads",
+      );
+    }
+  },
+);
+
 export const fetchCitiesByZone = createAsyncThunk<
   CityOption[],
   number,
@@ -375,9 +470,6 @@ export const fetchCitiesByZone = createAsyncThunk<
   }
 });
 
-//
-// 🔹 Slice
-//
 const travelAdvisorSlice = createSlice({
   name: "travelAdvisor",
   initialState,
@@ -566,7 +658,51 @@ const travelAdvisorSlice = createSlice({
       .addCase(fetchMySwapLeads.rejected, (state, action) => {
         state.swapLeads.loading = false; // ✅ assignedLeads → swapLeads
         state.swapLeads.error = action.payload || "Failed to fetch swap leads";
-      });
+      })
+      .addCase(fetchHighPaxLeads.pending, (state) => {
+        state.highPaxLeads.loading = true;
+        state.highPaxLeads.error = null;
+      })
+
+      .addCase(fetchHighPaxLeads.fulfilled, (state, action) => {
+        const p = action.payload;
+        state.highPaxLeads.loading = false;
+        state.highPaxLeads.leads = p.leads ?? [];
+        state.highPaxLeads.page = p.page;
+        state.highPaxLeads.total = p.total;
+        state.highPaxLeads.totalPages = p.totalPages;
+        state.highPaxLeads.hasNextPage = p.hasNextPage;
+        state.highPaxLeads.paxThreshold = p.paxThreshold ?? 6;
+        state.highPaxLeads.zonesAdvisors = p.zoneAdvisors ?? [];
+      })
+
+      .addCase(fetchHighPaxLeads.rejected, (state, action) => {
+        state.highPaxLeads.loading = false;
+        state.highPaxLeads.error =
+          action.payload || "Failed to fetch high pax leads";
+      })
+      
+       .addCase(fetchLongDurationLeads.pending, (state) => {
+        state.longDurationLeads.loading = true;
+        state.longDurationLeads.error = null;
+      })
+      .addCase(fetchLongDurationLeads.fulfilled, (state, action) => {
+        const p = action.payload;
+        state.longDurationLeads.loading = false;
+        state.longDurationLeads.leads = p.leads ?? [];
+        state.longDurationLeads.page = p.page;
+        state.longDurationLeads.total = p.total;
+        state.longDurationLeads.totalPages = p.totalPages;
+        state.longDurationLeads.hasNextPage = p.hasNextPage;
+        state.longDurationLeads.daysThreshold = p.daysThreshold ?? 90;
+        state.longDurationLeads.zonesAdvisors = p.zoneAdvisors ?? [];
+      })
+      .addCase(fetchLongDurationLeads.rejected, (state, action) => {
+        state.longDurationLeads.loading = false;
+        state.longDurationLeads.error =
+          action.payload || "Failed to fetch long duration leads";
+      })
+      ;
   },
 });
 

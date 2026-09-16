@@ -9,8 +9,10 @@ import {
   assignTravelAdvisorToLead,
   findCitiesByZoneIds,
   findTravelAdvisorsByCityId,
+  getHighPaxLeads,
   getLeadsByAdvisorId,
   getLeadStatusCountByPresalesId,
+  getLongDurationLeads,
   getSwapLeadsByAdvisorId,
   swapTravelAdvisorForLead,
 } from "./assign.model.js";
@@ -93,7 +95,7 @@ const getMyAssignedLeads = asyncHandler(async (req, res) => {
     cityIds: scopedCityIds,
     accessDenied,
   } = await findZoneCityRegion(req);
-  
+
   if (accessDenied) {
     return res.status(403).json(new ApiResponse(403, null, "Access denied"));
   }
@@ -322,9 +324,172 @@ export const getcityByZoneId = asyncHandler(async (req, res) => {
     .json(new ApiResponse(201, cityData, "get successfully citys"));
 });
 
+const getHighPaxAssignedLeads = asyncHandler(async (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.max(1, parseInt(req.query.limit) || 10);
+
+  // ✅ default ab 100
+  const paxThreshold = req.query.paxThreshold
+    ? parseInt(req.query.paxThreshold, 10)
+    : 100;
+
+  const {
+    advisorId: scopeAdvisorId,
+    zoneAdvisors,
+    zoneAdvisorIds,
+    cityIds: scopedCityIds,
+    accessDenied,
+  } = await findZoneCityRegion(req);
+
+  if (accessDenied) {
+    return res.status(403).json(new ApiResponse(403, null, "Access denied"));
+  }
+
+  let cityIds = req.query.cityIds
+    ? req.query.cityIds.split(",").map(Number)
+    : scopedCityIds;
+  let advisorId = scopeAdvisorId;
+
+  const roleName = req.user.role_name?.toLowerCase();
+  if (["city manager", "team leader-sales"].includes(roleName)) {
+    const paramAdvisorId = req.query.advisorId
+      ? parseInt(req.query.advisorId, 10)
+      : null;
+
+    if (paramAdvisorId) {
+      if (!zoneAdvisorIds.includes(paramAdvisorId)) {
+        return res
+          .status(403)
+          .json(
+            new ApiResponse(
+              403,
+              null,
+              "Access denied: Advisor is not in your zone",
+            ),
+          );
+      }
+      advisorId = paramAdvisorId;
+    }
+  }
+
+  const {
+    leads,
+    total,
+    page: currentPage,
+    totalPages,
+    paxThreshold: appliedThreshold,
+  } = await getHighPaxLeads(page, limit, paxThreshold, cityIds, advisorId);
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        page: currentPage,
+        limit,
+        total,
+        totalPages,
+        hasNextPage: currentPage < totalPages,
+        paxThreshold: appliedThreshold,
+        leads,
+        zoneAdvisors,
+      },
+      leads.length
+        ? "High pax leads fetched successfully"
+        : "No high pax leads found",
+    ),
+  );
+});
+
+const getLongDurationAssignedLeads = asyncHandler(async (req, res) => {
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+
+  const limit = Math.max(1, parseInt(req.query.limit) || 10);
+
+  const daysThreshold = req.query.daysThreshold
+    ? parseInt(req.query.daysThreshold, 10)
+    : 5;
+
+  const {
+    advisorId: scopeAdvisorId,
+    zoneAdvisors,
+    zoneAdvisorIds,
+    cityIds: scopedCityIds,
+    accessDenied,
+  } = await findZoneCityRegion(req);
+
+  if (accessDenied) {
+    return res.status(403).json(new ApiResponse(403, null, "Access denied"));
+  }
+
+  let cityIds = req.query.cityIds
+    ? req.query.cityIds.split(",").map(Number)
+    : scopedCityIds;
+
+  let advisorId = scopeAdvisorId;
+
+  const roleName = req.user.role_name?.toLowerCase();
+
+  if (["city manager", "team leader-sales"].includes(roleName)) {
+    const paramAdvisorId = req.query.advisorId
+      ? parseInt(req.query.advisorId, 10)
+      : null;
+
+    if (paramAdvisorId) {
+      if (!zoneAdvisorIds.includes(paramAdvisorId)) {
+        return res
+          .status(403)
+          .json(
+            new ApiResponse(
+              403,
+              null,
+              "Access denied: Advisor is not in your zone",
+            ),
+          );
+      }
+
+      advisorId = paramAdvisorId;
+    }
+  }
+
+  const {
+    leads,
+    total,
+    page: currentPage,
+    totalPages,
+  } = await getLongDurationLeads(
+    page,
+    limit,
+    daysThreshold,
+    cityIds,
+    advisorId,
+  );
+
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      {
+        page: currentPage,
+        limit,
+        total,
+        totalPages,
+        hasNextPage: currentPage < totalPages,
+        daysThreshold,
+        leads,
+        zoneAdvisors,
+      },
+      leads.length
+        ? "Long duration leads fetched successfully"
+        : "No long duration leads found",
+    ),
+  );
+});
+
+export { getLongDurationAssignedLeads };
+
 export {
   getTravelAdvisorsByCityId,
   assignTravelAdvisor,
   getMyAssignedLeads,
   LeadStatusCountByPresalesId,
+  getHighPaxAssignedLeads,
 };

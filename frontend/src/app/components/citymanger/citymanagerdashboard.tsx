@@ -5,14 +5,14 @@ import { MapPin, RefreshCw, Users, ChevronDown } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "@/app/redux/store";
 import { fetchMyAssignedLeads } from "@/app/features/access/accessSlice";
+import { getTodayFollowups } from "@/app/features/leadsFollowups/lead_followupsSlice";
 import { MONTH_OPTIONS } from "../../../types/LeadsTable/leadstabledata";
 import type { LeadRecord } from "../../../types/types";
-
 import StatusLeadsTable from "./StatusLeadsTable";
-import AdvisorReminderStats from "./AdvisorReminder";
 import AdvisorFollowupStats from "./AdvisorFollowup";
+import HighPaxLeadsTable from "./HighPaxLeadsTable";
+import LongDurationLeadsTable from "./LongDurationLeadsTable";
 
-// ─── STATUS META ─────────────────────────────────────────────────────────
 const STATUS_META = [
   {
     key: "NEW",
@@ -67,9 +67,11 @@ const STATUS_META = [
 
 export default function Dashboard() {
   const dispatch = useDispatch<AppDispatch>();
+  const { currentUser } = useSelector((state: RootState) => state.user);
   const { assignedLeads } = useSelector(
     (state: RootState) => state.travelAdvisor,
   );
+
   const {
     leads: liveLeads,
     total: liveTotal,
@@ -80,21 +82,69 @@ export default function Dashboard() {
     zonesAdvisors,
   } = assignedLeads;
 
-  // ─── Filter states ────────────────────────────────────────────────────
+  const { todayFollowups = [], loading: todayFollowupsLoading } = useSelector(
+    (state: RootState) => state.followUp,
+  );
+
+  const cityIds = useMemo<number[]>(() => {
+    const user = currentUser as any;
+    const rawCityIds =
+      user?.city_ids ?? user?.cityIds ?? user?.cities_ids ?? [];
+
+    if (Array.isArray(rawCityIds)) {
+      return rawCityIds
+        .map((id: unknown) => Number(id))
+        .filter((id: number) => Number.isFinite(id));
+    }
+    const singleCityId =
+      user?.city_id ?? user?.cityId ?? user?.cityID ?? user?.city?.id;
+
+    if (
+      singleCityId !== undefined &&
+      singleCityId !== null &&
+      singleCityId !== ""
+    ) {
+      const parsed = Number(singleCityId);
+
+      if (Number.isFinite(parsed)) {
+        return [parsed];
+      }
+    }
+
+    return [];
+  }, [currentUser]);
+
+  const todayFollowupCount = useMemo(() => {
+    if (!Array.isArray(todayFollowups)) {
+      return 0;
+    }
+    return todayFollowups.length;
+  }, [todayFollowups]);
   const [liveStatusFilter, setLiveStatusFilter] = useState<string>("All");
   const [liveSelectedMonth, setLiveSelectedMonth] = useState<string | null>(
     null,
   );
-  const { currentUser } = useSelector((state: RootState) => state.user);
   const [selectedAdvisorId, setSelectedAdvisorId] = useState<number | null>(
     null,
   );
 
-  // ─── Table pagination (leads table under status overview) ─────────────
   const [tablePage, setTablePage] = useState(1);
-
-  // ─── Table visibility — hidden by default, shown only on status click ──
   const [showTable, setShowTable] = useState(false);
+  useEffect(() => {
+    if (!cityIds.length) {
+      console.warn(
+        "City Manager: cityIds not found, today followups not fetched.",
+      );
+
+      return;
+    }
+
+    dispatch(
+      getTodayFollowups({
+        cityIds,
+      } as any),
+    );
+  }, [dispatch, cityIds]);
 
   useEffect(() => {
     dispatch(
@@ -113,12 +163,9 @@ export default function Dashboard() {
     selectedAdvisorId,
   ]);
 
-  // Filters change hote hi table page reset karo
   useEffect(() => {
     setTablePage(1);
   }, [liveStatusFilter, liveSelectedMonth, selectedAdvisorId]);
-
-  // ─── Total leads (filtered) ────────────────────────────────────────────
   const liveTotalCount = useMemo(() => {
     return Object.values(liveStatusCounts || {}).reduce(
       (sum, value) => sum + Number(value || 0),
@@ -128,40 +175,76 @@ export default function Dashboard() {
 
   const livePct = (n: number) =>
     liveTotalCount > 0 ? ((n / liveTotalCount) * 100).toFixed(1) : "0.0";
-
-  // ─── Month counts ───────────────────────────────────────────────────────
   const liveMonthCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    MONTH_OPTIONS.forEach((m) => (counts[m.value] = 0));
-    (liveMonthlyStats || []).forEach((stat) => {
-      const [, statMonth] = stat.month.split("-");
-      if (counts[statMonth] !== undefined)
-        counts[statMonth] += Number(stat.leadCount);
+    MONTH_OPTIONS.forEach((month) => {
+      counts[month.value] = 0;
     });
+
+    (liveMonthlyStats || []).forEach((stat) => {
+      const parts = String(stat.month).split("-");
+      const statMonth = parts[1];
+      if (statMonth && counts[statMonth] !== undefined) {
+        counts[statMonth] += Number(stat.leadCount || 0);
+      }
+    });
+
     return counts;
   }, [liveMonthlyStats]);
 
   const selectedAdvisorName = useMemo(() => {
-    if (selectedAdvisorId === null) return null;
+    if (selectedAdvisorId === null) {
+      return null;
+    }
     return (
-      zonesAdvisors?.find((a) => a.id === selectedAdvisorId)?.name ??
-      `Advisor ${selectedAdvisorId}`
+      zonesAdvisors?.find((advisor) => advisor.id === selectedAdvisorId)
+        ?.name ?? `Advisor ${selectedAdvisorId}`
     );
   }, [selectedAdvisorId, zonesAdvisors]);
 
   const selectedMonthLabel = useMemo(() => {
-    if (!liveSelectedMonth) return null;
+    if (!liveSelectedMonth) {
+      return null;
+    }
+
     return (
-      MONTH_OPTIONS.find((m) => m.value === liveSelectedMonth)?.label ??
+      MONTH_OPTIONS.find((month) => month.value === liveSelectedMonth)?.label ??
       liveSelectedMonth
     );
   }, [liveSelectedMonth]);
 
+  const handleRefresh = () => {
+    dispatch(
+      fetchMyAssignedLeads({
+        page: tablePage,
+        status: liveStatusFilter !== "All" ? liveStatusFilter : undefined,
+        month: liveSelectedMonth ? parseInt(liveSelectedMonth) : null,
+        advisorId: selectedAdvisorId ?? undefined,
+      }),
+    );
+  };
+  useEffect(() => {
+    if (!cityIds.length) {
+      return;
+    }
+
+    dispatch(
+      getTodayFollowups({
+        cityIds,
+      } as any),
+    );
+  }, [dispatch, cityIds]);
+  const handleReset = () => {
+    setLiveStatusFilter("All");
+    setLiveSelectedMonth(null);
+    setSelectedAdvisorId(null);
+    setTablePage(1);
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50 p-6 relative">
+    <div className="min-h-screen relative">
       <div className="mb-6 rounded-2xl border border-gray-200 bg-white p-6 text-gray-800 shadow-lg">
-        {/* Header */}
-         <div className="mb-6 flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+        <div className="mb-6 flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
           <div>
             <p className="text-2xl font-semibold text-gray-800">
               Hey {currentUser?.aliasName}
@@ -187,12 +270,19 @@ export default function Dashboard() {
               Today's Follow-ups
             </h3>
 
-            <p className="mt-2 text-3xl font-bold text-orange-800">0</p>
+            <p className="mt-2 text-3xl font-bold text-orange-800">
+              {todayFollowupsLoading ? "..." : todayFollowupCount}
+            </p>
 
-            <p className="mt-1 text-xs text-orange-600">Urgent items</p>
+            <p className="mt-1 text-xs text-orange-600">
+              {todayFollowupCount === 0
+                ? "No follow-ups today"
+                : todayFollowupCount === 1
+                  ? "1 follow-up today"
+                  : `${todayFollowupCount} follow-ups today`}
+            </p>
           </div>
 
-          {/* Today's Trip Starts */}
           <div className="rounded-xl border border-green-200 bg-green-50 p-4 shadow-sm transition hover:shadow-md">
             <h3 className="text-sm font-semibold text-green-700">
               Today's Trip Starts
@@ -203,7 +293,6 @@ export default function Dashboard() {
             <p className="mt-1 text-xs text-green-600">Trips starting today</p>
           </div>
 
-          {/* Next Reminder */}
           <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4 shadow-sm transition hover:shadow-md">
             <h3 className="text-sm font-semibold text-yellow-700">
               Next Reminder
@@ -216,7 +305,6 @@ export default function Dashboard() {
             <p className="mt-1 text-xs text-yellow-600">Upcoming reminder</p>
           </div>
 
-          {/* Today's Expense Revenue */}
           <div className="rounded-xl border border-purple-200 bg-purple-50 p-4 shadow-sm transition hover:shadow-md">
             <h3 className="text-sm font-semibold text-purple-700">
               Today's Expense Revenue
@@ -227,7 +315,6 @@ export default function Dashboard() {
             <p className="mt-1 text-xs text-purple-600">Today's total</p>
           </div>
 
-          {/* Revenue */}
           <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 shadow-sm transition hover:shadow-md">
             <h3 className="text-sm font-semibold text-rose-700">Revenue</h3>
 
@@ -238,7 +325,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ─── LEAD STATUS OVERVIEW ─── */}
       <div className="bg-white rounded-2xl shadow-xl mb-6 p-6 text-blue-950 border border-slate-200">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
           <h2 className="text-lg font-bold tracking-wide flex items-center gap-2 text-blue-950">
@@ -251,6 +337,7 @@ export default function Dashboard() {
               </span>
             )}
           </h2>
+
           <div className="flex items-center gap-3">
             {zonesAdvisors && zonesAdvisors.length > 0 && (
               <div className="relative">
@@ -258,17 +345,20 @@ export default function Dashboard() {
                   value={selectedAdvisorId ?? ""}
                   onChange={(e) => {
                     const val = e.target.value;
+
                     setSelectedAdvisorId(val ? Number(val) : null);
                   }}
                   className="appearance-none text-sm font-semibold bg-white text-blue-950 border border-slate-300 rounded-lg pl-3 pr-8 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-300 shadow-sm cursor-pointer"
                 >
                   <option value="">All Advisors</option>
+
                   {zonesAdvisors.map((advisor) => (
                     <option key={advisor.id} value={advisor.id}>
                       {advisor.name}
                     </option>
                   ))}
                 </select>
+
                 <ChevronDown
                   size={14}
                   className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-blue-950"
@@ -281,17 +371,20 @@ export default function Dashboard() {
                 value={liveSelectedMonth ?? ""}
                 onChange={(e) => {
                   const val = e.target.value;
+
                   setLiveSelectedMonth(val ? val : null);
                 }}
                 className="appearance-none text-sm font-semibold bg-white text-blue-950 border border-slate-300 rounded-lg pl-3 pr-8 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-300 shadow-sm cursor-pointer"
               >
                 <option value="">All Months</option>
+
                 {MONTH_OPTIONS.map((month) => (
                   <option key={month.value} value={month.value}>
                     {month.label} ({liveMonthCounts[month.value] ?? 0})
                   </option>
                 ))}
               </select>
+
               <ChevronDown
                 size={14}
                 className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-blue-950"
@@ -302,36 +395,23 @@ export default function Dashboard() {
               liveSelectedMonth !== null ||
               selectedAdvisorId !== null) && (
               <button
-                onClick={() => {
-                  setLiveStatusFilter("All");
-                  setLiveSelectedMonth(null);
-                  setSelectedAdvisorId(null);
-                }}
+                onClick={handleReset}
                 className="text-xs font-semibold uppercase tracking-wider text-blue-600 hover:text-blue-900 transition-colors underline underline-offset-4 decoration-blue-300"
               >
                 Reset
               </button>
             )}
+
             <button
-              onClick={() =>
-                dispatch(
-                  fetchMyAssignedLeads({
-                    page: tablePage,
-                    status:
-                      liveStatusFilter !== "All" ? liveStatusFilter : undefined,
-                    month: liveSelectedMonth
-                      ? parseInt(liveSelectedMonth)
-                      : null,
-                    advisorId: selectedAdvisorId ?? undefined,
-                  }),
-                )
-              }
+              onClick={handleRefresh}
               className="p-1.5 rounded-md bg-blue-600 text-white hover:bg-blue-700 transition-colors shadow-sm"
               title="Refresh"
             >
               <RefreshCw
                 size={14}
-                className={liveLoading ? "animate-spin" : ""}
+                className={
+                  liveLoading || todayFollowupsLoading ? "animate-spin" : ""
+                }
               />
             </button>
           </div>
@@ -342,11 +422,13 @@ export default function Dashboard() {
             <div className="flex items-center justify-center w-11 h-11 rounded-full bg-blue-100">
               <Users size={20} className="text-blue-700" />
             </div>
+
             <div>
               <p className="text-xs uppercase tracking-widest text-slate-500 font-semibold">
                 Total Leads — {selectedAdvisorName}
                 {selectedMonthLabel ? ` · ${selectedMonthLabel}` : ""}
               </p>
+
               <p className="text-3xl font-black leading-tight text-blue-950">
                 {liveLoading ? "…" : liveTotal}
               </p>
@@ -354,7 +436,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* ─── STATUS CARDS ─── */}
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 mb-6 bg-slate-50 rounded-xl p-3 border border-slate-100">
           <button
             onClick={() => {
@@ -372,10 +453,12 @@ export default function Dashboard() {
               <Users size={14} />
               Total Leads
             </div>
+
             <div>
               <div className="text-3xl font-black leading-none text-white">
                 {liveTotalCount}
               </div>
+
               <div className="text-sm text-slate-300 mt-1">100.0%</div>
             </div>
           </button>
@@ -388,30 +471,40 @@ export default function Dashboard() {
                 key={s.key}
                 onClick={() => {
                   setLiveStatusFilter(isActive ? "All" : s.key);
+
                   setShowTable(true);
                 }}
                 className="relative flex flex-col justify-between rounded-xl p-3 h-24 transition-colors duration-150"
                 style={{
                   backgroundColor: s.bg,
+
                   borderLeft: `${isActive ? 8 : 6}px solid ${s.border}`,
                 }}
               >
                 <div
                   className="text-sm font-bold uppercase tracking-wider"
-                  style={{ color: s.text }}
+                  style={{
+                    color: s.text,
+                  }}
                 >
                   {s.label}
                 </div>
+
                 <div>
                   <div
                     className="text-3xl font-black leading-none"
-                    style={{ color: s.text }}
+                    style={{
+                      color: s.text,
+                    }}
                   >
                     {count}
                   </div>
+
                   <div
                     className="text-sm mt-1 opacity-80"
-                    style={{ color: s.text }}
+                    style={{
+                      color: s.text,
+                    }}
                   >
                     {livePct(count)}%
                   </div>
@@ -421,7 +514,6 @@ export default function Dashboard() {
           })}
         </div>
 
-        {/* ─── LEADS TABLE (status card click ke hisab se filtered, hidden by default) ─── */}
         {showTable && (
           <div>
             <div className="flex items-center justify-end mb-2">
@@ -432,6 +524,7 @@ export default function Dashboard() {
                 Hide Table
               </button>
             </div>
+
             <StatusLeadsTable
               leads={liveLeads as LeadRecord[]}
               loading={liveLoading}
@@ -454,15 +547,22 @@ export default function Dashboard() {
           </div>
         )}
       </div>
-
-      {/* ─── ADVISOR-WISE REMINDERS ─── */}
-      <AdvisorReminderStats
-        selectedAdvisorId={selectedAdvisorId}
-        zonesAdvisors={zonesAdvisors}
-      />
-
-      {/* ─── ADVISOR-WISE FOLLOW-UPS ─── */}
       <AdvisorFollowupStats selectedAdvisorId={selectedAdvisorId} />
+      <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="min-w-0">
+          <HighPaxLeadsTable
+            cityIds={cityIds}
+            selectedAdvisorId={selectedAdvisorId}
+          />
+        </div>
+
+        <div className="min-w-0">
+          <LongDurationLeadsTable
+            cityIds={cityIds}
+            selectedAdvisorId={selectedAdvisorId}
+          />
+        </div>
+      </div>
     </div>
   );
 }

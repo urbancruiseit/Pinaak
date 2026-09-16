@@ -377,3 +377,128 @@ export const getCityByZoneIdApi = async (
     throw new Error(error?.response?.data?.message || error.message);
   }
 };
+
+export interface HighPaxLead {
+  id: number;
+  customerName: string | null;
+  pax: number;
+  status: string;
+  created_at: string | null;
+  pickupDateTime: string | null;
+  dropDateTime: string | null;
+  cityName: string | null;
+  advisorFullName: string | null;
+}
+
+export interface HighPaxLeadsResponse {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  paxThreshold: number;
+  leads: HighPaxLead[];
+  zoneAdvisors: ZoneAdvisor[];
+}
+
+export const getHighPaxLeadsApi = async (
+  page: number = 1,
+  filters?: {
+    limit?: number; // ✅ add
+    cityIds?: number[];
+    advisorId?: number | null;
+    paxThreshold?: number | null;
+  },
+): Promise<HighPaxLeadsResponse> => {
+  try {
+    const params = new URLSearchParams();
+    params.append("page", String(page));
+    params.append("limit", String(filters?.limit ?? 10)); // ✅ add
+
+    if (filters?.cityIds?.length) {
+      params.append("cityIds", filters.cityIds.join(","));
+    }
+    if (filters?.advisorId != null) {
+      params.append("advisorId", String(filters.advisorId));
+    }
+    if (filters?.paxThreshold != null) {
+      params.append("paxThreshold", String(filters.paxThreshold));
+    }
+
+    const response = await axiosInstance.get(
+      `/assign/maxpax?${params.toString()}`,
+    );
+
+    const data: HighPaxLeadsResponse = response?.data?.data;
+    if (!data) throw new Error("Invalid response from server");
+
+    return data;
+  } catch (error: any) {
+    throw new Error(
+      error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        error?.message ||
+        "Failed to fetch high pax leads",
+    );
+  }
+};
+
+export interface LongDurationLead {
+  customerName: string | null;
+  days: number;
+  status: string;
+  pickupDateTime: string | null;
+  dropDateTime: string | null;
+  cityName: string | null;
+  advisorFullName: string | null;
+}
+
+export interface LongDurationLeadsResponse {
+  leads: LongDurationLead[];
+  total: number;
+  page: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  daysThreshold: number;
+  zoneAdvisors?: ZoneAdvisor[];
+}
+
+export const getLongDurationLeadsApi = async (
+  page: number = 1,
+  filters?: {
+    cityIds?: number[];
+    advisorId?: number | null;
+    daysThreshold?: number | null;
+  },
+): Promise<LongDurationLeadsResponse> => {
+  try {
+    const params = new URLSearchParams();
+    params.append("page", String(page));
+
+    if (filters?.cityIds?.length) {
+      params.append("cityIds", filters.cityIds.join(","));
+    }
+    if (filters?.advisorId != null) {
+      params.append("advisorId", String(filters.advisorId));
+    }
+    if (filters?.daysThreshold != null) {
+      params.append("daysThreshold", String(filters.daysThreshold));
+    }
+
+    const response = await axiosInstance.get(
+      `/assign/long-duration?${params.toString()}`,
+    );
+
+    const data: LongDurationLeadsResponse = response?.data?.data;
+    if (!data) throw new Error("Invalid response from server");
+
+    return data;
+  } catch (error: any) {
+    throw new Error(
+      error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        error?.message ||
+        "Failed to fetch long duration leads",
+    );
+  }
+};

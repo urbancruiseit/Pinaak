@@ -1044,65 +1044,7 @@ export const markReminderAsShown = async (id) => {
 //   }
 // };
 
-export const getAdvisorReminderStats = async (cityIds = []) => {
-  try {
-    let where = "";
-    const values = [];
 
-    if (cityIds && cityIds.length > 0) {
-      const placeholders = cityIds.map(() => "?").join(",");
-      where = `WHERE l.city_id IN (${placeholders})`;
-      values.push(...cityIds);
-    }
-
-    const [rows] = await pool.query(
-      `
-      SELECT
-        l.advisor_id,
-        COUNT(*) AS totalReminders,
-        SUM(CASE WHEN s.is_shown = 0 THEN 1 ELSE 0 END) AS pendingReminders,
-        SUM(CASE WHEN s.is_shown = 1 THEN 1 ELSE 0 END) AS shownReminders
-      FROM scheduler s
-      INNER JOIN leads l ON l.id = s.lead_id
-      ${where}
-      GROUP BY l.advisor_id
-      `,
-      values,
-    );
-
-    const advisorIds = rows
-      .map((r) => r.advisor_id)
-      .filter((id) => id !== null && id !== undefined);
-
-    let userMap = {};
-    if (advisorIds.length > 0) {
-      try {
-        const placeholders = advisorIds.map(() => "?").join(",");
-        const [users] = await hrmsPool.query(
-          `SELECT id, aliasName, firstName, middleName, lastName, shortName
-           FROM users WHERE id IN (${placeholders})`,
-          advisorIds,
-        );
-        users.forEach((u) => (userMap[u.id] = u));
-      } catch (err) {
-        console.error("hrmsPool user fetch failed:", err.message);
-      }
-    }
-
-    return rows.map((r) => ({
-      advisorId: r.advisor_id,
-      advisorName:
-        (userMap[r.advisor_id]?.aliasName || "").trim() ||
-        `Advisor ${r.advisor_id}`,
-      totalReminders: Number(r.totalReminders) || 0,
-      pendingReminders: Number(r.pendingReminders) || 0,
-      shownReminders: Number(r.shownReminders) || 0,
-    }));
-  } catch (error) {
-    console.error("getAdvisorReminderStats error:", error);
-    throw error;
-  }
-};
 
 export const getAdvisorReminderDetails = async (advisorId) => {
   try {

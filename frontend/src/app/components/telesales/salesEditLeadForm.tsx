@@ -20,7 +20,6 @@ import {
   CheckCircle,
   Plus,
   Trash2,
-  Clock3,
 } from "lucide-react";
 import type { LeadRecord } from "../../../types/types";
 import { updateLead, fetchLeads } from "@/app/features/lead/leadSlice";
@@ -33,7 +32,6 @@ import {
   fetchStatesByCity,
   resetStatesForCity,
 } from "@/app/features/State/stateSlice";
-import ReminderModal from "@/app/components/ui/ReminderModal";
 import {
   SOURCE_OPTIONS,
   STATUS_OPTIONS,
@@ -426,56 +424,6 @@ const EditLeadForm: React.FC<{
       return numA !== numB ? numA - numB : a.code.localeCompare(b.code);
     });
 
-  // ── Portal Modal for Reminder ─────────────────────────────────────────
-  const schedulerPortal =
-    mounted && showScheduler
-      ? createPortal(
-          <div
-            style={{
-              position: "fixed",
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              width: "100vw",
-              height: "100vh",
-              backgroundColor: "rgba(0,0,0,0.5)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              zIndex: 99999,
-            }}
-            onClick={(e) => {
-              if (e.target === e.currentTarget) setShowScheduler(false);
-            }}
-          >
-            <div
-              style={{
-                backgroundColor: "#ffffff",
-                borderRadius: "12px",
-                width: "100%",
-                maxWidth: "480px",
-                boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
-                overflow: "hidden",
-                position: "relative",
-              }}
-            >
-              <ReminderModal
-                leadId={initialData.id}
-                customerName={
-                  (initialData as any).fullName ||
-                  (initialData as any).customerName ||
-                  ""
-                }
-                onClose={() => setShowScheduler(false)}
-                inlineMode={true}
-              />
-            </div>
-          </div>,
-          document.body,
-        )
-      : null;
-
   return (
     <div>
       {/* ── Toast ── */}
@@ -517,25 +465,6 @@ const EditLeadForm: React.FC<{
             <h2 className="text-4xl font-bold text-left py-4 text-orange-600">
               Telesales Edit Lead
             </h2>
-          </div>
-          <div className="flex items-center gap-2">
-            {/* Clock/Reminder Button */}
-            <button
-              type="button"
-              onClick={() => setShowScheduler(true)}
-              className="p-2 rounded-md bg-orange-500 hover:bg-orange-600 text-white transition"
-              title="Add Reminder"
-            >
-              <Clock3 size={20} />
-            </button>
-            {onCancel && (
-              <button
-                onClick={onCancel}
-                className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600"
-              >
-                Cancel
-              </button>
-            )}
           </div>
         </div>
       </div>
@@ -1723,9 +1652,6 @@ const EditLeadForm: React.FC<{
           </div>
         </form>
       </div>
-
-      {/* ── Reminder Portal — form ke bahar, document.body pe ── */}
-      {schedulerPortal}
     </div>
   );
 };

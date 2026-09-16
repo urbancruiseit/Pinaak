@@ -6,13 +6,8 @@ import {
   updateLeadApi,
   markUnwantedApi,
   getAllUnwantedLeadsApi,
-  createReminderApi,
-  markReminderAsShownApi,
-  // getDueRemindersApi,
   DueReminder,
   checkCustomerPhoneApi,
-  getAdvisorReminderStatsApi,
-  AdvisorReminderStat,
 } from "./leadApi";
 
 interface StatusCounts {
@@ -41,7 +36,6 @@ interface LeadState {
   statusCounts: StatusCounts;
   totalLeads: number;
   search: string;
-  advisorReminderStats: AdvisorReminderStat[];
   advisorReminderStatsLoading: boolean;
   unwantedLeads: LeadRecord[];
   unwantedLeadsLoading: boolean;
@@ -242,28 +236,9 @@ export const createReminder = createAsyncThunk(
 //   },
 // );
 
-export const markReminderAsShown = createAsyncThunk(
-  "lead/markReminderAsShown",
-  async (id: number, { rejectWithValue }) => {
-    try {
-      await markReminderAsShownApi(id);
-      return id;
-    } catch (err: any) {
-      return rejectWithValue(err.message);
-    }
-  },
-);
 
-export const fetchAdvisorReminderStats = createAsyncThunk(
-  "lead/fetchAdvisorReminderStats",
-  async (_, { rejectWithValue }) => {
-    try {
-      return await getAdvisorReminderStatsApi();
-    } catch (err: any) {
-      return rejectWithValue(err.message);
-    }
-  },
-);
+
+
 
 export const checkCustomerPhone = createAsyncThunk(
   "lead/checkCustomerPhone",
@@ -421,42 +396,7 @@ const leadSlice = createSlice({
         state.reminderSuccess = false;
         state.reminderError = action.payload as string;
       })
-      .addCase(fetchAdvisorReminderStats.pending, (state) => {
-        state.advisorReminderStatsLoading = true;
-      })
-      .addCase(fetchAdvisorReminderStats.fulfilled, (state, action) => {
-        state.advisorReminderStatsLoading = false;
-        state.advisorReminderStats = action.payload;
-      })
-      .addCase(fetchAdvisorReminderStats.rejected, (state) => {
-        state.advisorReminderStatsLoading = false;
-      })
-      // .addCase(fetchDueReminders.pending, (state) => {
-      //   state.dueReminderLoading = true;
-      // })
-
-      // .addCase(fetchDueReminders.fulfilled, (state, action) => {
-      //   state.dueReminderLoading = false;
-      //   state.dueReminders = action.payload;
-      // })
-
-      // .addCase(fetchDueReminders.rejected, (state, action) => {
-      //   state.dueReminderLoading = false;
-      //   state.dueReminderError = action.payload as string;
-      // })
-
-      .addCase(markReminderAsShown.fulfilled, (state, action) => {
-        state.dueReminders = state.dueReminders.filter(
-          (item) => item.id !== action.payload,
-        );
-      })
-      .addCase(checkCustomerPhone.fulfilled, (state, action) => {
-        // No state update required
-      })
-
-      .addCase(checkCustomerPhone.rejected, (state, action) => {
-        state.error = action.payload as string;
-      });
+  ;
   },
 });
 export const {

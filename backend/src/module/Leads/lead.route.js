@@ -8,8 +8,6 @@ import {
   createReminderController,
   markReminderAsShownController,
   checkCustomerPhoneController,
-  getAdvisorReminderStatsController,
-  getAdvisorReminderDetailsController,
   getAdvisorFollowupDetailsController,
   getAdvisorFollowupStatsController,
   getLeadRfqTimeController,
@@ -22,21 +20,8 @@ router.route("/").get(verifyJWT, listLeads);
 router.route("/unwanted/:id").patch(updateLeadUnwantedStatusController);
 router.route("/unwanted/all").get(getAllUnwantedLeadsController);
 router.route("/updatelead/:leadId").put(updateLeadByIdController);
-// lead.route.jsgetDueRemindersApi
-router.post("/reminder", verifyJWT, createReminderController);
-// router.get("/reminders/due", verifyJWT, getDueRemindersController);
-router.patch("/reminders/:id/shown", verifyJWT, markReminderAsShownController);
 router.post("/check-phone", checkCustomerPhoneController);
-router.get(
-  "/reminders/advisor-stats",
-  verifyJWT,
-  getAdvisorReminderStatsController,
-);
-router.get(
-  "/reminders/advisor-stats/:advisorId/details",
-  verifyJWT,
-  getAdvisorReminderDetailsController,
-);
+
 router.get(
   "/followups/advisor-stats",
   verifyJWT,

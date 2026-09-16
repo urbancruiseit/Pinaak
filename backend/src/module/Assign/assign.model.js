@@ -1200,3 +1200,347 @@ export const findCitiesByZoneIds = async (zoneId) => {
 
   return rows;
 };
+
+export const getHighPaxLeads = async (
+  page,
+  limit,
+  paxThreshold = 6,
+  cityIds,
+  advisorId,
+) => {
+  const pageNumber = parseInt(page, 10) || 1;
+  const limitNumber = parseInt(limit, 10) || 20;
+  const offset = (pageNumber - 1) * limitNumber;
+
+  // ✅ paxThreshold hamesha number ho (galti se array/string aa jaye to bhi safe)
+  const threshold = Number.isFinite(Number(paxThreshold))
+    ? Number(paxThreshold)
+    : 6;
+
+  let whereClause = `
+    WHERE (l.unwanted_status IS NULL OR l.unwanted_status != 'unwanted')
+    AND l.passengerTotal > ?
+  `;
+  const values = [threshold];
+
+  // ✅ Array.isArray check — pehle non-array aa jata to crash hota
+  if (Array.isArray(cityIds) && cityIds.length > 0) {
+    const safeCityIds = cityIds
+      .map((id) => Number(id))
+      .filter((id) => Number.isFinite(id));
+
+    if (safeCityIds.length > 0) {
+      const placeholders = safeCityIds.map(() => "?").join(",");
+      whereClause += ` AND l.city_id IN (${placeholders})`;
+      values.push(...safeCityIds);
+    }
+  }
+
+  if (advisorId && Number(advisorId) > 0) {
+    whereClause += ` AND l.advisor_id = ?`;
+    values.push(Number(advisorId));
+  }
+
+  // ✅ l.id aur l.created_at add kiye
+  const leadsQuery = `
+    SELECT 
+      l.id,
+      l.city_id,
+      l.advisor_id,
+      CONCAT_WS(' ', c.firstName, c.middleName, c.lastName) AS customerName,
+      l.passengerTotal AS pax,
+      l.status,
+      l.created_at,
+      l.pickupDateTime,
+      l.dropDateTime
+    FROM leads l
+    LEFT JOIN customers c ON l.customer_id = c.id
+    ${whereClause}
+    ORDER BY l.passengerTotal DESC, l.created_at DESC
+    LIMIT ? OFFSET ?
+  `;
+
+  // ✅ count me customers JOIN ki zarurat nahi (whereClause sirf l.* use karta hai)
+  const countQuery = `
+    SELECT COUNT(*) AS total
+    FROM leads l
+    ${whereClause}
+  `;
+
+  const [[leads], [countResult]] = await Promise.all([
+    pool.query(leadsQuery, [...values, limitNumber, offset]),
+    pool.query(countQuery, values),
+  ]);
+
+  const total = parseInt(countResult?.[0]?.total ?? 0, 10);
+
+  const uniqueCityIds = [
+    ...new Set(
+      leads
+        .map((l) => l.city_id)
+        .filter((id) => id !== null && id !== undefined),
+    ),
+  ];
+
+  let cityMap = {};
+  if (uniqueCityIds.length > 0) {
+    try {
+      const placeholders = uniqueCityIds.map(() => "?").join(",");
+      const [cities] = await hrmsPool.query(
+        `SELECT id, city_name
+         FROM city
+         WHERE id IN (${placeholders})`,
+        uniqueCityIds,
+      );
+      cities.forEach((c) => {
+        cityMap[c.id] = c.city_name;
+      });
+    } catch (err) {
+      console.error("hrmsPool city fetch failed:", err.message);
+    }
+  }
+
+  const getCityName = (cityId) => {
+    if (cityId === null || cityId === undefined) return null;
+    return cityMap[cityId] || null;
+  };
+
+  const uniqueAdvisorIds = [
+    ...new Set(
+      leads
+        .map((l) => l.advisor_id)
+        .filter((id) => id !== null && id !== undefined),
+    ),
+  ];
+
+  let advisorMap = {};
+  if (uniqueAdvisorIds.length > 0) {
+    try {
+      const placeholders = uniqueAdvisorIds.map(() => "?").join(",");
+      const [users] = await hrmsPool.query(
+        `SELECT id, aliasName, firstName, middleName, lastName, shortName
+         FROM users
+         WHERE id IN (${placeholders})`,
+        uniqueAdvisorIds,
+      );
+      users.forEach((u) => {
+        advisorMap[u.id] = u;
+      });
+    } catch (err) {
+      console.error("hrmsPool advisor fetch failed:", err.message);
+    }
+  }
+
+  const getAdvisorName = (id) => {
+    const user = advisorMap[id];
+    if (!user) return null;
+
+    const alias = (user.aliasName || "").trim();
+    if (alias) return alias;
+
+    const full = [user.firstName, user.middleName, user.lastName]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+
+    return full || (user.shortName || "").trim() || null;
+  };
+
+  const leadsFinal = leads.map(({ city_id, advisor_id, ...rest }) => ({
+    ...rest,
+    cityName: getCityName(city_id),
+    advisorFullName: getAdvisorName(advisor_id),
+  }));
+
+  return {
+    leads: leadsFinal,
+    total,
+    page: pageNumber,
+    totalPages: Math.ceil(total / limitNumber) || 1,
+    paxThreshold: threshold,
+  };
+};
+
+export const getLongDurationLeads = async (
+  page,
+  limit,
+  daysThreshold = 5,
+  cityIds,
+  advisorId,
+) => {
+  const pageNumber = parseInt(page, 10) || 1;
+  const limitNumber = parseInt(limit, 10) || 20;
+  const offset = (pageNumber - 1) * limitNumber;
+
+  let whereClause = `
+    WHERE (l.unwanted_status IS NULL OR l.unwanted_status != 'unwanted')
+    AND l.days > ?
+  `;
+
+  const values = [daysThreshold];
+
+  if (cityIds && cityIds.length > 0) {
+    const placeholders = cityIds.map(() => "?").join(",");
+
+    whereClause += `
+      AND l.city_id IN (${placeholders})
+    `;
+
+    values.push(...cityIds);
+  }
+
+  if (advisorId && Number(advisorId) > 0) {
+    whereClause += `
+      AND l.advisor_id = ?
+    `;
+
+    values.push(Number(advisorId));
+  }
+
+  const leadsQuery = `
+    SELECT
+      l.id,
+      l.city_id,
+      l.advisor_id,
+      CONCAT_WS(
+        ' ',
+        c.firstName,
+        c.middleName,
+        c.lastName
+      ) AS customerName,
+      l.days,
+      l.status,
+      l.pickupDateTime,
+      l.dropDateTime
+    FROM leads l
+    LEFT JOIN customers c
+      ON l.customer_id = c.id
+    ${whereClause}
+    ORDER BY l.id DESC
+    LIMIT ? OFFSET ?
+  `;
+
+  const countQuery = `
+    SELECT COUNT(*) AS total
+    FROM leads l
+    LEFT JOIN customers c
+      ON l.customer_id = c.id
+    ${whereClause}
+  `;
+
+  const leadQueryValues = [...values, limitNumber, offset];
+
+  const [[leads], [countResult]] = await Promise.all([
+    pool.query(leadsQuery, leadQueryValues),
+
+    pool.query(countQuery, values),
+  ]);
+
+  const total = parseInt(countResult[0].total, 10);
+
+  /* =====================================================
+     CITY NAMES
+  ====================================================== */
+
+  const leadCityIds = leads
+    .map((l) => l.city_id)
+    .filter((id) => id !== null && id !== undefined);
+
+  const uniqueCityIds = [...new Set(leadCityIds)];
+
+  const cityMap = {};
+
+  if (uniqueCityIds.length > 0) {
+    try {
+      const placeholders = uniqueCityIds.map(() => "?").join(",");
+
+      const [cities] = await hrmsPool.query(
+        `
+            SELECT id, city_name
+            FROM city
+            WHERE id IN (${placeholders})
+          `,
+        uniqueCityIds,
+      );
+
+      cities.forEach((c) => {
+        cityMap[c.id] = c.city_name;
+      });
+    } catch (err) {
+      console.error("hrmsPool city fetch failed:", err.message);
+    }
+  }
+
+  const getCityName = (cityId) => {
+    if (cityId === null || cityId === undefined) {
+      return null;
+    }
+
+    return cityMap[cityId] || null;
+  };
+
+  /* =====================================================
+     ADVISOR NAMES
+  ====================================================== */
+
+  const leadAdvisorIds = leads
+    .map((l) => l.advisor_id)
+    .filter((id) => id !== null && id !== undefined);
+
+  const uniqueAdvisorIds = [...new Set(leadAdvisorIds)];
+
+  const advisorMap = {};
+
+  if (uniqueAdvisorIds.length > 0) {
+    try {
+      const placeholders = uniqueAdvisorIds.map(() => "?").join(",");
+
+      const [users] = await hrmsPool.query(
+        `
+            SELECT
+              id,
+              aliasName,
+              firstName,
+              middleName,
+              lastName,
+              shortName
+            FROM users
+            WHERE id IN (${placeholders})
+          `,
+        uniqueAdvisorIds,
+      );
+
+      users.forEach((u) => {
+        advisorMap[u.id] = u;
+      });
+    } catch (err) {
+      console.error("hrmsPool advisor fetch failed:", err.message);
+    }
+  }
+
+  const getAdvisorName = (advisorId) => {
+    const user = advisorMap[advisorId];
+
+    if (!user) return null;
+
+    return (user.aliasName || "").trim() || null;
+  };
+
+  /* =====================================================
+     FINAL MERGE
+  ====================================================== */
+
+  const leadsFinal = leads.map(({ city_id, advisor_id, ...rest }) => ({
+    ...rest,
+    cityName: getCityName(city_id),
+    advisorFullName: getAdvisorName(advisor_id),
+  }));
+
+  return {
+    leads: leadsFinal,
+    total,
+    page: pageNumber,
+    totalPages: Math.ceil(total / limitNumber),
+    daysThreshold,
+  };
+};

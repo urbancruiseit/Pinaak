@@ -263,9 +263,7 @@ export default function Dashboard() {
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-          {/* Today's Follow-ups */}
-
-          {/* Today's Follow-ups */}
+          
           <div className="rounded-xl border border-orange-200 bg-orange-50 p-4 shadow-sm transition hover:shadow-md">
             <h3 className="text-sm font-semibold text-orange-700">
               Today's Follow-ups
@@ -282,7 +280,6 @@ export default function Dashboard() {
             </p>
           </div>
 
-          {/* Today's Trip Starts */}
           <div className="rounded-xl border border-green-200 bg-green-50 p-4 shadow-sm transition hover:shadow-md">
             <h3 className="text-sm font-semibold text-green-700">
               Today's Trip Starts
@@ -295,7 +292,6 @@ export default function Dashboard() {
             <p className="mt-1 text-xs text-green-600">Trips starting today</p>
           </div>
 
-          {/* Next Reminder */}
           <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4 shadow-sm transition hover:shadow-md">
             <h3 className="text-sm font-semibold text-yellow-700">
               Next Reminder

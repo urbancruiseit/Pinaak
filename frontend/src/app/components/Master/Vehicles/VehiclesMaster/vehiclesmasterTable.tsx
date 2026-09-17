@@ -197,16 +197,8 @@ const VehicleTable: React.FC = () => {
     setCurrentPage(pageNum);
   };
 
-  // =====================================================
-  // RENDER
-  // =====================================================
-
   return (
     <div className="w-full">
-      {/* =====================================================
-          HEADER
-      ===================================================== */}
-
       <div className="mb-4 shrink-0">
         <LeadPageHeader
           title="Vehicles Master"
@@ -366,7 +358,10 @@ const VehicleTable: React.FC = () => {
 
                 {/* DESCRIPTION */}
 
-                <TableCell className="max-w-[350px]" title={v.description || ""}>
+                <TableCell
+                  className="max-w-[350px]"
+                  title={v.description || ""}
+                >
                   <div className="whitespace-normal leading-5">
                     {v.description || "-"}
                   </div>
@@ -418,12 +413,12 @@ const VehicleTable: React.FC = () => {
       )}
 
       {/* =====================================================
-          ADD VEHICLE MODAL
-      ===================================================== */}
+    ADD VEHICLE MODAL
+===================================================== */}
 
       {showForm && (
         <div
-          className="fixed inset-0 z-[999] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm"
           onClick={() => setShowForm(false)}
         >
           <div
@@ -431,17 +426,15 @@ const VehicleTable: React.FC = () => {
             onClick={(e) => e.stopPropagation()}
           >
             {/* CLOSE */}
-
             <button
               type="button"
               onClick={() => setShowForm(false)}
-              className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-red-800 text-white transition hover:bg-red-200 hover:text-red-700"
+              className="absolute right-4 top-4  flex h-9 w-9 items-center justify-center rounded-full bg-red-800 text-white transition hover:bg-red-200 hover:text-red-700"
             >
               <X size={18} />
             </button>
 
             {/* FORM */}
-
             <div className="p-6">
               <VehicleForm onSuccess={handleVehicleSuccess} />
             </div>

@@ -9,7 +9,6 @@ interface TableProps {
   maxHeight?: string;
   className?: string;
 }
-
 const Table: React.FC<TableProps> = ({
   children,
   minWidth = "min-w-[1000px]",

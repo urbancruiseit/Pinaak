@@ -14,10 +14,7 @@ import {
   getAllUnwantedLeadsModel,
   createCustomers,
   getLeadById,
-  createReminder,
-  markReminderAsShown,
   checkCustomerByPhone,
-  getAdvisorReminderDetails,
   getAdvisorFollowupDetails,
   getAdvisorFollowupStats,
   insertLeadStatusHistory,
@@ -225,130 +222,6 @@ export const getAllUnwantedLeadsController = asyncHandler(async (req, res) => {
     );
 });
 
-// const updateLeadByIdController = asyncHandler(async (req, res) => {
-//   const { leadId } = req.params;
-//   const data = req.body;
-
-//   if (!leadId) {
-//     throw new ApiError(400, "Lead ID is required");
-//   }
-
-//   // Step 1: Existing Lead
-//   const existingLead = await getLeadById(leadId);
-//   if (!existingLead) {
-//     throw new ApiError(404, "Lead not found");
-//   }
-
-//   const customerId = existingLead.customer_id;
-//   const oldStatus = existingLead.status;
-//   const newStatus = data.status;
-
-//   // Step 2: Customer update
-//   const customerFields = {
-//     firstName: data.firstName,
-//     middleName: data.middleName,
-//     lastName: data.lastName,
-//     customerPhone: data.customerPhone,
-//     customerEmail: data.customerEmail,
-//     companyName: data.companyName,
-//     customerType: data.customerType,
-//     customerCategoryType: data.customerCategoryType,
-//     address: data.address,
-//     state: data.state,
-//     alternatePhone: data.alternatePhone,
-//     countryName: data.countryName,
-//     customerCity: data.customerCity,
-//   };
-
-//   const customerUpdateData = Object.fromEntries(
-//     Object.entries(customerFields).filter(([_, v]) => v !== undefined),
-//   );
-
-//   let updatedCustomer = null;
-
-//   if (Object.keys(customerUpdateData).length > 0) {
-//     updatedCustomer = await updateCustomerById(customerId, customerUpdateData);
-
-//     if (!updatedCustomer) {
-//       throw new ApiError(400, "Customer could not be updated");
-//     }
-//   }
-
-//   // Step 3: Lead data prepare
-//   const leadData = { ...data };
-
-//   delete leadData.firstName;
-//   delete leadData.middleName;
-//   delete leadData.lastName;
-//   delete leadData.customerPhone;
-//   delete leadData.customerEmail;
-//   delete leadData.companyName;
-//   delete leadData.customerType;
-//   delete leadData.customerCategoryType;
-//   delete leadData.address;
-//   delete leadData.date_of_birth;
-//   delete leadData.anniversary;
-//   delete leadData.gender;
-//   delete leadData.state;
-//   delete leadData.pincode;
-//   delete leadData.alternatePhone;
-//   delete leadData.countryName;
-//   delete leadData.customerCity;
-
-//   // Step 4: Lead update
-//   let updatedLead = null;
-
-//   if (Object.keys(leadData).length > 0) {
-//     updatedLead = await updateLeadById(leadId, leadData);
-
-//     if (!updatedLead) {
-//       throw new ApiError(400, "Lead could not be updated");
-//     }
-//   }
-
-//   // Step 5: Status History
-//   if (newStatus && oldStatus && oldStatus !== newStatus) {
-//     await insertLeadStatusHistory({
-//       lead_id: Number(leadId),
-//       old_status: oldStatus,
-//       new_status: newStatus,
-//       changed_by: req.user?.id ?? null, // ✅ optional chaining + fallback
-//     });
-//   }
-
-//   // Step 6: Full Lead Fetch
-//   const fullLead = await getLeadById(updatedLead?.id ?? leadId);
-
-//   // Step 7: Socket Emit
-//   try {
-//     const io = getIO();
-
-//     emitToHierarchy({
-//       io,
-//       eventName: "leadUpdated",
-//       lead: fullLead ?? updatedLead,
-//       userIdKey: "presales_id",
-//     });
-
-//   } catch (err) {
-//     console.error("⚠️ Socket emit failed:", err.message);
-//   }
-
-//   // Step 8: Response
-//   return res.status(200).json(
-//     new ApiResponse(
-//       200,
-//       {
-//         customer: updatedCustomer,
-//         lead: updatedLead,
-//       },
-//       "Lead and customer updated successfully",
-//     ),
-//   );
-// });
-
-// ─── REMINDER CONTROLLERS — lead.controller.js me inn dono ko replace karo ───
-
 const updateLeadByIdController = asyncHandler(async (req, res) => {
   const { leadId } = req.params;
   const data = req.body;
@@ -450,8 +323,6 @@ const updateLeadByIdController = asyncHandler(async (req, res) => {
       if (!adviserId) {
         console.warn("⚠️ adviser_id not found on lead, followups skip ho gaye");
       } else {
-       
-
         const validFollowups = data.follow_ups
           .filter((f) => f.followup_date)
           .map((f) => ({
@@ -482,7 +353,6 @@ const updateLeadByIdController = asyncHandler(async (req, res) => {
       lead: fullLead ?? updatedLead,
       userIdKey: "presales_id",
     });
-
   } catch (err) {
     console.error("⚠️ Socket emit failed:", err.message);
   }
@@ -500,83 +370,19 @@ const updateLeadByIdController = asyncHandler(async (req, res) => {
   );
 });
 
-export const createReminderController = async (req, res) => {
-  try {
-    const { lead_id, reminder_datetime, message } = req.body;
-
-    if (!lead_id || !reminder_datetime || !message) {
-      return res.status(400).json({
-        success: false,
-        message: "lead_id, reminder_datetime, message required hain",
-      });
-    }
-
-    const newReminder = await createReminder({
-      lead_id,
-      reminder_datetime,
-      message,
-      advisor_id: req.user.id, // ✅ logged-in advisor ka id, verifyJWT ke baad milta hai
-    });
-
-    return res.status(201).json({
-      success: true,
-      message: "Reminder created successfully",
-      data: newReminder,
-    });
-  } catch (error) {
-    return res.status(500).json({ success: false, message: "Server error" });
-  }
-};
-
-// export const getDueRemindersController = async (req, res) => {
-//   try {
-//     const advisorId = req.user.id;
-
-//     const reminders = await getDueReminders(advisorId);
-
-//     return res.status(200).json({
-//       success: true,
-//       data: reminders,
-//       count: reminders.length,
-//     });
-//   } catch (error) {
-//     console.error("❌ [getDueRemindersController] error:", error);
-
-//     return res.status(500).json({
-//       success: false,
-//       message: "Server Error",
-//     });
-//   }
-// };
-export const markReminderAsShownController = async (req, res) => {
-  try {
-    const { id } = req.params;
-    if (!id) {
-      return res.status(400).json({ success: false, message: "ID required" });
-    }
-
-    await markReminderAsShown(Number(id));
-
-    return res
-      .status(200)
-      .json({ success: true, message: "Reminder marked as shown" });
-  } catch (error) {
-    console.error("[markReminderAsShown]", error);
-    return res.status(500).json({ success: false, message: "Server error" });
-  }
-};
-
-
 export const getAdvisorFollowupStatsController = asyncHandler(
   async (req, res) => {
     const user = req.user;
 
     const isCityManager = user?.role_name === "City Manager";
+
     const isTeleSales = user?.subDepartment_name === "Tele-Sales";
 
     let cityIds = [];
+
     if (isCityManager && isTeleSales) {
       const zoneIds = user?.zone_ids || [];
+
       cityIds = await getCityIdsByZoneIds(zoneIds);
     } else {
       cityIds = user?.city_ids || [];

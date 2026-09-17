@@ -10,7 +10,6 @@ interface TableCellProps {
   rowIndex?: number;
   className?: string;
 }
-
 const TableCell: React.FC<TableCellProps> = ({
   children,
   header = false,
@@ -18,10 +17,6 @@ const TableCell: React.FC<TableCellProps> = ({
   rowIndex = 0,
   className = "",
 }) => {
-  // =====================================================
-  // HEADER CELL
-  // =====================================================
-
   if (header) {
     return (
       <th
@@ -34,13 +29,7 @@ const TableCell: React.FC<TableCellProps> = ({
       </th>
     );
   }
-
-  // =====================================================
-  // NORMAL TABLE CELL
-  // =====================================================
-
   const isEven = rowIndex % 2 === 0;
-
   return (
     <td
       className={`

@@ -8,6 +8,7 @@ import {
   getVehicleByCode,
   getVehicleById,
   getVehicles,
+  getVehicleVariantByCodeModel,
 } from "./vehiclemaster.model.js";
 import { generateVehicleCode } from "./vehiclemaster.service.js";
 
@@ -92,4 +93,37 @@ const getVehiclesById = asyncHandler(async (req, res) => {
     .status(200)
     .json(new ApiResponse(200, vehicle, "Vehicle fetched successfully"));
 });
-export { getVehicleCodeList, getVehiclesById };
+
+const getVehicleVariantByCodeController = asyncHandler(async (req, res) => {
+  const { code } = req.params;
+
+  console.log("=================================");
+  console.log("Variant API called");
+  console.log("Code received:", code);
+
+  if (!code) {
+    throw new ApiError(400, "Vehicle code is required");
+  }
+
+  const vehicle = await getVehicleVariantByCodeModel(code);
+
+  console.log("Vehicle from DB:", vehicle);
+
+  if (!vehicle) {
+    console.log("❌ Vehicle not found for code:", code);
+    throw new ApiError(404, "Vehicle not found");
+  }
+
+  console.log("✅ Variants found:", vehicle.variant);
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, vehicle, "Vehicle variants fetched successfully"),
+    );
+});
+export {
+  getVehicleCodeList,
+  getVehiclesById,
+  getVehicleVariantByCodeController,
+};

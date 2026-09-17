@@ -4,33 +4,27 @@ import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import { CheckCircle2, XCircle, Info, FileText } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
-
-// Searchable Select
 import SearchableSelect from "../SearchableSelect";
-
-// Redux
 import type { AppDispatch, RootState } from "../../../../redux/store";
-
 import {
   createVehicleManager,
   getVehicleMasterCodes,
+  getVehicleMasterVariants,
   getVehicleManagerVendors,
   getAllCities,
 } from "../../../../features/vehicleManager/vehicleManagerSlice";
-
-// Types
 import type { Vehicle } from "@/types/types";
-
-// Amenities
 import { AMENITIES_OPTIONS } from "../VehiclesMaster/vehicleMasterDropdown";
 import FormPageHeader from "@/app/components/ui/PageHeader/FormPageHeader";
 
-
-type VehicleFormData = Omit<Vehicle, "id" | "amenities"> & {
+type VehicleFormData = Omit<
+  Vehicle,
+  "id" | "amenities" | "variant" | "city"
+> & {
   amenities: string;
   city: string;
+  variant: string;
 };
-
 
 const initialFormState: VehicleFormData = {
   code: "",
@@ -42,28 +36,26 @@ const initialFormState: VehicleFormData = {
   aging: "",
   amenities: "",
   city: "",
+  variant: "",
 };
-
 
 const VehicleForm: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
-
   const {
     vehicleMasterCodes,
+    vehicleMasterVariants,
     vendors,
     codesLoading,
+    variantsLoading,
     vendorsLoading,
     cities,
     citiesLoading,
   } = useSelector((state: RootState) => state.vehicleManager);
-
   const [formData, setFormData] = useState<VehicleFormData>(initialFormState);
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-
-
 
   useEffect(() => {
     dispatch(getVehicleMasterCodes());
@@ -71,14 +63,12 @@ const VehicleForm: React.FC = () => {
     dispatch(getAllCities());
   }, [dispatch]);
 
-
   useEffect(() => {
     setFormData((prev) => ({
       ...prev,
       amenities: selectedAmenities.join(","),
     }));
   }, [selectedAmenities]);
-
 
   const handleInputChange = (
     e: React.ChangeEvent<
@@ -91,8 +81,11 @@ const VehicleForm: React.FC = () => {
       ...prev,
       [name]: value,
     }));
-  };
 
+    if (errorMsg) {
+      setErrorMsg(null);
+    }
+  };
 
   const handleSelectChange = (name: string, value: string) => {
     setFormData((prev) => ({
@@ -100,12 +93,14 @@ const VehicleForm: React.FC = () => {
       [name]: value,
     }));
 
+    if (errorMsg) {
+      setErrorMsg(null);
+    }
 
     if (name === "code") {
       const matchedCode = vehicleMasterCodes.find(
         (item) => item.code === value,
       );
-
       if (matchedCode?.amenities) {
         const amenityCodesFromMaster = matchedCode.amenities
           .split(",")
@@ -116,9 +111,16 @@ const VehicleForm: React.FC = () => {
       } else {
         setSelectedAmenities([]);
       }
+      setFormData((prev) => ({
+        ...prev,
+        code: value,
+        variant: "",
+      }));
+      if (value) {
+        dispatch(getVehicleMasterVariants(value));
+      }
     }
   };
-
 
   const handleAmenityToggle = (amenityCode: string) => {
     setSelectedAmenities((prev) =>
@@ -128,21 +130,26 @@ const VehicleForm: React.FC = () => {
     );
   };
 
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     setErrorMsg(null);
-    setIsSubmitting(true);
+    if (!formData.code) {
+      setErrorMsg("Please select a code first.");
+      return;
+    }
 
+    if (!formData.variant) {
+      setErrorMsg("Please select a variant.");
+      return;
+    }
+    setIsSubmitting(true);
     try {
       await dispatch(createVehicleManager(formData)).unwrap();
-
       setIsSuccess(true);
-
       setFormData(initialFormState);
       setSelectedAmenities([]);
 
+      // Hide success message
       setTimeout(() => {
         setIsSuccess(false);
       }, 3000);
@@ -157,10 +164,8 @@ const VehicleForm: React.FC = () => {
     }
   };
 
-
   return (
     <div>
-     
       {isSuccess && (
         <div className="fixed right-5 top-5 z-[9999] flex items-center gap-3 rounded-lg border border-green-200 bg-green-50 px-5 py-4 shadow-lg">
           <CheckCircle2 className="text-green-600" size={22} />
@@ -170,7 +175,6 @@ const VehicleForm: React.FC = () => {
           </span>
         </div>
       )}
-
 
       {errorMsg && (
         <div className="fixed right-5 top-5 z-[9999] flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 px-5 py-4 shadow-lg">
@@ -185,8 +189,6 @@ const VehicleForm: React.FC = () => {
       </div>
 
       <form onSubmit={handleSubmit} className="mt-12 space-y-14">
-       
-
         <div className="rounded-xl border bg-blue-50 p-6">
           <h3 className="mb-6 border-b border-blue-200 pb-3 text-xl font-semibold text-blue-800">
             <span className="mr-2 rounded-md bg-blue-600 px-3 py-1 text-white">
@@ -195,9 +197,7 @@ const VehicleForm: React.FC = () => {
             Basic Vehicle Information
           </h3>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {/* CODE */}
-
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
             <SearchableSelect
               label="Code"
               name="code"
@@ -208,8 +208,6 @@ const VehicleForm: React.FC = () => {
               placeholder="Select Code"
               required
             />
-
-            {/* VENDOR */}
 
             <SearchableSelect
               label="Vendor Name"
@@ -222,7 +220,43 @@ const VehicleForm: React.FC = () => {
               required
             />
 
-            {/* VEHICLE NUMBER */}
+            <div>
+              <label className="mb-1 block text-md font-extrabold text-gray-700">
+                Variant <span className="text-red-500">*</span>
+              </label>
+
+              <select
+                name="variant"
+                value={formData.variant}
+                onChange={handleInputChange}
+                disabled={!formData.code || variantsLoading}
+                required
+                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:cursor-not-allowed disabled:bg-gray-100"
+              >
+                <option value="">
+                  {!formData.code
+                    ? "Select Code First"
+                    : variantsLoading
+                      ? "Loading variants..."
+                      : "Select Variant"}
+                </option>
+
+                {vehicleMasterVariants.map((item, index) => {
+                  const cleanVariant = item.variant
+                    ?.replace(/^"+|"+$/g, "")
+                    .trim();
+
+                  return (
+                    <option
+                      key={`${cleanVariant}-${index}`}
+                      value={cleanVariant}
+                    >
+                      {cleanVariant}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
 
             <div>
               <label className="mb-1 block text-sm font-extrabold text-gray-700">
@@ -239,9 +273,6 @@ const VehicleForm: React.FC = () => {
                 placeholder="🚗 e.g., MH01AB1234"
               />
             </div>
-
-            {/* REGISTRATION DATE */}
-
             <div>
               <label className="mb-1 block text-sm font-extrabold text-gray-700">
                 Registration Date <span className="text-red-500">*</span>
@@ -256,8 +287,6 @@ const VehicleForm: React.FC = () => {
                 required
               />
             </div>
-
-            {/* GARAGE */}
 
             <div>
               <label className="mb-1 block text-sm font-extrabold text-gray-700">
@@ -274,8 +303,6 @@ const VehicleForm: React.FC = () => {
                 placeholder="🏭 e.g., Tata, Mahindra, Toyota"
               />
             </div>
-
-            {/* CITY */}
 
             <div>
               <label className="mb-1 block text-md font-extrabold text-gray-700">
@@ -319,10 +346,6 @@ const VehicleForm: React.FC = () => {
           </div>
         </div>
 
-        {/* =================================================
-            AMENITIES
-        ================================================= */}
-
         <div className="rounded-xl border border-green-200 bg-green-50 p-6">
           <h3 className="mb-6 border-b border-green-200 pb-3 text-xl font-semibold text-green-800">
             <span className="mr-2 rounded-md bg-green-600 px-3 py-1 text-white">
@@ -337,36 +360,26 @@ const VehicleForm: React.FC = () => {
                 key={category.label}
                 className="overflow-hidden rounded-lg border border-green-200 bg-white"
               >
-                {/* =====================================
-              CATEGORY HEADER
-          ===================================== */}
                 <div className="border-b border-green-200 bg-green-100 px-4 py-3">
                   <h4 className="text-base font-bold text-green-800">
                     {category.label}
                   </h4>
                 </div>
 
-                {/* =====================================
-              IMAGE + OPTIONS
-          ===================================== */}
                 <div className="flex flex-col gap-4 bg-green-50/50 p-4 md:flex-row">
-                  {/* =================================
-                LEFT IMAGE
-            ================================= */}
                   <div className="w-full shrink-0 md:w-48 lg:w-56">
                     <div className="relative flex h-full min-h-[170px] items-center justify-center overflow-hidden rounded-lg border border-green-300 bg-white">
                       <Image
                         src={category.image}
                         alt={category.label}
+                        fill
+                        sizes="(max-width: 768px) 100vw, 224px"
                         priority
-                        className="h-full min-h-[170px] w-full object-contain p-6 drop-shadow-2xl"
+                        className="object-contain p-6 drop-shadow-2xl"
                       />
                     </div>
                   </div>
 
-                  {/* =================================
-                RIGHT OPTIONS
-            ================================= */}
                   <div className="flex-1">
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                       {category.options.map((item, index) => {
@@ -401,10 +414,6 @@ const VehicleForm: React.FC = () => {
             ))}
           </div>
         </div>
-
-        {/* =================================================
-            SUBMIT
-        ================================================= */}
 
         <div className="flex flex-col justify-between gap-4 border-t pt-8 sm:flex-row">
           <div className="flex gap-4">

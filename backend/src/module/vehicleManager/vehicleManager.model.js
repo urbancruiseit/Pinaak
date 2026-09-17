@@ -29,7 +29,6 @@ export const getVehicleManagerById = async (id) => {
         vm.aging,
         vm.amenities,
         vm.status,
-
         vmst.seat,
         vmst.variant,
         vmst.category,
@@ -126,6 +125,7 @@ export const createVehicleManagerModel = async (payload) => {
       code,
       vendor,
       model,
+      variant, // ✅ ADD THIS
       veh_no,
       garage,
       city,
@@ -136,12 +136,24 @@ export const createVehicleManagerModel = async (payload) => {
 
     const [result] = await pool.execute(
       `INSERT INTO vehicle_manager
-        (code, vendor, model, veh_no, garage, city, reg_date, aging, amenities)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        (
+          code,
+          vendor,
+          model,
+          variant,
+          veh_no,
+          garage,
+          city,
+          reg_date,
+          aging,
+          amenities
+        )
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         code,
         vendor || null,
         model || null,
+        variant || null, // ✅ ADD THIS
         veh_no,
         garage || null,
         city || null,
@@ -156,6 +168,7 @@ export const createVehicleManagerModel = async (payload) => {
       code,
       vendor: vendor || null,
       model: model || null,
+      variant: variant || null, // ✅ ADD THIS
       veh_no,
       garage: garage || null,
       city: city || null,
@@ -168,7 +181,6 @@ export const createVehicleManagerModel = async (payload) => {
     throw error;
   }
 };
-
 export const getAllVehicleManagersModel = async ({
   search = "",
   vendor = "",
@@ -183,66 +195,101 @@ export const getAllVehicleManagersModel = async ({
   limit = 20,
 } = {}) => {
   try {
-    const offset = (page - 1) * limit;
+    const offset = (Number(page) - 1) * Number(limit);
 
+    // =========================================================
+    // MAIN QUERY
+    // variant -> vehicle_manager (vm.variant)
+    // seat/category/config -> vehicle_master (vmst)
+    // =========================================================
     let query = `
-      SELECT vm.*, vmst.seat, vmst.variant, vmst.category, vmst.config
+      SELECT
+        vm.*,
+        vmst.seat,
+        vmst.category,
+        vmst.config
       FROM vehicle_manager vm
-      LEFT JOIN vehicle_master vmst ON vm.code = vmst.code
+      LEFT JOIN vehicle_master vmst
+        ON vm.code = vmst.code
       WHERE 1=1
     `;
+
+    // =========================================================
+    // COUNT QUERY
+    // =========================================================
     let countQuery = `
-      SELECT COUNT(*) as total
+      SELECT COUNT(*) AS total
       FROM vehicle_manager vm
-      LEFT JOIN vehicle_master vmst ON vm.code = vmst.code
+      LEFT JOIN vehicle_master vmst
+        ON vm.code = vmst.code
       WHERE 1=1
     `;
+
     const params = [];
     const countParams = [];
 
-    // Helper: comma-separated string ko clean array me convert karta hai
-    const toArray = (val, isNumeric = false) =>
-      String(val)
+    // =========================================================
+    // HELPER
+    // Comma-separated values ko array mein convert karega
+    // Example: "Toyota,Honda" -> ["Toyota", "Honda"]
+    // =========================================================
+    const toArray = (val, isNumeric = false) => {
+      return String(val)
         .split(",")
         .map((v) => v.trim())
         .filter((v) => v !== "")
         .map((v) => (isNumeric ? Number(v) : v))
         .filter((v) => !isNumeric || !isNaN(v));
+    };
 
-    // Helper: dono query me IN (...) clause add karta hai
+    // =========================================================
+    // HELPER
+    // Main query + count query dono mein IN clause add karega
+    // =========================================================
     const addInClause = (column, values) => {
       const placeholders = values.map(() => "?").join(",");
+
       query += ` AND ${column} IN (${placeholders})`;
       countQuery += ` AND ${column} IN (${placeholders})`;
+
       params.push(...values);
       countParams.push(...values);
     };
 
+    // =========================================================
+    // SEARCH
+    // =========================================================
     if (search) {
       query += `
         AND (
           vm.code LIKE ?
           OR vm.vendor LIKE ?
           OR vm.model LIKE ?
+          OR vm.variant LIKE ?
           OR vm.veh_no LIKE ?
           OR vm.garage LIKE ?
           OR vm.reg_date LIKE ?
           OR vm.aging LIKE ?
+          OR vm.amenities LIKE ?
         )
       `;
+
       countQuery += `
         AND (
           vm.code LIKE ?
           OR vm.vendor LIKE ?
           OR vm.model LIKE ?
+          OR vm.variant LIKE ?
           OR vm.veh_no LIKE ?
           OR vm.garage LIKE ?
           OR vm.reg_date LIKE ?
           OR vm.aging LIKE ?
+          OR vm.amenities LIKE ?
         )
       `;
 
       const likeSearch = `%${search}%`;
+
       params.push(
         likeSearch,
         likeSearch,
@@ -251,7 +298,10 @@ export const getAllVehicleManagersModel = async ({
         likeSearch,
         likeSearch,
         likeSearch,
+        likeSearch,
+        likeSearch,
       );
+
       countParams.push(
         likeSearch,
         likeSearch,
@@ -260,61 +310,137 @@ export const getAllVehicleManagersModel = async ({
         likeSearch,
         likeSearch,
         likeSearch,
+        likeSearch,
+        likeSearch,
       );
     }
 
-    // ---- Multi-select filters (comma-separated values ke liye) ----
-
+    // =========================================================
+    // VENDOR FILTER
+    // vehicle_manager.vendor
+    // =========================================================
     if (vendor) {
       const vendors = toArray(vendor);
-      if (vendors.length > 0) addInClause("vm.vendor", vendors);
+
+      if (vendors.length > 0) {
+        addInClause("vm.vendor", vendors);
+      }
     }
 
+    // =========================================================
+    // GARAGE FILTER
+    // vehicle_manager.garage
+    // =========================================================
     if (garage) {
       const garages = toArray(garage);
-      if (garages.length > 0) addInClause("vm.garage", garages);
+
+      if (garages.length > 0) {
+        addInClause("vm.garage", garages);
+      }
     }
 
+    // =========================================================
+    // CITY FILTER
+    // vehicle_manager.city
+    // =========================================================
     if (city) {
-      const cities = toArray(city, true); // numeric
-      if (cities.length > 0) addInClause("vm.city", cities);
+      const cities = toArray(city, true);
+
+      if (cities.length > 0) {
+        addInClause("vm.city", cities);
+      }
     }
 
+    // =========================================================
+    // YEAR FILTER
+    // vehicle_manager.reg_date
+    // =========================================================
     if (year) {
-      const years = toArray(year, true); // numeric
-      if (years.length > 0) addInClause("YEAR(vm.reg_date)", years);
+      const years = toArray(year, true);
+
+      if (years.length > 0) {
+        addInClause("YEAR(vm.reg_date)", years);
+      }
     }
 
+    // =========================================================
+    // CODE FILTER
+    // vehicle_manager.code
+    // =========================================================
     if (code) {
       const codes = toArray(code);
-      if (codes.length > 0) addInClause("vm.code", codes);
+
+      if (codes.length > 0) {
+        addInClause("vm.code", codes);
+      }
     }
 
+    // =========================================================
+    // SEAT FILTER
+    // Seat vehicle_master se aayega
+    // =========================================================
     if (seat) {
       const seats = toArray(seat);
-      if (seats.length > 0) addInClause("vmst.seat", seats);
+
+      if (seats.length > 0) {
+        addInClause("vmst.seat", seats);
+      }
     }
 
+    // =========================================================
+    // VARIANT FILTER
+    // IMPORTANT:
+    // Variant vehicle_manager se aayega
+    // =========================================================
     if (variant) {
       const variants = toArray(variant);
-      if (variants.length > 0) addInClause("vmst.variant", variants);
+
+      if (variants.length > 0) {
+        addInClause("vm.variant", variants);
+      }
     }
 
+    // =========================================================
+    // CATEGORY FILTER
+    // Category vehicle_master se aayega
+    // =========================================================
     if (category) {
       const categories = toArray(category);
-      if (categories.length > 0) addInClause("vmst.category", categories);
+
+      if (categories.length > 0) {
+        addInClause("vmst.category", categories);
+      }
     }
 
-    query += ` ORDER BY vm.id ASC LIMIT ? OFFSET ?`;
+    // =========================================================
+    // PAGINATION
+    // =========================================================
+    query += `
+      ORDER BY vm.id ASC
+      LIMIT ?
+      OFFSET ?
+    `;
+
     params.push(Number(limit), Number(offset));
 
+    // =========================================================
+    // EXECUTE MAIN QUERY
+    // =========================================================
     const [rows] = await pool.execute(query, params);
+
+    // =========================================================
+    // EXECUTE COUNT QUERY
+    // =========================================================
     const [countRows] = await pool.execute(countQuery, countParams);
 
-    // ---- City name doosre DB se fetch karo ----
+    // =========================================================
+    // CITY NAME FROM HRMS DATABASE
+    // =========================================================
     const cityIds = [
       ...new Set(
-        rows.map((r) => r.city).filter((id) => id !== null && id !== undefined),
+        rows
+          .map((r) => r.city)
+          .filter((id) => id !== null && id !== undefined && id !== ""),
       ),
     ];
 
@@ -322,31 +448,46 @@ export const getAllVehicleManagersModel = async ({
 
     if (cityIds.length > 0) {
       const placeholders = cityIds.map(() => "?").join(",");
+
       const [cityRows] = await hrmsPool.execute(
-        `SELECT id, city_name FROM city WHERE id IN (${placeholders})`,
+        `
+          SELECT
+            id,
+            city_name
+          FROM city
+          WHERE id IN (${placeholders})
+        `,
         cityIds,
       );
 
-      cityMap = cityRows.reduce((acc, c) => {
-        acc[c.id] = c.city_name;
+      cityMap = cityRows.reduce((acc, city) => {
+        acc[city.id] = city.city_name;
         return acc;
       }, {});
     }
 
-    const dataWithCityName = rows.map((r) => ({
-      ...r,
-      city_name: cityMap[r.city] ?? null,
+    const dataWithCityName = rows.map((row) => ({
+      ...row,
+
+      city_name: cityMap[row.city] ?? null,
+
+      variant: row.variant ?? null,
     }));
+
+    const total = Number(countRows[0]?.total || 0);
+    const currentPage = Number(page);
+    const currentLimit = Number(limit);
 
     return {
       data: dataWithCityName,
-      total: countRows[0].total,
-      page: Number(page),
-      limit: Number(limit),
-      totalPages: Math.ceil(countRows[0].total / limit),
+      total,
+      page: currentPage,
+      limit: currentLimit,
+      totalPages: currentLimit > 0 ? Math.ceil(total / currentLimit) : 0,
     };
   } catch (error) {
     console.error("getAllVehicleManagersModel error:", error);
+
     throw error;
   }
 };
@@ -458,44 +599,6 @@ export const updateVehicleManagerStatusModel = async ({ id, status }) => {
     return rows[0];
   } catch (error) {
     console.error("updateVehicleManagerStatusModel error:", error);
-    throw error;
-  }
-};
-
-export const getVehicleVariantByCodeModel = async (code) => {
-  try {
-    console.log(" code.........", code);
-    const [rows] = await pool.execute(
-      `
-        SELECT code, variant
-        FROM vehicle_master
-        WHERE code = ?
-        LIMIT 1
-      `,
-      [code],
-    );
-
-    if (rows.length === 0) {
-      return null;
-    }
-
-    let variant = rows[0].variant;
-
-    // JSON string ko actual JSON me convert karo
-    if (typeof variant === "string") {
-      try {
-        variant = JSON.parse(variant);
-      } catch (error) {
-        variant = [];
-      }
-    }
-
-    return {
-      code: rows[0].code,
-      variant: variant || [],
-    };
-  } catch (error) {
-    console.error("getVehicleVariantByCodeModel error:", error);
     throw error;
   }
 };

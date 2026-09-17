@@ -919,170 +919,15 @@ export const getLeadById = async (id) => {
     return null;
   }
 };
-export const createReminder = async ({
-  lead_id,
-  reminder_datetime,
-  message,
-  advisor_id,
-}) => {
-  if (!lead_id) {
-    throw new Error("Lead ID is required");
-  }
-
-  if (!advisor_id) {
-    throw new Error("Advisor ID is required");
-  }
-
-  if (!reminder_datetime) {
-    throw new Error("Reminder datetime is required");
-  }
-
-  const formattedReminderDateTime =
-    reminder_datetime.length === 16
-      ? reminder_datetime.replace("T", " ") + ":00"
-      : reminder_datetime.replace("T", " ");
-
-  const [result] = await pool.query(
-    `
-    INSERT INTO scheduler
-      (
-        lead_id,
-        reminder_datetime,
-        message,
-        advisor_id,
-        is_shown
-      )
-    VALUES (?, ?, ?, ?, 0)
-    `,
-    [lead_id, formattedReminderDateTime, message, advisor_id],
-  );
-
-  const [rows] = await pool.query(
-    `
-    SELECT *
-    FROM scheduler
-    WHERE id = ?
-    `,
-    [result.insertId],
-  );
-
-  return rows[0];
-};
-
-export const markReminderAsShown = async (id) => {
-  await pool.query(`UPDATE scheduler SET is_shown = 1 WHERE id = ?`, [id]);
-};
-
-// export const getDueReminders = async (advisorId) => {
-//   try {
-
-//     const query = `
-//       SELECT
-//         s.id,
-//         s.lead_id,
-//         s.advisor_id,
-//         s.message,
-//         s.reminder_datetime,
-
-//         CONCAT_WS(
-//           ' ',
-//           c.firstName,
-//           c.middleName,
-//           c.lastName
-//         ) AS fullName,
-
-//         c.customerPhone,
-//         c.customerEmail,
-
-//         l.pickupDateTime,
-//         l.dropDateTime,
-//         l.days,
-//         l.passengerTotal,
-
-//         NOW() AS mysql_now_utc,
-//         DATE_ADD(NOW(), INTERVAL 330 MINUTE) AS current_ist,
-
-//         CASE
-//           WHEN s.reminder_datetime <= DATE_ADD(NOW(), INTERVAL 330 MINUTE)
-//           THEN 1
-//           ELSE 0
-//         END AS is_due
-
-//       FROM scheduler s
-
-//       INNER JOIN leads l
-//         ON l.id = s.lead_id
-
-//       LEFT JOIN customers c
-//         ON c.id = l.customer_id
-
-//       WHERE
-//         s.advisor_id = ?
-//         AND s.is_shown = 0
-//         AND s.reminder_datetime <= DATE_ADD(NOW(), INTERVAL 330 MINUTE)
-
-//       ORDER BY s.reminder_datetime ASC
-//     `;
-
-//     const [rows] = await pool.query(query, [advisorId]);
-
-//     rows.forEach((row) => {
-//       console.log("🔔 Reminder:", {
-//         id: row.id,
-//         lead_id: row.lead_id,
-//         advisor_id: row.advisor_id,
-//         reminder_datetime: row.reminder_datetime,
-//         is_shown: row.is_shown,
-//         is_due: row.is_due,
-//       });
-//     });
-
-//     return rows;
-//   } catch (error) {
-//     console.error("❌ [getDueReminders] error:", error);
-//     throw error;
-//   }
-// };
-
-
-
-export const getAdvisorReminderDetails = async (advisorId) => {
-  try {
-    const [rows] = await pool.query(
-      `
-      SELECT
-        s.id,
-        s.lead_id,
-        s.message,
-        s.reminder_datetime,
-        s.is_shown,
-        s.created_at,
-        CONCAT_WS(' ', c.firstName, c.middleName, c.lastName) AS fullName,
-        c.customerPhone,
-        c.customerEmail,
-        l.pickupDateTime,
-        l.dropDateTime,
-        l.status
-      FROM scheduler s
-      INNER JOIN leads l ON l.id = s.lead_id
-      LEFT JOIN customers c ON c.id = l.customer_id
-      WHERE s.advisor_id = ?
-      ORDER BY s.reminder_datetime DESC
-      `,
-      [advisorId],
-    );
-
-    return rows;
-  } catch (error) {
-    console.error("getAdvisorReminderDetails error:", error);
-    throw error;
-  }
-};
 
 // ─── FOLLOW-UP STATS (advisor-wise, from leads.follow_ups JSON) ───────────
 export const getAdvisorFollowupStats = async (cityIds = []) => {
   try {
-    let where = `WHERE l.advisor_id IS NOT NULL AND l.follow_ups IS NOT NULL AND l.follow_ups != '[]'`;
+    let where = `
+      WHERE lf.adviser_id IS NOT NULL
+        AND lf.followup_date IS NOT NULL
+    `;
+
     const values = [];
 
     if (cityIds && cityIds.length > 0) {
@@ -1092,51 +937,84 @@ export const getAdvisorFollowupStats = async (cityIds = []) => {
     }
 
     const [rows] = await pool.query(
-      `SELECT l.id, l.advisor_id, l.follow_ups FROM leads l ${where}`,
+      `
+      SELECT
+        lf.id,
+        lf.leads_id,
+        lf.adviser_id,
+        lf.followup_date,
+        lf.remark
+      FROM lead_followups lf
+      INNER JOIN leads l
+        ON l.id = lf.leads_id
+      ${where}
+      `,
       values,
     );
 
-    const todayStr = new Date().toISOString().slice(0, 10);
+    // IST date
+    const todayStr = new Date().toLocaleDateString("en-CA", {
+      timeZone: "Asia/Kolkata",
+    });
 
     const grouped = {};
 
     rows.forEach((row) => {
-      let followUps = [];
-      try {
-        followUps =
-          typeof row.follow_ups === "string"
-            ? JSON.parse(row.follow_ups)
-            : row.follow_ups || [];
-      } catch {
-        followUps = [];
-      }
-      if (!Array.isArray(followUps) || followUps.length === 0) return;
+      const advisorId = Number(row.adviser_id);
 
-      if (!grouped[row.advisor_id]) {
-        grouped[row.advisor_id] = { total: 0, pending: 0, upcoming: 0 };
+      if (!advisorId) return;
+
+      if (!grouped[advisorId]) {
+        grouped[advisorId] = {
+          total: 0,
+          pending: 0,
+          upcoming: 0,
+        };
       }
 
-      followUps.forEach((f) => {
-        grouped[row.advisor_id].total += 1;
-        if (f.date && f.date <= todayStr) {
-          grouped[row.advisor_id].pending += 1;
-        } else {
-          grouped[row.advisor_id].upcoming += 1;
-        }
-      });
+      grouped[advisorId].total += 1;
+
+      if (!row.followup_date) return;
+
+      /*
+       * followup_date database se DATE/DATETIME dono form me aa sakti hai.
+       * Sirf date part compare kar rahe hain.
+       */
+      const followupDate = String(row.followup_date).slice(0, 10);
+
+      if (followupDate <= todayStr) {
+        grouped[advisorId].pending += 1;
+      } else {
+        grouped[advisorId].upcoming += 1;
+      }
     });
 
     const advisorIds = Object.keys(grouped).map((id) => Number(id));
+
     let userMap = {};
+
     if (advisorIds.length > 0) {
       try {
         const placeholders = advisorIds.map(() => "?").join(",");
+
         const [users] = await hrmsPool.query(
-          `SELECT id, aliasName, firstName, middleName, lastName, shortName
-           FROM users WHERE id IN (${placeholders})`,
+          `
+          SELECT
+            id,
+            aliasName,
+            firstName,
+            middleName,
+            lastName,
+            shortName
+          FROM users
+          WHERE id IN (${placeholders})
+          `,
           advisorIds,
         );
-        users.forEach((u) => (userMap[u.id] = u));
+
+        users.forEach((u) => {
+          userMap[u.id] = u;
+        });
       } catch (err) {
         console.error("hrmsPool user fetch failed:", err.message);
       }
@@ -1144,14 +1022,19 @@ export const getAdvisorFollowupStats = async (cityIds = []) => {
 
     return advisorIds.map((advisorId) => ({
       advisorId,
+
       advisorName:
         (userMap[advisorId]?.aliasName || "").trim() || `Advisor ${advisorId}`,
+
       totalFollowups: grouped[advisorId].total,
+
       pendingFollowups: grouped[advisorId].pending,
+
       upcomingFollowups: grouped[advisorId].upcoming,
     }));
   } catch (error) {
     console.error("getAdvisorFollowupStats error:", error);
+
     throw error;
   }
 };
@@ -1161,56 +1044,58 @@ export const getAdvisorFollowupDetails = async (advisorId) => {
     const [rows] = await pool.query(
       `
       SELECT
-        l.id AS lead_id,
-        l.follow_ups,
+        lf.id AS followup_id,
+        lf.leads_id AS lead_id,
+        lf.adviser_id,
+        lf.followup_date,
+        lf.remark,
+        lf.created_at,
         l.status,
         l.pickupDateTime,
         l.dropDateTime,
-        CONCAT_WS(' ', c.firstName, c.middleName, c.lastName) AS fullName,
+        CONCAT_WS(
+          ' ',
+          c.firstName,
+          c.middleName,
+          c.lastName
+        ) AS fullName,
         c.customerPhone,
         c.customerEmail
-      FROM leads l
-      LEFT JOIN customers c ON c.id = l.customer_id
-      WHERE l.advisor_id = ?
-        AND l.follow_ups IS NOT NULL
-        AND l.follow_ups != '[]'
+      FROM lead_followups lf
+      INNER JOIN leads l
+        ON l.id = lf.leads_id
+      LEFT JOIN customers c
+        ON c.id = l.customer_id
+      WHERE lf.adviser_id = ?
+        AND lf.followup_date IS NOT NULL
+      ORDER BY lf.followup_date DESC, lf.id DESC
       `,
       [advisorId],
     );
 
-    const todayStr = new Date().toISOString().slice(0, 10);
-    const flattened = [];
-
-    rows.forEach((row) => {
-      let followUps = [];
-      try {
-        followUps =
-          typeof row.follow_ups === "string"
-            ? JSON.parse(row.follow_ups)
-            : row.follow_ups || [];
-      } catch {
-        followUps = [];
-      }
-
-      followUps.forEach((f, idx) => {
-        flattened.push({
-          id: `${row.lead_id}-${idx}`,
-          lead_id: row.lead_id,
-          date: f.date,
-          text: f.text,
-          isPending: !!(f.date && f.date <= todayStr),
-          fullName: row.fullName,
-          customerPhone: row.customerPhone,
-          customerEmail: row.customerEmail,
-          status: row.status,
-          pickupDateTime: row.pickupDateTime,
-          dropDateTime: row.dropDateTime,
-        });
-      });
+    const todayStr = new Date().toLocaleDateString("en-CA", {
+      timeZone: "Asia/Kolkata",
     });
-
-    flattened.sort((a, b) => (a.date < b.date ? 1 : -1));
-
+    const flattened = rows.map((row) => {
+      const followupDate = String(row.followup_date || "").slice(0, 10);
+      return {
+        id: row.followup_id,
+        followupId: row.followup_id,
+        lead_id: row.lead_id,
+        adviser_id: row.adviser_id,
+        date: row.followup_date,
+        text: row.remark,
+        remark: row.remark,
+        isPending: !!followupDate && followupDate <= todayStr,
+        fullName: row.fullName,
+        customerPhone: row.customerPhone,
+        customerEmail: row.customerEmail,
+        status: row.status,
+        pickupDateTime: row.pickupDateTime,
+        dropDateTime: row.dropDateTime,
+        createdAt: row.created_at,
+      };
+    });
     return flattened;
   } catch (error) {
     console.error("getAdvisorFollowupDetails error:", error);
@@ -1253,11 +1138,9 @@ export const getRfqTimeByLeadId = async (leadId) => {
     );
 
     if (!rows.length) return null;
-
     const { created_at, rfq_at, rfq_minutes } = rows[0];
     const hours = Math.floor(rfq_minutes / 60);
     const minutes = rfq_minutes % 60;
-
     return {
       created_at,
       rfq_at,

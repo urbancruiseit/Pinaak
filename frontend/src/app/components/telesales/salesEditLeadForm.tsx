@@ -466,6 +466,14 @@ const EditLeadForm: React.FC<{
               Telesales Edit Lead
             </h2>
           </div>
+          {onCancel && (
+            <button
+              onClick={onCancel}
+              className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600"
+            >
+              Cancel
+            </button>
+          )}
         </div>
       </div>
 

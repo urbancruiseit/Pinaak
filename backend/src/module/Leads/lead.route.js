@@ -5,8 +5,6 @@ import {
   updateLeadByIdController,
   updateLeadUnwantedStatusController,
   getAllUnwantedLeadsController,
-  createReminderController,
-  markReminderAsShownController,
   checkCustomerPhoneController,
   getAdvisorFollowupDetailsController,
   getAdvisorFollowupStatsController,
@@ -21,7 +19,6 @@ router.route("/unwanted/:id").patch(updateLeadUnwantedStatusController);
 router.route("/unwanted/all").get(getAllUnwantedLeadsController);
 router.route("/updatelead/:leadId").put(updateLeadByIdController);
 router.post("/check-phone", checkCustomerPhoneController);
-
 router.get(
   "/followups/advisor-stats",
   verifyJWT,

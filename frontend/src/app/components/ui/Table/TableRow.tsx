@@ -8,9 +8,8 @@ interface TableRowProps {
   index?: number;
   className?: string;
   alternate?: boolean;
-  header?: boolean; // NEW: true when this row is inside <TableHeader>
+  header?: boolean;
 }
-
 const TableRow: React.FC<TableRowProps> = ({
   children,
   index = 0,
@@ -18,15 +17,18 @@ const TableRow: React.FC<TableRowProps> = ({
   alternate = true,
   header = false,
 }) => {
-  // HEADER ROW → orange background
   if (header) {
-    return <tr className={`${tableStyles.headerRow} ${className}`}>{children}</tr>;
+    return (
+      <tr className={`${tableStyles.headerRow} ${className}`}>{children}</tr>
+    );
   }
-
-  // NORMAL DATA ROW → alternate white / slate background
-  const rowColor = alternate && index % 2 !== 0 ? tableStyles.oddRow : tableStyles.evenRow;
-
-  return <tr className={`${tableStyles.row} ${rowColor} ${className}`}>{children}</tr>;
+  const rowColor =
+    alternate && index % 2 !== 0 ? tableStyles.oddRow : tableStyles.evenRow;
+  return (
+    <tr className={`${tableStyles.row} ${rowColor} ${className}`}>
+      {children}
+    </tr>
+  );
 };
 
 export default TableRow;

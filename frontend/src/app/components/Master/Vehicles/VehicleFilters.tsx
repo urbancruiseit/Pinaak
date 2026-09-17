@@ -49,7 +49,8 @@ const VehicleFilters: React.FC<VehicleFiltersProps> = ({
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="relative z-[100] flex flex-wrap items-center gap-2 overflow-visible">
+      {" "}
       {/* Category */}
       <MultiSelectFilter
         title="Category"
@@ -57,7 +58,6 @@ const VehicleFilters: React.FC<VehicleFiltersProps> = ({
         selected={selectedCategories}
         onChange={(values) => handleChange(setSelectedCategories, values)}
       />
-
       {/* Seater */}
       <MultiSelectFilter
         title="Seater"
@@ -66,7 +66,6 @@ const VehicleFilters: React.FC<VehicleFiltersProps> = ({
         loading={seatOptionsLoading}
         onChange={(values) => handleChange(setSelectedSeats, values)}
       />
-
       {/* Variant */}
       <MultiSelectFilter
         title="Variant"

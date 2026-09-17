@@ -94,6 +94,7 @@ export const createVehicleModel = async (payload) => {
     throw error;
   }
 };
+
 // Get all vehicles (with optional search/filter/pagination)
 export const getAllVehiclesModel = async ({
   search = "",
@@ -236,6 +237,43 @@ export const getSeatOptionsModel = async () => {
     return rows.map((r) => r.seat);
   } catch (error) {
     console.error("getSeatOptionsModel error:", error);
+    throw error;
+  }
+};
+
+export const getVehicleVariantByCodeModel = async (code) => {
+  try {
+    const [rows] = await pool.execute(
+      `
+        SELECT code, variant
+        FROM vehicle_master
+        WHERE code = ?
+        LIMIT 1
+      `,
+      [code],
+    );
+
+    if (rows.length === 0) {
+      return null;
+    }
+
+    let variant = rows[0].variant;
+
+    if (typeof variant === "string") {
+      variant = variant
+        .split(",")
+        .map((v) => v.trim())
+        .filter((v) => v.length > 0);
+    } else if (!Array.isArray(variant)) {
+      variant = [];
+    }
+
+    return {
+      code: rows[0].code,
+      variant,
+    };
+  } catch (error) {
+    console.error("getVehicleVariantByCodeModel error:", error);
     throw error;
   }
 };

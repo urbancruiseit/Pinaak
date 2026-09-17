@@ -1,19 +1,11 @@
 import axiosInstance from "@/uitils/axioInstance";
 import { Vehicle } from "@/types/types";
 
-// =====================================================
-// VEHICLE STATUS
-// =====================================================
-
 export type VehicleStatus = "Active" | "Suspended" | "Blocked";
 
 export interface UpdateVehicleStatusPayload {
   status: VehicleStatus;
 }
-
-// =====================================================
-// CREATE VEHICLE MANAGER
-// =====================================================
 
 export const createVehiclesManagerApi = async (
   vehicleData: Omit<Vehicle, "id">,
@@ -36,10 +28,6 @@ export const createVehiclesManagerApi = async (
   }
 };
 
-// =====================================================
-// GET VEHICLE MANAGERS PARAMS
-// =====================================================
-
 export interface GetVehicleManagersParams {
   search?: string;
 
@@ -57,10 +45,6 @@ export interface GetVehicleManagersParams {
   page?: number;
   limit?: number;
 }
-
-// =====================================================
-// GET VEHICLE MANAGERS RESPONSE
-// =====================================================
 
 export interface GetVehicleManagersResponse {
   data: Vehicle[];
@@ -139,9 +123,31 @@ export const getVehicleMasterCodesApi = async (): Promise<
   }
 };
 
-// =====================================================
-// AMENITIES
-// =====================================================
+export interface VehicleMasterVariant {
+  variant: string;
+}
+
+export const getVehicleMasterVariantsApi = async (
+  code: string,
+): Promise<VehicleMasterVariant[]> => {
+  try {
+    const res = await axiosInstance.get(`/vehicle/variant/${code}`);
+
+    const variantList: string[] = res.data?.data?.variant || [];
+
+    return variantList.map((v) => ({ variant: v }));
+  } catch (error: any) {
+    console.error(
+      "❌ Error fetching vehicle master variants:",
+      error?.response?.data || error?.message,
+    );
+
+    throw new Error(
+      error?.response?.data?.message ||
+        "Failed to fetch vehicle master variants",
+    );
+  }
+};
 
 export interface VehicleMasterAmenity {
   name: string;

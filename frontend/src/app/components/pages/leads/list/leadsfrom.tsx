@@ -50,6 +50,7 @@ import {
   DEFAULT_VALUES,
 } from "../../../../../types/Editleads/editleaddata";
 import { currentUserThunk } from "@/app/features/user/userSlice";
+import FormPageHeader from "@/app/components/ui/PageHeader/FormPageHeader";
 
 // ==================== SCHEMA DEFINITION ====================
 // ✅ FIX 1: presales_id optional in schema — we validate manually in onSubmit
@@ -637,14 +638,8 @@ const LeadsForm: React.FC = () => {
       )}
 
       {/* Header */}
-      <div className="sticky top-0 z-30 bg-orange-100 p-3 rounded-md">
-        <div className="flex justify-between items-center">
-          <div className="pl-4 border-l-8 border-orange-500 bg-white px-3 rounded-md shadow-md">
-            <h2 className="text-4xl font-bold text-left py-4 text-orange-600">
-              New Leads Form
-            </h2>
-          </div>
-        </div>
+      <div className="sticky top-0 z-30">
+        <FormPageHeader title={"New Lead Form"} />
       </div>
 
       {/* Form */}

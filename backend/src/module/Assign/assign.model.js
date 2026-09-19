@@ -246,49 +246,40 @@ export const getLeadsByAdvisorId = async (
 
     if (paxFilter) {
       const selectedPaxFilters = Array.isArray(paxFilter)
-        ? paxFilter
-        : [paxFilter];
+        ? paxFilter.map((p) => String(p).trim()).filter(Boolean)
+        : [];
 
       const paxConditions = [];
 
       selectedPaxFilters.forEach((pax) => {
-        switch (String(pax).trim()) {
+        switch (pax) {
           case "1-4":
             paxConditions.push(`l.passengerTotal BETWEEN 1 AND 4`);
             break;
-
           case "5-7":
             paxConditions.push(`l.passengerTotal BETWEEN 5 AND 7`);
             break;
-
           case "8-13":
             paxConditions.push(`l.passengerTotal BETWEEN 8 AND 13`);
             break;
-
           case "14-20":
             paxConditions.push(`l.passengerTotal BETWEEN 14 AND 20`);
             break;
-
           case "21-30":
             paxConditions.push(`l.passengerTotal BETWEEN 21 AND 30`);
             break;
-
           case "31-40":
             paxConditions.push(`l.passengerTotal BETWEEN 31 AND 40`);
             break;
-
           case "41-50":
             paxConditions.push(`l.passengerTotal BETWEEN 41 AND 50`);
             break;
-
           case "51-60":
             paxConditions.push(`l.passengerTotal BETWEEN 51 AND 60`);
             break;
-
           case "60+":
             paxConditions.push(`l.passengerTotal > 60`);
             break;
-
           default:
             break;
         }
@@ -296,10 +287,10 @@ export const getLeadsByAdvisorId = async (
 
       if (paxConditions.length > 0) {
         whereClause += `
-          AND (
-            ${paxConditions.join(" OR ")}
-          )
-        `;
+      AND (
+        ${paxConditions.join(" OR ")}
+      )
+    `;
       }
     }
 
@@ -956,33 +947,67 @@ export const getSwapLeadsByAdvisorId = async (
   }
 
   if (ageFilter) {
+    const selectedAgeFilter = Array.isArray(ageFilter)
+      ? ageFilter.map((a) => String(a).trim()).filter(Boolean)
+      : [];
+
     const ageMap = {
-      "0-5": `DATEDIFF(CURDATE(), l.date) BETWEEN 0 AND 5`,
-      "6-10": `DATEDIFF(CURDATE(), l.date) BETWEEN 6 AND 10`,
-      "11-15": `DATEDIFF(CURDATE(), l.date) BETWEEN 11 AND 15`,
-      "16-30": `DATEDIFF(CURDATE(), l.date) BETWEEN 16 AND 30`,
-      "31-60": `DATEDIFF(CURDATE(), l.date) BETWEEN 31 AND 60`,
-      "60+": `DATEDIFF(CURDATE(), l.date) >= 60`,
+      "0-5": `l.age BETWEEN 0 AND 5`,
+      "6-10": `l.age BETWEEN 6 AND 10`,
+      "11-15": `l.age BETWEEN 11 AND 15`,
+      "16-30": `l.age BETWEEN 16 AND 30`,
+      "31-60": `l.age BETWEEN 31 AND 60`,
+      "60+": `l.age > 60`,
     };
-    if (ageMap[ageFilter]) whereClause += ` AND ${ageMap[ageFilter]}`;
+
+    const ageConditions = selectedAgeFilter
+      .map((a) => ageMap[a])
+      .filter(Boolean);
+
+    if (ageConditions.length > 0) {
+      whereClause += `
+      AND (
+        ${ageConditions.join(" OR ")}
+      )
+    `;
+    }
   }
 
   if (daysFilter) {
-    const singleDay = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"];
-    if (singleDay.includes(daysFilter)) {
-      whereClause += ` AND l.days = ${Number(daysFilter)}`;
-    } else {
-      const daysMap = {
-        "11-15": `l.days BETWEEN 11 AND 15`,
-        "16-30": `l.days BETWEEN 16 AND 30`,
-        "31-60": `l.days BETWEEN 31 AND 60`,
-        "60+": `l.days > 60`,
-      };
-      if (daysMap[daysFilter]) whereClause += ` AND ${daysMap[daysFilter]}`;
+    const selectedDaysFilter = Array.isArray(daysFilter)
+      ? daysFilter.map((d) => String(d).trim()).filter(Boolean)
+      : [];
+
+    const daysConditions = [];
+
+    selectedDaysFilter.forEach((day) => {
+      if (["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"].includes(day)) {
+        daysConditions.push(`l.days = ${Number(day)}`);
+      } else if (day === "11-15") {
+        daysConditions.push(`l.days BETWEEN 11 AND 15`);
+      } else if (day === "16-30") {
+        daysConditions.push(`l.days BETWEEN 16 AND 30`);
+      } else if (day === "31-60") {
+        daysConditions.push(`l.days BETWEEN 31 AND 60`);
+      } else if (day === "60+") {
+        daysConditions.push(`l.days > 60`);
+      }
+    });
+
+    if (daysConditions.length > 0) {
+      whereClause += `
+      AND (
+        ${daysConditions.join(" OR ")}
+      )
+    `;
     }
   }
 
   if (paxFilter) {
+    const selectedPaxFilter = Array.isArray(paxFilter)
+      ? paxFilter.map((p) => String(p).trim()).filter(Boolean)
+      : [];
+
     const paxMap = {
       "1-4": `l.passengerTotal BETWEEN 1 AND 4`,
       "5-7": `l.passengerTotal BETWEEN 5 AND 7`,
@@ -994,7 +1019,18 @@ export const getSwapLeadsByAdvisorId = async (
       "51-60": `l.passengerTotal BETWEEN 51 AND 60`,
       "60+": `l.passengerTotal > 60`,
     };
-    if (paxMap[paxFilter]) whereClause += ` AND ${paxMap[paxFilter]}`;
+
+    const paxConditions = selectedPaxFilter
+      .map((p) => paxMap[p])
+      .filter(Boolean);
+
+    if (paxConditions.length > 0) {
+      whereClause += `
+      AND (
+        ${paxConditions.join(" OR ")}
+      )
+    `;
+    }
   }
 
   if (liveorexpiry && liveorexpiry !== "All") {

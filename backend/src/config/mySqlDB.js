@@ -2,12 +2,8 @@ import mysql from "mysql2/promise";
 import dotenv from "dotenv";
 dotenv.config();
 
-// Force mysql2 to interpret all DATETIME values as IST regardless of where
-// the Node process runs (Hostinger servers are UTC; this prevents the
-// 5h30m drift between local and live environments).
 const IST_TIMEZONE = "+05:30";
 
-// Pinaak Pool
 export const pool = mysql.createPool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
@@ -15,11 +11,13 @@ export const pool = mysql.createPool({
   database: process.env.DB_NAME,
   timezone: IST_TIMEZONE,
   waitForConnections: true,
-  connectionLimit: 100,
-  queueLimit: 0,
+  connectionLimit: 15, // 100 se ghatakar realistic number par
+  queueLimit: 30, // 0 nahi — bounded queue
+  connectTimeout: 10000, // 10 sec mein connect na ho to fail
+  idleTimeout: 60000, // idle connections release ho jayein
+  maxIdle: 10,
 });
 
-// ✅ HRMS Pool (Naya)
 export const hrmsPool = mysql.createPool({
   host: process.env.HRMS_DB_HOST,
   user: process.env.HRMS_DB_USER,
@@ -27,8 +25,11 @@ export const hrmsPool = mysql.createPool({
   database: process.env.HRMS_DB_NAME,
   timezone: IST_TIMEZONE,
   waitForConnections: true,
-  connectionLimit: 100,
-  queueLimit: 0,
+  connectionLimit: 10,
+  queueLimit: 20,
+  connectTimeout: 10000,
+  idleTimeout: 60000,
+  maxIdle: 5,
 });
 
 // Pinaak Connection Test

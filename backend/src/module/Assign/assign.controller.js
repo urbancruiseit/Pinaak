@@ -84,9 +84,23 @@ const getMyAssignedLeads = asyncHandler(async (req, res) => {
   const month = req.query.month || null;
   const year = req.query.year || null;
   const status = req.query.status || null;
-  const ageFilter = req.query.ageFilter || null;
-  const daysFilter = req.query.daysFilter || null;
-  const paxFilter = req.query.paxFilter || null;
+
+  const normalizeToArray = (value) => {
+    if (!value) return null;
+    if (Array.isArray(value)) {
+      return value.flatMap((v) =>
+        typeof v === "string" ? v.split(",").map((s) => s.trim()) : v,
+      );
+    }
+    if (typeof value === "string" && value.includes(",")) {
+      return value.split(",").map((s) => s.trim());
+    }
+    return [value];
+  };
+
+  const ageFilter = normalizeToArray(req.query.ageFilter);
+  const daysFilter = normalizeToArray(req.query.daysFilter);
+  const paxFilter = normalizeToArray(req.query.paxFilter);
 
   const {
     advisorId: scopeAdvisorId,
@@ -163,6 +177,10 @@ const getMyAssignedLeads = asyncHandler(async (req, res) => {
         selectedMonth,
         selectedYear,
         selectedStatus,
+
+        selectedAgeFilter: ageFilter || [],
+        selectedDaysFilter: daysFilter || [],
+        selectedPaxFilter: paxFilter || [],
         statusCounts,
         totalLeads,
         leads,

@@ -46,6 +46,12 @@ import {
 } from "@/app/socket/leadsocket";
 import { useAppSelector } from "@/hooks/useRedux";
 import { AllRegionZoneCityFilter } from "../ui/AllRegionZoneCityFilter";
+import MultiSelectDropdown from "./TelesalesLeadsTable/TelesalesLeadsTableDropdown";
+import {
+  ageOptions,
+  daysOptions,
+  paxOptions,
+} from "./TelesalesLeadsTable/TelesalesLeadsTableFilter";
 
 const CITY_OPTIONS = [
   "Delhi",
@@ -125,10 +131,12 @@ export default function LeadsTable() {
   // ─── Live/Expiry filter state ──────────────────────────────────────────────
   const [liveorexpiryFilter, setLiveorexpiryFilter] = useState<string>("All");
 
-  // ✅ Age filter state
-  const [ageFilter, setAgeFilter] = useState<string>("");
-  const [daysFilter, setDaysFilter] = useState<string>("");
-  const [paxFilter, setPaxFilter] = useState<string>("");
+  // ✅ Age/Days/Pax filters are all arrays — MultiSelectDropdown returns
+  // multiple selected values, and the backend expects an array to build an
+  // OR condition across ranges.
+  const [ageFilter, setAgeFilter] = useState<string[]>([]);
+  const [daysFilter, setDaysFilter] = useState<string[]>([]);
+  const [paxFilter, setPaxFilter] = useState<string[]>([]);
 
   // ─── States (type fix + naya cityId state) ─────────────────────────────────
   const [selectedRegion, setSelectedRegion] = useState("");
@@ -184,7 +192,7 @@ export default function LeadsTable() {
     };
   }, [currentUser, dispatch]);
 
-  // ✅ ageFilter added to buildFetchArgs — goes to backend
+  // ✅ ageFilter/daysFilter/paxFilter go straight to the backend as arrays
   // ─── buildFetchArgs (yahi backend tak data bhejta hai) ─────────────────────
   const buildFetchArgs = useCallback(
     (page: number) => ({
@@ -201,9 +209,10 @@ export default function LeadsTable() {
       status: statusFilter !== "All" ? statusFilter : undefined,
       regionId: selectedRegionId ?? null,
       zoneId: selectedZoneId ?? null, // ✅ dropdown se selected zone
-      ageFilter: ageFilter || undefined,
-      daysFilter: daysFilter || undefined,
-      paxFilter: paxFilter || undefined,
+      // ✅ send as arrays (only when something is actually selected)
+      ageFilter: ageFilter.length > 0 ? ageFilter : undefined,
+      daysFilter: daysFilter.length > 0 ? daysFilter : undefined,
+      paxFilter: paxFilter.length > 0 ? paxFilter : undefined,
       liveorexpiry: liveorexpiryFilter !== "All" ? liveorexpiryFilter : null,
     }),
     [
@@ -820,24 +829,17 @@ export default function LeadsTable() {
               </select>
             </div>
 
-            {/* Age Filter */}
+            {/* Age Filter — checkbox multi-select, same pattern as Days/Pax */}
             <div className="flex flex-col gap-1">
-              <select
-                value={ageFilter}
-                onChange={(e) => {
-                  setAgeFilter(e.target.value);
+              <MultiSelectDropdown
+                label="Age"
+                options={ageOptions}
+                selected={ageFilter}
+                onChange={(values: string[]) => {
+                  setAgeFilter(values);
                   setCurrentPage(1);
                 }}
-                className="w-full px-3 py-2 text-sm font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-              >
-                <option value="">All Age</option>
-                <option value="0-5">0-5 Age</option>
-                <option value="6-10">6-10 Age</option>
-                <option value="11-15">11-15 Age</option>
-                <option value="16-30">16-30 Age</option>
-                <option value="31-60">31-60 Age</option>
-                <option value="60+">60+ Age</option>
-              </select>
+              />
             </div>
 
             {/* Live / Expiry Filter */}
@@ -992,54 +994,26 @@ export default function LeadsTable() {
                 </div>
               )}
 
-              <div className="flex flex-col gap-1">
-                <select
-                  value={daysFilter}
-                  onChange={(e) => {
-                    setDaysFilter(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  className="w-full px-3 py-2 text-sm font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                >
-                  <option value="">All Days</option>
-                  <option value="1">1 Day</option>
-                  <option value="2">2 Day</option>
-                  <option value="3">3 Day</option>
-                  <option value="4">4 Day</option>
-                  <option value="5">5 Day</option>
-                  <option value="6">6 Day</option>
-                  <option value="7">7 Day</option>
-                  <option value="8">8 Day</option>
-                  <option value="9">9 Day</option>
-                  <option value="10">10 Day</option>
-                  <option value="11-15">11-15 Day</option>
-                  <option value="16-30">16-30 Day</option>
-                  <option value="31-60">31-60 Day</option>
-                  <option value="60+">60+ Day</option>
-                </select>
-              </div>
+              {/* ✅ FIX: pass/receive string[] (multi-select) instead of a single string */}
+              <MultiSelectDropdown
+                label="Days"
+                options={daysOptions}
+                selected={daysFilter}
+                onChange={(values: string[]) => {
+                  setDaysFilter(values);
+                  setCurrentPage(1);
+                }}
+              />
 
-              <div className="flex flex-col gap-1">
-                <select
-                  value={paxFilter}
-                  onChange={(e) => {
-                    setPaxFilter(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  className="w-full px-3 py-2 text-sm font-semibold border rounded-lg shadow-sm border-slate-300 text-slate-700 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                >
-                  <option value="">All Pax</option>
-                  <option value="1-4">1-4 Pax</option>
-                  <option value="5-7">5-7 Pax</option>
-                  <option value="8-13">8-13 Pax</option>
-                  <option value="14-20">14-20 Pax</option>
-                  <option value="21-30">21-30 Pax</option>
-                  <option value="31-40">31-40 Pax</option>
-                  <option value="41-50">41-50 Pax</option>
-                  <option value="51-60">51-60 Pax</option>
-                  <option value="60+">60+ Pax</option>
-                </select>
-              </div>
+              <MultiSelectDropdown
+                label="Pax"
+                options={paxOptions}
+                selected={paxFilter}
+                onChange={(values: string[]) => {
+                  setPaxFilter(values);
+                  setCurrentPage(1);
+                }}
+              />
 
               {/* Freeze Columns */}
               <div className="flex-shrink-0">

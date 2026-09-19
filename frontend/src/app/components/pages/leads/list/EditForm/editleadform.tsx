@@ -51,6 +51,7 @@ import {
   mapInitialDataToForm,
   calculateTotalVehicles,
 } from "../../../../../../types/Editleads/editleadcalculations";
+import FormPageHeader from "@/app/components/ui/PageHeader/FormPageHeader";
 
 const EditLeadForm: React.FC<{
   initialData: LeadRecord;
@@ -397,24 +398,22 @@ const EditLeadForm: React.FC<{
       )}
 
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-orange-100 p-3 rounded-md">
-        <div className="flex justify-between items-center">
-          <div className="pl-4 border-l-8 border-orange-500 bg-white px-3 rounded-md shadow-md">
-            <h2 className="text-4xl font-bold text-left py-4 text-orange-600">
-              PreSales Edit Lead
-            </h2>
-          </div>
+      {/* Header */}
+      <div className="sticky top-0 z-30">
+        <div className="relative">
+          <FormPageHeader title="Edit Lead Form" />
+
           {onCancel && (
             <button
+              type="button"
               onClick={onCancel}
-              className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600"
+              className="absolute right-4 top-3 z-50 px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
             >
               Cancel
             </button>
           )}
         </div>
       </div>
-
       {/* Form */}
       <div className="p-6 mx-auto bg-white shadow-xl rounded-lg">
         <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-8">

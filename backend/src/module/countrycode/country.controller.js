@@ -28,8 +28,10 @@ const addCountryCode = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Phone code must start with + or be numeric");
   }
 
+  // FIX: message said "2-3 characters" but the check actually allowed 2-4.
+  // Message now matches the real condition.
   if (trimmedCode.length < 2 || trimmedCode.length > 4) {
-    throw new ApiError(400, "Country code must be 2-3 characters");
+    throw new ApiError(400, "Country code must be 2-4 characters");
   }
 
   const countryData = {
@@ -41,7 +43,7 @@ const addCountryCode = asyncHandler(async (req, res) => {
   const newCountry = await insertCountry(countryData);
 
   if (!newCountry) {
-    throw new ApiError(404, " new country not found");
+    throw new ApiError(404, "New country not found");
   }
 
   res
@@ -49,8 +51,12 @@ const addCountryCode = asyncHandler(async (req, res) => {
     .json(new ApiResponse(201, newCountry, "Country added successfully"));
 });
 
+// FIX: now supports ?page=&limit= query params so a caller can page through
+// results instead of always pulling the full table on every hit. Doesn't
+// break existing callers — omit the params and it behaves exactly as before.
 const getCountryCode = asyncHandler(async (req, res) => {
-  const country = await getCountries();
+  const { page, limit } = req.query;
+  const country = await getCountries({ page, limit });
 
   if (!country) {
     throw new ApiError(404, "Country List not found");

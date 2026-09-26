@@ -15,12 +15,10 @@ const router = Router();
 
 router.route("/").post(verifyJWT, createLeads);
 router.route("/").get(verifyJWT, listLeads);
-router
-  .route("/unwanted/:id")
-  .patch(verifyJWT, updateLeadUnwantedStatusController);
-router.route("/unwanted/all").get(verifyJWT, getAllUnwantedLeadsController);
-router.route("/updatelead/:leadId").put(verifyJWT, updateLeadByIdController);
-router.post("/check-phone", verifyJWT, checkCustomerPhoneController);
+router.route("/unwanted/:id").patch(updateLeadUnwantedStatusController);
+router.route("/unwanted/all").get(getAllUnwantedLeadsController);
+router.route("/updatelead/:leadId").put(updateLeadByIdController);
+router.post("/check-phone", checkCustomerPhoneController);
 router.get(
   "/followups/advisor-stats",
   verifyJWT,
@@ -31,5 +29,5 @@ router.get(
   verifyJWT,
   getAdvisorFollowupDetailsController,
 );
-router.get("/leads/:leadId/rfq-time", verifyJWT, getLeadRfqTimeController);
+router.get("/leads/:leadId/rfq-time", getLeadRfqTimeController);
 export default router;

@@ -8,10 +8,7 @@ import { verifyJWT } from "../../middlewares/auth.middleware.js";
 
 const router = Router();
 
-router
-  .route("/")
-  .post(verifyJWT, addCountryCode)
-  .get(verifyJWT, getCountryCode);
-router.route("/codes").get(verifyJWT, AllCountryCodes);
+router.route("/").post(addCountryCode).get(getCountryCode);
+router.route("/codes").get(AllCountryCodes);
 
 export default router;

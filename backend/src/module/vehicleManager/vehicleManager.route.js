@@ -10,18 +10,16 @@ import {
   updateVehicleManagerStatus,
 } from "./vehicleManager.controller.js";
 
-import { verifyJWT } from "../../middlewares/auth.middleware.js";
-
 const router = Router();
-router.route("/citys").get(verifyJWT, getAllCitiesController);
+router.route("/citys").get(getAllCitiesController);
 
 // ⚠️ Static/named routes ALWAYS "/:id" se pehle honi chahiye
-router.get("/options/codes", verifyJWT, getVehicleMasterCodes);
-router.get("/options/vendors", verifyJWT, getVehicleManagerVendors);
-router.get("/options/amenities", verifyJWT, getVehicleMasterAmenities);
+router.get("/options/codes", getVehicleMasterCodes);
+router.get("/options/vendors", getVehicleManagerVendors);
+router.get("/options/amenities", getVehicleMasterAmenities);
 
-router.route("/").post(verifyJWT, createVehicleManager).get(verifyJWT, getAllVehicleManagers);
-router.route("/updatestatus/:id").patch(verifyJWT, updateVehicleManagerStatus);
-router.route("/:id").get(verifyJWT, getVehicleManagerByIdController);
+router.route("/").post(createVehicleManager).get(getAllVehicleManagers);
+router.route("/updatestatus/:id").patch(updateVehicleManagerStatus);
+router.route("/:id").get(getVehicleManagerByIdController);
 
 export default router;

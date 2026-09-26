@@ -6,8 +6,8 @@ import {
 } from "./lead_followups.controller.js";
 import { verifyJWT } from "../../middlewares/auth.middleware.js";
 const router = Router();
-router.route("/").get(verifyJWT, getAllLeadsController);
+router.route("/").get(getAllLeadsController);
 router.route("/today").get(verifyJWT, getTodayFollowupCount);
-router.route("/:id").get(verifyJWT, getFollowupsByLeadIdController);
+router.route("/:id").get(getFollowupsByLeadIdController);
 
 export default router;

@@ -6,5 +6,5 @@ import { verifyJWT } from "../../middlewares/auth.middleware.js";
 const router = express.Router();
 
 router.use(verifyJWT);
-router.get("/download", verifyJWT, getDownloadReport);
+router.get("/download", getDownloadReport);
 export default router;

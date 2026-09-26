@@ -5,17 +5,16 @@ import {
   getAllRegionsController,
   getZonesByRegionController,
 } from "./zone.controllers.js";
-import { verifyJWT } from "../../middlewares/auth.middleware.js";
 
 const router = Router();
 
 // Get all regions
-router.route("/regions").get(verifyJWT, getAllRegionsController);
+router.route("/regions").get(getAllRegionsController);
 
 // Get zones by region
-router.route("/regions/:regionId/zones").get(verifyJWT, getZonesByRegionController);
+router.route("/regions/:regionId/zones").get(getZonesByRegionController);
 
 // Get cities by zone
-router.route("/zones/:zoneId/cities").get(verifyJWT, getCitiesByZoneController);
+router.route("/zones/:zoneId/cities").get(getCitiesByZoneController);
 
 export default router;

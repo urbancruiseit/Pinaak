@@ -15,34 +15,33 @@ import { verifyJWT } from "../../middlewares/auth.middleware.js";
 const router = express.Router();
 
 router.use(verifyJWT);
-router.get("/monthly-enquiry", verifyJWT, monthlyEnquiryReport);
+router.get("/monthly-enquiry", monthlyEnquiryReport);
 
 router.get(
   "/adviser-report",
-  verifyJWT,
+
   getLeadCountByAdviserForMonthController,
 );
 router.get(
   "/status-wise-report",
-  verifyJWT,
+
   getMonthlyStatusWiseReportController,
 );
 
 router.get(
   "/status-wise-date-report",
-  verifyJWT,
+
   getMonthlyDateWiseStatusReportController,
 );
 
-router.get("/time-enquiry", verifyJWT, timeEnquiryReport);
-router.get("/longweekend", verifyJWT, longWeekendReport);
-router.get("/monthlyreporttwo", verifyJWT, monthlyreporttwo);
+router.get("/time-enquiry", timeEnquiryReport);
+router.get("/longweekend", longWeekendReport);
+router.get("/monthlyreporttwo", monthlyreporttwo);
 
 router.get("/aging-report", verifyJWT, getAgingReportController);
 
 router.get(
   "/website-to-lead-aging-report",
-  verifyJWT,
   getWebsiteToLeadAgingReportController,
 );
 export default router;

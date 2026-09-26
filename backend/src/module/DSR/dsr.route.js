@@ -6,7 +6,7 @@ const router = Router();
 
 router.use(verifyJWT);
 
-router.route("/create").post(verifyJWT, createDsr);
-router.route("/getAll").get(verifyJWT, getAllDsr);
+router.route("/create").post(createDsr);
+router.route("/getAll").get(getAllDsr);
 
 export default router;

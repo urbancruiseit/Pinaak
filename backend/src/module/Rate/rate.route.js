@@ -10,7 +10,7 @@ const router = express.Router();
 
 router.use(verifyJWT); // ✅ Add this line - same as DSR
 
-router.post("/create", createRateQuotation);
-router.get("/all", getAllRateQuotations);
+router.post("/create", verifyJWT, createRateQuotation);
+router.get("/all", verifyJWT, getAllRateQuotations);
 
 export default router;

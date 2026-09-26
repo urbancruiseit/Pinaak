@@ -62,6 +62,9 @@ const loginService = async ({ username, password, loginType }) => {
     throw new ApiError(404, "User not found");
   }
 
+  if (Number(user.is_active) !== 1) {
+    throw new ApiError(403, "Your account is inactive. Please contact admin.");
+  }
   const validPassword = await isPasswordCorrect(password, user.password);
 
   if (!validPassword) {
